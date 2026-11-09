@@ -1,0 +1,26 @@
+{
+  "name": "chuaonline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:client": "vite",
+    "build": "tsc --noEmit && vite build",
+    "start": "tsx server/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "socket.io": "4.8.1",
+    "socket.io-client": "4.8.1",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.5",
+    "@types/three": "0.170.0",
+    "concurrently": "9.1.2",
+    "tsx": "4.19.2",
+    "typescript": "5.7.3",
+    "vite": "6.0.7"
+  }
+}

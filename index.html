@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#2a1a10" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/icon.svg" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Chùa Online" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Chùa Online</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="loading" class="loading"><div class="lotus"></div><p>Đang vào chùa...</p></div>
+
+  <div id="login" class="overlay login">
+    <div class="card">
+      <div class="brand"><span class="logo" data-icon="lotus"></span><h1>Chùa Online</h1></div>
+      <p class="tag">Thắp một nén hương, gửi một lời nguyện bình an.</p>
+      <canvas id="preview" width="600" height="440"></canvas>
+      <div class="tabs" id="outfits" role="tablist">
+        <button data-outfit="monk" class="on">Tiểu tăng</button>
+        <button data-outfit="nun">Tiểu ni</button>
+        <button data-outfit="male">Phật tử nam</button>
+        <button data-outfit="female">Phật tử nữ</button>
+      </div>
+      <label class="lbl">MÀU ÁO</label>
+      <div id="colors" class="colors"></div>
+      <label class="lbl" for="name">PHÁP DANH</label>
+      <div class="row">
+        <input id="name" maxlength="24" autocomplete="off" />
+        <button id="rand" class="ghost">Đổi tên</button>
+      </div>
+      <button id="enter" class="gold">Vào chùa</button>
+      <button id="authOpen" class="ghost wide"></button>
+      <p class="hint">WASD hoặc mũi tên để đi, Shift để chạy, kéo chuột để xoay, bấm xuống đất để đi tới đó. Trên điện thoại dùng cần điều khiển bên trái.</p>
+    </div>
+  </div>
+
+  <div id="authModal" class="overlay" hidden>
+    <div class="card small">
+      <h2 id="authTitle">Đăng nhập</h2>
+      <div class="tabs">
+        <button id="tabLogin" class="on">Đăng nhập</button>
+        <button id="tabReg">Đăng ký</button>
+      </div>
+      <form id="authForm">
+        <label class="lbl" for="au">TÊN ĐĂNG NHẬP</label>
+        <input id="au" autocomplete="username" maxlength="20" />
+        <label class="lbl" for="ap">MẬT KHẨU</label>
+        <input id="ap" type="password" autocomplete="current-password" maxlength="100" />
+        <p id="authErr" class="err"></p>
+        <div class="row">
+          <button type="button" id="authCancel" class="ghost">Hủy</button>
+          <button type="submit" class="gold" style="margin-top:0">Xác nhận</button>
+        </div>
+      </form>
+      <p class="hint" id="authHint"></p>
+    </div>
+  </div>
+
+  <div id="hud" hidden>
+    <div id="marquee"><span>Chào mừng bạn về Chùa Online: cùng thắp hương, niệm Phật, gửi lời nguyện bình an. Giữ lời nói hiền!</span></div>
+
+    <div id="profile" class="glass">
+      <div class="avatar" id="avatar">C</div>
+      <div class="pinfo">
+        <b id="pname"></b>
+        <div id="plevel"></div>
+        <div class="bar"><i id="pbar"></i></div>
+      </div>
+    </div>
+    <div id="online" class="glass pill"><i></i><span id="onlineN">0</span> online<span class="sep">·</span><span id="roomName"></span></div>
+
+    <div id="topright">
+      <div id="coins" class="glass pill"><span class="ico" data-icon="coin"></span><b id="coinN">0</b></div>
+      <button id="soundBtn" class="glass round" aria-label="Âm thanh"><span data-icon="sound"></span></button>
+    </div>
+
+    <div id="medBanner" class="glass" hidden></div>
+
+    <div id="chat" class="glass">
+      <div class="title"><span class="ico" data-icon="chat"></span>Cộng đồng sân chùa<button id="chatToggle" class="mini" aria-label="Thu gọn chat"><span data-icon="minus"></span></button></div>
+      <div id="chatBody">
+        <div id="msgs"></div>
+        <form id="chatForm"><input id="chatInput" maxlength="200" placeholder="Nhập lời hiền... (Enter)" autocomplete="off" /></form>
+      </div>
+    </div>
+
+    <div id="lanternFeed" class="glass">
+      <div class="title"><span class="ico" data-icon="lantern"></span>Đèn nguyện</div>
+      <div id="lanternList"></div>
+      <button id="lanternBtn" class="gold"><span class="ico" data-icon="lantern"></span>Thả đèn nguyện</button>
+    </div>
+
+    <div id="actions">
+      <button data-act="bow" class="act"><span class="ico" data-icon="bow"></span><span class="lb">Lạy Phật</span><i class="cd"></i></button>
+      <button data-act="incense" class="act"><span class="ico" data-icon="incense"></span><span class="lb">Thắp hương</span><i class="cd"></i></button>
+      <button data-act="chant" class="act"><span class="ico" data-icon="chant"></span><span class="lb">Tụng kinh</span><i class="cd"></i></button>
+      <button id="sitBtn" class="act"><span class="ico" data-icon="meditate"></span><span class="lb">Thiền</span></button>
+    </div>
+
+    <!-- bottom feature bar: rebuilt by src/menu.ts (initMenu). Static fallback keeps legacy ids alive. -->
+    <div id="menu" class="glass">
+      <button data-panel="shop"><span class="ico" data-icon="shop"></span><span class="lb">Cửa hàng</span></button>
+      <button data-panel="bag"><span class="ico" data-icon="bag"></span><span class="lb">Túi đồ</span></button>
+      <button data-panel="quests"><span class="ico" data-icon="scroll"></span><span class="lb">Nhiệm vụ</span><em id="questDot" hidden></em></button>
+      <button data-panel="rank"><span class="ico" data-icon="trophy"></span><span class="lb">Xếp hạng</span></button>
+      <button data-panel="rooms"><span class="ico" data-icon="temple"></span><span class="lb">Chọn chùa</span></button>
+      <button id="logoutBtn"><span class="ico" data-icon="exit"></span><span class="lb">Thoát</span></button>
+    </div>
+
+    <div id="joystick" hidden><div id="stick"></div></div>
+    <div id="toast"></div>
+    <div id="couplet"></div>
+    <div id="floats"></div>
+    <div id="levelup" hidden><div><small>Thăng cấp</small><b id="levelN">2</b></div></div>
+  </div>
+
+  <div id="panel" class="overlay" hidden>
+    <div class="card panel">
+      <div class="phead"><h2 id="panelTitle"></h2><button id="panelClose" class="ghost round" aria-label="Đóng"><span data-icon="close"></span></button></div>
+      <div id="panelBody"></div>
+    </div>
+  </div>
+
+  <div id="wishModal" class="overlay" hidden>
+    <div class="card small">
+      <h2>Thả đèn nguyện</h2>
+      <textarea id="wishText" maxlength="120" placeholder="Viết lời nguyện của bạn..."></textarea>
+      <div class="row">
+        <button id="wishCancel" class="ghost">Hủy</button>
+        <button id="wishOk" class="gold" style="margin-top:0">Thả đèn</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

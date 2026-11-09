@@ -1,0 +1,15 @@
+{
+  "name": "Chùa Online",
+  "short_name": "Chùa Online",
+  "description": "Thắp một nén hương, gửi một lời nguyện bình an.",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#2a1a10",
+  "background_color": "#2a1a10",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
