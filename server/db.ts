@@ -1,10 +1,30 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { Outfit, Profile } from '../shared/types.js';
 
-mkdirSync('data', { recursive: true });
-export const db = new DatabaseSync(process.env.DB_FILE ?? 'data/chuaonline.db');
+const DEFAULT_DB = 'data/chuaonline.db';
+/**
+ * Opens the SQLite file, creating its parent directory first. Falls back to the default local
+ * path when DB_FILE points somewhere unwritable/missing (e.g. /var/data on a host without a
+ * persistent disk attached), so the server still boots instead of crashing.
+ */
+function openDb(): DatabaseSync {
+  const wanted = process.env.DB_FILE ? resolve(process.env.DB_FILE) : resolve(DEFAULT_DB);
+  for (const file of [wanted, resolve(DEFAULT_DB)]) {
+    try {
+      mkdirSync(dirname(file), { recursive: true });
+      return new DatabaseSync(file);
+    } catch (err) {
+      // Any filesystem/sqlite failure means this path is unusable (missing disk, read-only mount,
+      // unwritable dir). Try the next candidate rather than crashing at boot.
+      console.warn(`[db] cannot open ${file}: ${(err as Error).message}`);
+    }
+  }
+  throw new Error('no writable SQLite path');
+}
+export const db = openDb();
 db.exec(`
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
