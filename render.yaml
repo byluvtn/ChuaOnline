@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: chuaonline
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      # Node >= 22.5 is required: the server uses the built-in node:sqlite module.
+      - key: NODE_VERSION
+        value: 22.12.0
+      # SQLite lives on the mounted disk so accounts and merit survive a redeploy.
+      - key: DB_FILE
+        value: /var/data/chuaonline.db
+    disk:
+      name: chuaonline-data
+      mountPath: /var/data
+      sizeGB: 1

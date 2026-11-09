@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, GROUP_MEDITATE_MIN, ITEM_BY_ID, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS, QUESTS, ROOMS, ROOM_CAPACITY,
@@ -73,7 +73,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // static (production)
   if (!existsSync(DIST)) { res.writeHead(200); return res.end('chuaonline server (chạy `npm run dev` để dùng client)'); }
   let file = normalize(join(DIST, url.pathname === '/' ? 'index.html' : decodeURIComponent(url.pathname)));
-  if (file !== DIST && !file.startsWith(DIST + '/')) { res.writeHead(403); return res.end(); }
+  if (file !== DIST && !file.startsWith(DIST + sep)) { res.writeHead(403); return res.end(); }
   if (!existsSync(file) || statSync(file).isDirectory()) file = join(DIST, 'index.html');
   res.writeHead(200, { 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
   res.end(readFileSync(file));
