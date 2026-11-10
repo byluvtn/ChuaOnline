@@ -481,8 +481,8 @@ export function buildTemple(c: TempleCtx) {
     colliders.push({ x: DEN_TRINH.x + v.x, z: DEN_TRINH.z + v.z, r: 0.25 });
   }
   dtStone(4.0, dtColH, 0.2, 0, dtBase + dtColH / 2, -1.6, c.wallM);
-  dtStone(0.2, dtColH, 3.0, -2.0, dtBase + dtColH / 2, 0, c.wallM);
-  dtStone(0.2, dtColH, 3.0, 2.0, dtBase + dtColH / 2, 0, c.wallM);
+  dtStone(0.2, 1.1, 3.0, -2.0, dtBase + 0.55, 0, c.wallM);
+  dtStone(0.2, 1.1, 3.0, 2.0, dtBase + 0.55, 0, c.wallM);
   const dtBeam = dtBase + dtColH + 0.12;
   for (const s of [-1.5, 1.5]) {
     const b = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.24, 0.26), c.redM);
