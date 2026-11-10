@@ -11,6 +11,9 @@ export const BELL = { x: -34, z: -6 };
 export const DRUM = { x: 34, z: -6 };
 export const DEN_TRINH = { x: 9, z: 39 };
 export const QUAN = { x: 28, z: 14 };
+/** Đế tháp Quan Âm: các tầng vuông (nửa cạnh chân tầng, độ cao mặt tầng), xoay QUAN_ROT quanh trục Y. */
+export const QUAN_ROT = -Math.PI / 2 - 0.2;
+export const QUAN_PLAT = [{ hs: 4.8 / Math.SQRT2, y: 0.45 }, { hs: 4.25 / Math.SQRT2, y: 0.9 }];
 export const PATH_Z = 2;
 export const SIDE_X = 28;
 export const PAGODA = { x: 38, z: -14 };
@@ -39,6 +42,14 @@ export function groundY(x: number, z: number) {
   const ax = Math.abs(x);
   if (ax >= DECK.x0 && ax <= DECK.x1 && z >= DECK.z0 && z <= DECK.z1) y = Math.max(y, DECK.y);
   if (Math.abs(ax - CORR.x) <= CORR.half && z >= CORR.z0 && z <= CORR.z1) y = Math.max(y, CORR.y);
+  const wx = x - QUAN.x, wz = z - QUAN.z;
+  if (Math.abs(wx) < 5 && Math.abs(wz) < 5) {
+    const lx = Math.cos(QUAN_ROT) * wx - Math.sin(QUAN_ROT) * wz, lz = Math.sin(QUAN_ROT) * wx + Math.cos(QUAN_ROT) * wz;
+    for (const t of QUAN_PLAT) {
+      const e = Math.hypot(Math.max(Math.abs(lx) - t.hs, 0), Math.max(Math.abs(lz) - t.hs, 0));
+      if (e < 0.6) y = Math.max(y, t.y * (1 - e / 0.6));
+    }
+  }
   return Math.max(y, bridgeY(x, z));
 }
 

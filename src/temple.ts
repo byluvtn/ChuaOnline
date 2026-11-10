@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -282,11 +282,11 @@ export function buildTemple(c: TempleCtx) {
 
   // ---- Quan Âm tower ----
   const qa = new THREE.Group();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < QUAN_PLAT.length; i++) {
     const tier = new THREE.Mesh(new THREE.CylinderGeometry(4.6 - i * 0.55, 4.8 - i * 0.55, 0.45, 4), stoneM);
     tier.position.y = 0.22 + i * 0.45; tier.rotation.y = Math.PI / 4; tier.castShadow = tier.receiveShadow = true; tier.userData.sealable = true; qa.add(tier);
   }
-  const qy = 1.35, QR = 3.4, QH = 7.2, QA = QR / Math.SQRT2;
+  const qy = QUAN_PLAT[QUAN_PLAT.length - 1].y, QR = 3.4, QH = 7.2, QA = QR / Math.SQRT2;
   const qCorners: [number, number][] = [[-QA, -QA], [QA, -QA], [QA, QA], [-QA, QA]];
   for (let i = 0; i < 4; i++) {
     const [px, pz] = qCorners[i], [nx, nz] = qCorners[(i + 1) % 4];
@@ -297,7 +297,7 @@ export function buildTemple(c: TempleCtx) {
     rail.position.set((px + nx) / 2, qy + QH - 0.3, (pz + nz) / 2); rail.rotation.y = -Math.atan2(nz - pz, nx - px);
     rail.userData.sealable = true; qa.add(rail);
     const rail2 = rail.clone(); rail2.position.y = qy + 1.0; qa.add(rail2);
-    colliders.push({ x: QUAN.x + Math.cos(-Math.PI / 2 - 0.2) * px + Math.sin(-Math.PI / 2 - 0.2) * pz, z: QUAN.z - Math.sin(-Math.PI / 2 - 0.2) * px + Math.cos(-Math.PI / 2 - 0.2) * pz, r: 0.32 });
+    colliders.push({ x: QUAN.x + Math.cos(QUAN_ROT) * px + Math.sin(QUAN_ROT) * pz, z: QUAN.z - Math.sin(QUAN_ROT) * px + Math.cos(QUAN_ROT) * pz, r: 0.32 });
   }
   const q1 = new THREE.Mesh(c.roofGeometry(11.5, 11.5, 2.8, 0.9), c.tileM); q1.position.y = qy + QH + 1.3; q1.rotation.y = 0; q1.castShadow = true; q1.userData.sealable = true; qa.add(q1);
   const q2 = new THREE.Mesh(c.roofGeometry(7, 7, 2.2, 0.6), c.tileM); q2.position.y = qy + QH + 2.9; q2.rotation.y = 0; q2.castShadow = true; q2.userData.sealable = true; qa.add(q2);
@@ -308,7 +308,8 @@ export function buildTemple(c: TempleCtx) {
   for (let i = 0; i < 2; i++) {
     labelBoard(qa, COLUMN_LABELS.thap[i], 0.46, 2.8, i ? -QA : QA, qy + 3.3, QA + 0.1);
   }
-  qa.position.set(QUAN.x, 0, QUAN.z); qa.rotation.y = -Math.PI / 2 - 0.2; scene.add(qa);
+  qa.position.set(QUAN.x, 0, QUAN.z); qa.rotation.y = QUAN_ROT; scene.add(qa);
+  colliders.push({ x: QUAN.x, z: QUAN.z, r: 1.1 });
   sealArchitectureJoints(qa, { maxGap: 0.6 });
   zones.push({ x: QUAN.x, z: QUAN.z, r: 6.5, id: 'thap' });
 
