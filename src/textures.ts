@@ -228,6 +228,37 @@ export function vietnamesePlaqueTexture(text: string, w = 1024, h = 256) {
   return t;
 }
 
+/** Thân cột kinh: đá sáng, chữ Việt in hoa xếp dọc (mỗi từ một dòng), khắc chìm tông tối. */
+export function sutraPillarTexture(text: string, w = 192, h = 1120) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#d6cbb6'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 420; i++) {
+    g.fillStyle = `rgba(${rnd(0, 1) > 0.5 ? '255,255,255' : '60,50,36'},${rnd(0.03, 0.09)})`;
+    g.fillRect(rnd(0, w), rnd(0, h), rnd(1, 4), rnd(1, 4));
+  }
+  g.strokeStyle = 'rgba(70,58,40,.5)'; g.lineWidth = 3; g.strokeRect(10, 10, w - 20, h - 20);
+  g.strokeStyle = 'rgba(70,58,40,.3)'; g.lineWidth = 1.5; g.strokeRect(20, 20, w - 40, h - 40);
+  const words = text.toUpperCase().split(/\s+/).filter(Boolean);
+  const family = '"Segoe UI", "Be Vietnam Pro", system-ui, sans-serif';
+  const padY = 70, maxW = w - 60;
+  let font = 96;
+  g.font = `700 ${font}px ${family}`;
+  while (Math.max(...words.map((wd) => g.measureText(wd).width)) > maxW && font > 10) { font -= 2; g.font = `700 ${font}px ${family}`; }
+  const lineH = Math.min(font * 1.7, (h - padY * 2) / Math.max(1, words.length));
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const y0 = h / 2 - (lineH * (words.length - 1)) / 2;
+  words.forEach((wd, i) => {
+    const y = y0 + i * lineH;
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.fillText(wd, w / 2 + 2, y + 2);
+    g.fillStyle = '#4a3f2e'; g.fillText(wd, w / 2, y);
+  });
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
 export function woodTexture(repeat: [number, number]) {
   return canvasTex(512, (g, s) => {
     g.fillStyle = '#8a5a34'; g.fillRect(0, 0, s, s);

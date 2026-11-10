@@ -7,7 +7,7 @@ import {
 import { buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
-import { glowTexture, signTexture, stoneTexture, vietnameseColumnTexture, woodTexture } from './textures';
+import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
 
 export interface Seat { x: number; z: number; ry: number }
 export interface Zone { x: number; z: number; r: number; id: string }
@@ -514,6 +514,45 @@ export function buildTemple(c: TempleCtx) {
   if (import.meta.env.DEV) console.warn(`gapdump denTrinh: filled=${dtSeal.filled} remaining=${dtSeal.remaining.length} ` + JSON.stringify(dtSeal.remaining));
   colliders.push({ x: DEN_TRINH.x + 1.0, z: DEN_TRINH.z, r: 0.8 });
   zones.push({ x: DEN_TRINH.x, z: DEN_TRINH.z, r: 5, id: 'denTrinh' });
+
+  // ---- Vườn Cột Kinh: hai hàng cột đá khắc kinh dọc trục, từ quảng trường lên chính điện ----
+  const sutra = new THREE.Group();
+  sutra.name = 'sutra-pillars';
+  const SUTRA_X = 3.4;
+  const SUTRA_Z = [-3.2, -5.0, -6.8, -8.6, -10.4];
+  const SUTRA_TEXT: Record<'-1' | '1', string[]> = {
+    '-1': ['Nam mô A Di Đà Phật', 'Tâm tịnh Phật tịnh', 'Từ bi hỷ xả', 'Giới định tuệ', 'Sen nở an lạc'],
+    '1': ['Nam mô Bổn Sư Thích Ca', 'Buông bỏ phiền não', 'Hương trầm lòng tịnh', 'Gieo duyên lành', 'Thương yêu muôn loài'],
+  };
+  const sutraBaseM = lamb(0x9a8f7a, { map: stoneTexture([170, 160, 140], [1, 1], 2) });
+  const sutraCapM = lamb(0xb9ad94, { map: stoneTexture([190, 180, 160], [1, 1], 2) });
+  const sutraLampM = lamb(0xffd27a, { emissive: 0xff9a2a, emissiveIntensity: 0.9, roughness: 0.6 });
+  for (const side of [-1, 1] as const) {
+    SUTRA_Z.forEach((z, i) => {
+      const x = side * SUTRA_X;
+      const gy = groundY(x, z);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 1.1), sutraBaseM);
+      base.position.set(x, gy + 0.25, z);
+      const bodyM = lamb(0xffffff, { map: sutraPillarTexture(SUTRA_TEXT[String(side) as '-1' | '1'][i]) });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.72, 4.2, 0.72), bodyM);
+      body.position.set(x, gy + 0.5 + 2.1, z);
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.18, 0.95), sutraCapM);
+      cap.position.set(x, gy + 4.7 + 0.09, z);
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.14, 14, 10), c.goldM);
+      ball.position.set(x, gy + 4.88 + 0.14, z);
+      for (const m of [base, body, cap, ball]) { m.castShadow = m.receiveShadow = true; m.userData.sealable = true; sutra.add(m); }
+      colliders.push({ x, z, r: 0.6 });
+      if (i === 0) {
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), sutraLampM);
+        lamp.scale.set(1, 1.25, 1); lamp.position.set(x - side * 0.52, gy + 3.2, z);
+        sutra.add(lamp);
+        glowSpr(lamp.position.x, lamp.position.y, lamp.position.z, 1.6, 0xffb040, 0.4);
+      }
+    });
+  }
+  scene.add(sutra);
+  const sutraSeal = sealArchitectureJoints(sutra, { maxGap: 0.3 });
+  if (import.meta.env.DEV) console.warn(`gapdump sutraPillars: filled=${sutraSeal.filled} remaining=${sutraSeal.remaining.length} ` + JSON.stringify(sutraSeal.remaining));
 
   // ---- paved side paths to towers, yard, pagoda ----
   const pave = lamb(0xffffff, { map: stoneTexture([150, 144, 134], [10, 1]) });
