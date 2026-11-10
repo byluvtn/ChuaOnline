@@ -1,11 +1,29 @@
 import type { ActionKind } from './types';
 
-export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: number; boostItem?: string; boostMerit?: number }> = {
-  incense: { merit: 1, cooldownMs: 3000, boostItem: 'huong_tram', boostMerit: 5 },
-  bow: { merit: 1, cooldownMs: 2000, boostItem: 'hoa_sen', boostMerit: 4 },
-  chant: { merit: 2, cooldownMs: 10000 },
-  lantern: { merit: 5, cooldownMs: 5000, boostItem: 'den_hoa_dang', boostMerit: 15 },
+export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: number; boostItems?: string[] }> = {
+  incense: { merit: 1, cooldownMs: 3000, boostItems: ['huong_tram'] },
+  bow: { merit: 1, cooldownMs: 2000, boostItems: ['hoa_sen', 'hoa_dang_phat'] },
+  chant: { merit: 2, cooldownMs: 10000, boostItems: ['nen_sap_ong', 'trang_hat'] },
+  lantern: { merit: 5, cooldownMs: 5000, boostItems: ['den_hoa_dang'] },
 };
+
+export type ShopCategory =
+  | 'le_vat' | 'cay_phat' | 'ao_trang' | 'trang_hat' | 'bo_doan'
+  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu';
+
+export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
+  { id: 'le_vat', label: 'Lễ vật' },
+  { id: 'cay_phat', label: 'Cây Phật' },
+  { id: 'ao_trang', label: 'Áo tràng' },
+  { id: 'trang_hat', label: 'Tràng hạt' },
+  { id: 'bo_doan', label: 'Bồ đoàn' },
+  { id: 'mu', label: 'Mũ' },
+  { id: 'phap_khi', label: 'Pháp khí' },
+  { id: 'may', label: 'Mây' },
+  { id: 'linh_thu', label: 'Linh thú' },
+  { id: 'dieu', label: 'Diều' },
+  { id: 'do_linh_thu', label: 'Đồ linh thú' },
+];
 
 export interface ShopItem {
   id: string;
@@ -14,19 +32,53 @@ export interface ShopItem {
   price: number;
   kind: 'consumable' | 'accessory';
   icon: string;
+  category: ShopCategory;
+  /** cấp tối thiểu để mua (≥1); chưa đủ cấp thì khoá */
+  minLevel?: number;
+  /** consumable: công đức nhận được khi hành lễ (mặc định theo ACTION_RULES) */
+  boostMerit?: number;
 }
 
 export const ITEMS: ShopItem[] = [
-  { id: 'huong_tram', name: 'Hương trầm', desc: 'Thắp hương nhận 5 công đức thay vì 1. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🕯' },
-  { id: 'hoa_sen', name: 'Hoa sen', desc: 'Lạy Phật nhận 4 công đức. Dùng 1 lần.', price: 15, kind: 'consumable', icon: '🪷' },
-  { id: 'den_hoa_dang', name: 'Đèn hoa đăng', desc: 'Thả đèn nhận 15 công đức. Dùng 1 lần.', price: 25, kind: 'consumable', icon: '🏮' },
-  { id: 'mu_sen', name: 'Mũ sen', desc: 'Búp sen hồng trên đầu.', price: 120, kind: 'accessory', icon: '🌸' },
-  { id: 'hao_quang', name: 'Hào quang', desc: 'Vòng sáng vàng sau đầu.', price: 300, kind: 'accessory', icon: '✨' },
-  { id: 'khan_do', name: 'Khăn đỏ', desc: 'Khăn quàng cổ màu đỏ may mắn.', price: 80, kind: 'accessory', icon: '🧣' },
+  // ---- Lễ vật
+  { id: 'huong_tram', name: 'Hương trầm', desc: 'Thắp hương nhận 5 công đức thay vì 1. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🕯', category: 'le_vat', boostMerit: 5 },
+  { id: 'hoa_sen', name: 'Hoa sen', desc: 'Lạy Phật nhận 4 công đức. Dùng 1 lần.', price: 15, kind: 'consumable', icon: '🪷', category: 'le_vat', boostMerit: 4 },
+  { id: 'den_hoa_dang', name: 'Đèn hoa đăng', desc: 'Thả đèn nhận 15 công đức. Dùng 1 lần.', price: 25, kind: 'consumable', icon: '🏮', category: 'le_vat', boostMerit: 15 },
+  { id: 'nen_sap_ong', name: 'Nến sáp ong', desc: 'Tụng kinh nhận 7 công đức thay vì 2. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🕯', category: 'le_vat', boostMerit: 5 },
+  { id: 'hoa_dang_phat', name: 'Hoa dâng Phật', desc: 'Lạy Phật nhận 8 công đức. Dùng 1 lần.', price: 20, kind: 'consumable', icon: '🌸', category: 'le_vat', boostMerit: 4 },
+  // ---- Cây Phật
+  { id: 'cay_bo_de', name: 'Cây Bồ Đề', desc: 'Cây bồ đề mini đặt trong Túi đồ.', price: 60, kind: 'accessory', icon: '🌳', category: 'cay_phat', minLevel: 2 },
+  { id: 'cay_truc', name: 'Khóm trúc', desc: 'Khóm trúc xanh trong Túi đồ.', price: 45, kind: 'accessory', icon: '🎋', category: 'cay_phat' },
+  // ---- Áo tràng
+  { id: 'ao_trang_nau', name: 'Áo tràng nâu', desc: 'Áo tràng màu nâu đất.', price: 120, kind: 'accessory', icon: '🧘', category: 'ao_trang', minLevel: 2 },
+  { id: 'ao_trang_vang', name: 'Áo tràng vàng', desc: 'Áo tràng vàng kim — chỉ dành cho bậc cao cấp.', price: 320, kind: 'accessory', icon: '✨', category: 'ao_trang', minLevel: 4 },
+  { id: 'ao_trang_truc', name: 'Áo tràng trúc xanh', desc: 'Áo tràng xanh lam.', price: 150, kind: 'accessory', icon: '🟦', category: 'ao_trang', minLevel: 3 },
+  // ---- Tràng hạt
+  { id: 'trang_hat', name: 'Tràng hạt 108', desc: 'Mỗi lần tụng kinh nhận thêm công đức. Dùng 1 lần.', price: 30, kind: 'consumable', icon: '📿', category: 'trang_hat', boostMerit: 2 },
+  { id: 'trang_hat_ngoc', name: 'Tràng hạt ngọc', desc: 'Tràng hạt ngọc trai — vật phẩm quý.', price: 200, kind: 'accessory', icon: '📿', category: 'trang_hat', minLevel: 3 },
+  // ---- Bồ đoàn
+  { id: 'bo_doan_do', name: 'Bồ đoàn đỏ hoa văn', desc: 'Bồ đoàn đỏ thêu hoa văn.', price: 90, kind: 'accessory', icon: '💺', category: 'bo_doan' },
+  { id: 'bo_doan_vang', name: 'Bồ đoàn vàng kim', desc: 'Bồ đoàn viền vàng kim.', price: 180, kind: 'accessory', icon: '💺', category: 'bo_doan', minLevel: 3 },
+  // ---- Mũ
+  { id: 'mu_sen', name: 'Mũ sen', desc: 'Búp sen hồng trên đầu.', price: 120, kind: 'accessory', icon: '🌸', category: 'mu' },
+  { id: 'khan_do', name: 'Khăn đỏ', desc: 'Khăn quàng cổ màu đỏ may mắn.', price: 80, kind: 'accessory', icon: '🧣', category: 'mu' },
+  { id: 'mu_truc', name: 'Mũ trúc', desc: 'Mũ nan trúc.', price: 95, kind: 'accessory', icon: '🎩', category: 'mu', minLevel: 2 },
+  // ---- Pháp khí
+  { id: 'chuong_nho', name: 'Chuông nhỏ', desc: 'Chuông đồng nhỏ trong tay.', price: 110, kind: 'accessory', icon: '🔔', category: 'phap_khi' },
+  { id: 'mo_go', name: 'Mõ gỗ', desc: 'Mõ gỗ cầm tay.', price: 100, kind: 'accessory', icon: '🥁', category: 'phap_khi' },
+  // ---- Mây
+  { id: 'may_lan', name: 'Mây lành', desc: 'Dải mây trắng quanh người.', price: 140, kind: 'accessory', icon: '☁️', category: 'may', minLevel: 3 },
+  // ---- Linh thú
+  { id: 'hao_quang', name: 'Hào quang', desc: 'Vòng sáng vàng sau đầu.', price: 300, kind: 'accessory', icon: '✨', category: 'linh_thu', minLevel: 4 },
+  { id: 'linh_thu_ky_lan', name: 'Kỳ lân', desc: 'Linh thú kỳ lân đi theo.', price: 500, kind: 'accessory', icon: '🦄', category: 'linh_thu', minLevel: 5 },
+  // ---- Diều
+  { id: 'dieu_sen', name: 'Diều sen', desc: 'Diều hình hoa sen.', price: 75, kind: 'accessory', icon: '🪁', category: 'dieu' },
+  // ---- Đồ linh thú
+  { id: 'vong_co_lan', name: 'Vòng cổ kỳ lân', desc: 'Vòng cổ cho linh thú.', price: 130, kind: 'accessory', icon: '💎', category: 'do_linh_thu', minLevel: 4 },
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
-export type QuestEvent = ActionKind | 'chat' | 'meditate';
+export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit';
 export interface QuestDef { id: string; label: string; event: QuestEvent; target: number; coins: number; merit: number }
 
 export const QUESTS: QuestDef[] = [
@@ -36,6 +88,103 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_lantern', label: 'Thả 1 đèn nguyện', event: 'lantern', target: 1, coins: 20, merit: 10 },
   { id: 'q_chat', label: 'Chia sẻ 3 lời hiền', event: 'chat', target: 3, coins: 10, merit: 5 },
   { id: 'q_meditate', label: 'Thiền 2 phút', event: 'meditate', target: 12, coins: 30, merit: 15 },
+  { id: 'q_sutra', label: 'Tụng xong 1 bài kinh', event: 'sutra', target: 1, coins: 25, merit: 12 },
+  { id: 'q_lantern3', label: 'Thả 3 đèn nguyện', event: 'lantern', target: 3, coins: 30, merit: 15 },
+  { id: 'q_meditate5', label: 'Thiền 5 phút', event: 'meditate', target: 30, coins: 45, merit: 20 },
+  { id: 'q_buy', label: 'Mua 1 vật phẩm ở cửa hàng', event: 'buy', target: 1, coins: 15, merit: 8 },
+  { id: 'q_rooms', label: 'Viếng 3 chùa khác nhau', event: 'room', target: 3, coins: 30, merit: 15 },
+  { id: 'q_bow10', label: 'Lạy Phật 10 lần', event: 'bow', target: 10, coins: 25, merit: 12 },
+  { id: 'q_incense5', label: 'Thắp hương 5 lần', event: 'incense', target: 5, coins: 20, merit: 10 },
+  { id: 'q_chat5', label: 'Chia sẻ 5 lời hiền', event: 'chat', target: 5, coins: 18, merit: 8 },
+];
+
+/** Nhiệm vụ tuần — reset thứ Hai (dùng week_key thay day_key, id tiền tố `w_`). */
+export const WEEKLY_QUESTS: QuestDef[] = [
+  { id: 'w_merit100', label: 'Tích 100 công đức trong tuần', event: 'merit', target: 100, coins: 60, merit: 30 },
+  { id: 'w_bow50', label: 'Lạy Phật 50 lần trong tuần', event: 'bow', target: 50, coins: 80, merit: 40 },
+  { id: 'w_sutra10', label: 'Tụng 10 bài kinh trong tuần', event: 'sutra', target: 10, coins: 100, merit: 50 },
+];
+
+/** Thưởng mốc cấp: lên cấp nhận xu + công đức (server tự cộng khi lên cấp). */
+export const LEVEL_BONUS = { coinsPerLevel: 10, meritPerLevel: 5 };
+
+/** Bài kinh cho cửa sổ tụng kinh — chỉ lấy kinh truyền thống, lời gốc. */
+export interface Sutra {
+  id: string;
+  name: string;
+  /** số biến/lần đọc mặc định */
+  reps: number;
+  /** từng câu kinh, hiển thị và đọc theo dòng */
+  lines: string[];
+}
+
+export const SUTRAS: Sutra[] = [
+  {
+    id: 'tam_kinh',
+    name: 'Bát Nhã Tâm Kinh',
+    reps: 1,
+    lines: [
+      'Quán Tự Tại Bồ Tát, hành thâm Bát Nhã Ba La Mật Đa thời,',
+      'chiếu kiến ngũ uẩn giai không, độ nhất thiết khổ ách.',
+      'Xá Lợi Tử! Sắc bất dị không, không bất dị sắc;',
+      'sắc tức thị không, không tức thị sắc.',
+      'Thọ, tưởng, hành, thức, diệc phục như thị.',
+      'Xá Lợi Tử! Thị chư pháp không tướng, bất sinh bất diệt,',
+      'bất cấu bất tịnh, bất tăng bất giảm.',
+      'Cho nên, trong không mà không sắc, thọ tưởng hành thức;',
+      'nhãn nhĩ tỷ thiệt thân ý; sắc thanh hương vị xúc pháp;',
+      'nhãn giới, cho đến ý thức giới; vô vô minh, diệc vô vô minh tận;',
+      'cho đến vô lão tử, diệc vô lão tử tận;',
+      'vô khổ tập diệt đạo, vô trí diệc vô đắc.',
+      'Dĩ vô sở đắc cố, Bồ Đề Tát Đề; y Bát Nhã Ba La Mật Đa cố, tâm vô quái ngại;',
+      'vô quái ngại cố, vô hữu khủng bố, viễn ly điên đảo mộng tưởng, cứu cánh Niết Bàn.',
+      'Tam thế chư Phật, y Bát Nhã Ba La Mật Đa cố, đắc A Nậu Đa La Tam Miệu Tam Bồ Đề.',
+      'Cho nên tri Bát Nhã Ba La Mật Đa, thị đại thần chú, thị đại minh chú,',
+      'thị vô thượng chú, thị vô đẳng đẳng chú, năng trừ nhất thiết khổ, chân thật bất hư.',
+      'Cố thuyết Bát Nhã Ba La Mật Đa chú, tức thuyết chú viết:',
+      'Yết Đế Yết Đế, Ba La Yết Đế, Ba La Tăng Yết Đế, Bồ Đề Tát Bà Ha.',
+    ],
+  },
+  {
+    id: 'dai_bi',
+    name: 'Chú Đại Bi',
+    reps: 1,
+    lines: [
+      'Nam mô Đại Bi Hội Thượng Phật Bồ tát (3 lần)',
+      'Thiên thủ thiên nhãn vô ngại đại bi tâm đà la ni.',
+      'Nam mô hắc ra đát na đa ra dạ da.',
+      'Nam mô a rị da, bà lô yết đế, thước bát ra da,',
+      'bồ đề tát đỏa bà da, ma ha tát đỏa bà da,',
+      'ma ha ca lô ni ca da.',
+      'Án, tát bàn ra phạt duệ, số đát na đát tỏa.',
+      'Nam mô tát phạt đát, bạt đà phạt duệ, bạt đà bát đà, đà ra ni.',
+      'Mông á rị, đà ra ni.',
+      'Bà lô cát đế, thước bàn ra dạ, ta bà ha.',
+      'Nam mô na ra cẩn trì.',
+      'Hê rị, ma ha bàn đa sa mế, tát bà a tha đậu du bằng,',
+      'a thệ dựng, tát bà tát đa, na ma bà dà, ma phạt đạt đậu,',
+      'đát điệt tha: án, a bà lô hê, lô ca đế, ca ra đế, di hê rị.',
+      'Ma ha bồ đề tát đỏa, tát bà tát bà, ma ra ma ra, ma hê ma hê, rị đà dựng.',
+      'Cu lô cu lô, yết mông, độ lô độ lô, phạt xà da đế, ma ha phạt xà da đế.',
+      'Đà ra đà ra, địa rị ni, thất Phật ra da, dá ra dá ra.',
+      'Mạ mạ phạt ma ra, mục đế lệ, y hê di hê, thất na thất na,',
+      'a ra sám Phật ra xá lợi, phạt sa phạt sám, Phật ra xá da,',
+      'hô lô hô lô, ma ra, hô lô hô lô, hô lô hô lô, ta bà ha.',
+      'Tát bà hê hê, tồ lô tồ lô, phạt xà da đế, ta bà ha.',
+      'Nam mô a rị da, bà lô yết đế, thước bát ra da, bồ đề tát đỏa, ta bà ha.',
+    ],
+  },
+  {
+    id: 'niem_phat',
+    name: 'Niệm Phật A Di Đà (108 lần)',
+    reps: 1,
+    lines: (() => {
+      const out: string[] = ['Nam Mô Bổn Sư Thích Ca Mâu Ni Phật (3 lần)', 'Nam Mô A Di Đà Phật'];
+      for (let i = 2; i < 108; i++) out.push('Nam Mô A Di Đà Phật');
+      out.push('Nguyện dứt trầm luân khổ, đồng lên cõi Cực Lạc.');
+      return out;
+    })(),
+  },
 ];
 
 export interface QuestState { id: string; label: string; progress: number; target: number; coins: number; merit: number; claimed: boolean }

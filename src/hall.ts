@@ -1,13 +1,16 @@
-import * as THREE from 'three';
-import { COUPLETS } from './couplets';
+﻿import * as THREE from 'three';
 import { HALL } from './layout';
 import { buildBuddha } from './statues';
-import { coupletTexture, glowTexture, hoanhPhiTexture, stoneTexture, woodTexture } from './textures';
+import { sealArchitectureJoints } from './compound';
+import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = HALL.h; // top of platform
 
-/** Open-sided main hall (chính điện): columns + roof only, meditation seating inside, altar with Tam Thế Phật. */
+/** CÃ¢u Ä‘á»‘i tiáº¿ng Viá»‡t treo trÃªn hai cá»™t tiá»n Ä‘Æ°á»ng (thay chá»¯ HÃ¡n). */
+const COLUMN_LABELS = ['Cá»­a thiá»n rá»™ng má»Ÿ Ä‘Ã³n ngÆ°á»i vá» nÆ°Æ¡ng Pháº­t', 'LÃ²ng tá»‹nh an nhiÃªn nghe chuÃ´ng vá»ng nÃºi xa'];
+
+/** Open-sided main hall (chÃ­nh Ä‘iá»‡n): columns + roof only, meditation seating inside, altar with Tam Tháº¿ Pháº­t. */
 export function buildHall(c: TempleCtx) {
   const { scene, colliders, lamb } = c;
   const g = new THREE.Group();
@@ -18,9 +21,11 @@ export function buildHall(c: TempleCtx) {
 
   const stoneM = lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [8, 1]) });
   const add = <T extends THREE.Object3D>(o: T, parent: THREE.Object3D = g) => { parent.add(o); return o; };
-  const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number, shadow = true) => {
+  const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number, shadow = true, seal = false) => {
     const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-    o.position.set(x, y, z); o.castShadow = shadow; o.receiveShadow = true; return add(o);
+    o.position.set(x, y, z); o.castShadow = shadow; o.receiveShadow = true;
+    if (seal) o.userData.sealable = true;
+    return add(o);
   };
 
   // platform tiers (match groundY ramp) + wooden floor
@@ -32,15 +37,17 @@ export function buildHall(c: TempleCtx) {
 
   // ---- columns (no middle columns in front of the altar) ----
   const colH = 7.6;
-  const colG = new THREE.CylinderGeometry(0.42, 0.5, colH, 18);
+  // thÃ¢n cá»™t dÃ i hÆ¡n khoáº£ng thÃ´ng thuá»· Ä‘á»ƒ Äƒn sÃ¢u vÃ o bá»‡ Ä‘Ã¡ (dÆ°á»›i) vÃ  Ä‘áº¥u gá»— (trÃªn)
+  const colG = new THREE.CylinderGeometry(0.42, 0.5, colH + 0.34, 18);
   const baseG = new THREE.CylinderGeometry(0.7, 0.8, 0.34, 16);
   const stoneBase = lamb(0x7a7466);
   const capG = new THREE.BoxGeometry(1.5, 0.38, 1.5);
   const addCol = (x: number, z: number) => {
+    // cá»™t háº¡ tháº¥p 0.16 vÃ o bá»‡ Ä‘Ã¡ vÃ  vÆ°Æ¡n lÃªn 0.3 vÃ o Ä‘áº¥u (cap) â†’ khÃ´ng cÃ²n khe sÃ¡ng chÃ¢n/Ä‘áº§u cá»™t
     const col = new THREE.Mesh(colG, c.redM);
-    col.position.set(x, BASE + colH / 2, z); col.castShadow = true; add(col);
-    const b = new THREE.Mesh(baseG, stoneBase); b.position.set(x, BASE + 0.17, z); add(b);
-    const cap = new THREE.Mesh(capG, c.goldM); cap.position.set(x, BASE + colH + 0.14, z); add(cap);
+    col.position.set(x, BASE + colH / 2 - 0.08, z); col.castShadow = true; col.userData.sealable = true; add(col);
+    const b = new THREE.Mesh(baseG, stoneBase); b.position.set(x, BASE + 0.17, z); b.userData.sealable = true; add(b);
+    const cap = new THREE.Mesh(capG, c.goldM); cap.position.set(x, BASE + colH + 0.14, z); cap.userData.sealable = true; add(cap);
     colliders.push({ x: HALL.x + x, z: HALL.z + z, r: 0.5 });
   };
   const fz = HALL.hz - 0.7, bz = -HALL.hz + 0.7, sx = HALL.hx - 0.7;
@@ -70,20 +77,22 @@ export function buildHall(c: TempleCtx) {
   }
   const fin = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.0, 8), c.goldM); fin.position.y = beamY + 8.9 + 1.0; add(fin);
 
-  // ---- hoành phi ----
-  const hpFront = new THREE.Mesh(new THREE.PlaneGeometry(9.0, 2.25), new THREE.MeshBasicMaterial({ map: hoanhPhiTexture('大雄寶殿') }));
+  // ---- hoÃ nh phi ----
+  const hpFront = new THREE.Mesh(new THREE.PlaneGeometry(9.0, 2.25), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('Äáº I HÃ™NG Báº¢O ÄIá»†N'), toneMapped: false }));
   hpFront.position.set(0, beamY - 1.5, fz + 0.62); add(hpFront);
-  const hpBack = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 2.05), new THREE.MeshBasicMaterial({ map: hoanhPhiTexture('佛日增輝') }));
+  const hpBack = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 2.05), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('PHáº¬T NHáº¬T TÄ‚NG HUY'), toneMapped: false }));
   hpBack.position.set(0, BASE + 7.0, -HALL.hz + 0.3); add(hpBack);
 
-  // ---- câu đối on the two entrance columns only ----
-  const cd = COUPLETS.tamBao;
-  const board = (han: string, x: number) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 5.2), new THREE.MeshBasicMaterial({ map: coupletTexture(han, 160, 880) }));
-    m.position.set(x, BASE + 4.15, fz + 0.54); add(m);
+  // ---- cÃ¢u Ä‘á»‘i on the two entrance columns only ----
+  // ---- cÃ¢u Ä‘á»‘i tiáº¿ng Viá»‡t trÃªn hai cá»™t tiá»n Ä‘Æ°á»ng ----
+  const board = (text: string, x: number) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 5.2), new THREE.MeshBasicMaterial({ map: vietnameseColumnTexture(text, 200, 1090), toneMapped: false }));
+    m.position.set(x, BASE + 4.15, fz + 0.54);
+    m.userData.inscription = { text };
+    add(m);
   };
-  board(cd.han[0], ENT); // right-hand line (viewer's right when facing the altar from outside = -x ... keep reading order)
-  board(cd.han[1], -ENT);
+  board(COLUMN_LABELS[0], ENT);
+  board(COLUMN_LABELS[1], -ENT);
   zones.push({ x: HALL.x, z: HALL.z + fz, r: 6.2, id: 'tamBao' });
 
   // ---- altar ----
@@ -157,6 +166,9 @@ export function buildHall(c: TempleCtx) {
   mats.receiveShadow = cush.receiveShadow = true; add(mats); add(cush);
 
   scene.add(g);
+  // khÃ­t má»i khe cá»™tâ€“kÃ¨oâ€“mÃ¡i trong chÃ¡nh Ä‘iá»‡n
+  const seal = sealArchitectureJoints(g, { maxGap: 0.9, minOverlap: 0.05 });
+  if (seal.remaining.length > 8) console.warn(`chánh điện: ${seal.filled} khe đã bù, ${seal.remaining.length} khe lớn còn lại`);
   const halos = [mainB, ...sideBs].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
   return { group: g, seats, zones, halos };
 }

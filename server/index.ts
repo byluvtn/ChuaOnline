@@ -3,11 +3,12 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
-  ACTION_RULES, GROUP_MEDITATE_MIN, ITEM_BY_ID, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS, QUESTS, ROOMS, ROOM_CAPACITY,
+  ACTION_RULES, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
+  QUESTS, ROOMS, ROOM_CAPACITY, SUTRAS, WEEKLY_QUESTS,
   type QuestEvent, type QuestState, type RankRow, type RoomInfo,
 } from '../shared/game.js';
 import {
-  MAP_HALF, levelOf, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
+  MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
 } from '../shared/types.js';
 import * as db from './db.js';
 
@@ -88,7 +89,9 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'mg:moh' | 'mg:memory', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory', number>>;
+  /** phòng gần nhất để đếm nhiệm vụ 'room' */
+  lastRoom?: string;
 }
 const sessions = new Map<string, Session>();
 const roomChat = new Map<string, ChatMessage[]>();
@@ -108,10 +111,11 @@ function roomList(): RoomInfo[] {
 }
 function questList(pid: number): QuestState[] {
   const rows = new Map(db.questRows(pid).map((r) => [r.quest_id, r]));
-  return QUESTS.map((q) => ({
+  const map = (q: (typeof QUESTS)[number]) => ({
     id: q.id, label: q.label, target: q.target, coins: q.coins, merit: q.merit,
     progress: rows.get(q.id)?.progress ?? 0, claimed: !!rows.get(q.id)?.claimed,
-  }));
+  });
+  return [...QUESTS, ...WEEKLY_QUESTS].map(map);
 }
 function pushProfile(s: Session) {
   const p = db.getProfile(s.pid);
@@ -122,8 +126,22 @@ function pushProfile(s: Session) {
 }
 function pushQuests(s: Session) { s.socket.emit('quests', questList(s.pid)); }
 function questEvent(s: Session, ev: QuestEvent, by = 1) {
-  for (const q of QUESTS) if (q.event === ev) db.bumpQuest(s.pid, q.id, q.target, by);
+  for (const q of [...QUESTS, ...WEEKLY_QUESTS]) if (q.event === ev) db.bumpQuest(s.pid, q.id, q.target, by);
   pushQuests(s);
+}
+/** Cộng thưởng + đếm quest 'merit' (nhiệm vụ tuần tích công đức). */
+function grantRewards(s: Session, merit: number, coins: number) {
+  const before = db.getProfile(s.pid)?.merit ?? 0;
+  const lvBefore = levelOf(before);
+  db.addRewards(s.pid, merit, coins);
+  questEvent(s, 'merit', merit);
+  const after = db.getProfile(s.pid)?.merit ?? 0;
+  const lvAfter = levelOf(after);
+  if (lvAfter > lvBefore && db.claimLevelReward(s.pid, lvAfter)) {
+    db.addRewards(s.pid, LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore), LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore));
+    s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
+  }
+  pushProfile(s);
 }
 function meditationInfo(room: string) {
   const sitting = roomSessions(room).filter((s) => s.state.anim === 'sit').length;
@@ -190,6 +208,8 @@ io.on('connection', (socket) => {
     socket.to(room).emit('player:join', state);
     pushProfile(s);
     pushQuests(s);
+    // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
+    if (s.lastRoom !== room) { s.lastRoom = room; questEvent(s, 'room'); }
   });
 
   const me = () => sessions.get(socket.id);
@@ -226,11 +246,15 @@ io.on('connection', (socket) => {
     s.last[kind] = now;
 
     let merit = rule.merit;
-    if (rule.boostItem && db.itemQty(pid, rule.boostItem) > 0) {
-      db.addItem(pid, rule.boostItem, -1);
-      merit = rule.boostMerit ?? merit;
+    // vật phẩm tăng công đức: dùng món boost đang có (ưu tiên món đầu tiên trong danh sách)
+    for (const boostId of rule.boostItems ?? []) {
+      const boost = ITEM_BY_ID[boostId];
+      if (boost && db.itemQty(pid, boostId) > 0) {
+        db.addItem(pid, boostId, -1);
+        merit = Math.max(merit, boost.boostMerit ?? merit);
+        break;
+      }
     }
-    db.addRewards(pid, merit, 1);
     s.state.anim = kind;
     io.to(s.room).emit('player:action', { id: s.state.id, kind });
     if (kind === 'lantern') {
@@ -241,19 +265,66 @@ io.on('connection', (socket) => {
       roomLanterns.set(s.room, arr);
       io.to(s.room).emit('lantern', l);
     }
+    grantRewards(s, merit, 1);
     questEvent(s, kind);
-    pushProfile(s);
   });
+
+  /** Hoàn thành một bài kinh trong cửa sổ tụng kinh: cộng đức theo ACTION_RULES.chant. */
+  socket.on('sutra:done', (sutraId: string, cb?: (r: { ok: boolean; merit?: number; error?: string }) => void) => {
+    const s = me();
+    const sutra = SUTRAS.find((x) => x.id === sutraId);
+    if (!s || !sutra) return cb?.({ ok: false, error: 'Bài kinh không hợp lệ' });
+    const now = Date.now();
+    if (now - (s.last.sutra ?? 0) < 12_000) return cb?.({ ok: false, error: 'Hãy thong thả, đọc xong bài tiếp theo nhé' });
+    s.last.sutra = now;
+    const rule = ACTION_RULES.chant;
+    let merit = rule.merit;
+    for (const boostId of rule.boostItems ?? []) {
+      const boost = ITEM_BY_ID[boostId];
+      if (boost && db.itemQty(pid, boostId) > 0) {
+        db.addItem(pid, boostId, -1);
+        merit = Math.max(merit, boost.boostMerit ?? merit);
+        break;
+      }
+    }
+    s.state.anim = 'chant';
+    io.to(s.room).emit('player:action', { id: s.state.id, kind: 'chant' });
+    grantRewards(s, merit, 0);
+    questEvent(s, 'chant');
+    questEvent(s, 'sutra');
+    cb?.({ ok: true, merit });
+  });
+
+  const buyItem = (itemId: string, qty: number) => {
+    const item = ITEM_BY_ID[String(itemId)];
+    if (!item) return { ok: false as const, error: 'Vật phẩm không tồn tại' };
+    const lvl = levelOf(db.getProfile(pid)?.merit ?? 0);
+    if (item.minLevel && lvl < item.minLevel) return { ok: false as const, error: `Cần cấp ${item.minLevel} để mua` };
+    if (item.kind === 'accessory' && db.itemQty(pid, item.id) > 0) return { ok: false as const, error: 'Bạn đã sở hữu' };
+    const cost = item.price * qty;
+    if (!db.spendCoins(pid, cost)) return { ok: false as const, error: 'Không đủ xu' };
+    db.addItem(pid, item.id, qty);
+    return { ok: true as const };
+  };
 
   socket.on('shop:buy', (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const r = buyItem(itemId, 1);
+    if (r.ok) { questEvent(s, 'buy'); pushProfile(s); }
+    cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
+  });
+
+  /** Mua 5 món consumable: giá = 5 × giá lẻ. */
+  socket.on('shop:buy5', (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const item = ITEM_BY_ID[String(itemId)];
-    if (!s || !item) return cb?.({ ok: false, error: 'Vật phẩm không tồn tại' });
-    if (item.kind === 'accessory' && db.itemQty(pid, item.id) > 0) return cb?.({ ok: false, error: 'Bạn đã sở hữu' });
-    if (!db.spendCoins(pid, item.price)) return cb?.({ ok: false, error: 'Không đủ xu' });
-    db.addItem(pid, item.id, 1);
-    pushProfile(s);
-    cb?.({ ok: true });
+    if (!item) return cb?.({ ok: false, error: 'Vật phẩm không tồn tại' });
+    if (item.kind !== 'consumable') return cb?.({ ok: false, error: 'Mua 5 chỉ áp dụng cho vật phẩm tiêu hao' });
+    const r = buyItem(itemId, 5);
+    if (r.ok) { questEvent(s, 'buy', 1); pushProfile(s); }
+    cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
   });
 
   socket.on('inv:equip', (itemId: string | null) => {
@@ -271,7 +342,7 @@ io.on('connection', (socket) => {
 
   socket.on('quest:claim', (qid: string) => {
     const s = me();
-    const q = QUESTS.find((x) => x.id === qid);
+    const q = [...QUESTS, ...WEEKLY_QUESTS].find((x) => x.id === qid);
     if (!s || !q) return;
     if (db.claimQuest(pid, q.id, q.target)) {
       db.addRewards(pid, q.merit, q.coins);
@@ -344,9 +415,8 @@ setInterval(() => {
     const bonus = sitting.length >= GROUP_MEDITATE_MIN;
     roomMinutes.set(r.id, (roomMinutes.get(r.id) ?? 0) + (sitting.length * MEDITATE_TICK_MS) / 60_000);
     for (const s of sitting) {
-      db.addRewards(s.pid, bonus ? 2 : 1, bonus ? 1 : 0);
+      grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0);
       questEvent(s, 'meditate');
-      pushProfile(s);
     }
     io.to(r.id).emit('meditation', meditationInfo(r.id));
   }

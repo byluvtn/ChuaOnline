@@ -1,278 +1,393 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { cap, clamp, ell, meshField, mix, smax, smin, type ColorFn, type Field } from './sdf';
-import { glowTexture } from './textures';
+import { faceTexture, glowTexture } from './textures';
 
-const C = (h: number) => new THREE.Color(h);
-const sstep = (a: number, b: number, x: number) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const mat = (c: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, ...extra });
+/* =====================================================================
+ * TƯỢNG PHẬT TỔ & QUAN THẾ ÂM — phong cách 3D Chibi Toy / Clay
+ * ---------------------------------------------------------------------
+ *  - Chỉ dùng primitive (Sphere, Cylinder, Cone, Torus, Capsule, Lathe, Tube)
+ *  - 100% MeshStandardMaterial, roughness 0.4 – 0.7, tránh phản chiếu kim loại gắt
+ *  - Mọi mesh chính đều castShadow + receiveShadow
+ *  - Vật liệu và geometry dùng chung (cache) nên clone nhiều lần rất nhẹ
+ *  - Gốc tượng tại y = 0, mặt hướng +z; kích thước ngoài được nhân với hệ số
+ *    FIG_SCALE để giữ nguyên "dấu chân" của tượng cũ trong sân chùa.
+ * ===================================================================== */
 
-const SKIN = C(0xe9bd52), SKIN_Q = C(0xf7ddc2), ROBE = C(0xd88b25), ROBE_D = C(0xa8590f), HAIR = C(0x1a2347), HAIR_Q = C(0x1c1a22);
-const LIP = C(0xb4482c), EYE = C(0x2a1208), GOLD = C(0xf2c85a), WHITE = C(0xf6f3ea), WHITE_D = C(0xd9d3c3);
-
-// ---------------------------------------------------------------- head
-function headField(fem: boolean): Field {
-  return (x, y, z) => {
-    let d = ell(x, y, z, 0, 0.1, 0, 0.6, 0.68, 0.62);
-    d = smin(d, ell(x, y, z, 0, -0.3, 0.12, 0.45, 0.42, 0.45), 0.25);
-    for (const s of [-1, 1]) d = smin(d, ell(x, y, z, s * 0.3, -0.18, 0.38, 0.2, 0.18, 0.18), 0.12);
-    d = smin(d, ell(x, y, z, 0, 0.14, 0.52, 0.5, 0.07, 0.15), 0.1);
-    d = smin(d, ell(x, y, z, 0, -0.1, 0.6, 0.085, 0.2, 0.12), 0.08);
-    d = smin(d, ell(x, y, z, 0, -0.36, 0.5, 0.15, 0.045, 0.09), 0.04);
-    d = smin(d, ell(x, y, z, 0, -0.55, 0.38, 0.2, 0.12, 0.16), 0.1);
-    for (const s of [-1, 1]) {
-      d = smax(d, -ell(x, y, z, s * 0.21, 0.0, 0.6, 0.13, 0.022, 0.07), 0.015);
-      d = smin(d, cap(x, y, z, s * 0.6, 0.08, -0.02, s * 0.64, fem ? -0.15 : -0.42, 0.0, 0.075, 0.045), 0.05);
-    }
-    d = smax(d, -ell(x, y, z, 0, -0.325, 0.57, 0.1, 0.012, 0.05), 0.01);
-    if (!fem) {
-      d = smin(d, ell(x, y, z, 0, 0.72, -0.04, 0.36, 0.3, 0.36), 0.2);
-      const r = Math.hypot(x, y, z) || 1;
-      const t = y - 0.3 - 0.35 * Math.max(z, 0) + 0.8 * Math.max(-z - 0.1, 0);
-      const hm = clamp(t / 0.06, 0, 1);
-      if (hm > 0) {
-        const th = Math.atan2(z, x), ph = Math.acos(clamp(y / r, -1, 1));
-        d -= 0.03 * hm * Math.max(0, Math.sin(th * 15)) * Math.max(0, Math.sin(ph * 17));
-      }
-    }
-    return d;
-  };
-}
-const headColor = (fem: boolean): ColorFn => (x, y, z, o) => {
-  const skin = fem ? SKIN_Q : SKIN;
-  o.copy(skin);
-  const t = y - 0.3 - 0.35 * Math.max(z, 0) + 0.8 * Math.max(-z - 0.1, 0);
-  if (t > 0.03) o.copy(fem ? HAIR_Q : HAIR);
-  if (z > 0.5 && Math.abs(Math.abs(x) - 0.21) < 0.14 && Math.abs(y) < 0.045) o.copy(EYE);
-  if (z > 0.42 && Math.abs(y - 0.215) < 0.014 && Math.abs(x) > 0.08 && Math.abs(x) < 0.36) o.copy(EYE);
-  if (z > 0.44 && y > -0.41 && y < -0.3 && Math.abs(x) < 0.17) o.copy(LIP);
-  if (z > 0.55 && Math.abs(x) < 0.045 && Math.abs(y - 0.27) < 0.045) o.copy(GOLD);
-  if (z > 0.3 && Math.abs(x) > 0.28 && Math.abs(x) < 0.5 && y < -0.1 && y > -0.35) o.lerp(C(0xe58a6a), 0.18);
+// ---------------------------------------------------------------- bảng màu
+const COL = {
+  bronze: 0xd4a373,      // đế đài sen vàng đồng mờ
+  petal: 0xf4978e,       // cánh sen hồng phấn
+  lotusPad: 0xe6b566,
+  skinBody: 0xf3d5b5,    // da chân / tay
+  skinHead: 0xfde2b6,    // da đầu
+  hairBuddha: 0xa89f91,  // tóc xám be
+  hairGuanyin: 0x6b4f3f,
+  robeGold: 0xe0a93b,    // cà sa vàng kim mờ
+  white: 0xedf2f4,       // trắng sứ
+  jade: 0x2a9d8f,        // cành liễu xanh ngọc
+  leaf: 0x70e000,        // lá xanh mạ
+  haloGold: 0xffe066,
+  haloEmissive: 0xffb703,
+  red: 0xd62828,
 };
 
-// ---------------------------------------------------------------- Buddha body (figure coords: lap at y~0.3, faces +z)
-const buddhaBody: Field = (x, y, z) => {
-  const ax = Math.abs(x), sx = x < 0 ? -1 : 1;
-  const val = x + 0.5 * (y - 2.2) + 0.25;
-  const w = y < 1.0 ? 1 : sstep(-0.05, 0.12, val);
-  const fold = 0.016 * (Math.sin(11 * x + 3 * y + 5 * z) * 0.6 + Math.sin(17 * x - 6 * y)) * w;
-  let d = ell(x, y, z, 0, 0.3, 0.3, 1.9, 0.34, 1.05);
-  d = smin(d, ell(x, y, z, sx * 1.65, 0.35, 0.62, 0.5, 0.3, 0.55), 0.18);
-  d = smin(d, ell(x, y, z, 0, 1.3, 0, 0.95, 1.2, 0.65), 0.35);
-  d = smin(d, ell(x, y, z, 0, 2.2, 0, 1.1, 0.55, 0.6), 0.25);
-  d = smin(d, ell(x, y, z, 0, 0.3, 0.95, 0.75, 0.2, 0.4), 0.2);
-  d = smin(d, cap(x, y, z, 0, 2.45, 0.05, 0, 2.85, 0.05, 0.32), 0.15);
-  d += 0.014 * Math.max(0, Math.sin(y * 34)) * sstep(2.5, 2.6, y) * (1 - sstep(2.8, 2.9, y));
+// ---------------------------------------------------------------- vật liệu (cache)
+const matCache = new Map<string, THREE.MeshStandardMaterial>();
+/** MeshStandardMaterial dùng chung theo khoá; roughness mặc định nằm trong dải 0.4–0.7. */
+function std(color: number, roughness = 0.55, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) {
+  const key = `${color}|${roughness}|${JSON.stringify(extra)}`;
+  let m = matCache.get(key);
+  if (!m) { m = new THREE.MeshStandardMaterial({ color, roughness, metalness: 0, ...extra }); matCache.set(key, m); }
+  return m;
+}
+
+// ---------------------------------------------------------------- geometry (cache)
+const geoCache = new Map<string, THREE.BufferGeometry>();
+function geo<T extends THREE.BufferGeometry>(key: string, make: () => T): T {
+  let g = geoCache.get(key);
+  if (!g) { g = make(); geoCache.set(key, g); }
+  return g as T;
+}
+const unitSphere = () => geo('sphere1', () => new THREE.SphereGeometry(1, 28, 18));
+
+// ---------------------------------------------------------------- helper dựng mesh
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+
+function add(parent: THREE.Object3D, g: THREE.BufferGeometry, m: THREE.Material, opts: { cast?: boolean; name?: string } = {}) {
+  const o = new THREE.Mesh(g, m);
+  o.castShadow = opts.cast ?? true;
+  o.receiveShadow = true;
+  if (opts.name) o.name = opts.name;
+  parent.add(o);
+  return o;
+}
+
+/** Khối cầu bị nén thành ellipsoid: dùng cho cánh sen, đùi, vai, lá... */
+function blob(parent: THREE.Object3D, m: THREE.Material, pos: [number, number, number], scale: [number, number, number]) {
+  const o = add(parent, unitSphere(), m);
+  o.position.set(...pos);
+  o.scale.set(...scale);
+  return o;
+}
+
+/** Capsule nối hai điểm a→b (tay, chân, thân cành). */
+function limb(parent: THREE.Object3D, m: THREE.Material, a: THREE.Vector3, b: THREE.Vector3, r: number) {
+  const len = a.distanceTo(b);
+  const o = add(parent, new THREE.CapsuleGeometry(r, Math.max(0.001, len - 2 * r), 6, 14), m);
+  o.position.copy(a).add(b).multiplyScalar(0.5);
+  o.quaternion.setFromUnitVectors(Y_AXIS, b.clone().sub(a).normalize());
+  return o;
+}
+const v3 = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+
+// ---------------------------------------------------------------- đài sen dùng chung
+/**
+ * Đài sen: đế tròn (Cylinder 24 segments, bán kính trên 1.2k / dưới 1.3k, cao 0.35)
+ * + vòng cánh sen (SphereGeometry dẹt scale 0.28·0.45·0.14), xoay đều quanh tâm và ngửa nhẹ ra ngoài.
+ * Trả về độ cao mặt trên đài (để đặt tượng).
+ */
+function buildLotusBase(parent: THREE.Group, k: number, petalCount: number): number {
+  const baseM = std(COL.bronze, 0.6);
+  const petalM = std(COL.petal, 0.6);
+
+  const base = add(parent, geo(`lotus-base-${k}`, () => new THREE.CylinderGeometry(1.2 * k, 1.3 * k, 0.35, 24)), baseM);
+  base.position.y = 0.175;
+
+  for (let i = 0; i < petalCount; i++) {
+    const a = (i / petalCount) * Math.PI * 2;
+    const pivot = new THREE.Group();            // xoay đều quanh tâm
+    pivot.rotation.y = a;
+    parent.add(pivot);
+    const tilt = new THREE.Group();             // ngửa nhẹ ra ngoài
+    tilt.position.set(0, 0.28, 1.16 * k);
+    tilt.rotation.x = 0.4;
+    pivot.add(tilt);
+    blob(tilt, petalM, [0, 0.4, 0], [0.28 * (1.35 * k), 0.45, 0.14 * 1.6]);
+  }
+
+  // nhụy sen che phần hở giữa các cánh
+  const pad = add(parent, geo(`lotus-pad-${k}`, () => new THREE.CylinderGeometry(1.12 * k, 1.16 * k, 0.12, 24)), std(COL.lotusPad, 0.6));
+  pad.position.y = 0.4;
+  return 0.46;
+}
+
+// ---------------------------------------------------------------- vòng hào quang dùng chung
+/** Ngọn lửa ConeGeometry vuốt cong (uốn đỉnh về một phía, dẹt theo z). */
+function flameGeometry() {
+  return geo('flame', () => {
+    const g = new THREE.ConeGeometry(0.075, 0.26, 10, 8);
+    g.translate(0, 0.13, 0);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const t = p.getY(i) / 0.26;
+      p.setX(i, p.getX(i) + 0.09 * t * t);
+      p.setZ(i, p.getZ(i) * 0.55);
+    }
+    g.computeVertexNormals();
+    return g;
+  });
+}
+
+/** Hào quang: Torus (R 1.3, ống 0.08, 16×32) + 8 ngọn lửa cách đều trên vành. Emissive nhẹ. */
+function buildHalo(radius: number, y: number, z: number, flames = 8): THREE.Group {
+  const halo = new THREE.Group();
+  halo.name = 'halo';
+  halo.position.set(0, y, z);
+  const hm = std(COL.haloGold, 0.5, { emissive: COL.haloEmissive, emissiveIntensity: 0.5 });
+  add(halo, geo(`halo-torus-${radius}`, () => new THREE.TorusGeometry(radius, 0.08, 16, 32)), hm);
+  for (let i = 0; i < flames; i++) {
+    const a = (i / flames) * Math.PI * 2 + Math.PI / 2;
+    const pivot = new THREE.Group();
+    pivot.position.set(Math.cos(a) * (radius + 0.06), Math.sin(a) * (radius + 0.06), 0);
+    pivot.rotation.z = a - Math.PI / 2;
+    halo.add(pivot);
+    add(pivot, flameGeometry(), hm);
+  }
+  return halo;
+}
+
+function addGlow(g: THREE.Group, x: number, y: number, z: number, size: number, color: number) {
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+  spr.scale.setScalar(size); spr.position.set(x, y, z); g.add(spr);
+  g.userData.glow = spr;
+}
+
+// ---------------------------------------------------------------- đầu chibi + khuôn mặt CanvasTexture
+const HEAD_R = 0.65;
+
+/** Mặt phẳng vẽ 2D (mắt cong, miệng cười, má hồng) dán lên chỏm cầu bọc sát đầu. */
+function faceDecal(parent: THREE.Object3D, kind: 'buddha' | 'guanyin') {
+  const half = 0.78;
+  const g = geo('face-cap', () => new THREE.SphereGeometry(HEAD_R + 0.006, 40, 28, Math.PI / 2 - half, half * 2, Math.PI / 2 - half, half * 2));
+  const m = new THREE.MeshStandardMaterial({
+    map: faceTexture(kind), transparent: true, roughness: 0.6, metalness: 0,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  const o = add(parent, g, m, { cast: false, name: 'face' });
+  o.renderOrder = 2;
+  return o;
+}
+
+function buildHead(kind: 'buddha' | 'guanyin'): THREE.Group {
+  const head = new THREE.Group();
+  head.name = 'head';
+  add(head, geo('head', () => new THREE.SphereGeometry(HEAD_R, 40, 28)), std(COL.skinHead, 0.55));
+  faceDecal(head, kind);
+
+  // tai: hai khối dẹt dài rủ hai bên thái dương
   for (const s of [-1, 1]) {
-    d = smin(d, cap(x, y, z, s * 1.0, 2.35, 0, s * 1.25, 1.5, 0.25, 0.3, 0.26), 0.18);
-    d = smin(d, cap(x, y, z, s * 1.25, 1.5, 0.25, s * 0.38, 0.8, 0.92, 0.24, 0.17), 0.12);
-    d = smin(d, ell(x, y, z, s * 0.3, 0.78, 0.98, 0.34, 0.1, 0.3), 0.08);
+    const ear = blob(head, std(COL.skinHead, 0.55), [s * (HEAD_R + 0.005), -0.04, 0.02], [0.07, 0.24, 0.13]);
+    ear.rotation.z = -s * 0.08;
   }
-  // fingers on the hands
-  const fr = Math.max(0, Math.sin(x * 55)) * 0.012 * (y > 0.65 && z > 1.05 && ax < 0.8 ? 1 : 0);
-  return d - fold + fr;
-};
-const buddhaColor: ColorFn = (x, y, z, o) => {
-  const ax = Math.abs(x);
-  const val = x + 0.5 * (y - 2.2) + 0.25;
-  const lapSkin = ax < 1.0 && z > 0.62 && y > 0.45 && y < 1.1;
-  const neck = y > 2.55;
-  const rightArm = x < -0.85 && y > 0.75 && y < 2.6;
-  const robe = !(lapSkin || neck || rightArm) && (y < 1.0 || val > 0);
-  const f = 0.5 + 0.5 * Math.sin(11 * x + 3 * y + 5 * z);
-  if (robe) {
-    o.copy(ROBE).lerp(ROBE_D, 0.25 + 0.45 * f * f);
-    if (Math.abs(val) < 0.07 && y > 1.0) o.copy(ROBE_D).multiplyScalar(0.9);
-    if (y > 1.0 && Math.abs(val - 0.12) < 0.02) o.copy(GOLD);
-  } else {
-    o.copy(SKIN).lerp(C(0xc99636), 0.12 * f);
-    if (neck) o.lerp(C(0xc99636), 0.15);
+
+  if (kind === 'buddha') {
+    // tóc Ushnisha: chỏm tóc trên đầu + búi tròn + hạt ngọc (không tạo gai ốc)
+    const hairM = std(COL.hairBuddha, 0.65);
+    const cap = add(head, geo('hair-cap-b', () => new THREE.SphereGeometry(HEAD_R + 0.03, 36, 20, 0, Math.PI * 2, 0, 0.98)), hairM);
+    cap.rotation.x = -0.1;
+    blob(head, hairM, [0, 0.78, -0.03], [0.4, 0.34, 0.4]);
+    blob(head, hairM, [0, 1.06, -0.03], [0.14, 0.12, 0.14]);
+    const pearl = blob(head, std(COL.robeGold, 0.45), [0, 1.2, -0.03], [0.085, 0.085, 0.085]);
+    pearl.name = 'pearl';
+    blob(head, std(COL.red, 0.45, { emissive: 0x5a0a0a, emissiveIntensity: 0.4 }), [0, 1.2, 0.045], [0.04, 0.04, 0.04]);
   }
-};
-
-// ---------------------------------------------------------------- Quan Am body (figure coords: hem y=0, head centre 5.35)
-const quanBody: Field = (x, y, z) => {
-  const th = Math.atan2(z, x);
-  const k = 1 - sstep(0.0, 4.3, y);
-  const fold = (0.045 * k + 0.012) * (Math.sin(th * 9 + y * 1.4) * 0.65 + Math.sin(th * 15 - y * 2.2) * 0.35);
-  let d = ell(x, y, z, 0, 0.9, 0, 0.98, 0.98, 0.82);
-  d = smin(d, ell(x, y, z, 0, 2.2, 0, 0.6, 1.5, 0.5), 0.5);
-  d = smin(d, ell(x, y, z, 0, 3.5, 0, 0.5, 1.2, 0.38), 0.4);
-  d = smin(d, ell(x, y, z, 0, 4.5, 0, 0.62, 0.3, 0.36), 0.25);
-  d = smin(d, cap(x, y, z, 0, 4.55, 0.05, 0, 4.95, 0.05, 0.15), 0.1);
-  for (const s of [-1, 1]) d = smin(d, ell(x, y, z, s * 0.5, 4.15, 0.12, 0.2, 0.75, 0.28), 0.2); // veil over the shoulders
-  // right arm (+x): holds the vase at chest height
-  d = smin(d, cap(x, y, z, 0.62, 4.5, 0, 0.7, 3.7, 0.12, 0.13, 0.12), 0.1);
-  d = smin(d, cap(x, y, z, 0.7, 3.7, 0.12, 0.4, 3.85, 0.75, 0.12, 0.2), 0.08);
-  d = smin(d, ell(x, y, z, 0.36, 3.9, 0.86, 0.1, 0.1, 0.12), 0.05);
-  // left arm (-x): holds the willow branch low
-  d = smin(d, cap(x, y, z, -0.62, 4.5, 0, -0.72, 3.7, 0.1, 0.13, 0.12), 0.1);
-  d = smin(d, cap(x, y, z, -0.72, 3.7, 0.1, -0.6, 3.0, 0.55, 0.12, 0.2), 0.08);
-  d = smin(d, ell(x, y, z, -0.58, 2.86, 0.64, 0.1, 0.1, 0.12), 0.05);
-  // hair-thin pleats on the front hem
-  return d - fold;
-};
-const quanColor: ColorFn = (x, y, z, o) => {
-  const th = Math.atan2(z, x);
-  const f = 0.5 + 0.5 * Math.sin(th * 9 + y * 1.4);
-  o.copy(WHITE).lerp(WHITE_D, 0.18 + 0.4 * f * f * (1 - y / 6));
-  const hand = (Math.hypot(x - 0.36, y - 3.9, z - 0.86) < 0.15) || (Math.hypot(x + 0.58, y - 2.86, z - 0.64) < 0.15);
-  if (hand || (y > 4.68 && y < 5.1 && z > -0.1 && Math.abs(x) < 0.2) || (y > 4.42 && Math.abs(x) < 0.13 && z > 0.28 && y < 4.7)) o.copy(SKIN_Q);
-  if (y < 0.12) o.lerp(GOLD, 0.5);
-};
-const quanVeil: Field = (x, y, z) => {
-  let h = Math.abs(ell(x, y, z, 0, 5.4, -0.03, 0.5, 0.56, 0.5)) - 0.05;
-  h = smax(h, -ell(x, y, z, 0, 5.2, 0.42, 0.34, 0.55, 0.36), 0.02);
-  h = smax(h, -(y - 5.55 - 0.0) * 0 - (z > 0.25 && y < 5.0 ? 1 : -1) * 0, 0.01);
-  let b = Math.abs(ell(x, y, z, 0, 3.9, -0.16, 0.8, 2.0, 0.36)) - 0.05;
-  b = smax(b, z - 0.03, 0.04);
-  b = smax(b, y - 5.2, 0.05);
-  return smin(h, b, 0.08);
-};
-
-// ---------------------------------------------------------------- lotus + halo helpers
-function petalGeometry(rings: { n: number; r: number; y: number; sx: number; sy: number; tilt: number; off: number }[]) {
-  const parts: THREE.BufferGeometry[] = [];
-  for (const ring of rings) for (let i = 0; i < ring.n; i++) {
-    const a = (i / ring.n) * Math.PI * 2 + ring.off;
-    const g = new THREE.SphereGeometry(0.5, 10, 8);
-    g.scale(ring.sx, ring.sy, 0.2);
-    g.translate(0, ring.sy * 0.5 * 0.6, ring.r);
-    g.rotateX(ring.tilt);
-    g.rotateY(a);
-    g.translate(0, ring.y, 0);
-    parts.push(g);
-  }
-  return mergeGeometries(parts)!;
-}
-function buildHalo(r: number, y: number, z: number, spikes: number, glow: number): THREE.Group {
-  const h = new THREE.Group(); h.name = 'halo'; h.position.set(0, y, z);
-  h.add(new THREE.Mesh(new THREE.CircleGeometry(r, 48), new THREE.MeshBasicMaterial({ color: 0xfff0b8, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false })));
-  h.add(new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 8, 64), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd36b).multiplyScalar(1.8) })));
-  h.add(new THREE.Mesh(new THREE.TorusGeometry(r * 0.8, 0.025, 8, 64), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffa84a).multiplyScalar(1.6) })));
-  const flame = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffc24a).multiplyScalar(1.5) });
-  for (let i = 0; i < spikes; i++) {
-    const a = (i / spikes) * Math.PI * 2;
-    const fl = new THREE.Mesh(new THREE.ConeGeometry(0.09, i % 2 ? 0.3 : 0.5, 6), flame);
-    fl.position.set(Math.cos(a) * (r + 0.22), Math.sin(a) * (r + 0.22), 0); fl.rotation.z = a - Math.PI / 2; h.add(fl);
-  }
-  void glow;
-  return h;
+  return head;
 }
 
-// ---------------------------------------------------------------- cached geometry
-interface Cache { b: THREE.BufferGeometry; head: THREE.BufferGeometry; extra?: THREE.BufferGeometry; petals: THREE.BufferGeometry; petalsW: THREE.BufferGeometry; slab: THREE.BufferGeometry }
-let buddhaCache: Cache | null = null, quanCache: Cache | null = null;
+// =====================================================================
+//  PHẬT TỔ CHIBI — tọa đài sen, kiết già, Dhyana Mudra
+// =====================================================================
+const BUDDHA_SCALE = 1.62;
 
-function getBuddha(): Cache {
-  if (buddhaCache) return buddhaCache;
-  const b = meshField(buddhaBody, [-2.4, -0.1, -0.9], [2.4, 3.1, 1.6], 0.04, buddhaColor);
-  const head = meshField(headField(false), [-0.85, -0.8, -0.8], [0.85, 1.15, 0.85], 0.022, headColor(false));
-  const petals = petalGeometry([
-    { n: 16, r: 2.1, y: 0.6, sx: 0.62, sy: 1.0, tilt: -0.55, off: 0 },
-    { n: 14, r: 1.7, y: 0.8, sx: 0.6, sy: 0.95, tilt: -0.4, off: 0.2 },
-  ]);
-  const petalsW = petalGeometry([{ n: 12, r: 1.35, y: 0.95, sx: 0.55, sy: 0.85, tilt: -0.28, off: 0.1 }]);
-  const slab = mergeGeometries([
-    new THREE.LatheGeometry([[0, 0], [2.7, 0], [2.7, 0.2], [2.4, 0.26], [2.5, 0.44], [2.2, 0.5], [0, 0.5]].map(([x, y]) => new THREE.Vector2(x, y)), 48),
-    new THREE.LatheGeometry([[0, 0.5], [2.0, 0.5], [2.05, 0.62], [1.85, 0.7], [0, 0.7]].map(([x, y]) => new THREE.Vector2(x, y)), 48),
-  ])!;
-  return (buddhaCache = { b, head, petals, petalsW, slab });
-}
-function getQuan(): Cache {
-  if (quanCache) return quanCache;
-  const b = meshField(quanBody, [-1.3, -0.05, -1.0], [1.3, 5.1, 1.2], 0.04, quanColor);
-  const head = meshField(headField(true), [-0.85, -0.8, -0.8], [0.85, 1.15, 0.85], 0.022, headColor(true));
-  const extra = meshField(quanVeil, [-1.2, 1.8, -0.8], [1.2, 6.1, 0.9], 0.03, () => {});
-  const petals = petalGeometry([
-    { n: 14, r: 1.65, y: 0.5, sx: 0.58, sy: 0.9, tilt: -0.55, off: 0 },
-    { n: 11, r: 1.25, y: 0.7, sx: 0.55, sy: 0.85, tilt: -0.38, off: 0.25 },
-  ]);
-  const petalsW = petalGeometry([{ n: 9, r: 0.9, y: 0.85, sx: 0.5, sy: 0.75, tilt: -0.25, off: 0.1 }]);
-  const slab = new THREE.LatheGeometry([[0, 0], [2.4, 0], [2.4, 0.22], [2.1, 0.3], [2.2, 0.5], [0, 0.5]].map(([x, y]) => new THREE.Vector2(x, y)), 40);
-  return (quanCache = { b, head, extra, petals, petalsW, slab });
-}
-
-const M = {
-  vc: () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, metalness: 0.3, emissive: 0x2a1604, emissiveIntensity: 0.5 }),
-  vcQ: () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.5, metalness: 0.05, emissive: 0x1c1a16, emissiveIntensity: 0.45 }),
-  veil: () => new THREE.MeshStandardMaterial({ color: 0xf7f4ec, roughness: 0.55, emissive: 0x1c1a16, side: THREE.DoubleSide }),
-  pink: () => mat(0xf7b9cf, { emissive: 0x3a1623 }),
-  white: () => mat(0xfff0f2, { emissive: 0x2a1a1a }),
-  stone: () => mat(0xc9bfa8, { roughness: 0.8 }),
-  gold: () => mat(0xe3b54a, { metalness: 0.6, roughness: 0.35, emissive: 0x3a2506 }),
-};
-let shared: ReturnType<typeof makeShared> | null = null;
-function makeShared() {
-  return { vc: M.vc(), vcQ: M.vcQ(), veil: M.veil(), pink: M.pink(), white: M.white(), stone: M.stone(), gold: M.gold(),
-    jade: mat(0x7fc4a8, { emissive: 0x143026, roughness: 0.3, metalness: 0.2 }), leaf: mat(0x5da64a, { emissive: 0x112a0c }), stem: mat(0x4a6a2a),
-    jewel: mat(0xff5030, { emissive: 0xaa2210, emissiveIntensity: 1.2 }) };
-}
-const S = () => (shared ??= makeShared());
-const mesh = (g: THREE.BufferGeometry, m: THREE.Material, parent: THREE.Object3D, shadow = true) => { const o = new THREE.Mesh(g, m); o.castShadow = shadow; parent.add(o); return o; };
-
-/** Shakyamuni Buddha in lotus position, dhyana mudra. Base at y=0, faces +z. */
+/** Tượng Phật Tổ. Gốc y=0, mặt hướng +z. Trả về `buddhaGroup`. */
 export function buildBuddha(): THREE.Group {
-  const g = new THREE.Group(), m = S(), c = getBuddha();
-  mesh(c.slab, m.stone, g);
-  mesh(c.petals, m.pink, g);
-  mesh(c.petalsW, m.white, g);
-  const lotusTop = new THREE.Mesh(new THREE.LatheGeometry([[0, 1.0], [1.5, 1.0], [1.4, 1.14], [0, 1.18]].map(([x, y]) => new THREE.Vector2(x, y)), 36), mat(0xf0a8c4, { emissive: 0x2a1020 }));
-  g.add(lotusTop);
-  const fig = new THREE.Group(); fig.position.y = 1.18; g.add(fig);
-  mesh(c.b, m.vc, fig);
-  const head = mesh(c.head, m.vc, fig); head.position.set(0, 3.2, 0.1);
-  const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), m.jewel); jewel.position.set(0, 3.2 + 1.02, 0.06); fig.add(jewel);
-  g.add(buildHalo(1.55, 1.18 + 3.3, -0.62, 24, 0));
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffd890, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending }));
-  spr.scale.setScalar(6); spr.position.set(0, 4.3, -0.2); g.add(spr);
-  g.userData.glow = spr;
-  return g;
+  const buddhaGroup = new THREE.Group();
+  buddhaGroup.name = 'buddhaGroup';
+  const fig = new THREE.Group();
+  fig.scale.setScalar(BUDDHA_SCALE);
+  buddhaGroup.add(fig);
+
+  const skin = std(COL.skinBody, 0.55);
+  const robe = std(COL.robeGold, 0.4, { metalness: 0.4 });
+
+  // ---- đài sen
+  const top = buildLotusBase(fig, 1, 12);
+
+  // ---- chân kiết già: đùi (ellipsoid) + hai cẳng chân bắt chéo + hai bàn chân
+  const lapY = top + 0.28;
+  blob(fig, skin, [0, lapY, 0.04], [0.98, 0.33, 0.82]);
+  limb(fig, skin, v3(-0.85, lapY - 0.02, 0.3), v3(0.5, lapY + 0.02, 0.84), 0.2);
+  limb(fig, skin, v3(0.85, lapY - 0.02, 0.3), v3(-0.35, lapY + 0.2, 0.86), 0.2);
+  blob(fig, skin, [0.6, lapY + 0.02, 0.9], [0.2, 0.15, 0.26]);
+  blob(fig, skin, [-0.46, lapY + 0.2, 0.93], [0.2, 0.15, 0.26]);
+
+  // ---- thân: Cylinder vát đỉnh bo tròn bằng chỏm vai
+  const torso = add(fig, geo('b-torso', () => new THREE.CylinderGeometry(0.5, 0.72, 0.95, 28)), skin);
+  torso.position.y = 1.3; torso.scale.z = 0.86;
+  blob(fig, skin, [0, 1.74, 0], [0.64, 0.3, 0.46]);
+
+  // ---- áo cà sa: vỏ nón mỏng ôm thân, chừa hở vai/ngực phải, cộng dải quấn chéo ----
+  const robeShell = add(fig, geo('b-robe-shell', () => new THREE.CylinderGeometry(0.515, 0.735, 0.95, 28, 1, true, -2.5, 5.0)), robe);
+  robeShell.position.y = 1.3; robeShell.scale.z = 0.88;
+  const sashCurve = new THREE.CatmullRomCurve3([
+    v3(-0.46, 1.72, 0.22), v3(-0.3, 1.6, 0.42), v3(0.02, 1.42, 0.5),
+    v3(0.36, 1.28, 0.44), v3(0.56, 1.14, 0.26),
+  ]);
+  const sashTube = add(fig, new THREE.TubeGeometry(sashCurve, 26, 0.095, 8, false), robe);
+  sashTube.scale.z = 0.7;
+  // vạt cà sa phủ lên đùi
+  blob(fig, robe, [-0.2, lapY + 0.24, 0.5], [0.56, 0.09, 0.42]).rotation.y = 0.3;
+
+  // ---- hai tay: ôm trước bụng, lồng vào nhau (Dhyana Mudra)
+  for (const s of [-1, 1]) {
+    limb(fig, skin, v3(s * 0.62, 1.68, 0), v3(s * 0.74, 1.2, 0.14), 0.15);
+    limb(fig, skin, v3(s * 0.74, 1.2, 0.14), v3(s * 0.2, 1.08, 0.66), 0.14);
+  }
+  const handA = limb(fig, skin, v3(-0.24, 1.1, 0.7), v3(0.2, 1.1, 0.72), 0.1);
+  handA.rotation.z += 0.05;
+  const handB = limb(fig, skin, v3(-0.2, 1.17, 0.74), v3(0.24, 1.15, 0.76), 0.095);
+  handB.rotation.z -= 0.05;
+  blob(fig, skin, [0, 1.22, 0.78], [0.1, 0.06, 0.07]); // hai ngón cái chạm nhau
+
+  // ---- đầu
+  const head = buildHead('buddha');
+  head.position.set(0, 2.42, 0.04);
+  fig.add(head);
+
+  // ---- hào quang
+  fig.add(buildHalo(1.3, 2.42, -0.6, 8));
+  addGlow(buddhaGroup, 0, 2.42 * BUDDHA_SCALE, -0.4, 6.4, 0xffd890);
+  return buddhaGroup;
 }
 
-/** Quan Am (Avalokiteshvara) standing on a lotus, white veil, vase and willow branch. Base at y=0, faces +z. */
+// =====================================================================
+//  QUAN THẾ ÂM CHIBI — đứng trên đài sen
+// =====================================================================
+const GUANYIN_SCALE = 1.6;
+
+/** Thân áo: Cylinder (0.35 → 0.85, cao 1.8, 24 segments) uốn nhẹ eo. */
+function robeBodyGeometry() {
+  return geo('g-robe', () => {
+    const g = new THREE.CylinderGeometry(0.35, 0.85, 1.8, 24, 8);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const t = (p.getY(i) + 0.9) / 1.8;               // 0 đáy … 1 đỉnh
+      const waist = 1 - 0.09 * Math.sin(Math.PI * Math.min(1, t * 1.25));
+      p.setX(i, p.getX(i) * waist);
+      p.setZ(i, p.getZ(i) * waist);
+    }
+    g.computeVertexNormals();
+    return g;
+  });
+}
+
+/** Bình cam lộ dáng hồ lô (LatheGeometry). */
+function vaseGeometry() {
+  return geo('g-vase', () => {
+    const pts: [number, number][] = [[0, 0], [0.1, 0.01], [0.17, 0.07], [0.21, 0.17], [0.19, 0.27], [0.11, 0.33], [0.075, 0.4], [0.1, 0.48], [0.135, 0.55], [0.12, 0.61], [0.07, 0.62]];
+    return new THREE.LatheGeometry(pts.map(([x, y]) => new THREE.Vector2(x, y)), 20);
+  });
+}
+
+/** Tượng Quan Thế Âm. Gốc y=0, mặt hướng +z. Trả về `guanyinGroup`. */
 export function buildQuanAm(): THREE.Group {
-  const g = new THREE.Group(), m = S(), c = getQuan();
-  mesh(c.slab, m.stone, g);
-  mesh(c.petals, m.pink, g);
-  mesh(c.petalsW, m.white, g);
-  const fig = new THREE.Group(); fig.position.y = 0.82; g.add(fig);
-  mesh(c.b, m.vcQ, fig);
-  const head = mesh(c.head, m.vcQ, fig); head.scale.setScalar(0.62); head.position.set(0, 5.35, 0.06);
-  mesh(c.extra!, m.veil, fig);
-  // crown + jewel
-  const crown = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.03, 8, 28), m.gold); crown.position.set(0, 5.62, 0.02); crown.rotation.x = Math.PI / 2 - 0.12; fig.add(crown);
+  const guanyinGroup = new THREE.Group();
+  guanyinGroup.name = 'guanyinGroup';
+  const fig = new THREE.Group();
+  fig.scale.setScalar(GUANYIN_SCALE);
+  guanyinGroup.add(fig);
+
+  const white = std(COL.white, 0.5);
+  const skin = std(COL.skinBody, 0.55);
+  const gold = std(COL.robeGold, 0.45, { metalness: 0.3 });
+
+  // ---- đài sen (tỷ lệ gọn hơn cho dáng đứng)
+  const top = buildLotusBase(fig, 0.82, 10);
+
+  // ---- thân áo trắng + vai
+  const bodyBottom = top - 0.04;
+  const body = add(fig, robeBodyGeometry(), white);
+  body.position.y = bodyBottom + 0.9;
+  blob(fig, white, [0, bodyBottom + 1.76, 0], [0.5, 0.22, 0.36]);
+  // viền vàng ở gấu áo
+  const hem = add(fig, geo('g-hem', () => new THREE.TorusGeometry(0.85, 0.035, 8, 40)), gold);
+  hem.rotation.x = Math.PI / 2; hem.position.y = bodyBottom + 0.05;
+
+  // ---- hai tay: tay phải (bên trái người xem) cầm liễu, tay trái nâng bình
+  const shoulderY = bodyBottom + 1.68;
+  const R = -1, L = 1; // R: -x, L: +x
+  const handR = v3(R * 0.42, shoulderY - 0.62, 0.62);
+  const handL = v3(L * 0.42, shoulderY - 0.62, 0.62);
+  for (const [s, hand] of [[R, handR], [L, handL]] as const) {
+    limb(fig, white, v3(s * 0.4, shoulderY, 0.02), v3(s * 0.6, shoulderY - 0.5, 0.16), 0.15);   // tay áo rộng
+    limb(fig, white, v3(s * 0.6, shoulderY - 0.5, 0.16), hand.clone().add(v3(s * 0.04, 0.04, -0.06)), 0.17);
+    blob(fig, skin, [hand.x, hand.y, hand.z], [0.11, 0.1, 0.12]);
+  }
+
+  // nhành liễu: thân Cylinder mảnh xanh ngọc + 5 lá dẹt xanh mạ
+  const willow = new THREE.Group();
+  willow.position.copy(handR); willow.rotation.set(0.1, 0, 0.32);
+  fig.add(willow);
+  const stem = add(willow, geo('g-stem', () => new THREE.CylinderGeometry(0.018, 0.026, 1.0, 8)), std(COL.jade, 0.5));
+  stem.position.y = 0.34;
+  const leafM = std(COL.leaf, 0.55);
   for (let i = 0; i < 5; i++) {
-    const a = -0.95 + i * 0.475;
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, i === 2 ? 0.2 : 0.13, 6), m.gold);
-    tip.position.set(Math.sin(a) * 0.3, 5.7 + (i === 2 ? 0.05 : 0), 0.04 + Math.cos(a) * 0.3); fig.add(tip);
+    const side = i % 2 ? 1 : -1;
+    const leaf = blob(willow, leafM, [side * 0.07, 0.38 + i * 0.12, 0], [0.05, 0.17, 0.018]);
+    leaf.rotation.z = -side * 0.9;
   }
-  const gem = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), m.jewel); gem.position.set(0, 5.5, 0.3); fig.add(gem);
-  // necklace + sash
-  const neck = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.025, 6, 24, Math.PI), m.gold); neck.position.set(0, 4.35, 0.2); neck.rotation.set(Math.PI * 0.6, 0, Math.PI); fig.add(neck);
-  const sash = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.05, 8, 30), m.gold); sash.position.y = 3.0; sash.rotation.x = Math.PI / 2; sash.scale.set(1, 0.85, 1); fig.add(sash);
-  // vase of pure water
-  const vase = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [0.1, 0], [0.17, 0.07], [0.22, 0.24], [0.16, 0.42], [0.07, 0.5], [0.09, 0.62], [0.13, 0.67], [0.07, 0.67], [0.05, 0.62]].map(([x, y]) => new THREE.Vector2(x, y)), 24), m.jade);
-  vase.position.set(0.36, 3.86, 0.88); vase.castShadow = true; fig.add(vase);
-  const vb = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.014, 6, 20), m.gold); vb.position.set(0.36, 4.1, 0.88); vb.rotation.x = Math.PI / 2; fig.add(vb);
-  // willow branch
-  const stem = new THREE.CatmullRomCurve3([new THREE.Vector3(-0.58, 2.9, 0.68), new THREE.Vector3(-0.66, 3.5, 0.86), new THREE.Vector3(-0.55, 4.1, 0.95), new THREE.Vector3(-0.3, 4.5, 0.95)]);
-  fig.add(new THREE.Mesh(new THREE.TubeGeometry(stem, 16, 0.018, 5), m.stem));
-  const leaves = new THREE.InstancedMesh(new THREE.SphereGeometry(0.03, 6, 5), m.leaf, 44);
-  const d = new THREE.Object3D();
-  for (let i = 0; i < 44; i++) {
-    const p = stem.getPoint(0.3 + (i / 44) * 0.7);
-    d.position.set(p.x + Math.sin(i * 7) * 0.09, p.y - (i % 3) * 0.07, p.z + Math.cos(i * 5) * 0.09); d.scale.set(1, 3.0, 0.6); d.rotation.set(0, i, 0.3); d.updateMatrix(); leaves.setMatrixAt(i, d.matrix);
+  blob(willow, leafM, [0, 0.9, 0], [0.045, 0.16, 0.018]);
+
+  // bình cam lộ
+  const vase = add(fig, vaseGeometry(), std(COL.robeGold, 0.45, { metalness: 0.2 }));
+  vase.position.copy(handL).add(v3(0, 0.1, 0.01)); vase.scale.setScalar(0.85);
+
+  // ---- dải lụa bay: TubeGeometry theo CatmullRomCurve3 chữ U vòng sau lưng, lượn hai vai rồi rủ xuống chân
+  const ribbonY = bodyBottom;
+  const curve = new THREE.CatmullRomCurve3([
+    v3(-0.98, ribbonY + 0.18, 0.46), v3(-1.08, ribbonY + 0.7, 0.3), v3(-0.95, ribbonY + 1.35, 0.1),
+    v3(-0.72, ribbonY + 1.92, -0.12), v3(-0.38, ribbonY + 2.18, -0.42), v3(0, ribbonY + 2.22, -0.54),
+    v3(0.38, ribbonY + 2.18, -0.42), v3(0.72, ribbonY + 1.92, -0.12), v3(0.95, ribbonY + 1.35, 0.1),
+    v3(1.08, ribbonY + 0.7, 0.3), v3(0.98, ribbonY + 0.18, 0.46),
+  ], false, 'catmullrom', 0.5);
+  add(fig, new THREE.TubeGeometry(curve, 90, 0.07, 10, false), white, { name: 'ribbon' });
+
+  // ---- đầu + tóc
+  const head = buildHead('guanyin');
+  const headY = bodyBottom + 2.34;
+  head.position.set(0, headY, 0.04);
+  fig.add(head);
+  const hair = add(head, geo('hair-cap-g', () => new THREE.SphereGeometry(HEAD_R + 0.025, 36, 20, 0, Math.PI * 2, 0, 1.0)), std(COL.hairGuanyin, 0.65));
+  hair.rotation.x = -0.12;
+
+  // ---- khăn trùm đầu: chỏm cầu úp từ đỉnh đầu ra sau + tà khăn phủ vai (hở phía trước)
+  const veilM = new THREE.MeshStandardMaterial({ color: COL.white, roughness: 0.5, metalness: 0, side: THREE.DoubleSide });
+  const gap = 0.85;
+  const veilHead = add(head, geo('g-veil-head', () => new THREE.SphereGeometry(HEAD_R + 0.11, 36, 24, Math.PI / 2 + gap, Math.PI * 2 - gap * 2, 0, 2.15)), veilM);
+  veilHead.position.y = 0.04;
+  const veilDrape = add(fig, geo('g-veil-drape', () => new THREE.CylinderGeometry(0.66, 0.98, 0.95, 28, 1, true, Math.PI / 2 + 0.55, Math.PI * 2 - 1.1)), veilM);
+  veilDrape.position.set(0, headY - 0.78, -0.06);
+
+  // ---- mũ miện: vành cong vàng kim trên trán, gắn tượng Phật nhỏ
+  const crown = add(head, geo('g-crown', () => new THREE.SphereGeometry(HEAD_R + 0.045, 32, 8, Math.PI / 2 - 0.95, 1.9, 0.62, 0.3)), std(COL.robeGold, 0.45, { metalness: 0.3, side: THREE.DoubleSide }));
+  crown.name = 'crown';
+  for (let i = 0; i < 5; i++) {
+    const a = Math.PI / 2 - 0.78 + (i / 4) * 1.56;   // phi
+    const th = 0.62;
+    const r = HEAD_R + 0.045;
+    const spike = add(head, geo('g-spike', () => new THREE.ConeGeometry(0.055, i === 2 ? 0.2 : 0.14, 8)), gold);
+    spike.position.set(-Math.cos(a) * Math.sin(th) * r, Math.cos(th) * r + 0.05, Math.sin(a) * Math.sin(th) * r);
+    spike.rotation.x = 0.35;
   }
-  fig.add(leaves);
-  // flowing scarf ends
-  for (const s of [-1, 1]) {
-    const sc = new THREE.CatmullRomCurve3([new THREE.Vector3(s * 0.55, 4.45, 0.2), new THREE.Vector3(s * 0.85, 3.5, 0.45), new THREE.Vector3(s * 0.7, 2.4, 0.5), new THREE.Vector3(s * 1.0, 1.4, 0.4), new THREE.Vector3(s * 0.85, 0.5, 0.55)]);
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(sc, 28, 0.045, 5), m.veil); tube.scale.set(1, 1, 1); fig.add(tube);
-  }
-  g.add(buildHalo(1.1, 0.82 + 5.45, -0.55, 18, 0));
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xfff2d0, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
-  spr.scale.setScalar(7); spr.position.set(0, 4.4, 0); g.add(spr);
-  g.userData.glow = spr;
-  return g;
+  // tượng Phật A Di Đà nhỏ ở chính giữa mũ
+  const mini = new THREE.Group();
+  mini.position.set(0, Math.cos(0.62) * (HEAD_R + 0.045) + 0.17, Math.sin(0.62) * (HEAD_R + 0.045) + 0.04);
+  head.add(mini);
+  blob(mini, gold, [0, 0.0, 0], [0.1, 0.045, 0.07]);
+  blob(mini, gold, [0, 0.07, 0], [0.065, 0.075, 0.055]);
+  blob(mini, std(COL.skinHead, 0.5), [0, 0.16, 0.005], [0.048, 0.048, 0.048]);
+
+  // ---- hào quang
+  fig.add(buildHalo(1.3, headY, -0.62, 8));
+  addGlow(guanyinGroup, 0, headY * GUANYIN_SCALE, -0.4, 6.6, 0xfff2d0);
+  return guanyinGroup;
 }

@@ -1,5 +1,5 @@
 import { MAP_HALF } from '../../shared/types';
-import { BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, QUAN, WALL } from '../layout';
+import { BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 
@@ -8,13 +8,13 @@ const PLACES: Place[] = [
   { name: 'Chánh điện', x: HALL.x, z: HALL.z, r: 8 },
   { name: 'Sân thiền trái', x: -(DECK.x0 + DECK.x1) / 2, z: (DECK.z0 + DECK.z1) / 2, r: 5 },
   { name: 'Sân thiền phải', x: (DECK.x0 + DECK.x1) / 2, z: (DECK.z0 + DECK.z1) / 2, r: 5 },
-  { name: 'Sân chùa', x: 0, z: 8, r: 8 },
+  { name: 'Sân chùa', x: PLAZA.x, z: PLAZA.z, r: 8 },
   { name: 'Gác chuông', x: BELL.x, z: BELL.z, r: 4 },
   { name: 'Tháp Quan Âm', x: QUAN.x, z: QUAN.z, r: 4 },
   { name: 'Đại Phật', x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 5 },
   { name: 'Bảo tháp', x: PAGODA.x, z: PAGODA.z, r: 4 },
   { name: 'Hồ cá koi', x: LAKE.x, z: LAKE.z + 8.5, r: 4 },
-  { name: 'Cầu cong', x: (BRIDGE.x0 + BRIDGE.x1) / 2, z: BRIDGE.z, r: 3 },
+  { name: 'Cầu cong', x: BRIDGE.x, z: (BRIDGE.z0 + BRIDGE.z1) / 2, r: 3 },
   { name: 'Tam quan', x: 0, z: WALL.zS - 4, r: 4 },
 ];
 
@@ -61,7 +61,7 @@ export function openMap(ctx: MenuCtx) {
       rect(HALL.x - HALL.hx, HALL.z - HALL.hz, HALL.x + HALL.hx, HALL.z + HALL.hz, '#b5542f', '#6e2a14');
       // lake + bridge
       ellipse(LAKE.x, LAKE.z, LAKE.a, LAKE.b, '#8ec6e0', '#4f8fb0');
-      rect(BRIDGE.x0, BRIDGE.z - BRIDGE.hw, BRIDGE.x1, BRIDGE.z + BRIDGE.hw, '#a9733c', '#6e4a22');
+      rect(BRIDGE.x - BRIDGE.hw, BRIDGE.z0, BRIDGE.x + BRIDGE.hw, BRIDGE.z1, '#a9733c', '#6e4a22');
       // towers
       for (const [p, c] of [[BELL, '#8a5a2b'], [QUAN, '#e6e0d0'], [PAGODA, '#b5542f']] as const) ellipse(p.x, p.z, 2.2, 2.2, c, '#4a2e18');
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 4.5, 4.5, '#e8d9a0', '#c9a96a');

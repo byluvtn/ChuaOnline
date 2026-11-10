@@ -8,7 +8,7 @@ import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
 import { clampToCompound } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
-import { closePanel, panelOpen, refreshPanel } from './panels';
+import { closePanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { createPost } from './post';
 import { createWorld } from './world';
 import { ACTION_RULES, ROOMS, type MeditationInfo, type QuestState } from '../shared/game';
@@ -345,6 +345,9 @@ function connect() {
     updateProfileHud();
   });
   s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); });
+  s.on('level:bonus', ({ level, coins, merit }: { level: number; coins: number; merit: number }) => {
+    toast(`Lên cấp ${level}! Thưởng +${coins} xu, +${merit} công đức`);
+  });
   s.on('quests', (q: QuestState[]) => { quests = q; updateQuestDot(); refreshPanel(); });
   s.on('meditation', (m: MeditationInfo) => { meditation = m; updateMeditationHud(); });
   s.on('player:join', addPlayer);
@@ -507,17 +510,28 @@ $<HTMLFormElement>('chatForm').onsubmit = (e) => {
 };
 
 let myActionUntil = 0;
+/** Điểm bồ đoàn đang trên đường tới để lạy (null = không có hành trình). */
+let bowSeat: { x: number; z: number } | null = null;
+
+/** Chỗ ngồi trống gần nhất trên toàn sân (bỏ giới hạn 3.2m của setSitting). */
+function nearestFreeSeat(limit = Infinity): { x: number; z: number; ry: number } | null {
+  if (!me) return null;
+  const root = me.char.root;
+  let best: { x: number; z: number; ry: number } | null = null, bd = limit;
+  for (const st of world.seats) {
+    const d = Math.hypot(st.x - root.position.x, st.z - root.position.z);
+    if (d >= bd) continue;
+    let taken = false;
+    remotes.forEach((r, id) => { if (id !== myId && Math.hypot(r.target.x - st.x, r.target.z - st.z) < 0.6) taken = true; });
+    if (!taken) { best = st; bd = d; }
+  }
+  return best;
+}
+
 function setSitting(v: boolean) {
   if (v && !sitting && me) {
     const root = me.char.root;
-    let best: { x: number; z: number; ry: number } | null = null, bd = 3.2;
-    for (const st of world.seats) {
-      const d = Math.hypot(st.x - root.position.x, st.z - root.position.z);
-      if (d >= bd) continue;
-      let taken = false;
-      remotes.forEach((r, id) => { if (id !== myId && Math.hypot(r.target.x - st.x, r.target.z - st.z) < 0.6) taken = true; });
-      if (!taken) { best = st; bd = d; }
-    }
+    const best = nearestFreeSeat(3.2);
     if (best) { root.position.set(best.x, world.groundY(best.x, best.z), best.z); me.ry = best.ry; }
   }
   sitting = v;
@@ -534,22 +548,48 @@ function startCooldown(kind: ActionKind) {
     setTimeout(() => b.classList.remove('cooling'), ms);
   });
 }
-function doAction(kind: ActionKind, wish?: string) {
+function doAction(kind: ActionKind, wish?: string, keepSeat = false) {
   if (!me || !socket) return;
   if (performance.now() < (cooling[kind] ?? 0)) return;
   audio.unlock();
   audio.play(kind);
   startCooldown(kind);
   if (kind === 'bow' || kind === 'chant') world.spawnBurst(me.char.root.position.x, me.char.root.position.z, 0xffe9a0);
-  setSitting(false);
+  if (!keepSeat) setSitting(false);
   me.anim = kind;
   myActionUntil = performance.now() + (kind === 'bow' ? BOW_MS : 2500);
   clickTarget = null;
   socket.emit('action', kind, wish);
   if (kind === 'incense') world.spawnIncense(me.char.root.position.x, me.char.root.position.z);
 }
-document.querySelectorAll<HTMLButtonElement>('#actions [data-act]').forEach((b) => (b.onclick = () => doAction(b.dataset.act as ActionKind)));
-$('sitBtn').onclick = () => { clickTarget = null; setSitting(!sitting); if (sitting) toast('Thiền định... công đức được cộng mỗi 10 giây'); };
+
+/**
+ * Lạy Phật: tự đi bộ tới bồ đoàn trống gần nhất (toàn sân), tới nơi thì ngồi
+ * xuống rồi lạy. Không còn chỗ trống → lạy tại chỗ như cũ.
+ */
+function startBow() {
+  if (!me || !socket) return;
+  if (sitting) { doAction('bow'); return; }             // đang ngồi sẵn: lạy luôn
+  const seat = nearestFreeSeat();
+  if (!seat) { doAction('bow'); return; }
+  const root = me.char.root;
+  if (Math.hypot(seat.x - root.position.x, seat.z - root.position.z) < 0.5) {
+    root.position.set(seat.x, world.groundY(seat.x, seat.z), seat.z);
+    setSitting(true);
+    doAction('bow');
+    return;
+  }
+  bowSeat = { x: seat.x, z: seat.z };
+  clickTarget = new THREE.Vector3(seat.x, 0, seat.z);
+  toast('Đang tới bồ đoàn gần nhất...');
+}
+document.querySelectorAll<HTMLButtonElement>('#actions [data-act]').forEach((b) => (b.onclick = () => {
+  const kind = b.dataset.act as ActionKind;
+  if (kind === 'bow') startBow();
+  else if (kind === 'chant') openPanel('chant', panelCtx());
+  else doAction(kind);
+}));
+$('sitBtn').onclick = () => { clickTarget = null; bowSeat = null; setSitting(!sitting); if (sitting) toast('Thiền định... công đức được cộng mỗi 10 giây'); };
 $('lanternBtn').onclick = () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); };
 $('wishCancel').onclick = () => ($('wishModal').hidden = true);
 $('wishOk').onclick = () => {
@@ -632,6 +672,7 @@ function loop() {
 
     if (mag > 0) {
       clickTarget = null;
+      bowSeat = null;                       // người chơi tự di chuyển → huỷ hành trình lạy
       setSitting(false);
       myActionUntil = 0;
       const len = Math.hypot(ix, iz);
@@ -652,6 +693,14 @@ function loop() {
         me.ry = Math.atan2(tmp.x, tmp.z);
         moving = true;
       }
+    }
+    // tới bồ đoàn đã chọn → ngồi xuống rồi lạy
+    if (bowSeat && Math.hypot(bowSeat.x - root.position.x, bowSeat.z - root.position.z) < 0.5) {
+      root.position.set(bowSeat.x, world.groundY(bowSeat.x, bowSeat.z), bowSeat.z);
+      bowSeat = null;
+      clickTarget = null;
+      setSitting(true);
+      doAction('bow', undefined, true);
     }
     if (moving) myActionUntil = 0;
     collide(root.position);
@@ -699,4 +748,4 @@ const focusIdle = new THREE.Vector3(0, 0, 8);
 let loadedHidden = false;
 requestAnimationFrame(loop);
 
-if (import.meta.env.DEV) (window as any).__co = { me: () => me, remotes, world, camera, THREE, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr };
+if (import.meta.env.DEV) (window as any).__co = { me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr };

@@ -1,16 +1,22 @@
 import * as THREE from 'three';
 import { MAP_HALF } from '../shared/types';
 import { fitModel, loadModel } from './models';
+import { applySkyPalette, paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
 import { glowTexture, grassTexture, petalTexture, signTexture, stoneTexture } from './textures';
 import { geo, outlined, toon } from './toon';
-import { blocked } from './layout';
+import { blocked, LAKE, HALL, PLAZA } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
 
 export interface Mood { sky: string; zenith: string; sun: string; sunI: number; hemi: string; fog: number; night?: boolean }
+/**
+ * Bảng màu không gian thiền tự.
+ * Trước đây cả ba phòng đều dùng tông cam đục của "bão cát sa mạc"; nay là bầu trời
+ * xanh trong, yên bình: ngày nắng dịu, hoàng hôn tím nhạt, đêm trăng xanh thẫm.
+ */
 export const MOODS: Record<string, Mood> = {
-  'vo-luong': { sky: '#f7c98b', zenith: '#6c8fc2', sun: '#ffd9a0', sunI: 2.1, hemi: '#fff0d4', fog: 0.0105 },
-  'tu-bi': { sky: '#cfe3f2', zenith: '#5c93cf', sun: '#fff4e0', sunI: 2.4, hemi: '#eaf4ff', fog: 0.0085 },
-  'an-lac': { sky: '#e9a7c4', zenith: '#493a78', sun: '#ffb3a0', sunI: 1.5, hemi: '#f2cfe6', fog: 0.0115, night: true },
+  'vo-luong': { sky: '#dcefff', zenith: '#5aa7e0', sun: '#fff6e2', sunI: 2.2, hemi: '#eaf4ff', fog: 0.0060 },
+  'tu-bi': { sky: '#e7f2ff', zenith: '#4f9bd8', sun: '#ffffff', sunI: 2.4, hemi: '#f0f7ff', fog: 0.0054 },
+  'an-lac': { sky: '#ffe9d2', zenith: '#7fa8d8', sun: '#ffe2b8', sunI: 1.6, hemi: '#f3e9ff', fog: 0.0058, night: true },
 };
 
 export interface World {
@@ -57,12 +63,12 @@ function roofGeometry(w: number, d: number, h: number, lift = 0.55) {
 
 export function createWorld(): World {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf7c98b);
-  scene.fog = new THREE.FogExp2(0xf7c98b, 0.0105);
+  scene.background = new THREE.Color(SERENE_SKY.day.fog);
+  scene.fog = new THREE.FogExp2(SERENE_SKY.day.fog, SERENE_SKY.day.fogDensity);
 
-  const hemi = new THREE.HemisphereLight(0xfff0d4, 0x4a5a38, 1.0);
+  const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x4a5a38, 1.05);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xffd9a0, 2.1);
+  const sun = new THREE.DirectionalLight(0xfff6e2, 2.2);
   sun.position.set(-26, 38, 22);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -74,8 +80,8 @@ export function createWorld(): World {
 
   // ---- Sky dome (gradient + sun glow) ----
   const skyU = {
-    horizon: { value: new THREE.Color(0xf7c98b) }, zenith: { value: new THREE.Color(0x6c8fc2) },
-    sunDir: { value: sun.position.clone().normalize() }, sunCol: { value: new THREE.Color(0xffd9a0) },
+    horizon: { value: new THREE.Color(SERENE_SKY.day.horizon) }, zenith: { value: new THREE.Color(SERENE_SKY.day.zenith) },
+    sunDir: { value: sun.position.clone().normalize() }, sunCol: { value: new THREE.Color(SERENE_SKY.day.sun) },
   };
   scene.add(new THREE.Mesh(
     new THREE.SphereGeometry(220, 32, 16),
@@ -114,19 +120,25 @@ export function createWorld(): World {
   scene.add(ground);
 
   const pave = stoneTexture([150, 144, 134], [3, 14]);
-  const path = new THREE.Mesh(new THREE.PlaneGeometry(6, 75), lamb(0xffffff, { map: pave }));
-  path.rotation.x = -Math.PI / 2; path.position.set(0, 0.02, 7); path.receiveShadow = true;
-  scene.add(path);
+  // Lối đi chính chia làm hai đoạn, chừa hẳn lòng hồ sen ở giữa khuôn viên
+  const pathN = new THREE.Mesh(new THREE.PlaneGeometry(6, PLAZA.z + PLAZA.r - (LAKE.z - LAKE.b - 0.8)), lamb(0xffffff, { map: pave }));
+  pathN.rotation.x = -Math.PI / 2;
+  pathN.position.set(0, 0.02, (PLAZA.z + PLAZA.r + (LAKE.z - LAKE.b - 0.8)) / 2);
+  pathN.receiveShadow = true; scene.add(pathN);
+  const pathS = new THREE.Mesh(new THREE.PlaneGeometry(6, 45 - (LAKE.z + LAKE.b + 0.8)), lamb(0xffffff, { map: pave }));
+  pathS.rotation.x = -Math.PI / 2;
+  pathS.position.set(0, 0.02, (45 + (LAKE.z + LAKE.b + 0.8)) / 2);
+  pathS.receiveShadow = true; scene.add(pathS);
   const plazaT = stoneTexture([166, 158, 142], [5, 5], 6);
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(11.5, 48), lamb(0xffffff, { map: plazaT }));
-  plaza.rotation.x = -Math.PI / 2; plaza.position.set(0, 0.03, 8); plaza.receiveShadow = true;
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(PLAZA.r, 48), lamb(0xffffff, { map: plazaT }));
+  plaza.rotation.x = -Math.PI / 2; plaza.position.set(PLAZA.x, 0.03, PLAZA.z); plaza.receiveShadow = true;
   scene.add(plaza);
   // inner mandala ring
   const ring = new THREE.Mesh(new THREE.RingGeometry(3.4, 3.75, 48), lamb(0xb78a3a, { emissive: 0x3a2808 }));
-  ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.045, 8);
+  ring.rotation.x = -Math.PI / 2; ring.position.set(PLAZA.x, 0.045, PLAZA.z);
   scene.add(ring);
   const lotusFlat = new THREE.Mesh(new THREE.CircleGeometry(3.3, 8), lamb(0xdba3b6, { emissive: 0x30121c }));
-  lotusFlat.rotation.x = -Math.PI / 2; lotusFlat.position.set(0, 0.04, 8);
+  lotusFlat.rotation.x = -Math.PI / 2; lotusFlat.position.set(PLAZA.x, 0.04, PLAZA.z);
   scene.add(lotusFlat);
 
   const stoneM = lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [4, 1]) });
@@ -203,14 +215,8 @@ export function createWorld(): World {
   }
   scene.add(flowers);
 
-  const bushG = new THREE.IcosahedronGeometry(0.8, 1);
-  const bushM = lamb(0x3a7d3c, { flatShading: true });
-  for (let i = 0; i < 24; i++) {
-    const a = (i / 24) * Math.PI * 2;
-    const b = new THREE.Mesh(bushG, bushM);
-    b.position.set(Math.cos(a) * 11.6, 0.4, 8 + Math.sin(a) * 11.6);
-    b.scale.set(1 + rngSeed(i) * 0.5, 0.7, 1); b.castShadow = true; scene.add(b);
-  }
+  // Bụi cỏ dạng khối cứng quanh quảng trường đã được loại bỏ hoàn toàn (xem paveCompound):
+  // mặt sân nay là gạch đá phẳng, không còn các "cục" hình học lổn nhổn giữa khuôn viên.
 
   // ---- Stone lamps (path edge) with glow ----
   const glowers: THREE.MeshStandardMaterial[] = [];
@@ -256,6 +262,12 @@ export function createWorld(): World {
     new THREE.LineBasicMaterial({ color: 0x3a2412 })));
 
   const temple = buildTemple({ scene, colliders, lamb, roofGeometry, tileM, redM, goldM, wallM, redBase, glowSprites });
+
+  // ---- Sửa cảnh quan khuôn viên ----
+  // 1) bỏ hết bụi cỏ dạng khối cứng còn sót; 2) lát mặt sân gạch phẳng sạch sẽ
+  removeSolidGrassClumps(scene);
+  paveCompound(scene);
+  void LAKE; void HALL;
 
   // ---- Clouds ----
   const clouds: THREE.Group[] = [];
@@ -336,14 +348,19 @@ export function createWorld(): World {
 
   // ---- Mood ----
   let nightK = 0, nightTarget = 0;
+  /** Áp bảng màu trời + sương + đèn cho một phòng (vo-luong / tu-bi / an-lac). */
   const setMood = (room: string) => {
     const m = MOODS[room] ?? MOODS['vo-luong'];
-    (scene.background as THREE.Color).set(m.sky);
-    (scene.fog as THREE.FogExp2).color.set(m.sky);
-    (scene.fog as THREE.FogExp2).density = m.fog;
-    skyU.horizon.value.set(m.sky); skyU.zenith.value.set(m.zenith); skyU.sunCol.value.set(m.sun);
+    // dựng palette từ mood rồi áp qua helper chung của compound.ts
+    const pal = {
+      horizon: new THREE.Color(m.sky).getHex(), zenith: new THREE.Color(m.zenith).getHex(),
+      sun: new THREE.Color(m.sun).getHex(), hemi: new THREE.Color(m.hemi).getHex(),
+      fog: new THREE.Color(m.sky).getHex(), fogDensity: m.fog, night: m.night,
+    };
+    applySkyPalette(scene, skyU, pal);
+    skyU.sunCol.value.set(m.sun);
     sun.color.set(m.sun); sun.intensity = m.sunI; hemi.color.set(m.hemi);
-    hemi.intensity = m.night ? 0.75 : 1.0;
+    hemi.intensity = m.night ? 0.85 : 1.05;
     mtnMats.forEach((mm, i) => mm.color.set(m.sky).lerp(new THREE.Color(m.zenith), 0.35 + i * 0.12).multiplyScalar(0.9 - i * 0.06));
     nightTarget = m.night ? 1 : 0;
   };

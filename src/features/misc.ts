@@ -78,13 +78,13 @@ export function openGuide() {
         'Điện thoại: dùng cần điều khiển bên trái, chạm để đi, kéo một ngón để xoay.',
         'Mở Bản đồ chùa để đi nhanh tới một địa điểm.'))) },
       { id: 'a', label: 'Hành lễ', build: (v) => v.append(sec('Hành lễ nhận công đức', ul(
-        `Lạy Phật: +${A.bow.merit} công đức, chờ ${fmtSec(A.bow.cooldownMs)} (hoa sen: +${A.bow.boostMerit}).`,
-        `Thắp hương: +${A.incense.merit} công đức, chờ ${fmtSec(A.incense.cooldownMs)} (hương trầm: +${A.incense.boostMerit}).`,
-        `Tụng kinh: +${A.chant.merit} công đức, chờ ${fmtSec(A.chant.cooldownMs)}.`,
-        `Thả đèn nguyện: +${A.lantern.merit} công đức, chờ ${fmtSec(A.lantern.cooldownMs)} (đèn hoa đăng: +${A.lantern.boostMerit}).`,
+        `Lạy Phật: +${A.bow.merit} công đức, chờ ${fmtSec(A.bow.cooldownMs)} (hoa sen, hoa dâng Phật: nhiều hơn).`,
+        `Thắp hương: +${A.incense.merit} công đức, chờ ${fmtSec(A.incense.cooldownMs)} (hương trầm: nhiều hơn).`,
+        `Tụng kinh: +${A.chant.merit} công đức, chờ ${fmtSec(A.chant.cooldownMs)} (nến sáp ong, tràng hạt: nhiều hơn).`,
+        `Thả đèn nguyện: +${A.lantern.merit} công đức, chờ ${fmtSec(A.lantern.cooldownMs)} (đèn hoa đăng: nhiều hơn).`,
         'Thiền: ngồi yên để tích lũy công đức theo thời gian.',
         'Thiền chung từ 3 người trở lên trong cùng một chùa sẽ được nhân đôi công đức.')),
-        sec('Nhiệm vụ & cửa hàng', ul('Nhiệm vụ làm mới mỗi ngày, hoàn thành để nhận xu và công đức.', 'Dùng xu mua hương, hoa, đèn và phụ kiện ở Cửa hàng.', 'Công đức tăng thì lên cấp, xem ở mục Cấp độ.'))) },
+        sec('Nhiệm vụ & cửa hàng', ul('Nhiệm vụ ngày làm mới mỗi ngày, nhiệm vụ tuần làm mới thứ Hai (giờ UTC).', 'Dùng xu mua lễ vật, phụ kiện ở Cửa hàng — món xịn cần đủ cấp.', 'Công đức tăng thì lên cấp, xem ở mục Cấp độ.'))) },
       { id: 'e', label: 'Lễ nghi', build: (v) => v.append(sec('Giữ nếp chùa', ul(
         'Giữ lời nói hiền, chào hỏi nhẹ nhàng.', 'Không làm ồn nơi chánh điện và sân thiền.', 'Tôn trọng mọi người, không spam hay quảng cáo.', 'Các trò chơi và xin xăm chỉ để giải trí, thư giãn.'))) },
     ]);

@@ -190,19 +190,34 @@ export function setAccessory(id: number, item: string | null) {
 }
 
 // ---- quests ----
+/** Khoá phiên nhiệm vụ: nhiệm vụ ngày dùng day_key, nhiệm vụ tuần (id `w_…`) dùng week_key. */
+export const questKey = (questId: string, d = new Date()) => (questId.startsWith('w_') ? weekKey(d) : dayKey(d));
 export function questRows(id: number) {
-  return db.prepare('SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key = ?').all(id, dayKey()) as
-    { quest_id: string; progress: number; claimed: number }[];
+  return db.prepare('SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?)')
+    .all(id, dayKey(), weekKey()) as { quest_id: string; progress: number; claimed: number }[];
 }
 export function bumpQuest(id: number, questId: string, target: number, by = 1) {
   db.prepare(`INSERT INTO quest_progress (player_id, day_key, quest_id, progress) VALUES (?,?,?,MIN(?,?))
     ON CONFLICT(player_id, day_key, quest_id) DO UPDATE SET progress = MIN(progress + ?, ?) WHERE claimed = 0`)
-    .run(id, dayKey(), questId, by, target, by, target);
+    .run(id, questKey(questId), questId, by, target, by, target);
 }
 /** Returns true if the claim was valid (done and not claimed yet). */
 export function claimQuest(id: number, questId: string, target: number): boolean {
   const r = db.prepare(`UPDATE quest_progress SET claimed = 1
-    WHERE player_id = ? AND day_key = ? AND quest_id = ? AND progress >= ? AND claimed = 0`).run(id, dayKey(), questId, target);
+    WHERE player_id = ? AND day_key = ? AND quest_id = ? AND progress >= ? AND claimed = 0`)
+    .run(id, questKey(questId), questId, target);
+  return Number(r.changes) === 1;
+}
+
+// ---- level milestone rewards ----
+db.exec(`CREATE TABLE IF NOT EXISTS level_rewards (
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  level INTEGER NOT NULL,
+  PRIMARY KEY (player_id, level)
+);`);
+/** Ghi nhận mốc cấp đã thưởng; true nếu lần đầu đạt cấp này. */
+export function claimLevelReward(id: number, level: number): boolean {
+  const r = db.prepare('INSERT OR IGNORE INTO level_rewards (player_id, level) VALUES (?,?)').run(id, level);
   return Number(r.changes) === 1;
 }
 

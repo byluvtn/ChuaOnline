@@ -148,6 +148,139 @@ export function hoanhPhiTexture(han: string, w = 1024, h = 256) {
   return t;
 }
 
+/* ------------------------------------------------------------------ *
+ * Khuôn mặt Chibi vẽ bằng CanvasTexture 2D
+ * Trả về texture trong suốt, chỉ chứa nét (mắt cong, miệng, má hồng) để
+ * dán lên một chỏm cầu cùng bán kính với đầu tượng.
+ * ------------------------------------------------------------------ */
+export function faceTexture(kind: 'buddha' | 'guanyin') {
+  const S = 512;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d')!;
+  g.clearRect(0, 0, S, S);
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+
+  const ink = '#4a3728';
+
+  // ---- mắt cong hình trăng khuyết (⌒), mí khép hạnh phúc ----
+  g.strokeStyle = ink;
+  g.lineWidth = 22;
+  for (const s of [-1, 1]) {
+    const cx = S / 2 + s * 128, cy = 196, r = 54;
+    g.beginPath();
+    g.arc(cx, cy, r, Math.PI * 1.12, Math.PI * 1.88);
+    g.stroke();
+  }
+
+  // ---- má hồng đào #f28482 ----
+  for (const s of [-1, 1]) {
+    const cx = S / 2 + s * 152, cy = 300, r = 64;
+    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+    gr.addColorStop(0, 'rgba(242,132,130,.62)');
+    gr.addColorStop(0.55, 'rgba(242,132,130,.34)');
+    gr.addColorStop(1, 'rgba(242,132,130,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+  }
+
+  // ---- miệng mỉm cười ----
+  g.strokeStyle = ink;
+  g.lineWidth = kind === 'guanyin' ? 15 : 17;
+  g.beginPath();
+  g.moveTo(S / 2 - 42, 334);
+  g.quadraticCurveTo(S / 2, 374, S / 2 + 42, 334);
+  g.stroke();
+
+  // ---- chấm urna giữa trán (chỉ Phật Tổ) ----
+  if (kind === 'buddha') {
+    const gr = g.createRadialGradient(S / 2, 92, 0, S / 2, 92, 20);
+    gr.addColorStop(0, 'rgba(224,169,59,.95)');
+    gr.addColorStop(1, 'rgba(224,169,59,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(S / 2, 92, 20, 0, Math.PI * 2); g.fill();
+  }
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+/** Bảng chữ tiếng Việt (câu đối) — vàng trên nền sơn son, thay cho chữ Hán cũ.
+ *  Câu dài được ngắt dòng theo từ và xếp dọc từ trên xuống cho dễ đọc trên cột hẹp. */
+export function vietnameseColumnTexture(text: string, w = 160, h = 900, opts: { title?: string } = {}) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d')!;
+
+  const gr = g.createLinearGradient(0, 0, w, 0);
+  gr.addColorStop(0, '#5a0e0a'); gr.addColorStop(0.5, '#7d1a12'); gr.addColorStop(1, '#5a0e0a');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#e8b64a'; g.lineWidth = Math.max(3, w * 0.03); g.strokeRect(w * 0.04, w * 0.04, w * 0.92, h - w * 0.08);
+  g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = Math.max(1, w * 0.012);
+  g.strokeRect(w * 0.09, w * 0.09, w * 0.82, h - w * 0.18);
+
+  const padX = w * 0.16, maxW = w - padX * 2;
+  const family = '"Segoe UI", "Be Vietnam Pro", system-ui, sans-serif';
+  // cỡ chữ theo bề rộng tấm bảng, sau đó ngắt dòng cho vừa
+  let font = Math.round(w * 0.19);
+  g.font = `600 ${font}px ${family}`;
+  while (g.measureText('M').width > maxW * 0.55 && font > 10) { font -= 1; g.font = `600 ${font}px ${family}`; }
+
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let cur = '';
+  for (const word of words) {
+    const next = cur ? `${cur} ${word}` : word;
+    if (g.measureText(next).width > maxW && cur) { lines.push(cur); cur = word; } else cur = next;
+  }
+  if (cur) lines.push(cur);
+
+  const lineH = font * 1.42;
+  const totalH = lines.length * lineH;
+  const startY = (h - totalH) / 2 + lineH * 0.5;
+  g.fillStyle = '#f6d67c';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(0,0,0,.55)';
+  g.shadowBlur = 3;
+  lines.forEach((ln, i) => g.fillText(ln, w / 2, startY + i * lineH, maxW));
+
+  if (opts.title) {
+    g.fillStyle = '#e8b64a';
+    g.font = `700 ${Math.round(font * 1.15)}px ${family}`;
+    g.fillText(opts.title, w / 2, h * 0.06 + font * 0.6, maxW);
+  }
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+/** Hoành phi tiếng Việt: chữ vàng trên nền sơn mài đen, viền chỉ vàng. */
+export function vietnamesePlaqueTexture(text: string, w = 1024, h = 256) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#1b0d08'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#e8b64a'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
+  g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = 3; g.strokeRect(24, 24, w - 48, h - 48);
+  const family = '"Segoe UI", "Be Vietnam Pro", system-ui, sans-serif';
+  let font = Math.round(h * 0.46);
+  g.font = `700 ${font}px ${family}`;
+  while (g.measureText(text).width > w - 140 && font > 12) { font -= 2; g.font = `700 ${font}px ${family}`; }
+  g.fillStyle = '#f6d67c';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 4;
+  g.fillText(text, w / 2, h / 2 + 4, w - 140);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
 export function woodTexture(repeat: [number, number]) {
   return canvasTex(512, (g, s) => {
     g.fillStyle = '#8a5a34'; g.fillRect(0, 0, s, s);
