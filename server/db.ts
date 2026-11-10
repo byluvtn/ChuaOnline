@@ -1,33 +1,22 @@
-import { DatabaseSync } from 'node:sqlite';
+import { createClient } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { Outfit, Profile } from '../shared/types.js';
 
-const DEFAULT_DB = 'data/chuaonline.db';
-/**
- * Opens the SQLite file, creating its parent directory first. Falls back to the default local
- * path when DB_FILE points somewhere unwritable/missing (e.g. /var/data on a host without a
- * persistent disk attached), so the server still boots instead of crashing.
- */
-function openDb(): DatabaseSync {
-  const wanted = process.env.DB_FILE ? resolve(process.env.DB_FILE) : resolve(DEFAULT_DB);
-  for (const file of [wanted, resolve(DEFAULT_DB)]) {
-    try {
-      mkdirSync(dirname(file), { recursive: true });
-      return new DatabaseSync(file);
-    } catch (err) {
-      // Any filesystem/sqlite failure means this path is unusable (missing disk, read-only mount,
-      // unwritable dir). Try the next candidate rather than crashing at boot.
-      console.warn(`[db] cannot open ${file}: ${(err as Error).message}`);
-    }
+const localFile = process.env.DB_FILE ? process.env.DB_FILE : 'data/chuaonline.db';
+if (!process.env.TURSO_DATABASE_URL) {
+  try { mkdirSync(dirname(resolve(localFile)), { recursive: true }); } catch (err) {
+    console.warn(`[db] cannot create dir for ${localFile}: ${(err as Error).message}`);
   }
-  throw new Error('no writable SQLite path');
 }
-export const db = openDb();
-db.exec(`
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+export const db = createClient({
+  url: process.env.TURSO_DATABASE_URL ?? (process.env.DB_FILE ? `file:${process.env.DB_FILE}` : 'file:data/chuaonline.db'),
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+console.log(`[db] mode: ${process.env.TURSO_DATABASE_URL ? 'turso' : 'local file'}`);
+
+await db.executeMultiple(`
 CREATE TABLE IF NOT EXISTS players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE COLLATE NOCASE,
@@ -78,14 +67,20 @@ CREATE TABLE IF NOT EXISTS feedback (
 CREATE INDEX IF NOT EXISTS idx_merit ON players(merit DESC);
 CREATE INDEX IF NOT EXISTS idx_weekly ON players(week_key, weekly_merit DESC);
 `);
-try { db.exec('ALTER TABLE players ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
-/** Cấp quyền quản trị theo biến môi trường ADMIN_USERNAMES (phân tách bằng dấu phẩy); không hardcode mật khẩu. */
-export function syncAdmins() {
-  const names = String(process.env.ADMIN_USERNAMES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  db.prepare('UPDATE players SET is_admin = 0').run();
-  for (const n of names) db.prepare('UPDATE players SET is_admin = 1 WHERE username = ?').run(n);
+try { await db.execute('ALTER TABLE players ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
+try {
+  const fk = await db.execute('PRAGMA foreign_keys');
+  console.log(`[db] PRAGMA foreign_keys = ${JSON.stringify(fk.rows[0] ?? null)}`);
+} catch (err) {
+  console.warn(`[db] cannot read PRAGMA foreign_keys: ${(err as Error).message}`);
 }
-syncAdmins();
+/** Cấp quyền quản trị theo biến môi trường ADMIN_USERNAMES (phân tách bằng dấu phẩy); không hardcode mật khẩu. */
+export async function syncAdmins() {
+  const names = String(process.env.ADMIN_USERNAMES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  await db.execute('UPDATE players SET is_admin = 0');
+  for (const n of names) await db.execute({ sql: 'UPDATE players SET is_admin = 1 WHERE username = ?', args: [n] });
+}
+await syncAdmins();
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const now = () => Date.now();
@@ -110,150 +105,191 @@ const checkPw = (pw: string, stored: string) => {
 };
 
 // ---- sessions ----
-export function newSession(playerId: number): string {
-  syncAdmins();
+export async function newSession(playerId: number): Promise<string> {
+  await syncAdmins();
   const token = randomBytes(32).toString('hex');
-  db.prepare('INSERT INTO sessions (token_hash, player_id, created_at) VALUES (?,?,?)').run(sha(token), playerId, now());
+  await db.execute({ sql: 'INSERT INTO sessions (token_hash, player_id, created_at) VALUES (?,?,?)', args: [sha(token), playerId, now()] });
   return token;
 }
-export function playerIdByToken(token: unknown): number | null {
+export async function playerIdByToken(token: unknown): Promise<number | null> {
   if (typeof token !== 'string' || token.length < 32 || token.length > 128) return null;
-  const r = db.prepare('SELECT player_id FROM sessions WHERE token_hash = ?').get(sha(token)) as { player_id: number } | undefined;
-  return r?.player_id ?? null;
+  const r = (await db.execute({ sql: 'SELECT player_id FROM sessions WHERE token_hash = ?', args: [sha(token)] })).rows[0] as unknown as { player_id: number } | undefined;
+  return r ? Number(r.player_id) : null;
 }
 
 // ---- accounts ----
 const GUEST_NAMES = ['Chân Hạnh', 'Thiện Tâm', 'Minh Đạt', 'Từ Bi', 'An Nhiên', 'Tịnh Hòa', 'Diệu Hạnh', 'Hỷ Xả'];
-export function createGuest(): { token: string; id: number } {
+export async function createGuest(): Promise<{ token: string; id: number }> {
   const name = `${GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)]} ${Math.floor(Math.random() * 99) + 1}`;
-  const r = db.prepare('INSERT INTO players (name, created_at) VALUES (?,?)').run(name, now());
+  const r = await db.execute({ sql: 'INSERT INTO players (name, created_at) VALUES (?,?)', args: [name, now()] });
   const id = Number(r.lastInsertRowid);
-  return { id, token: newSession(id) };
+  return { id, token: await newSession(id) };
 }
 
 export const validUsername = (u: string) => /^[a-zA-Z0-9_]{3,20}$/.test(u);
 export const validPassword = (p: string) => typeof p === 'string' && p.length >= 6 && p.length <= 100;
 
 /** Upgrade an existing guest (by id) or create a fresh account. */
-export function register(username: string, password: string, guestId: number | null): { token: string } | { error: string } {
+export async function register(username: string, password: string, guestId: number | null): Promise<{ token: string } | { error: string }> {
   if (!validUsername(username)) return { error: 'Tên đăng nhập 3-20 ký tự: chữ, số, gạch dưới' };
   if (!validPassword(password)) return { error: 'Mật khẩu tối thiểu 6 ký tự' };
-  if (db.prepare('SELECT 1 FROM players WHERE username = ?').get(username)) return { error: 'Tên đăng nhập đã tồn tại' };
+  if ((await db.execute({ sql: 'SELECT 1 FROM players WHERE username = ?', args: [username] })).rows[0]) return { error: 'Tên đăng nhập đã tồn tại' };
   const hash = hashPw(password);
   if (guestId != null) {
-    const g = db.prepare('SELECT username FROM players WHERE id = ?').get(guestId) as { username: string | null } | undefined;
+    const g = (await db.execute({ sql: 'SELECT username FROM players WHERE id = ?', args: [guestId] })).rows[0] as unknown as { username: string | null } | undefined;
     if (g && g.username === null) {
-      db.prepare('UPDATE players SET username = ?, pass_hash = ? WHERE id = ?').run(username, hash, guestId);
-      return { token: newSession(guestId) };
+      await db.execute({ sql: 'UPDATE players SET username = ?, pass_hash = ? WHERE id = ?', args: [username, hash, guestId] });
+      return { token: await newSession(guestId) };
     }
   }
-  const r = db.prepare('INSERT INTO players (username, pass_hash, name, created_at) VALUES (?,?,?,?)').run(username, hash, username, now());
-  return { token: newSession(Number(r.lastInsertRowid)) };
+  const r = await db.execute({ sql: 'INSERT INTO players (username, pass_hash, name, created_at) VALUES (?,?,?,?)', args: [username, hash, username, now()] });
+  return { token: await newSession(Number(r.lastInsertRowid)) };
 }
 
-export function login(username: string, password: string): { token: string } | { error: string } {
-  const r = db.prepare('SELECT id, pass_hash FROM players WHERE username = ?').get(String(username)) as { id: number; pass_hash: string } | undefined;
+export async function login(username: string, password: string): Promise<{ token: string } | { error: string }> {
+  const r = (await db.execute({ sql: 'SELECT id, pass_hash FROM players WHERE username = ?', args: [String(username)] })).rows[0] as unknown as { id: number; pass_hash: string } | undefined;
   // constant-ish work even if user is missing
   const ok = r ? checkPw(String(password), r.pass_hash) : (scryptSync('x', 'y', 64), false);
   if (!r || !ok) return { error: 'Sai tên đăng nhập hoặc mật khẩu' };
-  return { token: newSession(r.id) };
+  return { token: await newSession(Number(r.id)) };
 }
 
-export function logoutToken(token: string) {
-  db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(sha(token));
+export async function logoutToken(token: string) {
+  await db.execute({ sql: 'DELETE FROM sessions WHERE token_hash = ?', args: [sha(token)] });
 }
 
 // ---- profile ----
 interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null; is_admin: number }
-export function getProfile(id: number): Profile | null {
-  const r = db.prepare('SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin FROM players WHERE id = ?').get(id) as Row | undefined;
+export async function getProfile(id: number): Promise<Profile | null> {
+  const r = (await db.execute({ sql: 'SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as Row | undefined;
   if (!r) return null;
   const inv: Record<string, number> = {};
-  for (const i of db.prepare('SELECT item_id, qty FROM inventory WHERE player_id = ? AND qty > 0').all(id) as { item_id: string; qty: number }[]) inv[i.item_id] = i.qty;
-  return { name: r.name, outfit: r.outfit, color: r.color, merit: r.merit, coins: r.coins, accessory: r.accessory, username: r.username, inventory: inv, admin: r.is_admin === 1 };
+  for (const i of (await db.execute({ sql: 'SELECT item_id, qty FROM inventory WHERE player_id = ? AND qty > 0', args: [id] })).rows as unknown as { item_id: string; qty: number }[]) inv[i.item_id] = Number(i.qty);
+  return { name: r.name, outfit: r.outfit, color: r.color, merit: Number(r.merit), coins: Number(r.coins), accessory: r.accessory, username: r.username, inventory: inv, admin: Number(r.is_admin) === 1 };
 }
 
-export function saveLook(id: number, name: string, outfit: Outfit, color: string) {
-  db.prepare('UPDATE players SET name = ?, outfit = ?, color = ? WHERE id = ?').run(name, outfit, color, id);
+export async function saveLook(id: number, name: string, outfit: Outfit, color: string) {
+  await db.execute({ sql: 'UPDATE players SET name = ?, outfit = ?, color = ? WHERE id = ?', args: [name, outfit, color, id] });
 }
 
-export function addRewards(id: number, merit: number, coins: number) {
+export async function addRewards(id: number, merit: number, coins: number) {
   const wk = weekKey();
-  db.prepare(`UPDATE players SET
+  await db.execute({
+    sql: `UPDATE players SET
       weekly_merit = CASE WHEN week_key = ? THEN weekly_merit + ? ELSE ? END,
-      week_key = ?, merit = merit + ?, coins = coins + ? WHERE id = ?`).run(wk, merit, merit, wk, merit, coins, id);
+      week_key = ?, merit = merit + ?, coins = coins + ? WHERE id = ?`,
+    args: [wk, merit, merit, wk, merit, coins, id],
+  });
 }
 
-export const itemQty = (id: number, item: string) =>
-  ((db.prepare('SELECT qty FROM inventory WHERE player_id = ? AND item_id = ?').get(id, item) as { qty: number } | undefined)?.qty ?? 0);
-export function addItem(id: number, item: string, delta: number) {
-  db.prepare(`INSERT INTO inventory (player_id, item_id, qty) VALUES (?,?,MAX(?,0))
-    ON CONFLICT(player_id, item_id) DO UPDATE SET qty = MAX(qty + ?, 0)`).run(id, item, delta, delta);
+export const itemQty = async (id: number, item: string): Promise<number> => {
+  const r = (await db.execute({ sql: 'SELECT qty FROM inventory WHERE player_id = ? AND item_id = ?', args: [id, item] })).rows[0] as unknown as { qty: number } | undefined;
+  return r ? Number(r.qty) : 0;
+};
+export async function addItem(id: number, item: string, delta: number) {
+  await db.execute({
+    sql: `INSERT INTO inventory (player_id, item_id, qty) VALUES (?,?,MAX(?,0))
+    ON CONFLICT(player_id, item_id) DO UPDATE SET qty = MAX(qty + ?, 0)`,
+    args: [id, item, delta, delta],
+  });
 }
-export function spendCoins(id: number, amount: number): boolean {
-  const r = db.prepare('UPDATE players SET coins = coins - ? WHERE id = ? AND coins >= ?').run(amount, id, amount);
-  return Number(r.changes) === 1;
+export async function spendCoins(id: number, amount: number): Promise<boolean> {
+  const r = await db.execute({ sql: 'UPDATE players SET coins = coins - ? WHERE id = ? AND coins >= ?', args: [amount, id, amount] });
+  return r.rowsAffected === 1;
 }
-export function setAccessory(id: number, item: string | null) {
-  db.prepare('UPDATE players SET accessory = ? WHERE id = ?').run(item, id);
+/**
+ * Trừ xu và cộng vật phẩm trong cùng một transaction: hoặc cả hai thành công, hoặc không gì thay đổi.
+ * Trả về false khi không đủ xu (không ghi gì cả).
+ */
+export async function purchase(id: number, item: string, qty: number, cost: number): Promise<boolean> {
+  const tx = await db.transaction('write');
+  try {
+    const r = await tx.execute({ sql: 'UPDATE players SET coins = coins - ? WHERE id = ? AND coins >= ?', args: [cost, id, cost] });
+    if (r.rowsAffected !== 1) { await tx.rollback(); return false; }
+    await tx.execute({
+      sql: `INSERT INTO inventory (player_id, item_id, qty) VALUES (?,?,MAX(?,0))
+    ON CONFLICT(player_id, item_id) DO UPDATE SET qty = MAX(qty + ?, 0)`,
+      args: [id, item, qty, qty],
+    });
+    await tx.commit();
+    return true;
+  } catch (err) {
+    try { await tx.rollback(); } catch { /* đã đóng */ }
+    throw err;
+  } finally {
+    tx.close();
+  }
+}
+export async function setAccessory(id: number, item: string | null) {
+  await db.execute({ sql: 'UPDATE players SET accessory = ? WHERE id = ?', args: [item, id] });
 }
 
 // ---- quests ----
 /** Khoá phiên nhiệm vụ: nhiệm vụ ngày dùng day_key, nhiệm vụ tuần (id `w_…`) dùng week_key. */
 export const questKey = (questId: string, d = new Date()) => (questId.startsWith('w_') ? weekKey(d) : dayKey(d));
-export function questRows(id: number) {
-  return db.prepare('SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?)')
-    .all(id, dayKey(), weekKey()) as { quest_id: string; progress: number; claimed: number }[];
+export async function questRows(id: number) {
+  const rows = (await db.execute({ sql: 'SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?)', args: [id, dayKey(), weekKey()] })).rows as unknown as { quest_id: string; progress: number; claimed: number }[];
+  return rows.map((r) => ({ quest_id: r.quest_id, progress: Number(r.progress), claimed: Number(r.claimed) }));
 }
-export function bumpQuest(id: number, questId: string, target: number, by = 1) {
-  db.prepare(`INSERT INTO quest_progress (player_id, day_key, quest_id, progress) VALUES (?,?,?,MIN(?,?))
-    ON CONFLICT(player_id, day_key, quest_id) DO UPDATE SET progress = MIN(progress + ?, ?) WHERE claimed = 0`)
-    .run(id, questKey(questId), questId, by, target, by, target);
+export async function bumpQuest(id: number, questId: string, target: number, by = 1) {
+  await db.execute({
+    sql: `INSERT INTO quest_progress (player_id, day_key, quest_id, progress) VALUES (?,?,?,MIN(?,?))
+    ON CONFLICT(player_id, day_key, quest_id) DO UPDATE SET progress = MIN(progress + ?, ?) WHERE claimed = 0`,
+    args: [id, questKey(questId), questId, by, target, by, target],
+  });
 }
 /** Returns true if the claim was valid (done and not claimed yet). */
-export function claimQuest(id: number, questId: string, target: number): boolean {
-  const r = db.prepare(`UPDATE quest_progress SET claimed = 1
-    WHERE player_id = ? AND day_key = ? AND quest_id = ? AND progress >= ? AND claimed = 0`)
-    .run(id, questKey(questId), questId, target);
-  return Number(r.changes) === 1;
+export async function claimQuest(id: number, questId: string, target: number): Promise<boolean> {
+  const r = await db.execute({
+    sql: `UPDATE quest_progress SET claimed = 1
+    WHERE player_id = ? AND day_key = ? AND quest_id = ? AND progress >= ? AND claimed = 0`,
+    args: [id, questKey(questId), questId, target],
+  });
+  return r.rowsAffected === 1;
 }
 
 // ---- level milestone rewards ----
-db.exec(`CREATE TABLE IF NOT EXISTS level_rewards (
+await db.execute(`CREATE TABLE IF NOT EXISTS level_rewards (
   player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
   level INTEGER NOT NULL,
   PRIMARY KEY (player_id, level)
-);`);
+)`);
 /** Ghi nhận mốc cấp đã thưởng; true nếu lần đầu đạt cấp này. */
-export function claimLevelReward(id: number, level: number): boolean {
-  const r = db.prepare('INSERT OR IGNORE INTO level_rewards (player_id, level) VALUES (?,?)').run(id, level);
-  return Number(r.changes) === 1;
+export async function claimLevelReward(id: number, level: number): Promise<boolean> {
+  const r = await db.execute({ sql: 'INSERT OR IGNORE INTO level_rewards (player_id, level) VALUES (?,?)', args: [id, level] });
+  return r.rowsAffected === 1;
 }
 
 // ---- ranking ----
-export function topAllTime(limit = 20) {
-  return db.prepare('SELECT name, merit FROM players WHERE merit > 0 ORDER BY merit DESC LIMIT ?').all(limit) as { name: string; merit: number }[];
+export async function topAllTime(limit = 20) {
+  const rows = (await db.execute({ sql: 'SELECT name, merit FROM players WHERE merit > 0 ORDER BY merit DESC LIMIT ?', args: [limit] })).rows as unknown as { name: string; merit: number }[];
+  return rows.map((r) => ({ name: r.name, merit: Number(r.merit) }));
 }
-export function topWeekly(limit = 20) {
-  return db.prepare('SELECT name, weekly_merit AS merit FROM players WHERE week_key = ? AND weekly_merit > 0 ORDER BY weekly_merit DESC LIMIT ?')
-    .all(weekKey(), limit) as { name: string; merit: number }[];
+export async function topWeekly(limit = 20) {
+  const rows = (await db.execute({ sql: 'SELECT name, weekly_merit AS merit FROM players WHERE week_key = ? AND weekly_merit > 0 ORDER BY weekly_merit DESC LIMIT ?', args: [weekKey(), limit] })).rows as unknown as { name: string; merit: number }[];
+  return rows.map((r) => ({ name: r.name, merit: Number(r.merit) }));
 }
 
 // ---- mini-games ----
 /** Atomically consume one daily reward slot; false when the daily cap is reached. */
-export function claimMinigame(id: number, game: string, cap: number): boolean {
-  const r = db.prepare(`INSERT INTO minigame_daily (player_id, day_key, game, count) VALUES (?,?,?,1)
-    ON CONFLICT(player_id, day_key, game) DO UPDATE SET count = count + 1 WHERE count < ?`).run(id, dayKey(), game, cap);
-  return Number(r.changes) === 1;
+export async function claimMinigame(id: number, game: string, cap: number): Promise<boolean> {
+  const r = await db.execute({
+    sql: `INSERT INTO minigame_daily (player_id, day_key, game, count) VALUES (?,?,?,1)
+    ON CONFLICT(player_id, day_key, game) DO UPDATE SET count = count + 1 WHERE count < ?`,
+    args: [id, dayKey(), game, cap],
+  });
+  return r.rowsAffected === 1;
 }
-export const minigameCount = (id: number, game: string) =>
-  ((db.prepare('SELECT count FROM minigame_daily WHERE player_id = ? AND day_key = ? AND game = ?').get(id, dayKey(), game) as { count: number } | undefined)?.count ?? 0);
+export const minigameCount = async (id: number, game: string): Promise<number> => {
+  const r = (await db.execute({ sql: 'SELECT count FROM minigame_daily WHERE player_id = ? AND day_key = ? AND game = ?', args: [id, dayKey(), game] })).rows[0] as unknown as { count: number } | undefined;
+  return r ? Number(r.count) : 0;
+};
 
 // ---- feedback ----
-export function saveFeedback(id: number, text: string, contact: string): boolean {
+export async function saveFeedback(id: number, text: string, contact: string): Promise<boolean> {
   // at most 5 messages per player per 24h, bounded size
-  const n = db.prepare('SELECT COUNT(*) AS n FROM feedback WHERE player_id = ? AND created_at > ?').get(id, now() - 86_400_000) as { n: number };
-  if (n.n >= 5) return false;
-  db.prepare('INSERT INTO feedback (player_id, text, contact, created_at) VALUES (?,?,?,?)').run(id, text.slice(0, 500), contact.slice(0, 100), now());
+  const n = (await db.execute({ sql: 'SELECT COUNT(*) AS n FROM feedback WHERE player_id = ? AND created_at > ?', args: [id, now() - 86_400_000] })).rows[0] as unknown as { n: number };
+  if (Number(n.n) >= 5) return false;
+  await db.execute({ sql: 'INSERT INTO feedback (player_id, text, contact, created_at) VALUES (?,?,?,?)', args: [id, text.slice(0, 500), contact.slice(0, 100), now()] });
   return true;
 }

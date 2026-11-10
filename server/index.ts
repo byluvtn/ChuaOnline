@@ -53,19 +53,19 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     try { b = await readJson(req); } catch { return send(res, 400, { error: 'bad request' }); }
     const bearer = String(req.headers.authorization ?? '').replace(/^Bearer /, '');
     switch (url.pathname) {
-      case '/api/guest': return send(res, 200, { token: db.createGuest().token });
+      case '/api/guest': return send(res, 200, { token: (await db.createGuest()).token });
       case '/api/register': {
-        const r = db.register(String(b.username ?? ''), String(b.password ?? ''), db.playerIdByToken(bearer));
+        const r = await db.register(String(b.username ?? ''), String(b.password ?? ''), await db.playerIdByToken(bearer));
         return send(res, 'error' in r ? 400 : 200, r);
       }
       case '/api/login': {
-        const r = db.login(String(b.username ?? ''), String(b.password ?? ''));
+        const r = await db.login(String(b.username ?? ''), String(b.password ?? ''));
         return send(res, 'error' in r ? 401 : 200, r);
       }
-      case '/api/logout': db.logoutToken(bearer); return send(res, 200, {});
+      case '/api/logout': await db.logoutToken(bearer); return send(res, 200, {});
       case '/api/me': {
-        const id = db.playerIdByToken(bearer);
-        const p = id ? db.getProfile(id) : null;
+        const id = await db.playerIdByToken(bearer);
+        const p = id ? await db.getProfile(id) : null;
         return p ? send(res, 200, p) : send(res, 401, { error: 'invalid session' });
       }
     }
@@ -109,47 +109,47 @@ const roomOk = (id: string) => ROOMS.some((r) => r.id === id);
 function roomList(): RoomInfo[] {
   return ROOMS.map((r) => ({ id: r.id, name: r.name, online: roomSessions(r.id).length, capacity: ROOM_CAPACITY }));
 }
-function questList(pid: number): QuestState[] {
-  const rows = new Map(db.questRows(pid).map((r) => [r.quest_id, r]));
+async function questList(pid: number): Promise<QuestState[]> {
+  const rows = new Map((await db.questRows(pid)).map((r) => [r.quest_id, r]));
   const map = (q: (typeof QUESTS)[number]) => ({
     id: q.id, label: q.label, target: q.target, coins: q.coins, merit: q.merit,
     progress: rows.get(q.id)?.progress ?? 0, claimed: !!rows.get(q.id)?.claimed,
   });
   return [...QUESTS, ...WEEKLY_QUESTS].map(map);
 }
-function pushProfile(s: Session) {
-  const p = db.getProfile(s.pid);
+async function pushProfile(s: Session) {
+  const p = await db.getProfile(s.pid);
   if (!p) return;
   s.state.merit = p.merit;
   s.state.accessory = p.accessory;
   s.socket.emit('profile', p);
 }
-function pushQuests(s: Session) { s.socket.emit('quests', questList(s.pid)); }
-function questEvent(s: Session, ev: QuestEvent, by = 1) {
-  for (const q of [...QUESTS, ...WEEKLY_QUESTS]) if (q.event === ev) db.bumpQuest(s.pid, q.id, q.target, by);
-  pushQuests(s);
+async function pushQuests(s: Session) { s.socket.emit('quests', await questList(s.pid)); }
+async function questEvent(s: Session, ev: QuestEvent, by = 1) {
+  for (const q of [...QUESTS, ...WEEKLY_QUESTS]) if (q.event === ev) await db.bumpQuest(s.pid, q.id, q.target, by);
+  await pushQuests(s);
 }
 /** Cộng thưởng + đếm quest 'merit' (nhiệm vụ tuần tích công đức). */
-function grantRewards(s: Session, merit: number, coins: number) {
-  const before = db.getProfile(s.pid)?.merit ?? 0;
+async function grantRewards(s: Session, merit: number, coins: number) {
+  const before = (await db.getProfile(s.pid))?.merit ?? 0;
   const lvBefore = levelOf(before);
-  db.addRewards(s.pid, merit, coins);
-  questEvent(s, 'merit', merit);
-  const after = db.getProfile(s.pid)?.merit ?? 0;
+  await db.addRewards(s.pid, merit, coins);
+  await questEvent(s, 'merit', merit);
+  const after = (await db.getProfile(s.pid))?.merit ?? 0;
   const lvAfter = levelOf(after);
-  if (lvAfter > lvBefore && db.claimLevelReward(s.pid, lvAfter)) {
-    db.addRewards(s.pid, LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore), LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore));
+  if (lvAfter > lvBefore && (await db.claimLevelReward(s.pid, lvAfter))) {
+    await db.addRewards(s.pid, LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore), LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore));
     s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
   }
-  pushProfile(s);
+  await pushProfile(s);
 }
 function meditationInfo(room: string) {
   const sitting = roomSessions(room).filter((s) => s.state.anim === 'sit').length;
   return { sitting, minutes: Math.floor(roomMinutes.get(room) ?? 0), goal: MEDITATE_GOAL_MIN, bonus: sitting >= GROUP_MEDITATE_MIN };
 }
-function rankings(): { weekly: RankRow[]; all: RankRow[] } {
+async function rankings(): Promise<{ weekly: RankRow[]; all: RankRow[] }> {
   const f = (r: { name: string; merit: number }): RankRow => ({ name: r.name, merit: r.merit, level: levelOf(r.merit) });
-  return { weekly: db.topWeekly().map(f), all: db.topAllTime().map(f) };
+  return { weekly: (await db.topWeekly()).map(f), all: (await db.topAllTime()).map(f) };
 }
 
 function leaveRoom(s: Session) {
@@ -158,10 +158,11 @@ function leaveRoom(s: Session) {
 }
 
 io.use((socket, next) => {
-  const pid = db.playerIdByToken(socket.handshake.auth?.token);
-  if (!pid) return next(new Error('unauthorized'));
-  socket.data.pid = pid;
-  next();
+  db.playerIdByToken(socket.handshake.auth?.token).then((pid) => {
+    if (!pid) return next(new Error('unauthorized'));
+    socket.data.pid = pid;
+    next();
+  }).catch(() => next(new Error('unauthorized')));
 });
 
 io.on('connection', (socket) => {
@@ -171,8 +172,8 @@ io.on('connection', (socket) => {
     if (other.pid === pid) { other.socket.emit('kicked'); other.socket.disconnect(true); sessions.delete(id); }
   }
 
-  socket.on('join', (p: { name?: string; outfit?: Outfit; color?: string; room?: string }) => {
-    const prof = db.getProfile(pid);
+  socket.on('join', async (p: { name?: string; outfit?: Outfit; color?: string; room?: string }) => {
+    const prof = await db.getProfile(pid);
     if (!prof) return socket.disconnect(true);
     const old = sessions.get(socket.id);
     if (old) leaveRoom(old);
@@ -186,7 +187,7 @@ io.on('connection', (socket) => {
     const name = clean(p?.name, 24) || prof.name;
     const outfit = OUTFITS.includes(p?.outfit as Outfit) ? (p!.outfit as Outfit) : prof.outfit;
     const color = cleanColor(p?.color ?? prof.color);
-    db.saveLook(pid, name, outfit, color);
+    await db.saveLook(pid, name, outfit, color);
 
     const state: PlayerState = {
       id: socket.id, name, outfit, color, accessory: prof.accessory,
@@ -206,10 +207,10 @@ io.on('connection', (socket) => {
       meditation: meditationInfo(room),
     });
     socket.to(room).emit('player:join', state);
-    pushProfile(s);
-    pushQuests(s);
+    await pushProfile(s);
+    await pushQuests(s);
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
-    if (s.lastRoom !== room) { s.lastRoom = room; questEvent(s, 'room'); }
+    if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
 
   const me = () => sessions.get(socket.id);
@@ -223,7 +224,7 @@ io.on('connection', (socket) => {
     if (ANIMS.includes(m.anim)) s.state.anim = m.anim;
   });
 
-  socket.on('chat', (text: string) => {
+  socket.on('chat', async (text: string) => {
     const s = me();
     const t = clean(text, 200);
     if (!s || !t || Date.now() - (s.last.chat ?? 0) < 800) return;
@@ -234,10 +235,10 @@ io.on('connection', (socket) => {
     if (arr.length > 100) arr.shift();
     roomChat.set(s.room, arr);
     io.to(s.room).emit('chat', msg);
-    questEvent(s, 'chat');
+    await questEvent(s, 'chat');
   });
 
-  socket.on('action', (kind: ActionKind, wish?: string) => {
+  socket.on('action', async (kind: ActionKind, wish?: string) => {
     const s = me();
     const rule = ACTION_RULES[kind];
     if (!s || !rule) return;
@@ -249,8 +250,8 @@ io.on('connection', (socket) => {
     // vật phẩm tăng công đức: dùng món boost đang có (ưu tiên món đầu tiên trong danh sách)
     for (const boostId of rule.boostItems ?? []) {
       const boost = ITEM_BY_ID[boostId];
-      if (boost && db.itemQty(pid, boostId) > 0) {
-        db.addItem(pid, boostId, -1);
+      if (boost && (await db.itemQty(pid, boostId)) > 0) {
+        await db.addItem(pid, boostId, -1);
         merit = Math.max(merit, boost.boostMerit ?? merit);
         break;
       }
@@ -265,12 +266,12 @@ io.on('connection', (socket) => {
       roomLanterns.set(s.room, arr);
       io.to(s.room).emit('lantern', l);
     }
-    grantRewards(s, merit, 1);
-    questEvent(s, kind);
+    await grantRewards(s, merit, 1);
+    await questEvent(s, kind);
   });
 
   /** Hoàn thành một bài kinh trong cửa sổ tụng kinh: cộng đức theo ACTION_RULES.chant. */
-  socket.on('sutra:done', (sutraId: string, cb?: (r: { ok: boolean; merit?: number; error?: string }) => void) => {
+  socket.on('sutra:done', async (sutraId: string, cb?: (r: { ok: boolean; merit?: number; error?: string }) => void) => {
     const s = me();
     const sutra = SUTRAS.find((x) => x.id === sutraId);
     if (!s || !sutra) return cb?.({ ok: false, error: 'Bài kinh không hợp lệ' });
@@ -281,73 +282,72 @@ io.on('connection', (socket) => {
     let merit = rule.merit;
     for (const boostId of rule.boostItems ?? []) {
       const boost = ITEM_BY_ID[boostId];
-      if (boost && db.itemQty(pid, boostId) > 0) {
-        db.addItem(pid, boostId, -1);
+      if (boost && (await db.itemQty(pid, boostId)) > 0) {
+        await db.addItem(pid, boostId, -1);
         merit = Math.max(merit, boost.boostMerit ?? merit);
         break;
       }
     }
     s.state.anim = 'chant';
     io.to(s.room).emit('player:action', { id: s.state.id, kind: 'chant' });
-    grantRewards(s, merit, 0);
-    questEvent(s, 'chant');
-    questEvent(s, 'sutra');
+    await grantRewards(s, merit, 0);
+    await questEvent(s, 'chant');
+    await questEvent(s, 'sutra');
     cb?.({ ok: true, merit });
   });
 
-  const buyItem = (itemId: string, qty: number) => {
+  const buyItem = async (itemId: string, qty: number) => {
     const item = ITEM_BY_ID[String(itemId)];
     if (!item) return { ok: false as const, error: 'Vật phẩm không tồn tại' };
-    const lvl = levelOf(db.getProfile(pid)?.merit ?? 0);
+    const lvl = levelOf((await db.getProfile(pid))?.merit ?? 0);
     if (item.minLevel && lvl < item.minLevel) return { ok: false as const, error: `Cần cấp ${item.minLevel} để mua` };
-    if (item.kind === 'accessory' && db.itemQty(pid, item.id) > 0) return { ok: false as const, error: 'Bạn đã sở hữu' };
+    if (item.kind === 'accessory' && (await db.itemQty(pid, item.id)) > 0) return { ok: false as const, error: 'Bạn đã sở hữu' };
     const cost = item.price * qty;
-    if (!db.spendCoins(pid, cost)) return { ok: false as const, error: 'Không đủ xu' };
-    db.addItem(pid, item.id, qty);
+    if (!(await db.purchase(pid, item.id, qty, cost))) return { ok: false as const, error: 'Không đủ xu' };
     return { ok: true as const };
   };
 
-  socket.on('shop:buy', (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
+  socket.on('shop:buy', async (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
-    const r = buyItem(itemId, 1);
-    if (r.ok) { questEvent(s, 'buy'); pushProfile(s); }
+    const r = await buyItem(itemId, 1);
+    if (r.ok) { await questEvent(s, 'buy'); await pushProfile(s); }
     cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
   });
 
   /** Mua 5 món consumable: giá = 5 × giá lẻ. */
-  socket.on('shop:buy5', (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
+  socket.on('shop:buy5', async (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const item = ITEM_BY_ID[String(itemId)];
     if (!item) return cb?.({ ok: false, error: 'Vật phẩm không tồn tại' });
     if (item.kind !== 'consumable') return cb?.({ ok: false, error: 'Mua 5 chỉ áp dụng cho vật phẩm tiêu hao' });
-    const r = buyItem(itemId, 5);
-    if (r.ok) { questEvent(s, 'buy', 1); pushProfile(s); }
+    const r = await buyItem(itemId, 5);
+    if (r.ok) { await questEvent(s, 'buy', 1); await pushProfile(s); }
     cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
   });
 
-  socket.on('inv:equip', (itemId: string | null) => {
+  socket.on('inv:equip', async (itemId: string | null) => {
     const s = me();
     if (!s) return;
-    if (itemId === null) db.setAccessory(pid, null);
+    if (itemId === null) await db.setAccessory(pid, null);
     else {
       const item = ITEM_BY_ID[String(itemId)];
-      if (!item || item.kind !== 'accessory' || db.itemQty(pid, item.id) < 1) return;
-      db.setAccessory(pid, item.id);
+      if (!item || item.kind !== 'accessory' || (await db.itemQty(pid, item.id)) < 1) return;
+      await db.setAccessory(pid, item.id);
     }
-    pushProfile(s);
+    await pushProfile(s);
     io.to(s.room).emit('player:look', { id: s.state.id, accessory: s.state.accessory });
   });
 
-  socket.on('quest:claim', (qid: string) => {
+  socket.on('quest:claim', async (qid: string) => {
     const s = me();
     const q = [...QUESTS, ...WEEKLY_QUESTS].find((x) => x.id === qid);
     if (!s || !q) return;
-    if (db.claimQuest(pid, q.id, q.target)) {
-      db.addRewards(pid, q.merit, q.coins);
-      pushProfile(s);
-      pushQuests(s);
+    if (await db.claimQuest(pid, q.id, q.target)) {
+      await db.addRewards(pid, q.merit, q.coins);
+      await pushProfile(s);
+      await pushQuests(s);
     }
   });
 
@@ -357,21 +357,21 @@ io.on('connection', (socket) => {
     memory: { merit: 2, coins: 5, cap: 5 },
   } as const;
   const MG_COOLDOWN_MS = 20_000;
-  socket.on('minigame:reward', (game: string, cb?: (r: { ok: boolean; merit?: number; coins?: number; left?: number; error?: string }) => void) => {
+  socket.on('minigame:reward', async (game: string, cb?: (r: { ok: boolean; merit?: number; coins?: number; left?: number; error?: string }) => void) => {
     const s = me();
     if (!s || (game !== 'moh' && game !== 'memory')) return cb?.({ ok: false, error: 'Trò chơi không hợp lệ' });
     const rule = MINIGAMES[game];
     const key = `mg:${game}` as const;
     const now = Date.now();
     if (now - (s.last[key] ?? 0) < MG_COOLDOWN_MS) return cb?.({ ok: false, error: 'Bạn thao tác hơi nhanh, hãy thong thả' });
-    if (!db.claimMinigame(pid, game, rule.cap)) return cb?.({ ok: false, error: 'Hôm nay bạn đã nhận đủ phần thưởng trò chơi này', left: 0 });
+    if (!(await db.claimMinigame(pid, game, rule.cap))) return cb?.({ ok: false, error: 'Hôm nay bạn đã nhận đủ phần thưởng trò chơi này', left: 0 });
     s.last[key] = now;
-    db.addRewards(pid, rule.merit, rule.coins);
-    pushProfile(s);
-    cb?.({ ok: true, merit: rule.merit, coins: rule.coins, left: rule.cap - db.minigameCount(pid, game) });
+    await db.addRewards(pid, rule.merit, rule.coins);
+    await pushProfile(s);
+    cb?.({ ok: true, merit: rule.merit, coins: rule.coins, left: rule.cap - (await db.minigameCount(pid, game)) });
   });
 
-  socket.on('feedback:send', (p: { text?: string; contact?: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {
+  socket.on('feedback:send', async (p: { text?: string; contact?: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const text = clean(p?.text, 500);
@@ -379,12 +379,12 @@ io.on('connection', (socket) => {
     if (text.length < 5) return cb?.({ ok: false, error: 'Góp ý cần tối thiểu 5 ký tự' });
     const now = Date.now();
     if (now - (s.last.feedback ?? 0) < 60_000) return cb?.({ ok: false, error: 'Vui lòng đợi một phút trước khi gửi tiếp' });
-    if (!db.saveFeedback(pid, text, contact)) return cb?.({ ok: false, error: 'Hôm nay bạn đã gửi nhiều góp ý, mai hãy gửi tiếp nhé' });
+    if (!(await db.saveFeedback(pid, text, contact))) return cb?.({ ok: false, error: 'Hôm nay bạn đã gửi nhiều góp ý, mai hãy gửi tiếp nhé' });
     s.last.feedback = now;
     cb?.({ ok: true });
   });
 
-  socket.on('rank:get', (cb?: (r: ReturnType<typeof rankings>) => void) => cb?.(rankings()));
+  socket.on('rank:get', async (cb?: (r: Awaited<ReturnType<typeof rankings>>) => void) => cb?.(await rankings()));
   socket.on('rooms:list', (cb?: (r: RoomInfo[]) => void) => cb?.(roomList()));
 
   socket.on('disconnect', () => {
@@ -408,15 +408,15 @@ setInterval(() => {
 }, 100);
 
 // meditation: every tick, seated players earn merit; group bonus doubles it
-setInterval(() => {
+setInterval(async () => {
   for (const r of ROOMS) {
     const sitting = roomSessions(r.id).filter((s) => s.state.anim === 'sit');
     if (!sitting.length) { io.to(r.id).emit('meditation', meditationInfo(r.id)); continue; }
     const bonus = sitting.length >= GROUP_MEDITATE_MIN;
     roomMinutes.set(r.id, (roomMinutes.get(r.id) ?? 0) + (sitting.length * MEDITATE_TICK_MS) / 60_000);
     for (const s of sitting) {
-      grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0);
-      questEvent(s, 'meditate');
+      await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0).catch((e) => console.warn('[meditate]', (e as Error).message));
+      await questEvent(s, 'meditate').catch((e) => console.warn('[meditate]', (e as Error).message));
     }
     io.to(r.id).emit('meditation', meditationInfo(r.id));
   }

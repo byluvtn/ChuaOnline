@@ -9,8 +9,11 @@ services:
     startCommand: npm start
     healthCheckPath: /
     envVars:
-      # Node >= 22.13 is required: node:sqlite is only exposed by default from this version on.
       - key: NODE_VERSION
         value: 22.14.0
-      # Free plan has no persistent disk: the SQLite file lives in the project dir and resets on
-      # each deploy. Attach a disk (paid) and set DB_FILE=/var/data/chuaonline.db to keep data.
+      # Player DB lives on Turso (libSQL), not on the ephemeral Render disk.
+      # Set both values in the Render dashboard; if unset, the server falls back to a local file.
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
