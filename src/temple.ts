@@ -165,20 +165,63 @@ export function buildTemple(c: TempleCtx) {
       const st = new THREE.Mesh(new THREE.BoxGeometry(5.6 - i * 0.7, 0.4, 5.6 - i * 0.7), stoneM);
       st.position.y = 0.2 + i * 0.4; st.castShadow = st.receiveShadow = true; st.userData.sealable = true; t.add(st);
     }
-    const by = 0.8, P: [number, number][] = [[-1.9, -1.9], [1.9, -1.9], [-1.9, 1.9], [1.9, 1.9]];
+    /*
+     * NGÔN NGỮ KẾT CẤU CHUẨN CHO MỌI THÁP (chuông, trống và các tháp sau này):
+     *   bệ đá 2 tầng → chân cột đá → cột đỏ → xà dưới → xà trên → đấu củng (khối đỡ)
+     *   → vành xà đỡ mái → mái tầng 1 → cổ mái vuông → mái tầng 2 → cổ chóp → chóp vàng.
+     * Quy tắc: mỗi cấu kiện phải CHẠM (hoặc ăn sâu vào) cấu kiện liền kề theo chiều đứng,
+     * không cấu kiện nào lơ lửng; mọi mối nối đều đánh dấu sealable để sealArchitectureJoints bù.
+     */
+    const by = 0.8, H = 1.9, P: [number, number][] = [[-H, -H], [H, -H], [-H, H], [H, H]];
+    const stone = (w: number, h: number, dp: number, x: number, y: number, z: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), stoneM);
+      m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; t.add(m); return m;
+    };
+    const red = (w: number, h: number, dp: number, x: number, y: number, z: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), c.redM);
+      m.position.set(x, y, z); m.castShadow = true; m.userData.sealable = true; t.add(m); return m;
+    };
+    const colBase = by + 0.3, colTop = by + 4.5;
     for (const [px, pz] of P) {
-      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 4.6, 12), c.redM);
-      p.position.set(px, by + 2.25, pz); p.castShadow = true; p.userData.sealable = true; t.add(p);
+      stone(0.72, 0.4, 0.72, px, by + 0.2, pz);
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, colTop - colBase + 0.1, 12), c.redM);
+      p.position.set(px, (colBase + colTop) / 2, pz); p.castShadow = true; p.userData.sealable = true; t.add(p);
     }
-    for (const y of [by + 4.45, by + 3.3]) for (const s of [-1.9, 1.9]) {
-      const bx = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.2, 0.22), c.redM); bx.position.set(0, y, s); bx.userData.sealable = true; t.add(bx);
-      const bz = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.2, 4.3), c.redM); bz.position.set(s, y, 0); bz.userData.sealable = true; t.add(bz);
+    const beamLow = by + 3.3, beamHigh = by + 4.45;
+    for (const y of [beamLow, beamHigh]) for (const s of [-H, H]) {
+      red(2 * H + 0.5, 0.24, 0.26, 0, y, s);
+      red(0.26, 0.24, 2 * H + 0.5, s, y, 0);
     }
-    const r1 = new THREE.Mesh(c.roofGeometry(8.2, 8.2, 2.1, 0.8), c.tileM); r1.position.y = by + 5.55; r1.castShadow = true; r1.userData.sealable = true; t.add(r1);
-    const r2 = new THREE.Mesh(c.roofGeometry(5.4, 5.4, 1.5, 0.55), c.tileM); r2.position.y = by + 6.95; r2.castShadow = true; r2.userData.sealable = true; t.add(r2);
-    const fin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.1, 8), c.goldM); fin.position.y = by + 7.9; fin.userData.sealable = true; t.add(fin);
+    for (const [px, pz] of P) red(0.6, 0.3, 0.6, px, beamHigh + 0.26, pz);
+    const ringY = beamHigh + 0.55;
+    for (const s of [-H, H]) {
+      red(2 * H + 1.2, 0.2, 0.34, 0, ringY, s);
+      red(0.34, 0.2, 2 * H + 1.2, s, ringY, 0);
+    }
+    const r1H = 2.1, r1Y = ringY + 0.1 + r1H / 2 - 0.2;
+    const r1 = new THREE.Mesh(c.roofGeometry(8.2, 8.2, r1H, 0.8), c.tileM); r1.position.y = r1Y; r1.castShadow = true; r1.userData.sealable = true; t.add(r1);
+    const NK = 1.3, neckH = 1.5, neckY = r1Y + r1H / 2 - 0.2 + neckH / 2;
+    for (const [px, pz] of [[-NK, -NK], [NK, -NK], [-NK, NK], [NK, NK]] as [number, number][]) {
+      const nc = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, neckH + 0.1, 10), c.redM);
+      nc.position.set(px, neckY, pz); nc.castShadow = true; nc.userData.sealable = true; t.add(nc);
+    }
+    for (const y of [neckY - neckH / 2 + 0.12, neckY + neckH / 2 - 0.12]) for (const s of [-NK, NK]) {
+      red(2 * NK + 0.4, 0.2, 0.22, 0, y, s);
+      red(0.22, 0.2, 2 * NK + 0.4, s, y, 0);
+    }
+    const panelH = neckH * 0.42, panelY = neckY - neckH / 2 + 0.12 + panelH / 2 + 0.1;
+    for (const s of [-NK, NK]) {
+      red(2 * NK, panelH, 0.12, 0, panelY, s);
+      red(0.12, panelH, 2 * NK, s, panelY, 0);
+    }
+    const r2H = 1.5, r2Y = neckY + neckH / 2 + r2H / 2 - 0.3;
+    const r2 = new THREE.Mesh(c.roofGeometry(5.4, 5.4, r2H, 0.55), c.tileM); r2.position.y = r2Y; r2.castShadow = true; r2.userData.sealable = true; t.add(r2);
+    const finBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.4, 8), c.goldM);
+    finBase.position.y = r2Y + r2H / 2 + 0.1; finBase.userData.sealable = true; t.add(finBase);
+    const fin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.1, 8), c.goldM);
+    fin.position.y = r2Y + r2H / 2 + 0.6; fin.userData.sealable = true; t.add(fin);
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.7), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
-    sg.position.set(0, by + 4.95, 2.2); t.add(sg);
+    sg.position.set(0, beamHigh - 0.55, H + 0.3); t.add(sg);
     if (coupletId) {
       for (let i = 0; i < 2; i++) {
         labelBoard(t, COLUMN_LABELS[coupletId as 'chuong' | 'trong'][i], 0.46, 2.6, i ? -1.9 : 1.9, by + 2.25, 2.19);
@@ -196,12 +239,12 @@ export function buildTemple(c: TempleCtx) {
   const bt = tower(BELL.x, BELL.z, Math.PI / 2, 'THÁP CHUÔNG', 'chuong');
   const bronze = lamb(0xa8741f, { metalness: 0.7, roughness: 0.38, side: THREE.DoubleSide });
   const prof = [[0.2, 0], [0.5, 0.05], [0.62, 0.5], [0.7, 1.05], [0.9, 1.45], [0.95, 1.55], [0.78, 1.52]].map(([x, y]) => new THREE.Vector2(x, y));
-  const bellPivot = new THREE.Group(); bellPivot.position.set(0, bt.by + 4.25, 0);
+  const bellPivot = new THREE.Group(); bellPivot.position.set(0, bt.by + 3.55, 0);
   const bell = new THREE.Mesh(new THREE.LatheGeometry(prof, 24), bronze); bell.position.y = -1.6; bell.scale.setScalar(1.05); bell.castShadow = true; bellPivot.add(bell);
   const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 6), bronze); chain.position.y = 0.1; bellPivot.add(chain);
   const clapper = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), bronze); clapper.position.y = -1.55; bellPivot.add(clapper);
   bt.t.add(bellPivot);
-  glowSpr(0, bt.by + 3.2, 0, 3, 0xffb040, 0.45, bt.t);
+  glowSpr(0, bt.by + 2.2, 0, 3, 0xffb040, 0.45, bt.t);
   zones.push({ x: BELL.x, z: BELL.z, r: 7, id: 'chuong' });
 
   // ---- drum tower (đối xứng tháp chuông) ----

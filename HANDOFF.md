@@ -122,6 +122,24 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
 
 ---
 
+## GĐ1 — Thống nhất kiến trúc tháp chuông/trống
+
+### Đã làm
+- `temple.ts` `tower()` viết lại theo chuỗi chuẩn: bệ đá 2 tầng → chân cột đá → cột đỏ → xà dưới/trên → đấu củng → vành xà → mái 1 (ngồi sát vành xà) → cổ mái 4 cột + tường đỏ nửa chiều cao → mái 2 → đế chóp + chóp vàng. Chuẩn được ghi trong comment đầu `tower()`.
+- Chuông hạ trục treo còn `by+3.55` để nằm dưới xà.
+- `tools/steps-tower-unify.mjs`, `tools/steps-tower-probe.mjs`: script chụp.
+
+### Kiểm chứng
+- typecheck pass. gapdump: THÁP CHUÔNG filled=74 remaining=0; THÁP TRỐNG filled=74 remaining=0.
+- Probe: miếng bù quanh tháp trống đều là dầm nhỏ trong khung tháp. Khối mái "thừa" sau tháp trống là bảo tháp (38,-14), không phải lỗi.
+
+### Chưa chắc chắn
+- Chưa áp chuẩn cho tháp Quan Âm (`qa`) và bảo tháp: khác kiểu (đài 4 cột mở có tượng; tháp 5 tầng), cần quyết định riêng.
+- Chóp vàng nhìn từ xa hơi lệch tông với thân đỏ; chưa chỉnh.
+- Trống: pivot `by+1.7`, glow `by+3.2` chưa chụp lại sát khung mới.
+
+---
+
 ## Chạy / chụp kiểm tra
 - `STEPS=./steps-chibi.mjs` hoặc `steps-round2.mjs` với `node tools/shot.mjs <prefix> http://localhost:5173/ 1280 800`.
   Các steps tự bật `window.__co.freeze = true` để khoá camera.
