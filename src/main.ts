@@ -169,7 +169,7 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number }
+interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
 let myId = '';
@@ -885,6 +885,16 @@ function loop() {
     let d = r.ry - r.char.root.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     r.char.root.rotation.y += d * Math.min(1, dt * 12);
+    if (r.data.npc && id !== myId) {
+      // LOD: NPCs farther than 30 m only refresh their pose twice a second (position / rotation still lerp every frame);
+      // a still, far NPC also stops recomputing its world matrix. An anim change or coming back within range updates at once.
+      const far = r.char.root.position.distanceToSquared(camera.position) > LOD_DIST * LOD_DIST;
+      const still = r.char.root.position.distanceToSquared(r.target) < 4e-6 && Math.abs(d) < 2e-3;
+      r.lodStill = far && still ? (r.lodStill ?? 0) + 1 : 0;
+      r.char.root.matrixWorldAutoUpdate = r.lodStill < 3;
+      if (far && r.anim === r.lodAnim && t - (r.lodAt ?? -9) < 0.5) return;
+      r.lodAt = t; r.lodAnim = r.anim;
+    }
     animateCharacter(r.char, r.anim, t);
   });
 
@@ -901,6 +911,7 @@ function loop() {
   }
 }
 let lastDrum = 42;
+const LOD_DIST = 30;
 const focusIdle = new THREE.Vector3(0, 0, 8);
 let loadedHidden = false;
 requestAnimationFrame(loop);

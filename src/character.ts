@@ -38,6 +38,7 @@ export interface Character {
   blinkNext: number;
   blinkUntil: number;
   fade: FadeFrom | null;
+  animCalls: number;
   lap: THREE.Mesh;
   curAnim: string;
   t0: number;
@@ -484,7 +485,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
@@ -580,6 +581,7 @@ export const BEADS_MS = 2400;
 
 /** Procedural animation. t = seconds. */
 export function animateCharacter(c: Character, anim: Anim | string, t: number) {
+  c.animCalls++;
   if (c.bubble.visible && performance.now() > c.bubbleUntil) c.bubble.visible = false;
   if (anim !== c.curAnim) {
     // the objects still hold last frame's final pose: snapshot it as the pose to fade out of
