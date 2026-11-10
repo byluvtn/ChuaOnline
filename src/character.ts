@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Anim, Outfit } from '../shared/types';
 import { shadowBlobTexture } from './textures';
@@ -548,6 +548,16 @@ function solveArm(arm: THREE.Group, fore: THREE.Group, side: number, target: THR
 
 // Hanging arms splay outward so the hands (centre x ~0.47) clear the robe wall (radius ~0.35 at hand height).
 const HANG_Z = 0.22;
+const TAU = Math.PI * 2;
+/** Pose clips evaluated by phase (0..1 of one cycle). walk: 0.62 s per step, one cycle = two steps (left + right). */
+interface Clip { period: number; amp: number }
+const CLIPS: Record<string, Clip> = {
+  walk: { period: 1.24, amp: 0.65 },
+  run: { period: TAU / 14, amp: 0.95 },
+  idle: { period: Math.PI, amp: 0 },
+  sit: { period: TAU / 1.3, amp: 0 },
+};
+const phaseOf = (clip: Clip, e: number) => { const p = (e / clip.period) % 1; return p < 0 ? p + 1 : p; };
 const RITUAL = /^(incense|chant|bow)$/;
 
 /** Procedural animation. t = seconds. */
@@ -568,8 +578,9 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     if (faceMat.map !== c.faceShut) { faceMat.map = c.faceShut; }
   }
   const walk = anim === 'walk' || anim === 'run';
-  const speed = anim === 'run' ? 14 : 9;
-  const amp = walk ? (anim === 'run' ? 0.95 : 0.65) : 0;
+  const clip = CLIPS[anim];
+  const amp = walk ? clip.amp : 0;
+  const cycle = Math.sin(TAU * (clip ? phaseOf(clip, t - c.t0) : 0)); // -1..1 over one gait cycle
   // prayer weight: 1 only while a ritual action (incense / chant / bow) is running, else hands hang free
   const ritual = RITUAL.test(anim) && !(anim === 'bow' && t - c.t0 > BOW_T - 0.4);
   c.prayW += ((ritual ? 1 : 0) - c.prayW) * Math.min(1, dt * 9);
@@ -577,24 +588,24 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   const w = ease(c.prayW);
 
   // base: arms hang loose at the sides (swinging while walking)
-  const sw = Math.sin(t * speed) * amp;
+  const sw = cycle * amp;
   c.armL.rotation.set(sw - 0.1, 0, -HANG_Z);
   c.armR.rotation.set(-sw - 0.1, 0, HANG_Z);
   c.foreL.rotation.set(-0.1 - Math.max(0, -sw) * 0.5, 0, 0);
   c.foreR.rotation.set(-0.1 - Math.max(0, sw) * 0.5, 0, 0);
-  c.legL.position.set(-0.16, 0.18, Math.sin(t * speed) * amp * 0.25);
-  c.legR.position.set(0.16, 0.18, -Math.sin(t * speed) * amp * 0.25);
+  c.legL.position.set(-0.16, 0.18, cycle * amp * 0.25);
+  c.legR.position.set(0.16, 0.18, -cycle * amp * 0.25);
   c.legL.rotation.set(0, 0, 0);
   c.legR.rotation.set(0, 0, 0);
   c.legL.visible = c.legR.visible = true;
   c.lap.visible = false;
-  c.body.position.set(0, walk ? Math.abs(Math.sin(t * speed)) * 0.09 : Math.sin(t * 2) * 0.014, 0);
-  c.body.rotation.set(0, 0, walk ? Math.sin(t * speed) * 0.04 : 0);
+  c.body.position.set(0, walk ? Math.abs(cycle) * 0.09 : Math.sin(TAU * phaseOf(CLIPS.idle, t)) * 0.014, 0);
+  c.body.rotation.set(0, 0, walk ? cycle * 0.04 : 0);
   let lift = 0; // 0 = palms at chest, 1 = palms in the lowered bow pose
 
   if (anim === 'sit') {
     // lotus position (káº¿t giÃ ): body lowered onto a flared lap, hands in dhyana mudra, slow breathing
-    const br = Math.sin(t * 1.3) * 0.012;
+    const br = cycle * 0.012;
     c.body.position.y = -0.3 + br;
     c.body.rotation.x = -0.03;
     c.lap.visible = true;
