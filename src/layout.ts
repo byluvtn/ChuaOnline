@@ -9,6 +9,7 @@ export const BRIDGE = { x: 0, z0: 14.2, z1: 29.8, hw: 1.15, peak: 1.4 };
 export const WALL = { x: 47, zN: -45, zS: 45, gate: 4.4 };
 export const BELL = { x: -34, z: -6 };
 export const DRUM = { x: 34, z: -6 };
+export const DEN_TRINH = { x: 9, z: 39 };
 export const QUAN = { x: 28, z: 14 };
 export const PATH_Z = 2;
 export const SIDE_X = 28;
@@ -56,6 +57,7 @@ export function blocked(x: number, z: number) {
   if (inLake(x, z, 3.5) || (Math.abs(x - BRIDGE.x) < 4 && z > BRIDGE.z0 - 2 && z < BRIDGE.z1 + 2)) return true;
   if (Math.hypot(x - BELL.x, z - BELL.z) < 7 || Math.hypot(x - QUAN.x, z - QUAN.z) < 7) return true;
   if (Math.hypot(x - DRUM.x, z - DRUM.z) < 7) return true;
+  if (Math.hypot(x - DEN_TRINH.x, z - DEN_TRINH.z) < 5.5) return true;
   if (Math.hypot(x - PAGODA.x, z - PAGODA.z) < 6) return true;
   if (Math.hypot(x - BUDDHA_YARD.x, z - BUDDHA_YARD.z) < 9) return true;
   if (Math.abs(z - PATH_Z) < 2.5 && ax < 40) return true;

@@ -1,0 +1,35 @@
+export default async ({ ev, shot, sleep }) => {
+  await sleep(1500);
+  await ev(`document.getElementById('enter').click()`);
+  await sleep(4000);
+  const cam = (px, py, pz, lx, ly, lz) => ev(`(()=>{const c=window.__co.camera;window.__co.freeze=true;c.position.set(${px},${py},${pz});c.lookAt(${lx},${ly},${lz});})()`);
+  const pos = () => ev(`(()=>{ const p = window.__co.me().char.root.position; return JSON.stringify({ x: +p.x.toFixed(2), z: +p.z.toFixed(2) }); })()`);
+  const setPos = (x, z) => ev(`(()=>{ const r = window.__co.me().char.root; r.position.set(${x}, 0, ${z}); })()`);
+  const key = async (code, ms) => {
+    await ev(`window.dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', key: '${code}' }))`);
+    await sleep(ms);
+    await ev(`window.dispatchEvent(new KeyboardEvent('keyup', { code: '${code}', key: '${code}' }))`);
+  };
+  await cam(-2, 4, 58, 4, 2.5, 42); await sleep(1200); await shot('outside-gate');
+  await cam(1.2, 2.6, 39, 9, 1.8, 39); await sleep(1200); await shot('axis-front');
+  await cam(5.4, 2.0, 40.6, 9, 1.0, 38.4); await sleep(1200); await shot('altar-closeup');
+  await setPos(3.5, 39);
+  await sleep(400);
+  console.log('start', await pos());
+  console.log('zone at start', await ev(`window.__co.world.zoneAt(3.5, 39)`));
+  await key('KeyD', 1600);
+  console.log('after D toward shrine', await pos());
+  await shot('walk-approach');
+  await setPos(9, 41.8);
+  await sleep(300);
+  await key('KeyW', 1500);
+  console.log('after W from south side (blocked by wall/pillar?)', await pos());
+  await setPos(6.4, 39);
+  await sleep(300);
+  await key('KeyD', 1800);
+  console.log('after D through front toward altar', await pos());
+  await shot('walk-front');
+  console.log('zone at shrine', await ev(`window.__co.world.zoneAt(9, 39)`));
+  console.log('couplet visible', await ev(`document.getElementById('couplet').classList.contains('show')`));
+  await shot('walk-couplet');
+};

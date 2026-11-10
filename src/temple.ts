@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DRUM, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -30,6 +30,7 @@ const COLUMN_LABELS = {
   tamQuan: ['Cửa từ bi mở rộng đón khách mười phương', 'Lòng hỷ xả bao dung độ khắp muôn loài'],
   chuong: ['Tiếng chuông ngân tỉnh giấc mộng trần gian', 'Hương trầm thoảng dẫn lối về cõi tịnh'],
   trong: ['Tiếng trống vọng sân thiền tan phiền não', 'Âm vang cửa Phật tỏ rõ lòng thành'],
+  denTrinh: ['Dừng chân trình diện gột bụi trần', 'Thắp nén hương lành mở lối vào chùa'],
   thap: ['Tháp ngọc vươn mây ngàn thu vững chãi', 'Thân vàng soi nắng muôn thuở lung linh'],
   hanhLang: ['Dừng chân bên hiên vắng nghe gió hát', 'Rửa lòng nơi cửa Phật ngắm sen hồng'],
 };
@@ -454,6 +455,53 @@ export function buildTemple(c: TempleCtx) {
   sealArchitectureJoints(gate, { maxGap: 0.5 });
   zones.push({ x: 0, z: WALL.zS, r: 6, id: 'tamQuan' });
 
+  // ---- Đền Trình (đền nhỏ một gian trong cổng, phía Đông) ----
+  const denT = new THREE.Group();
+  const dtStone = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+    m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; denT.add(m); return m;
+  };
+  dtStone(4.4, 0.35, 3.6, 0, 0.175, 0);
+  const dtBase = 0.35, dtColH = 2.4;
+  for (const [px, pz] of [[-1.9, -1.5], [1.9, -1.5], [-1.9, 1.5], [1.9, 1.5]] as [number, number][]) {
+    const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, dtColH, 12), c.redM);
+    pl.position.set(px, dtBase + dtColH / 2, pz); pl.castShadow = true; pl.userData.sealable = true; denT.add(pl);
+    dtStone(0.5, 0.18, 0.5, px, dtBase + 0.09, pz);
+    const v = new THREE.Vector3(px, 0, pz).applyAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
+    colliders.push({ x: DEN_TRINH.x + v.x, z: DEN_TRINH.z + v.z, r: 0.25 });
+  }
+  dtStone(4.0, dtColH, 0.2, 0, dtBase + dtColH / 2, -1.6, c.wallM);
+  dtStone(0.2, dtColH, 3.0, -2.0, dtBase + dtColH / 2, 0, c.wallM);
+  dtStone(0.2, dtColH, 3.0, 2.0, dtBase + dtColH / 2, 0, c.wallM);
+  const dtBeam = dtBase + dtColH + 0.12;
+  for (const s of [-1.5, 1.5]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.24, 0.26), c.redM);
+    b.position.set(0, dtBeam, s); b.castShadow = true; b.userData.sealable = true; denT.add(b);
+  }
+  for (const s of [-1.9, 1.9]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 3.3), c.redM);
+    b.position.set(s, dtBeam, 0); b.castShadow = true; b.userData.sealable = true; denT.add(b);
+  }
+  const dtRoofH = 1.5, dtRoofY = dtBeam + 0.12 + dtRoofH / 2 - 0.2;
+  const dtRoof = new THREE.Mesh(c.roofGeometry(5.6, 4.6, dtRoofH, 0.6), c.tileM);
+  dtRoof.position.y = dtRoofY; dtRoof.castShadow = true; dtRoof.userData.sealable = true; denT.add(dtRoof);
+  const dtFin = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.8, 8), c.goldM);
+  dtFin.position.y = dtRoofY + dtRoofH / 2 + 0.3; dtFin.userData.sealable = true; denT.add(dtFin);
+  dtStone(1.3, 0.7, 0.7, 0, dtBase + 0.35, -1.0);
+  const dtCenser = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.28, 14), c.goldM);
+  dtCenser.position.set(0, dtBase + 0.84, -1.0); dtCenser.castShadow = true; denT.add(dtCenser);
+  const dtRim = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 8, 16), c.goldM);
+  dtRim.rotation.x = Math.PI / 2; dtRim.position.set(0, dtBase + 0.98, -1.0); denT.add(dtRim);
+  for (const s of [-1, 1]) dtStone(0.4, 0.42, 0.4, s * 1.3, dtBase + 0.21, 0.5);
+  const dtSign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.55), new THREE.MeshBasicMaterial({ map: signTexture('ĐỀN TRÌNH') }));
+  dtSign.position.set(0, dtBeam - 0.45, 1.65); denT.add(dtSign);
+  for (let i = 0; i < 2; i++) labelBoard(denT, COLUMN_LABELS.denTrinh[i], 0.4, 2.0, i ? 1.9 : -1.9, dtBase + 1.3, 1.69);
+  denT.position.set(DEN_TRINH.x, 0, DEN_TRINH.z); denT.rotation.y = -Math.PI / 2; scene.add(denT);
+  const dtSeal = sealArchitectureJoints(denT, { maxGap: 0.5 });
+  if (import.meta.env.DEV) console.warn(`gapdump denTrinh: filled=${dtSeal.filled} remaining=${dtSeal.remaining.length} ` + JSON.stringify(dtSeal.remaining));
+  colliders.push({ x: DEN_TRINH.x + 1.0, z: DEN_TRINH.z, r: 0.8 });
+  zones.push({ x: DEN_TRINH.x, z: DEN_TRINH.z, r: 5, id: 'denTrinh' });
+
   // ---- paved side paths to towers, yard, pagoda ----
   const pave = lamb(0xffffff, { map: stoneTexture([150, 144, 134], [10, 1]) });
   const pathRect = (x0: number, z0: number, x1: number, z1: number) => {
@@ -472,6 +520,7 @@ export function buildTemple(c: TempleCtx) {
   // lối từ quảng trường ra đầu cầu (bắc) và từ đầu cầu (nam) tới tam quan
   pathRect(PLAZA.x - 1.4, PLAZA.z + PLAZA.r - 1.2, PLAZA.x + 1.4, BRIDGE.z0 + 0.4);
   pathRect(BRIDGE.x - 1.4, BRIDGE.z1 - 0.4, BRIDGE.x + 1.4, WALL.zS - 0.6);
+  pathRect(BRIDGE.x + 1.4, DEN_TRINH.z - 1.2, DEN_TRINH.x - 2.6, DEN_TRINH.z + 1.2);
 
   pathRect(-SIDE_X - 1.2, ZEN.z, -SIDE_X + 1.2, PATH_Z);
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
