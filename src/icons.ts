@@ -31,6 +31,7 @@ export const ICONS: Record<string, string> = {
   scarf: S('<path d="M5 9c4 3 10 3 14 0v3c-4 3-10 3-14 0V9z"/><path d="M15 14.500 17 21l2-1-1.200-5.500"/>'),
   user: S('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
   collapse: S('<path d="M7 7l5 5 5-5M7 13l5 5 5-5"/>'),
+  move: S('<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>'),
   expand: S('<path d="M7 11l5-5 5 5M7 17l5-5 5 5"/>'),
   game: S('<rect x="3" y="8" width="18" height="10" rx="5"/><path d="M8 11v4M6 13h4"/><circle cx="15.500" cy="12" r=".8" fill="currentColor"/><circle cx="17.500" cy="14" r=".8" fill="currentColor"/>'),
   festival: S('<path d="M12 3v3M5 7l2 2M19 7l-2 2"/><path d="M8 21v-6a4 4 0 0 1 8 0v6M6 21h12"/><path d="M12 9v3"/>'),
