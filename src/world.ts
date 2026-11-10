@@ -208,9 +208,9 @@ export function createWorld(): World {
   const palette = [0xff8fb6, 0xffffff, 0xffd35a, 0xff7a6a, 0xc79bff].map((c) => new THREE.Color(c));
   for (let i = 0; i < flowerCount; i++) {
     let x: number, z: number, tries = 0;
-    do { x = (rngSeed(i + 500) - 0.5) * 2 * MAP_HALF * 0.95; z = (rngSeed(i + 900) - 0.5) * 2 * MAP_HALF * 0.95; tries++; }
+    do { x = (rngSeed(i + 500 + tries * 1000) - 0.5) * 2 * MAP_HALF * 0.95; z = (rngSeed(i + 900 + tries * 1000) - 0.5) * 2 * MAP_HALF * 0.95; tries++; }
     while (blocked(x, z) && tries < 10);
-    dummy.position.set(x, 0.1, z); dummy.scale.setScalar(0.7 + rngSeed(i) * 0.9); dummy.updateMatrix();
+    dummy.position.set(x, 0.1, z); dummy.scale.setScalar(blocked(x, z) ? 0 : 0.7 + rngSeed(i) * 0.9); dummy.updateMatrix();
     flowers.setMatrixAt(i, dummy.matrix); flowers.setColorAt(i, palette[i % palette.length]);
   }
   scene.add(flowers);
