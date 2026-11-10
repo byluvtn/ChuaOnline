@@ -2,7 +2,7 @@ export type Outfit = 'monk' | 'nun' | 'male' | 'female';
 /** Default robe colour per character (hex, lowercase). */
 export const OUTFIT_COLOR: Record<Outfit, string> = { monk: '#d9a62b', nun: '#778c96', male: '#72818e', female: '#bc7672' };
 export const OUTFIT_LABEL: Record<Outfit, string> = { monk: 'Tiểu tăng', nun: 'Tiểu ni', male: 'Phật tử nam', female: 'Phật tử nữ' };
-export type ActionKind = 'incense' | 'bow' | 'chant' | 'lantern';
+export type ActionKind = 'incense' | 'bow' | 'chant' | 'lantern' | 'palms' | 'beads';
 export type Anim = 'idle' | 'walk' | 'run' | 'sit' | 'sweep' | 'ring' | ActionKind;
 
 export interface PlayerState {

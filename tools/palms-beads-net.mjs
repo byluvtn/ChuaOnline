@@ -1,0 +1,20 @@
+import { io } from 'socket.io-client';
+const base = process.argv[2] ?? 'http://localhost:3001';
+const mk = async (name) => {
+  const { token } = await (await fetch(base + '/api/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json();
+  const s = io(base, { auth: { token } });
+  await new Promise((r) => { s.on('connect', () => { s.emit('join', { name, outfit: 'male', color: '#72818e', room: 'vo-luong' }); }); s.on('welcome', (w) => r(w)); });
+  return s;
+};
+const a = await mk('Watcher'), b = await mk('Actor');
+const seen = [];
+a.on('player:action', (m) => seen.push(m.kind));
+const anims = new Set();
+a.on('state', (st) => { for (const p of st.players) if (p.anim === 'palms' || p.anim === 'beads') anims.add(p.anim); });
+await new Promise((r) => setTimeout(r, 500));
+b.emit('action', 'palms');
+await new Promise((r) => setTimeout(r, 1600));
+b.emit('action', 'beads');
+await new Promise((r) => setTimeout(r, 1000));
+console.log('player:action seen by watcher:', seen.join(','), '| state anims seen:', [...anims].join(','));
+a.close(); b.close(); process.exit(0);

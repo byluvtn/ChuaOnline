@@ -380,7 +380,7 @@ function connect() {
     const r = remotes.get(id);
     if (!r || id === myId) return;
     r.anim = kind;
-    r.actionUntil = performance.now() + (kind === 'bow' ? BOW_MS : 2500);
+    r.actionUntil = performance.now() + actionMs(kind);
     if (kind === 'incense') world.spawnIncense(r.char.root.position.x, r.char.root.position.z);
   });
 }
@@ -610,6 +610,7 @@ function setSitting(v: boolean) {
   sitting = v;
   $('sitBtn').classList.toggle('on', v);
 }
+const actionMs = (kind: ActionKind) => (kind === 'bow' ? BOW_MS : kind === 'palms' ? 1500 : kind === 'beads' ? 2400 : 2500);
 const cooling: Partial<Record<ActionKind, number>> = {};
 function startCooldown(kind: ActionKind) {
   const ms = ACTION_RULES[kind].cooldownMs;
@@ -625,12 +626,12 @@ function doAction(kind: ActionKind, wish?: string, keepSeat = false) {
   if (!me || !socket) return;
   if (performance.now() < (cooling[kind] ?? 0)) return;
   audio.unlock();
-  audio.play(kind);
+  if (kind !== 'palms' && kind !== 'beads') audio.play(kind);
   startCooldown(kind);
   if (kind === 'bow' || kind === 'chant') world.spawnBurst(me.char.root.position.x, me.char.root.position.z, 0xffe9a0);
   if (!keepSeat) setSitting(false);
   me.anim = kind;
-  myActionUntil = performance.now() + (kind === 'bow' ? BOW_MS : 2500);
+  myActionUntil = performance.now() + actionMs(kind);
   clickTarget = null;
   socket.emit('action', kind, wish);
   if (kind === 'incense') world.spawnIncense(me.char.root.position.x, me.char.root.position.z);
@@ -872,7 +873,7 @@ function loop() {
     if (id !== myId) {
       const px = r.char.root.position.x, pz = r.char.root.position.z;
       r.char.root.position.lerp(r.target, 1 - Math.pow(0.0005, dt));
-      if (!r.data.npc && now > r.actionUntil && /^(bow|incense|chant|lantern)$/.test(r.anim)) r.anim = 'idle';
+      if (!r.data.npc && now > r.actionUntil && /^(bow|incense|chant|lantern|palms|beads)$/.test(r.anim)) r.anim = 'idle';
       if (r.data.npc) {
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân
         if (Math.hypot(r.char.root.position.x - px, r.char.root.position.z - pz) > 0.004 || r.lastMoveAt === undefined) r.lastMoveAt = now;

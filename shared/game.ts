@@ -5,6 +5,8 @@ export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: numbe
   bow: { merit: 1, cooldownMs: 2000, boostItems: ['hoa_sen', 'hoa_dang_phat'] },
   chant: { merit: 2, cooldownMs: 10000, boostItems: ['nen_sap_ong', 'trang_hat'] },
   lantern: { merit: 5, cooldownMs: 5000, boostItems: ['den_hoa_dang'] },
+  palms: { merit: 0, cooldownMs: 1500 },
+  beads: { merit: 0, cooldownMs: 2400 },
 };
 
 export type ShopCategory =

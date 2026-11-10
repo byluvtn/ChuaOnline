@@ -558,7 +558,9 @@ const CLIPS: Record<string, Clip> = {
   sit: { period: TAU / 1.3, amp: 0 },
 };
 const phaseOf = (clip: Clip, e: number) => { const p = (e / clip.period) % 1; return p < 0 ? p + 1 : p; };
-const RITUAL = /^(incense|chant|bow)$/;
+const RITUAL = /^(incense|chant|bow|palms)$/;
+export const PALMS_MS = 1500;
+export const BEADS_MS = 2400;
 
 /** Procedural animation. t = seconds. */
 export function animateCharacter(c: Character, anim: Anim | string, t: number) {
@@ -582,7 +584,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   const amp = walk ? clip.amp : 0;
   const cycle = Math.sin(TAU * (clip ? phaseOf(clip, t - c.t0) : 0)); // -1..1 over one gait cycle
   // prayer weight: 1 only while a ritual action (incense / chant / bow) is running, else hands hang free
-  const ritual = RITUAL.test(anim) && !(anim === 'bow' && t - c.t0 > BOW_T - 0.4);
+  const ritual = RITUAL.test(anim) && !(anim === 'bow' && t - c.t0 > BOW_T - 0.4) && !(anim === 'palms' && t - c.t0 > PALMS_MS / 1000 - 0.3);
   c.prayW += ((ritual ? 1 : 0) - c.prayW) * Math.min(1, dt * 9);
   if (!ritual && c.prayW < 0.002) c.prayW = 0;
   const w = ease(c.prayW);
@@ -673,6 +675,16 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     } else {
       _tg.set(0.05, 0.62, 0.38); solveArm(c.armR, c.foreR, 1, _tg, pw);
       _tg.set(-0.08, 0.66, -0.36); solveArm(c.armL, c.foreL, -1, _tg, pw);
+    }
+  }
+  if (anim === 'beads' && w === 0) {
+    // right hand lifts to the chest and rolls the beads at ~2.5 Hz; left hand stays loose. Envelope: 0.3 s in, hold, 0.3 s out.
+    const e = t - c.t0, total = BEADS_MS / 1000;
+    const env = ease(e / 0.3) * (1 - ease((e - (total - 0.3)) / 0.3));
+    if (env > 0) {
+      const roll = Math.sin(e * TAU * 2.5);
+      _tg.set(0.09, 0.84 + roll * 0.022, 0.36 + roll * 0.012);
+      solveArm(c.armR, c.foreR, 1, _tg, env);
     }
   }
   const sweeping = anim === 'sweep' && c.poseW > 0.6;

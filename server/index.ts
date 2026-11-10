@@ -101,7 +101,7 @@ const roomMinutes = new Map<string, number>();
 let seq = 1;
 
 const OUTFITS: Outfit[] = ['monk', 'nun', 'male', 'female'];
-const ANIMS: Anim[] = ['idle', 'walk', 'run', 'sit', 'sweep', 'ring', 'incense', 'bow', 'chant', 'lantern'];
+const ANIMS: Anim[] = ['idle', 'walk', 'run', 'sit', 'sweep', 'ring', 'incense', 'bow', 'chant', 'lantern', 'palms', 'beads'];
 /** Mỗi phòng có bộ NPC riêng (cùng id npc1..npc4); NPC không phải phiên nên không tính vào số người online. */
 const npcRooms = new Map<string, NpcRoom>();
 const npcRoom = (room: string) => { let r = npcRooms.get(room); if (!r) { r = createNpcRoom(); npcRooms.set(room, r); } return r; };
@@ -254,6 +254,12 @@ io.on('connection', (socket) => {
     const now = Date.now();
     if (now - (s.last[kind] ?? 0) < rule.cooldownMs) return;
     s.last[kind] = now;
+
+    if (kind === 'palms' || kind === 'beads') {
+      s.state.anim = kind;
+      io.to(s.room).emit('player:action', { id: s.state.id, kind });
+      return;
+    }
 
     let merit = rule.merit;
     // vật phẩm tăng công đức: dùng món boost đang có (ưu tiên món đầu tiên trong danh sách)
