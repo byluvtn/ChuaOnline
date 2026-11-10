@@ -4,6 +4,16 @@ import type { Anim, Outfit } from '../shared/types';
 import { shadowBlobTexture } from './textures';
 import { geo, outlined, toon } from './toon';
 
+interface FadeFrom {
+  t0: number;
+  arms: THREE.Quaternion[];
+  fores: THREE.Quaternion[];
+  legPos: THREE.Vector3[];
+  legRot: THREE.Quaternion[];
+  bodyPos: THREE.Vector3;
+  bodyRot: THREE.Quaternion;
+}
+
 export interface Character {
   root: THREE.Group;
   body: THREE.Group;
@@ -27,6 +37,7 @@ export interface Character {
   faceShut: THREE.Texture;
   blinkNext: number;
   blinkUntil: number;
+  fade: FadeFrom | null;
   lap: THREE.Mesh;
   curAnim: string;
   t0: number;
@@ -473,7 +484,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
@@ -560,12 +571,29 @@ const CLIPS: Record<string, Clip> = {
 const phaseOf = (clip: Clip, e: number) => { const p = (e / clip.period) % 1; return p < 0 ? p + 1 : p; };
 const RITUAL = /^(incense|chant|bow|palms)$/;
 export const PALMS_MS = 1500;
+const FADE_S = 0.15;
+const _fq = new THREE.Quaternion(), _fv = new THREE.Vector3();
+/** Blend cur (the new pose) from old by k, in place: result = old -> cur. */
+function fadeQ(cur: THREE.Quaternion, old: THREE.Quaternion, k: number) { _fq.copy(cur); cur.copy(old).slerp(_fq, k); }
+function fadeV(cur: THREE.Vector3, old: THREE.Vector3, k: number) { _fv.copy(cur); cur.copy(old).lerp(_fv, k); }
 export const BEADS_MS = 2400;
 
 /** Procedural animation. t = seconds. */
 export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   if (c.bubble.visible && performance.now() > c.bubbleUntil) c.bubble.visible = false;
-  if (anim !== c.curAnim) { c.curAnim = anim; c.t0 = t; }
+  if (anim !== c.curAnim) {
+    // the objects still hold last frame's final pose: snapshot it as the pose to fade out of
+    c.fade = {
+      t0: t,
+      arms: [c.armL.quaternion.clone(), c.armR.quaternion.clone()],
+      fores: [c.foreL.quaternion.clone(), c.foreR.quaternion.clone()],
+      legPos: [c.legL.position.clone(), c.legR.position.clone()],
+      legRot: [c.legL.quaternion.clone(), c.legR.quaternion.clone()],
+      bodyPos: c.body.position.clone(),
+      bodyRot: c.body.quaternion.clone(),
+    };
+    c.curAnim = anim; c.t0 = t;
+  }
   const dt = Math.max(0, Math.min(0.1, t - c.lastT)); c.lastT = t;
   const faceMat = c.face.material as THREE.MeshToonMaterial;
   if (c.blinkNext === 0) c.blinkNext = t + 1 + Math.random() * 4;
@@ -702,6 +730,27 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     _tg.x = -HALF_T;
     solveArm(c.armL, c.foreL, -1, _tg, w);
     c.hold.position.set(0, _tg.y - 0.01, _tg.z);
+  }
+  // crossfade out of the previous anim's pose; arms that already have their own blend (prayer / NPC IK / beads) are left alone
+  if (c.fade) {
+    const k = ease((t - c.fade.t0) / FADE_S);
+    if (t - c.fade.t0 >= FADE_S) c.fade = null;
+    else {
+      const f = c.fade;
+      const ownArmBlend = w > 0 || c.prayW > 0 || c.poseW > 0 || anim === 'beads';
+      if (!ownArmBlend) {
+        fadeQ(c.armL.quaternion, f.arms[0], k);
+        fadeQ(c.armR.quaternion, f.arms[1], k);
+        fadeQ(c.foreL.quaternion, f.fores[0], k);
+        fadeQ(c.foreR.quaternion, f.fores[1], k);
+      }
+      fadeV(c.legL.position, f.legPos[0], k);
+      fadeV(c.legR.position, f.legPos[1], k);
+      fadeQ(c.legL.quaternion, f.legRot[0], k);
+      fadeQ(c.legR.quaternion, f.legRot[1], k);
+      fadeV(c.body.position, f.bodyPos, k);
+      fadeQ(c.body.quaternion, f.bodyRot, k);
+    }
   }
   const held = w > 0.6;
   c.holdInc.visible = held && anim === 'incense';
