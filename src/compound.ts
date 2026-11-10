@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LAKE, WALL, PLAZA, HALL } from './layout';
+import { LAKE, WALL, PLAZA, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS } from './layout';
 import { stoneTexture, vietnameseColumnTexture } from './textures';
 
 /* =====================================================================
@@ -288,4 +288,148 @@ export function relabelColumns(root: THREE.Object3D, labels?: ColumnLabel[]): nu
     n++;
   });
   return n;
+}
+
+// ------------------------------------------------------------------ 6. ba khu vườn
+export interface GardenCtx {
+  scene: THREE.Scene;
+  colliders: { x: number; z: number; r: number }[];
+  lamb: (c: number, extra?: Partial<THREE.MeshStandardMaterialParameters>) => THREE.MeshStandardMaterial;
+  stoneM: THREE.Material;
+  woodM: THREE.Material;
+  glowSpr: (x: number, y: number, z: number, s: number, color?: number, op?: number, parent?: THREE.Object3D) => THREE.Sprite;
+  addZone: (x: number, z: number, r: number, id: string) => void;
+}
+
+const GY = 0.06;
+
+function stoneSeat(g: GardenCtx, parent: THREE.Object3D, x: number, z: number, ry: number, len = 1.8) {
+  const s = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.BoxGeometry(len, 0.18, 0.55), g.stoneM); top.position.y = 0.52; top.castShadow = top.receiveShadow = true; s.add(top);
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.45, 0.5), g.stoneM); leg.position.set(sx * (len / 2 - 0.25), 0.25, 0); leg.castShadow = true; s.add(leg);
+  }
+  s.position.set(x, GY, z); s.rotation.y = ry; parent.add(s);
+}
+
+function stoneTableSet(g: GardenCtx, parent: THREE.Object3D, x: number, z: number, ry = 0) {
+  const t = new THREE.Group();
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.14, 20), g.stoneM); top.position.y = 0.8; top.castShadow = top.receiveShadow = true; t.add(top);
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 0.78, 12), g.stoneM); leg.position.y = 0.4; leg.castShadow = true; t.add(leg);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.5, 14), g.stoneM);
+    st.position.set(Math.cos(a) * 1.25, 0.25, Math.sin(a) * 1.25); st.castShadow = st.receiveShadow = true; t.add(st);
+  }
+  t.position.set(x, GY, z); t.rotation.y = ry; parent.add(t);
+  g.colliders.push({ x, z, r: 1.55 });
+}
+
+function woodBench(g: GardenCtx, parent: THREE.Object3D, x: number, z: number, ry: number, len = 2.2) {
+  const b = new THREE.Group();
+  const wood = g.lamb(0x7a4e2c);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(len, 0.1, 0.55), wood); seat.position.y = 0.5; seat.castShadow = true; b.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(len, 0.4, 0.08), wood); back.position.set(0, 0.85, -0.24); back.rotation.x = -0.12; back.castShadow = true; b.add(back);
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5), g.lamb(0x4a2e18)); leg.position.set(sx * (len / 2 - 0.2), 0.25, 0); b.add(leg);
+  }
+  b.position.set(x, GY, z); b.rotation.y = ry; parent.add(b);
+}
+
+/** Khu 1 — Vườn Thiền: vòng cát, tre, bonsai, ghế đá, đèn đá, hàng rào cây. */
+export function buildZenGarden(g: GardenCtx) {
+  const grp = new THREE.Group(); grp.name = 'zen-garden'; g.scene.add(grp);
+  const cx = ZEN.x, cz = ZEN.z;
+  const flat = (geo: THREE.BufferGeometry, mat: THREE.Material, x: number, z: number, y: number) => {
+    const m = new THREE.Mesh(geo, mat); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; grp.add(m); return m;
+  };
+  // cỏ nền + vòng cát
+  flat(new THREE.CircleGeometry(10, 48), g.lamb(0x6f9a58, { roughness: 0.95 }), cx, cz, GY);
+  flat(new THREE.CircleGeometry(3.5, 48), g.lamb(0xe4dcc8, { roughness: 1 }), cx, cz, GY + 0.01);
+  // vân cát: các vòng tròn mảnh
+  const rake = g.lamb(0xc9bfa6, { roughness: 1 });
+  for (const r of [1.0, 1.8, 2.6]) flat(new THREE.RingGeometry(r, r + 0.07, 48), rake, cx, cz, GY + 0.02);
+  const pebM = g.lamb(0x8d877c, { flatShading: true });
+  const nPeb = 28;
+  const peb = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 8, 6), pebM, nPeb);
+  const o = new THREE.Object3D();
+  for (let i = 0; i < nPeb; i++) {
+    const a = (i / nPeb) * Math.PI * 2, s = 0.8 + ((i * 37) % 7) / 8;
+    o.position.set(cx + Math.cos(a) * 3.65, GY + 0.05, cz + Math.sin(a) * 3.65); o.scale.set(s, 0.6, s); o.rotation.y = i; o.updateMatrix(); peb.setMatrixAt(i, o.matrix);
+  }
+  peb.castShadow = true; grp.add(peb);
+  // đá thiền ở giữa
+  for (const [dx, dz, s] of [[0, 0, 0.55], [0.7, 0.4, 0.35], [-0.5, 0.55, 0.28]]) {
+    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), g.lamb(0x6e675c, { flatShading: true }));
+    r.position.set(cx + dx, GY + s * 0.5, cz + dz); r.scale.y = 0.7; r.castShadow = true; grp.add(r);
+  }
+
+  // rặng tre dọc tường Bắc (z≈-40) và Tây (x≈-44)
+  const boo = g.lamb(0x7fae5a), leaf = g.lamb(0x4e9a3d, { flatShading: true, side: THREE.DoubleSide });
+  const clump = (x: number, z: number, seed: number) => {
+    const c = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const h = 4 + ((seed * 7 + i * 13) % 20) / 10, a = i * 2.4 + seed;
+      const px = Math.cos(a) * 0.22, pz = Math.sin(a) * 0.22;
+      const st = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, h, 6), boo); st.position.set(px, h / 2, pz); st.rotation.set(Math.sin(a) * 0.05, 0, Math.cos(a) * 0.05); st.castShadow = true; c.add(st);
+      for (let k = 0; k < 3; k++) {
+        const lf = new THREE.Mesh(new THREE.SphereGeometry(0.55, 7, 5), leaf);
+        lf.scale.set(1, 0.3, 1); lf.position.set(px + Math.cos(a + k) * 0.25, h - 0.3 - k * 0.55, pz + Math.sin(a + k) * 0.25); lf.castShadow = true; c.add(lf);
+      }
+    }
+    c.position.set(x, GY, z); grp.add(c);
+    g.colliders.push({ x, z, r: 0.4 });
+  };
+  let sd = 0;
+  for (let x = -45; x <= -25; x += 1.7) clump(x, -40 + ((sd++ % 3) - 1) * 0.25, sd);
+  for (let z = -38.3; z <= -16; z += 1.7) clump(-44 + ((sd++ % 3) - 1) * 0.25, z, sd);
+
+  // bonsai trên đôn đá (4 chậu quanh vòng cát)
+  const trunkM = g.lamb(0x5a3d22), crownM = g.lamb(0x3f8a3e, { flatShading: true });
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + Math.PI / 4, x = cx + Math.cos(a) * 5.4, z = cz + Math.sin(a) * 5.4;
+    const b = new THREE.Group();
+    const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.8, 12), g.stoneM); ped.position.y = 0.4; ped.castShadow = ped.receiveShadow = true; b.add(ped);
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.3, 0.3, 12), g.lamb(0x9a5a3a)); pot.position.y = 0.95; b.add(pot);
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.1, 0.8, 6), trunkM); tr.position.set(0.05, 1.5, 0); tr.rotation.z = 0.25; tr.castShadow = true; b.add(tr);
+    [[0.18, 1.85, 0.42], [-0.15, 2.15, 0.32], [0.1, 2.4, 0.22]].forEach(([px, py, s]) => {
+      const cr = new THREE.Mesh(new THREE.SphereGeometry(s, 10, 8), crownM); cr.scale.y = 0.6; cr.position.set(px, py - 0.1, 0); cr.castShadow = true; b.add(cr);
+    });
+    b.position.set(x, GY, z); grp.add(b);
+    g.colliders.push({ x, z, r: 0.5 });
+  }
+
+  // 2 ghế đá hướng vào vòng cát + bộ bàn đá
+  stoneSeat(g, grp, cx - 7.0, cz - 1.5, Math.PI / 2 * 0 + Math.PI / 2 * 1, 1.8);
+  stoneSeat(g, grp, cx - 1.5, cz + 7.0, 0, 1.8);
+  grp.children[grp.children.length - 2].rotation.y = -Math.PI / 2 + Math.PI;
+  grp.children[grp.children.length - 1].rotation.y = Math.PI;
+  g.colliders.push({ x: cx - 7.0, z: cz - 1.5, r: 0.9 }, { x: cx - 1.5, z: cz + 7.0, r: 0.9 });
+  stoneTableSet(g, grp, cx - 5.2, cz - 6.2);
+
+  // 4 đèn đá ở 4 góc vòng cát
+  const lampM = g.lamb(0x9a9387);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2, x = cx + Math.cos(a) * 4.6, z = cz + Math.sin(a) * 4.6;
+    const l = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.38, 0.3, 8), lampM); base.position.y = 0.15; l.add(base);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.9, 8), lampM); post.position.y = 0.72; post.castShadow = true; l.add(post);
+    const lm = new THREE.MeshStandardMaterial({ color: 0xffd36b, emissive: 0xff9c2a, emissiveIntensity: 1.2 });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.4, 0.46), lm); box.position.y = 1.37; l.add(box);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.35, 4), g.lamb(0x4a3020)); cap.position.y = 1.75; cap.rotation.y = Math.PI / 4; cap.castShadow = true; l.add(cap);
+    l.position.set(x, GY, z); grp.add(l);
+    g.glowSpr(x, GY + 1.4, z, 2.0, 0xffb040, 0.5);
+    g.colliders.push({ x, z, r: 0.3 });
+  }
+
+  // hàng rào cây xanh thấp ở cạnh Nam (z=-17) và Đông (x=-24.5), chừa lối ~2.4 tại x=-28
+  const hedgeM = g.lamb(0x3f8a3e, { flatShading: true });
+  const hedge = (x: number, z: number) => {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 8), hedgeM); h.scale.y = 0.9; h.position.set(x, GY + 0.6, z); h.castShadow = h.receiveShadow = true; grp.add(h);
+    g.colliders.push({ x, z, r: 0.7 });
+  };
+  for (let x = -43.5; x <= -24.5; x += 1.2) { if (Math.abs(x + SIDE_X) < 1.3) continue; hedge(x, -17); }
+  for (let z = -18.2; z >= -35; z -= 1.2) hedge(-24.5, z);
+
+  g.addZone(cx, cz, 9, 'vuonThien');
 }

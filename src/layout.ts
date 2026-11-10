@@ -15,6 +15,10 @@ export const PAGODA = { x: 38, z: -14 };
 export const BUDDHA_YARD = { x: -28, z: 14 };
 /** Sân trước chùa (quảng trường nhỏ) — thu gọn để nhường chỗ cho hồ sen giữa khuôn viên. */
 export const PLAZA = { x: 0, z: 6, r: 8.4 };
+/** Vườn Thiền (góc Tây–Bắc), khu nghỉ bóng cây (Đông–Nam) và hai bồn hoa bên bờ hồ. */
+export const ZEN = { x: -34, z: -26 };
+export const REST = { x: 27, z: 31 };
+export const FLOWER_BEDS = [{ x: 16.5, z: 23, a: 5, b: 3.5 }, { x: -16.5, z: 23, a: 5, b: 3.5 }];
 
 export function bridgeY(x: number, z: number) {
   if (Math.abs(x - BRIDGE.x) > BRIDGE.hw + 0.3) return 0;
@@ -55,6 +59,9 @@ export function blocked(x: number, z: number) {
   if (Math.abs(z - PATH_Z) < 2.5 && ax < 40) return true;
   if (Math.abs(x + SIDE_X) < 2.5 && z > -32 && z < PATH_Z + 2.5) return true;
   if (Math.abs(x - SIDE_X) < 2.5 && z > PATH_Z - 2.5 && z < QUAN.z + 2.5) return true;
+  if (Math.hypot(x - ZEN.x, z - ZEN.z) < 10.5 || (x < ZEN.x + 11 && z < ZEN.z - 11) || (x < ZEN.x - 9 && z < ZEN.z + 11)) return true;
+  for (const f of FLOWER_BEDS) if (((x - f.x) / (f.a + 1)) ** 2 + ((z - f.z) / (f.b + 1)) ** 2 < 1) return true;
+  if (Math.hypot(x - REST.x, z - REST.z) < 9 || (x > 0 && x < 20 && Math.abs(z - REST.z) < 2.5)) return true;
   if (Math.abs(x - PAGODA.x) < 2.5 && z > PAGODA.z - 3 && z < PATH_Z + 2.5) return true;
   return false;
 }
