@@ -227,7 +227,7 @@ export function buildTemple(c: TempleCtx) {
   for (let i = 0; i < 2; i++) {
     labelBoard(qa, COLUMN_LABELS.thap[i], 0.46, 2.8, i ? -1.6 : 1.6, qy + 3.3, QR + 0.1);
   }
-  qa.position.set(QUAN.x, 0, QUAN.z); qa.rotation.y = Math.PI / 2 + 0.2; scene.add(qa);
+  qa.position.set(QUAN.x, 0, QUAN.z); qa.rotation.y = -Math.PI / 2 - 0.2; scene.add(qa);
   sealArchitectureJoints(qa, { maxGap: 0.6 });
   zones.push({ x: QUAN.x, z: QUAN.z, r: 6.5, id: 'thap' });
 
@@ -381,7 +381,7 @@ export function buildTemple(c: TempleCtx) {
     m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, 0.028, (z0 + z1) / 2); m.receiveShadow = true; scene.add(m);
   };
   pathRect(-SIDE_X - 6, PATH_Z - 1.2, SIDE_X + 6, PATH_Z + 1.2);
-  pathRect(-SIDE_X - 1.2, QUAN.z, -SIDE_X + 1.2, PATH_Z);
+  pathRect(SIDE_X - 1.2, PATH_Z, SIDE_X + 1.2, QUAN.z);
   pathRect(PAGODA.x - 1.2, PAGODA.z, PAGODA.x + 1.2, PATH_Z);
   pathRect(-SIDE_X - 1.2, PATH_Z, -SIDE_X + 1.2, BUDDHA_YARD.z);
   pathRect(-SIDE_X - 7, BELL.z - 1.2, -SIDE_X, BELL.z + 1.2);

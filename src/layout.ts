@@ -8,7 +8,7 @@ export const LAKE = { x: 0, z: 22, a: 9, b: 6.5 };
 export const BRIDGE = { x: 0, z0: 14.2, z1: 29.8, hw: 1.15, peak: 1.4 };
 export const WALL = { x: 47, zN: -45, zS: 45, gate: 4.4 };
 export const BELL = { x: -34, z: -6 };
-export const QUAN = { x: -34, z: -26 };
+export const QUAN = { x: 28, z: 14 };
 export const PATH_Z = 2;
 export const SIDE_X = 28;
 export const PAGODA = { x: 38, z: -14 };
@@ -53,7 +53,8 @@ export function blocked(x: number, z: number) {
   if (Math.hypot(x - PAGODA.x, z - PAGODA.z) < 6) return true;
   if (Math.hypot(x - BUDDHA_YARD.x, z - BUDDHA_YARD.z) < 9) return true;
   if (Math.abs(z - PATH_Z) < 2.5 && ax < 40) return true;
-  if (Math.abs(x + SIDE_X) < 2.5 && z > QUAN.z - 6 && z < PATH_Z + 2.5) return true;
+  if (Math.abs(x + SIDE_X) < 2.5 && z > -32 && z < PATH_Z + 2.5) return true;
+  if (Math.abs(x - SIDE_X) < 2.5 && z > PATH_Z - 2.5 && z < QUAN.z + 2.5) return true;
   if (Math.abs(x - PAGODA.x) < 2.5 && z > PAGODA.z - 3 && z < PATH_Z + 2.5) return true;
   return false;
 }
