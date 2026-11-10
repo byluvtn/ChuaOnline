@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+﻿import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Anim, Outfit } from '../shared/types';
 import { shadowBlobTexture } from './textures';
@@ -22,6 +22,11 @@ export interface Character {
   poseKind: 'abbot' | 'sweep' | 'ring';
   prayW: number;
   lastT: number;
+  face: THREE.Mesh;
+  faceOpen: THREE.Texture;
+  faceShut: THREE.Texture;
+  blinkNext: number;
+  blinkUntil: number;
   lap: THREE.Mesh;
   curAnim: string;
   t0: number;
@@ -71,7 +76,7 @@ function makeLabelSprite() {
 function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean) {
   const g = canvas.getContext('2d')!;
   g.clearRect(0, 0, 512, 96);
-  const text = name.length > 20 ? name.slice(0, 19) + '…' : name;
+  const text = name.length > 20 ? name.slice(0, 19) + 'â€¦' : name;
   g.font = '700 38px system-ui, "Segoe UI", sans-serif';
   const tw = g.measureText(text).width;
   const chip = level ? 58 : 0;
@@ -110,8 +115,9 @@ const HALF_T = HAND_R * HAND_SX; // half thickness: joined palms touch with zero
 const faceCache = new Map<string, THREE.CanvasTexture>();
 
 /** Face decal 512x512 drawn on a front-facing sphere patch: eyes, brows, cheeks, mouth. */
-function faceTexture(outfit: Outfit): THREE.CanvasTexture {
-  const hit = faceCache.get(outfit);
+function faceTexture(outfit: Outfit, closed = false): THREE.CanvasTexture {
+  const cacheKey = closed ? `${outfit}:closed` : outfit;
+  const hit = faceCache.get(cacheKey);
   if (hit) return hit;
   const cv = document.createElement('canvas');
   cv.width = cv.height = 512;
@@ -136,6 +142,21 @@ function faceTexture(outfit: Outfit): THREE.CanvasTexture {
     g.moveTo(cx - s * bl * 0.9, by + (outfit === 'male' ? 6 : 4));
     g.quadraticCurveTo(cx, by - (outfit === 'male' ? 8 : 6), cx + s * bl, by + (outfit === 'male' ? 3 : 4));
     g.stroke();
+    if (closed) { // closed lid: a single downward-bowed brown curve across the eye width
+      g.strokeStyle = '#2e211a'; g.lineWidth = 6; g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(cx - rx, ey);
+      g.quadraticCurveTo(cx, ey + ry * 0.45, cx + rx, ey);
+      g.stroke();
+      if (fem) {
+        g.lineWidth = 3.4;
+        for (let i = 0; i < 3; i++) {
+          const px = cx + s * rx * (0.72 + i * 0.14), py = ey + ry * 0.2 * (1 - i * 0.2);
+          g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px + s * 8, py + 3 + i, px + s * (12 + i * 3), py - 2 - i * 3); g.stroke();
+        }
+      }
+      continue;
+    }
     // eye: dark brown iris filling the eye, soft lower glow, top lid line, two highlights
     g.save(); g.beginPath(); g.ellipse(cx, ey, rx, ry, 0, 0, 7); g.clip();
     const ig = g.createLinearGradient(0, ey - ry, 0, ey + ry);
@@ -164,7 +185,7 @@ function faceTexture(outfit: Outfit): THREE.CanvasTexture {
   g.stroke();
   const t = new THREE.CanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  faceCache.set(outfit, t);
+  faceCache.set(cacheKey, t);
   return t;
 }
 
@@ -214,7 +235,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const sh = mesh(geo('shoulder', () => new THREE.SphereGeometry(1, 18, 12)), robe, body, 0, 1.0, 0, false);
   sh.scale.set(0.34, 0.14, 0.27);
   mesh(geo('hem2', () => new THREE.CylinderGeometry(0.372, 0.376, 0.07, 22)), robeDark, body, 0, 0.205, 0, false);
-  if (outfit === 'monk' || outfit === 'nun') { // cross-collar (áo cổ chéo)
+  if (outfit === 'monk' || outfit === 'nun') { // cross-collar (Ã¡o cá»• chÃ©o)
     for (const sd of [-1, 1]) {
       const st = mesh(geo('lapel', () => new THREE.CapsuleGeometry(0.022, 0.3, 4, 8)), robeDark, body, sd * 0.07, 0.94, rAt(0.94) + 0.012, false);
       st.rotation.z = -sd * 0.46; st.scale.z = 0.5;
@@ -245,6 +266,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     new THREE.MeshToonMaterial({ map: faceTexture(outfit), emissive: 0x4a2c16, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   face.renderOrder = 2; face.raycast = () => {};
   head.add(face);
+  const faceOpen = faceTexture(outfit), faceShut = faceTexture(outfit, true);
   // ears
   const earR = outfit === 'monk' ? 0.095 : outfit === 'nun' ? 0.065 : 0.055;
   for (const sd of [-1, 1]) {
@@ -381,7 +403,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   body.add(hold);
   const holdInc = new THREE.Group(); holdInc.visible = false; hold.add(holdInc);
   const holdLotus = new THREE.Group(); holdLotus.visible = false; hold.add(holdLotus);
-  // chổi quét lá: cán nghiêng ra trước, đầu chổi chạm đất; chỉ hiện khi anim = sweep
+  // chá»•i quÃ©t lÃ¡: cÃ¡n nghiÃªng ra trÆ°á»›c, Ä‘áº§u chá»•i cháº¡m Ä‘áº¥t; chá»‰ hiá»‡n khi anim = sweep
   const holdBroom = new THREE.Group(); holdBroom.visible = false; holdBroom.rotation.x = -0.5; hold.add(holdBroom);
   mesh(geo('broomHandle', () => new THREE.CylinderGeometry(0.018, 0.018, 1.25, 6)), tmat(0x6b4423), holdBroom, 0, -0.32, 0, false);
   mesh(geo('broomHead', () => new THREE.ConeGeometry(0.15, 0.4, 8)), tmat(0x9a6b35), holdBroom, 0, -0.84, 0, false);
@@ -451,7 +473,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
@@ -466,7 +488,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       }
       if (cur) lines.push(cur);
       const shown = lines.slice(0, 3);
-      if (lines.length > 3) shown[2] = shown[2].slice(0, -1) + '…';
+      if (lines.length > 3) shown[2] = shown[2].slice(0, -1) + 'â€¦';
       const lh = 38, h = shown.length * lh + 30;
       B.canvas.width = 420; B.canvas.height = h + 16;
       g.font = font;
@@ -533,6 +555,18 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   if (c.bubble.visible && performance.now() > c.bubbleUntil) c.bubble.visible = false;
   if (anim !== c.curAnim) { c.curAnim = anim; c.t0 = t; }
   const dt = Math.max(0, Math.min(0.1, t - c.lastT)); c.lastT = t;
+  const faceMat = c.face.material as THREE.MeshToonMaterial;
+  if (c.blinkNext === 0) c.blinkNext = t + 1 + Math.random() * 4;
+  if (c.blinkUntil > 0) {
+    if (t >= c.blinkUntil) {
+      c.blinkUntil = 0;
+      c.blinkNext = t + 2 + Math.random() * 4;
+      if (faceMat.map !== c.faceOpen) { faceMat.map = c.faceOpen; }
+    }
+  } else if (t >= c.blinkNext) {
+    c.blinkUntil = t + 0.12 + Math.random() * 0.03;
+    if (faceMat.map !== c.faceShut) { faceMat.map = c.faceShut; }
+  }
   const walk = anim === 'walk' || anim === 'run';
   const speed = anim === 'run' ? 14 : 9;
   const amp = walk ? (anim === 'run' ? 0.95 : 0.65) : 0;
@@ -559,7 +593,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   let lift = 0; // 0 = palms at chest, 1 = palms in the lowered bow pose
 
   if (anim === 'sit') {
-    // lotus position (kết già): body lowered onto a flared lap, hands in dhyana mudra, slow breathing
+    // lotus position (káº¿t giÃ ): body lowered onto a flared lap, hands in dhyana mudra, slow breathing
     const br = Math.sin(t * 1.3) * 0.012;
     c.body.position.y = -0.3 + br;
     c.body.rotation.x = -0.03;
@@ -571,11 +605,11 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.foreL.rotation.set(-0.95, 0, 0);
     c.foreR.rotation.set(-0.95, 0, 0);
   } else if (anim === 'bow') {
-    // full prostration (lạy năm vóc sát đất): palms joined at chest, kneel, lean down, palms to forehead, rise
+    // full prostration (láº¡y nÄƒm vÃ³c sÃ¡t Ä‘áº¥t): palms joined at chest, kneel, lean down, palms to forehead, rise
     const e = t - c.t0;
     const kneel = ease((e - 0.35) / 0.4) * (1 - ease((e - 2.2) / 0.4));
     const down = ease((e - 0.8) / 0.65) * (1 - ease((e - 1.9) / 0.6));
-    // Bow: kneel lowers the hips; down folds the torso forward (capped at ~38° so the rigid robe
+    // Bow: kneel lowers the hips; down folds the torso forward (capped at ~38Â° so the rigid robe
     // hem never clips the floor). body.y is solved directly from the hem constraint.
     const th = 0.66 * Math.min(down, 0.65); // max ~43 degrees
     // front-hem body-space corner: (0, 0.205, 0.37). World y of that point = body.y + 0.205*cos(th) - 0.37*sin(th).
@@ -611,7 +645,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.foreL.rotation.set(-0.5, 0, 0); c.foreR.rotation.set(-0.5, 0, 0);
   }
 
-  // tay của NPC: sư thầy chắp tay sau lưng khi đứng yên, quét lá hai tay cầm chổi, đánh chuông hai tay kéo dây
+  // tay cá»§a NPC: sÆ° tháº§y cháº¯p tay sau lÆ°ng khi Ä‘á»©ng yÃªn, quÃ©t lÃ¡ hai tay cáº§m chá»•i, Ä‘Ã¡nh chuÃ´ng hai tay kÃ©o dÃ¢y
   const npcPose = anim === 'sweep' || anim === 'ring' || (anim === 'idle' && c.role === 'abbot');
   c.poseW += ((npcPose ? 1 : 0) - c.poseW) * Math.min(1, dt * 9);
   if (!npcPose && c.poseW < 0.002) c.poseW = 0;
@@ -638,7 +672,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   if (w > 0) {
     _tg.copy(CHEST);
     // Both targets live in body space, so the deep-bow palms simply glide from the chest to the
-    // lowered bow pose and follow the torso as it folds — no world-to-body conversion needed.
+    // lowered bow pose and follow the torso as it folds â€” no world-to-body conversion needed.
     if (lift > 0) _tg.lerp(BOW_HAND, lift);
     _tg.x = HALF_T;
     solveArm(c.armR, c.foreR, 1, _tg, w);
