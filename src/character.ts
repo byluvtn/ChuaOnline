@@ -27,7 +27,7 @@ export interface Character {
   holdInc: THREE.Group;
   holdLotus: THREE.Group;
   holdBroom: THREE.Group;
-  role?: 'abbot' | 'novice';
+  role?: 'abbot' | 'novice' | 'lay';
   poseW: number;
   poseKind: 'abbot' | 'sweep' | 'ring';
   prayW: number;
@@ -216,7 +216,7 @@ function embroideryTexture() {
   lotusEmbroidery = t; return t;
 }
 
-export function buildCharacter(outfit: Outfit, color: string, name: string, opts?: { scale?: number; role?: 'abbot' | 'novice' }): Character {
+export function buildCharacter(outfit: Outfit, color: string, name: string, opts?: { scale?: number; role?: 'abbot' | 'novice' | 'lay' }): Character {
   const root = new THREE.Group();
   if (opts?.scale) root.scale.setScalar(opts.scale);
   const body = new THREE.Group();

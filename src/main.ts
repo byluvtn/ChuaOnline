@@ -169,7 +169,7 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number }
+interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
 let myId = '';
@@ -189,7 +189,7 @@ const joy = { x: 0, y: 0, id: -1 };
 
 function addPlayer(p: PlayerState) {
   if (remotes.has(p.id)) return remotes.get(p.id)!;
-  const char = p.npc ? buildCharacter(p.outfit, p.color, p.name, { scale: p.role === 'abbot' ? 1.15 : 0.9, role: p.role }) : buildCharacter(p.outfit, p.color, p.name);
+  const char = p.npc ? buildCharacter(p.outfit, p.color, p.name, { scale: p.role === 'abbot' ? 1.15 : p.role === 'lay' ? 1 : 0.9, role: p.role }) : buildCharacter(p.outfit, p.color, p.name);
   char.setLabel(p.name, p.npc ? undefined : levelOf(p.merit), p.id === myId);
   char.label.visible = settings.showNames;
   char.setAccessory(p.accessory);
@@ -878,7 +878,7 @@ function loop() {
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân
         if (Math.hypot(r.char.root.position.x - px, r.char.root.position.z - pz) > 0.004 || r.lastMoveAt === undefined) r.lastMoveAt = now;
         if (r.anim === 'walk' && now - r.lastMoveAt > 500) r.anim = 'idle';
-        if (id === 'npc4' && r.anim === 'ring' && r.prevAnim !== 'ring') { world.ringBell(); audio.play('bow'); }
+        if (id === 'npc4' && r.anim === 'ring' && (r.prevAnim !== 'ring' || now - (r.lastRingAt ?? 0) > 4000)) { r.lastRingAt = now; world.ringBell(); audio.play('bow'); }
         r.prevAnim = r.anim;
       }
     }

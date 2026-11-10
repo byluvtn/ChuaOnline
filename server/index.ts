@@ -102,7 +102,7 @@ let seq = 1;
 
 const OUTFITS: Outfit[] = ['monk', 'nun', 'male', 'female'];
 const ANIMS: Anim[] = ['idle', 'walk', 'run', 'sit', 'sweep', 'ring', 'incense', 'bow', 'chant', 'lantern', 'palms', 'beads'];
-/** Mỗi phòng có bộ NPC riêng (cùng id npc1..npc4); NPC không phải phiên nên không tính vào số người online. */
+/** Mỗi phòng có bộ NPC riêng (cùng id npc1..npc5); NPC không phải phiên nên không tính vào số người online. */
 const npcRooms = new Map<string, NpcRoom>();
 const npcRoom = (room: string) => { let r = npcRooms.get(room); if (!r) { r = createNpcRoom(); npcRooms.set(room, r); } return r; };
 const clean = (s: unknown, max: number) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max);
@@ -417,7 +417,15 @@ setInterval(() => {
     const nr = npcRoom(r.id);
     if (!list.length) { nr.sleeping = true; continue; }
     resumeNpcs(nr);
-    const npcs = tickNpcs(nr);
+    const npcs = tickNpcs(nr, Date.now(), list.length);
+    for (const c of nr.outbox.splice(0)) {
+      const msg: ChatMessage = { id: seq++, sid: c.npcId, name: c.name, text: c.text, t: Date.now() };
+      const arr = roomChat.get(r.id) ?? [];
+      arr.push(msg);
+      if (arr.length > 100) arr.shift();
+      roomChat.set(r.id, arr);
+      io.to(r.id).emit('chat', msg);
+    }
     io.to(r.id).volatile.emit('state', {
       online: list.length,
       players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, anim: p.anim })),

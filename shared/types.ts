@@ -18,7 +18,7 @@ export interface PlayerState {
   merit: number;
   /** nhân vật do máy chủ điều khiển (không phải phiên người chơi) */
   npc?: boolean;
-  role?: 'abbot' | 'novice';
+  role?: 'abbot' | 'novice' | 'lay';
 }
 
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number }
