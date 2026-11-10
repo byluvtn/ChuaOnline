@@ -1,0 +1,34 @@
+export default async ({ ev, shot, sleep }) => {
+  await sleep(1500);
+  await ev(`document.getElementById('enter').click()`);
+  await sleep(4000);
+  const pos = () => ev(`(()=>{ const p = window.__co.me().char.root.position; return JSON.stringify({ x: +p.x.toFixed(2), z: +p.z.toFixed(2) }); })()`);
+  const setPos = (x, z) => ev(`(()=>{ const r = window.__co.me().char.root; r.position.set(${x}, 0, ${z}); })()`);
+  const key = async (code, ms) => {
+    await ev(`window.dispatchEvent(new KeyboardEvent('keydown', { code: '${code}', key: '${code}' }))`);
+    await sleep(ms);
+    await ev(`window.dispatchEvent(new KeyboardEvent('keyup', { code: '${code}', key: '${code}' }))`);
+  };
+  await ev(`(()=>{ window.__co.freeze = true; const c = window.__co.camera; c.position.set(34, 6, 6); c.lookAt(34, 1.5, -6); })()`);
+  await setPos(34, 4);
+  await sleep(500);
+  console.log('start', await pos());
+  console.log('zone at start', await ev(`window.__co.world.zoneAt(34, 4)`));
+  await key('KeyW', 1800);
+  console.log('after W (toward drum from south)', await pos());
+  await shot('walk-south-approach');
+  await setPos(34, -6 + 3.5);
+  await sleep(300);
+  await key('KeyW', 1500);
+  console.log('after W from 3.5m (should stop at pillar/base)', await pos());
+  await setPos(30, -6);
+  await sleep(300);
+  await key('KeyD', 1500);
+  console.log('after D from west side (should be blocked by pillars)', await pos());
+  await shot('walk-west-blocked');
+  await setPos(34, -6 + 2.6);
+  await sleep(300);
+  console.log('zone at tower', await ev(`window.__co.world.zoneAt(34, -4)`));
+  console.log('couplet visible', await ev(`document.getElementById('couplet').classList.contains('show')`));
+  await shot('walk-couplet');
+};

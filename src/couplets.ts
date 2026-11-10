@@ -17,6 +17,11 @@ export const COUPLETS: Record<string, Couplet> = {
     am: ['Chung cổ lâu tiền thanh thanh cảnh giác trần hoàn khách', 'Hương đăng điện lý niệm niệm quy y Cực Lạc thiên'],
     nghia: 'Tiếng chuông trống vang nơi gác, cảnh tỉnh khách trần gian; trong điện hương đăng, niệm niệm quy y về cõi Cực Lạc.',
   },
+  trong: {
+    id: 'trong', where: 'Tháp trống',
+    am: ['Cổ thanh viễn chấn thiền đình, phiền não tùy thanh tiêu tán', 'Pháp cổ cao minh Phật địa, thành tâm nhất niệm giác viên'],
+    nghia: 'Tiếng trống vang xa sân thiền, phiền não theo tiếng mà tan; trống pháp vọng nơi cõi Phật, một lòng thành đã tỏ.',
+  },
   thap: {
     id: 'thap', where: 'Tháp Quan Âm',
     am: ['Bảo tháp lăng vân thiên thu bất hoại', 'Kim thân ánh nhật vạn thế thường tồn'],

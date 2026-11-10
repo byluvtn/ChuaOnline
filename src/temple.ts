@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DRUM, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -29,6 +29,7 @@ export { groundY, resolveWater };
 const COLUMN_LABELS = {
   tamQuan: ['Cửa từ bi mở rộng đón khách mười phương', 'Lòng hỷ xả bao dung độ khắp muôn loài'],
   chuong: ['Tiếng chuông ngân tỉnh giấc mộng trần gian', 'Hương trầm thoảng dẫn lối về cõi tịnh'],
+  trong: ['Tiếng trống vọng sân thiền tan phiền não', 'Âm vang cửa Phật tỏ rõ lòng thành'],
   thap: ['Tháp ngọc vươn mây ngàn thu vững chãi', 'Thân vàng soi nắng muôn thuở lung linh'],
   hanhLang: ['Dừng chân bên hiên vắng nghe gió hát', 'Rửa lòng nơi cửa Phật ngắm sen hồng'],
 };
@@ -180,11 +181,12 @@ export function buildTemple(c: TempleCtx) {
     sg.position.set(0, by + 4.95, 2.2); t.add(sg);
     if (coupletId) {
       for (let i = 0; i < 2; i++) {
-        labelBoard(t, COLUMN_LABELS.chuong[i], 0.46, 2.6, i ? -1.9 : 1.9, by + 2.25, 2.19);
+        labelBoard(t, COLUMN_LABELS[coupletId as 'chuong' | 'trong'][i], 0.46, 2.6, i ? -1.9 : 1.9, by + 2.25, 2.19);
       }
     }
     t.position.set(x, 0, z); t.rotation.y = ry; scene.add(t);
-    sealArchitectureJoints(t, { maxGap: 0.5 });
+    const seal = sealArchitectureJoints(t, { maxGap: 0.5 });
+    if (import.meta.env.DEV) console.warn(`gapdump tower ${sign}: filled=${seal.filled} remaining=${seal.remaining.length} ` + JSON.stringify(seal.remaining));
     for (const [px, pz] of P) {
       const v = new THREE.Vector3(px, 0, pz).applyAxisAngle(new THREE.Vector3(0, 1, 0), ry);
       colliders.push({ x: x + v.x, z: z + v.z, r: 0.3 });
@@ -201,6 +203,38 @@ export function buildTemple(c: TempleCtx) {
   bt.t.add(bellPivot);
   glowSpr(0, bt.by + 3.2, 0, 3, 0xffb040, 0.45, bt.t);
   zones.push({ x: BELL.x, z: BELL.z, r: 7, id: 'chuong' });
+
+  // ---- drum tower (đối xứng tháp chuông) ----
+  const drumTower = tower(DRUM.x, DRUM.z, -Math.PI / 2, 'THÁP TRỐNG', 'trong');
+  const drumBodyM = lamb(0x6e1a14, { roughness: 0.65 });
+  const drumSkinM = lamb(0xd9b98a, { roughness: 0.85 });
+  const drumWoodM = lamb(0x4a2e18, { roughness: 0.8 });
+  const drumPivot = new THREE.Group(); drumPivot.position.set(0, drumTower.by + 1.7, 0);
+  const DR = 0.85, DL = 1.1;
+  const drumBody = new THREE.Mesh(new THREE.CylinderGeometry(DR, DR, DL, 28), drumBodyM);
+  drumBody.rotation.x = Math.PI / 2; drumBody.castShadow = true; drumPivot.add(drumBody);
+  for (const s of [-1, 1]) {
+    const face = new THREE.Mesh(new THREE.CircleGeometry(DR * 0.97, 28), drumSkinM);
+    face.position.z = s * (DL / 2 + 0.005); face.rotation.y = s > 0 ? 0 : Math.PI; drumPivot.add(face);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(DR * 0.97, 0.05, 8, 28), c.goldM);
+    rim.position.z = s * (DL / 2); drumPivot.add(rim);
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const stud = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), c.goldM);
+      stud.position.set(Math.cos(a) * DR * 0.97, Math.sin(a) * DR * 0.97, s * (DL / 2 + 0.02)); drumPivot.add(stud);
+    }
+  }
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 0.2), drumWoodM);
+    leg.position.set(0, -DR - 0.05, s * 0.45); leg.castShadow = true; drumPivot.add(leg);
+    const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.1, 0.2), drumWoodM);
+    leg2.position.set(0, -DR - 0.05, s * 0.45); leg2.rotation.z = 0.5; leg2.castShadow = true; drumPivot.add(leg2);
+  }
+  const drumBase = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.16, 1.4), drumWoodM);
+  drumBase.position.set(0, -DR - 0.6, 0); drumPivot.add(drumBase);
+  drumTower.t.add(drumPivot);
+  glowSpr(0, drumTower.by + 3.2, 0, 3, 0xffb040, 0.45, drumTower.t);
+  zones.push({ x: DRUM.x, z: DRUM.z, r: 7, id: 'trong' });
 
   // ---- Quan Âm tower ----
   const qa = new THREE.Group();
@@ -389,6 +423,9 @@ export function buildTemple(c: TempleCtx) {
   pathRect(-SIDE_X - 1.2, PATH_Z, -SIDE_X + 1.2, BUDDHA_YARD.z);
   pathRect(-SIDE_X - 7, BELL.z - 1.2, -SIDE_X, BELL.z + 1.2);
   pathRect(-SIDE_X + 1, BELL.z - 1.2, -SIDE_X + 1.3, BELL.z + 1.2);
+  pathRect(SIDE_X, DRUM.z - 1.2, SIDE_X + 7, DRUM.z + 1.2);
+  pathRect(SIDE_X - 1.3, DRUM.z - 1.2, SIDE_X - 1, DRUM.z + 1.2);
+  pathRect(SIDE_X - 1.2, DRUM.z, SIDE_X + 1.2, PATH_Z);
   // lối từ quảng trường ra đầu cầu (bắc) và từ đầu cầu (nam) tới tam quan
   pathRect(PLAZA.x - 1.4, PLAZA.z + PLAZA.r - 1.2, PLAZA.x + 1.4, BRIDGE.z0 + 0.4);
   pathRect(BRIDGE.x - 1.4, BRIDGE.z1 - 0.4, BRIDGE.x + 1.4, WALL.zS - 0.6);
@@ -401,12 +438,17 @@ export function buildTemple(c: TempleCtx) {
   buildRestArea(gardenCtx);
 
   // ---- animation ----
-  let ring = 0;
+  let ring = 0, drumHit = 0;
   const ringBell = () => { ring = 1; };
+  const ringDrum = () => { drumHit = 1; };
   const halos = [...hall.halos, bigB.getObjectByName('halo')!, quanAm.getObjectByName('halo')!].filter(Boolean);
   const update = (t: number, dt: number) => {
     ring = Math.max(0, ring - dt * 0.25);
     bellPivot.rotation.z = Math.sin(t * 2.6) * 0.5 * ring * ring + Math.sin(t * 0.5) * 0.015;
+    drumHit = Math.max(0, drumHit - dt * 2.5);
+    drumPivot.rotation.z = Math.sin(t * 38) * 0.035 * drumHit;
+    drumPivot.position.y = drumTower.by + 1.7 + Math.abs(Math.sin(t * 24)) * 0.05 * drumHit;
+    drumPivot.scale.setScalar(1 + Math.sin(t * 38) * 0.018 * drumHit);
     halos.forEach((h, i) => { h.rotation.z = t * (0.12 + i * 0.02); });
     // cá bơi trong hệ toạ độ của nhóm hồ (nhóm đã được đặt về tâm khuôn viên)
     koi.forEach((kk) => {
@@ -435,5 +477,5 @@ export function buildTemple(c: TempleCtx) {
   // bảng chữ Việt trên mọi cột đã gắn inscription (kể cả cột do hall.ts dựng)
   relabelColumns(scene);
 
-  return { seats, update, ringBell, zoneAt, inLake, pond: pondHandle };
+  return { seats, update, ringBell, ringDrum, zoneAt, inLake, pond: pondHandle };
 }

@@ -767,6 +767,7 @@ function loop() {
   });
 
   if (t - lastBell > 45) { lastBell = t; if (me) { world.ringBell(); audio.play('bow'); } }
+  if (t - lastDrum > 45) { lastDrum = t; if (me) { world.ringDrum(); audio.play('bow'); } }
   updateCouplet();
   world.update(t, me ? me.char.root.position : focusIdle);
   post.render();
@@ -778,6 +779,7 @@ function loop() {
   }
 }
 let lastBell = 20;
+let lastDrum = 42;
 const focusIdle = new THREE.Vector3(0, 0, 8);
 let loadedHidden = false;
 requestAnimationFrame(loop);

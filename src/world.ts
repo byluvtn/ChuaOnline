@@ -35,6 +35,7 @@ export interface World {
   resolveWater(p: { x: number; z: number }): void;
   groundY(x: number, z: number): number;
   ringBell(): void;
+  ringDrum(): void;
 }
 
 const lamb = (c: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) =>
@@ -430,5 +431,5 @@ export function createWorld(): World {
     sun.position.set(focus.x - 26, 38, focus.z + 22);
   };
 
-  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell };
+  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum };
 }
