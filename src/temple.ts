@@ -2,14 +2,14 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
 
-export interface Seat { x: number; z: number; ry: number }
+export interface Seat { x: number; z: number; ry: number; rest?: boolean }
 export interface Zone { x: number; z: number; r: number; id: string }
 export interface TempleCtx {
   scene: THREE.Scene;
@@ -357,7 +357,9 @@ export function buildTemple(c: TempleCtx) {
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2 + 0.2, rr = 0.5 + ((i * 37) % 10) / 14;
     const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0), rocks);
-    r.position.set(Math.cos(a) * (LAKE.a + 0.9), rr * 0.3, Math.sin(a) * (LAKE.b + 0.9)); r.scale.y = 0.65; r.rotation.set(i, i * 2, 0); r.castShadow = true; pond.add(r);
+    const rx = Math.cos(a) * (LAKE.a + 0.9), rz = Math.sin(a) * (LAKE.b + 0.9);
+    if (LAKE.x + rx < PIER.x1 && Math.abs(LAKE.z + rz - PIER.z) < PIER.hw + rr + 0.6) continue;
+    r.position.set(rx, rr * 0.3, rz); r.scale.y = 0.65; r.rotation.set(i, i * 2, 0); r.castShadow = true; pond.add(r);
   }
   const padM = lamb(0x2f8f45), flM = lamb(0xff93b8, { emissive: 0x401324 });
   for (let i = 0; i < 22; i++) {
@@ -422,6 +424,78 @@ export function buildTemple(c: TempleCtx) {
     lamp.scale.set(1, 1.2, 1); lamp.position.set(BRIDGE.x + s * (bw + 0.02), bridgeY(BRIDGE.x, apexZ) + 1.7, apexZ); bridge.add(lamp);
     glowSpr(lamp.position.x, lamp.position.y, lamp.position.z, 2, 0xff4a28, 0.5);
   }
+
+  // ---- Thủy Đình: đình nhỏ trên mặt hồ, phía Tây cầu trục, nối bờ Tây bằng cầu gỗ ----
+  const thuy = new THREE.Group(); thuy.name = 'thuy-dinh'; scene.add(thuy);
+  const pierWoodM = lamb(0x8a5a32, { map: woodTexture([4, 1]) }), pierDarkM = lamb(0x4a2e18, { roughness: 0.85 });
+  const tdSeal = <T extends THREE.Mesh>(m: T) => { m.castShadow = m.receiveShadow = true; m.userData.sealable = true; thuy.add(m); return m; };
+  const pierLen = PIER.x1 - PIER.x0, flatX0 = PIER.x0 + PIER_RAMP;
+  const ramp = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(PIER_RAMP, PIER.y), 0.18, PIER.hw * 2), pierWoodM);
+  const rampAng = Math.atan2(PIER.y, PIER_RAMP);
+  ramp.position.set(PIER.x0 + PIER_RAMP / 2, PIER.y / 2 - 0.09 / Math.cos(rampAng), PIER.z); ramp.rotation.z = rampAng;
+  ramp.castShadow = ramp.receiveShadow = true; thuy.add(ramp);
+  const flat = new THREE.Mesh(new THREE.BoxGeometry(PIER.x1 - flatX0, 0.18, PIER.hw * 2), pierWoodM);
+  flat.position.set((flatX0 + PIER.x1) / 2, PIER.y - 0.09, PIER.z); flat.castShadow = flat.receiveShadow = true; thuy.add(flat);
+  for (const px of [PIER.x0 + 0.1, -9.6, -8.6, -7.1, -5.6, -4.6]) for (const s of [-1, 1]) {
+    const bottom = inLake(px, PIER.z + s * 1.45) ? 0.03 : 0;
+    const top = px < flatX0 ? PIER.y * Math.max(0.2, (px - PIER.x0) / PIER_RAMP) - 0.18 : PIER.y - 0.18;
+    if (top <= bottom + 0.05) continue;
+    const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, top - bottom, 8), pierDarkM);
+    pile.position.set(px, (top + bottom) / 2, PIER.z + s * 1.45); pile.castShadow = true; thuy.add(pile);
+  }
+  const FL = PIER_FLOOR, flTop = FL.y;
+  tdSeal(new THREE.Mesh(new THREE.BoxGeometry(FL.hx * 2, flTop - PIER.y, FL.hz * 2), stoneM)).position.set(FL.x, (flTop + PIER.y) / 2, FL.z);
+  const tdCols: [number, number][] = [[-1.9, -1.4], [1.9, -1.4], [-1.9, 1.4], [1.9, 1.4]];
+  const tdColH = 2.6;
+  for (const [px, pz] of tdCols) {
+    const col = tdSeal(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, tdColH, 12), c.redM));
+    col.position.set(FL.x + px, flTop + tdColH / 2, FL.z + pz);
+    tdSeal(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), stoneM)).position.set(FL.x + px, flTop + 0.09, FL.z + pz);
+    colliders.push({ x: FL.x + px, z: FL.z + pz, r: 0.25 });
+  }
+  const tdBeamY = flTop + tdColH + 0.12;
+  for (const s of [-1.4, 1.4]) tdSeal(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.24, 0.26), c.redM)).position.set(FL.x, tdBeamY, FL.z + s);
+  for (const s of [-1.9, 1.9]) tdSeal(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 3.3), c.redM)).position.set(FL.x + s, tdBeamY, FL.z);
+  const tdRoofH = 1.6, tdRoofY = tdBeamY + 0.12 + tdRoofH / 2 - 0.2;
+  tdSeal(new THREE.Mesh(c.roofGeometry(5.8, 5.0, tdRoofH, 0.6), c.tileM)).position.set(FL.x, tdRoofY, FL.z);
+  tdSeal(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.9, 8), c.goldM)).position.set(FL.x, tdRoofY + tdRoofH / 2 + 0.3, FL.z);
+  const tdSign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.55), new THREE.MeshBasicMaterial({ map: signTexture('THỦY ĐÌNH') }));
+  tdSign.position.set(FL.x + 1.95, tdBeamY - 0.45, FL.z); tdSign.rotation.y = Math.PI / 2; thuy.add(tdSign);
+  const tdLamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), c.redBase);
+  tdLamp.scale.set(1, 1.2, 1); tdLamp.position.set(FL.x, tdBeamY - 0.5, FL.z); thuy.add(tdLamp);
+  glowSpr(tdLamp.position.x, tdLamp.position.y, tdLamp.position.z, 2, 0xff4a28, 0.5);
+  const railY = flTop + 0.55;
+  const rail = (x: number, z: number, w: number, dp: number) => {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, dp), c.redM);
+    r.position.set(x, railY, z); r.castShadow = true; thuy.add(r);
+  };
+  rail(FL.x + 0.2, FL.z - FL.hz + 0.05, FL.hx * 2 - 0.4, 0.1);
+  rail(FL.x + 0.2, FL.z + FL.hz - 0.05, FL.hx * 2 - 0.4, 0.1);
+  rail(FL.x + FL.hx - 0.05, FL.z, 0.1, FL.hz * 2);
+  for (let px = FL.x - FL.hx + 0.6; px <= FL.x + FL.hx - 0.1; px += 1.2) for (const s of [-1, 1]) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), c.redM);
+    post.position.set(px, flTop + 0.3, FL.z + s * (FL.hz - 0.05)); thuy.add(post);
+  }
+  for (let pz = FL.z - FL.hz + 0.6; pz <= FL.z + FL.hz - 0.5; pz += 1.2) {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), c.redM);
+    post.position.set(FL.x + FL.hx - 0.05, flTop + 0.3, pz); thuy.add(post);
+  }
+  for (let px = FL.x - FL.hx + 0.6; px <= FL.x + FL.hx; px += 0.8) for (const s of [-1, 1]) colliders.push({ x: px, z: FL.z + s * FL.hz, r: 0.2 });
+  for (let pz = FL.z - FL.hz + 0.8; pz < FL.z + FL.hz; pz += 0.8) colliders.push({ x: FL.x + FL.hx, z: pz, r: 0.2 });
+  const tdSeats: Seat[] = [
+    { x: FL.x + 1.4, z: FL.z, ry: Math.PI / 2, rest: true },
+    { x: FL.x, z: FL.z - 0.8, ry: Math.PI, rest: true },
+    { x: FL.x, z: FL.z + 0.8, ry: 0, rest: true },
+  ];
+  for (const s of tdSeats) {
+    const mat = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.9), matM); mat.position.set(s.x, flTop + 0.02, s.z); mat.receiveShadow = true; thuy.add(mat);
+    const cu = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.1, 18), cushM); cu.position.set(s.x, flTop + 0.09, s.z); cu.castShadow = true; thuy.add(cu);
+    seats.push(s);
+  }
+  const tdSeal2 = sealArchitectureJoints(thuy, { maxGap: 0.4 });
+  if (import.meta.env.DEV) console.warn(`gapdump thuyDinh: filled=${tdSeal2.filled} remaining=${tdSeal2.remaining.length} ` + JSON.stringify(tdSeal2.remaining));
+  zones.push({ x: FL.x, z: FL.z, r: 4.5, id: 'thuyDinh' });
+  void pierLen;
 
   // ---- perimeter wall + tam quan gate ----
   const wallStone = lamb(0xe9dcc0, { roughness: 0.9 });

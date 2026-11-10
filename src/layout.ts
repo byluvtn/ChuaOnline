@@ -11,6 +11,9 @@ export const BELL = { x: -34, z: -6 };
 export const DRUM = { x: 34, z: -6 };
 export const DEN_TRINH = { x: 9, z: 39 };
 export const QUAN = { x: 28, z: 14 };
+export const PIER = { x0: -10.6, x1: -4.4, z: 23, hw: 1.6, y: 0.55 };
+export const PIER_RAMP = 1.3;
+export const PIER_FLOOR = { x: -6.7, z: 23, hx: 2.2, hz: 1.7, y: 0.77 };
 /** Đế tháp Quan Âm: các tầng vuông (nửa cạnh chân tầng, độ cao mặt tầng), xoay QUAN_ROT quanh trục Y. */
 export const QUAN_ROT = -Math.PI / 2 - 0.2;
 export const QUAN_PLAT = [{ hs: 4.8 / Math.SQRT2, y: 0.45 }, { hs: 4.25 / Math.SQRT2, y: 0.9 }];
@@ -50,6 +53,8 @@ export function groundY(x: number, z: number) {
       if (e < 0.6) y = Math.max(y, t.y * (1 - e / 0.6));
     }
   }
+  if (x >= PIER.x0 && x <= PIER.x1 && Math.abs(z - PIER.z) <= PIER.hw) y = Math.max(y, PIER.y * Math.min(1, (x - PIER.x0) / PIER_RAMP));
+  if (Math.abs(x - PIER_FLOOR.x) <= PIER_FLOOR.hx && Math.abs(z - PIER_FLOOR.z) <= PIER_FLOOR.hz) y = Math.max(y, PIER_FLOOR.y);
   return Math.max(y, bridgeY(x, z));
 }
 
@@ -107,6 +112,7 @@ export function resolveBridge(p: { x: number; z: number }, prev: { x: number; z:
 /** Keep walkers out of the lake except on the bridge deck. */
 export function resolveWater(p: { x: number; z: number }, onDeck = true) {
   if (!inLake(p.x, p.z)) return;
+  if (p.x >= PIER.x0 - 0.2 && p.x <= PIER.x1 + 0.2 && Math.abs(p.z - PIER.z) <= PIER.hw + 0.2) return;
   if (onDeck && Math.abs(p.x - BRIDGE.x) < BRIDGE.hw + 0.6) {
     p.x = Math.max(BRIDGE.x - BRIDGE.hw + 0.1, Math.min(BRIDGE.x + BRIDGE.hw - 0.1, p.x));
     return;

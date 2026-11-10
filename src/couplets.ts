@@ -27,6 +27,11 @@ export const COUPLETS: Record<string, Couplet> = {
     am: ['Nhập môn tiên bái, trần ai nhất niệm tẩy', 'Trình diện đầu hương, tịnh tâm vạn lự thanh'],
     nghia: 'Vừa vào cửa chùa, dừng chân thắp nén hương trình diện; một niệm gột sạch bụi trần, lòng tịnh thì muôn nỗi lo cũng lắng.',
   },
+  thuyDinh: {
+    id: 'thuyDinh', where: 'Thủy Đình',
+    am: ['Thủy thượng đình đài, nhất niệm tâm đăng chiếu bích ba', 'Liên trung thiền ảnh, vạn duyên trần cảnh tận thành không'],
+    nghia: 'Đình dựng trên mặt nước, một niệm đèn tâm soi sáng làn sóng biếc; bóng thiền giữa hoa sen, muôn duyên bụi trần đều hóa thành không.',
+  },
   thap: {
     id: 'thap', where: 'Tháp Quan Âm',
     am: ['Bảo tháp lăng vân thiên thu bất hoại', 'Kim thân ánh nhật vạn thế thường tồn'],
