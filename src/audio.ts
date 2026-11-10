@@ -1,9 +1,26 @@
 // Procedural temple sounds (WebAudio). No assets needed.
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
-let muted = localStorage.getItem('co:mute') === '1';
+let muted = (() => { try { return localStorage.getItem('co:mute') === '1'; } catch { return false; } })();
 let ambientOn = false;
 let vol = 1;
+let bgm: HTMLAudioElement | null = null;
+const BGM_GAIN = 0.3;
+const applyBgm = () => { if (bgm) bgm.volume = muted ? 0 : Math.min(1, BGM_GAIN * vol); };
+const BGM_TRACKS = ['/audio/spiritual-ambient.mp3', '/audio/placid-ambient.mp3'];
+let bgmIdx = 0;
+function startBgm() {
+  if (!bgm) {
+    const a = new Audio(BGM_TRACKS[bgmIdx]);
+    a.preload = 'auto';
+    a.addEventListener('ended', () => { bgmIdx = (bgmIdx + 1) % BGM_TRACKS.length; a.src = BGM_TRACKS[bgmIdx]; void a.play().catch(() => {}); });
+    a.addEventListener('error', () => { if (bgm === a) bgm = null; });
+    document.addEventListener('visibilitychange', () => { if (!bgm) return; if (document.hidden) bgm.pause(); else if (!muted) void bgm.play().catch(() => {}); });
+    bgm = a;
+  }
+  applyBgm();
+  void bgm.play().catch(() => {});
+}
 const level = () => (muted ? 0 : 0.7 * vol);
 
 function ensure() {
@@ -40,12 +57,15 @@ export const audio = {
   isMuted: () => muted,
   setMuted(v: boolean) {
     muted = v;
-    localStorage.setItem('co:mute', v ? '1' : '0');
+    try { localStorage.setItem('co:mute', v ? '1' : '0'); } catch { /* storage blocked */ }
     if (master && ctx) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.05);
+    applyBgm();
+    if (!v && bgm && bgm.paused && !document.hidden) void bgm.play().catch(() => {});
   },
   setVolume(v: number) {
     vol = Math.max(0, Math.min(1, v));
     if (master && ctx) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.05);
+    applyBgm();
   },
   unlock() { ensure(); },
   play(name: 'bow' | 'incense' | 'chant' | 'lantern' | 'coin' | 'levelup' | 'click' | 'moh') {
@@ -64,6 +84,7 @@ export const audio = {
   startAmbient() {
     if (ambientOn) return;
     ambientOn = true;
+    startBgm();
     const c = ensure();
     // wind: filtered noise with slow LFO
     const buf = c.createBuffer(1, c.sampleRate * 3, c.sampleRate);
