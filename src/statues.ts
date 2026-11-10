@@ -225,8 +225,8 @@ export function buildBuddha(): THREE.Group {
   torso.position.y = 1.3; torso.scale.z = 0.86;
   blob(fig, skin, [0, 1.74, 0], [0.64, 0.3, 0.46]);
 
-  // ---- áo cà sa: vỏ nón mỏng ôm thân, chừa hở vai/ngực phải, cộng dải quấn chéo ----
-  const robeShell = add(fig, geo('b-robe-shell', () => new THREE.CylinderGeometry(0.515, 0.735, 0.95, 28, 1, true, -2.5, 5.0)), robe);
+  // ---- áo cà sa: vỏ nón mỏng ôm thân, hở trọn mặt trước ngực (khe 1.7 rad về phía +z), cộng dải quấn chéo ----
+  const robeShell = add(fig, geo('b-robe-shell', () => new THREE.CylinderGeometry(0.515, 0.735, 0.95, 28, 1, true, 0.85, Math.PI * 2 - 1.7)), robe);
   robeShell.position.y = 1.3; robeShell.scale.z = 0.88;
   const sashCurve = new THREE.CatmullRomCurve3([
     v3(-0.46, 1.72, 0.22), v3(-0.3, 1.6, 0.42), v3(0.02, 1.42, 0.5),
@@ -267,11 +267,11 @@ const GUANYIN_SCALE = 1.6;
 /** Thân áo: Cylinder (0.35 → 0.85, cao 1.8, 24 segments) uốn nhẹ eo. */
 function robeBodyGeometry() {
   return geo('g-robe', () => {
-    const g = new THREE.CylinderGeometry(0.35, 0.85, 1.8, 24, 8);
+    const g = new THREE.CylinderGeometry(0.35, 0.68, 1.8, 24, 8);
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const t = (p.getY(i) + 0.9) / 1.8;               // 0 đáy … 1 đỉnh
-      const waist = 1 - 0.09 * Math.sin(Math.PI * Math.min(1, t * 1.25));
+      const waist = 1 - 0.07 * Math.sin(Math.PI * Math.min(1, t * 1.15));
       p.setX(i, p.getX(i) * waist);
       p.setZ(i, p.getZ(i) * waist);
     }
@@ -309,7 +309,7 @@ export function buildQuanAm(): THREE.Group {
   body.position.y = bodyBottom + 0.9;
   blob(fig, white, [0, bodyBottom + 1.76, 0], [0.5, 0.22, 0.36]);
   // viền vàng ở gấu áo
-  const hem = add(fig, geo('g-hem', () => new THREE.TorusGeometry(0.85, 0.035, 8, 40)), gold);
+  const hem = add(fig, geo('g-hem', () => new THREE.TorusGeometry(0.685, 0.035, 8, 40)), gold);
   hem.rotation.x = Math.PI / 2; hem.position.y = bodyBottom + 0.05;
 
   // ---- hai tay: tay phải (bên trái người xem) cầm liễu, tay trái nâng bình
@@ -364,8 +364,9 @@ export function buildQuanAm(): THREE.Group {
   const gap = 0.85;
   const veilHead = add(head, geo('g-veil-head', () => new THREE.SphereGeometry(HEAD_R + 0.11, 36, 24, Math.PI / 2 + gap, Math.PI * 2 - gap * 2, 0, 2.15)), veilM);
   veilHead.position.y = 0.04;
-  const veilDrape = add(fig, geo('g-veil-drape', () => new THREE.CylinderGeometry(0.66, 0.98, 0.95, 28, 1, true, Math.PI / 2 + 0.55, Math.PI * 2 - 1.1)), veilM);
-  veilDrape.position.set(0, headY - 0.78, -0.06);
+  // tà khăn chỉ rủ sau lưng: chừa hở 2.0 rad phía trước để lộ cổ và tay
+  const veilDrape = add(fig, geo('g-veil-drape', () => new THREE.CylinderGeometry(0.56, 0.72, 0.9, 28, 1, true, 1.0, Math.PI * 2 - 2.0)), veilM);
+  veilDrape.position.set(0, headY - 0.82, -0.06);
 
   // ---- mũ miện: vành cong vàng kim trên trán, gắn tượng Phật nhỏ
   const crown = add(head, geo('g-crown', () => new THREE.SphereGeometry(HEAD_R + 0.045, 32, 8, Math.PI / 2 - 0.95, 1.9, 0.62, 0.3)), std(COL.robeGold, 0.45, { metalness: 0.3, side: THREE.DoubleSide }));

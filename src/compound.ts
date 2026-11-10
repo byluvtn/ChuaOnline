@@ -47,6 +47,9 @@ export function sealArchitectureJoints(root: THREE.Object3D, opts: SealOpts = {}
     const m = o as THREE.Mesh;
     if (m.isMesh && m.userData.sealable && !m.userData.sealFiller) parts.push(m);
   });
+  // gán tên duy nhất để log khe còn lại xác định được cặp (phân biệt theo root)
+  const tag = root.name || root.type || 'seal';
+  for (let i = 0; i < parts.length; i++) if (!parts[i].name) parts[i].name = `${tag}-${i}`;
 
   const fillers: { geo: THREE.BoxGeometry; mat: THREE.Material }[] = [];
   const remaining: SealReport['remaining'] = [];
@@ -74,6 +77,16 @@ export function sealArchitectureJoints(root: THREE.Object3D, opts: SealOpts = {}
       // chỉ xét các cặp thực sự kề nhau; cặp ở xa nhau không phải "khe"
       const near = Math.hypot(Math.max(gapX, 0), Math.max(gapY, 0), Math.max(gapZ, 0));
       if (near > maxGap * 2.2) continue;
+
+      /*
+       * Hai cấu kiện song song đặt cạnh nhau (vd. hai cột đứng cách nhau 1.5 m)
+       * cũng "hở theo một trục và chồng theo hai trục" y như một mối nối hở.
+       * Phân biệt: mối nối thật thì khe rất nhỏ so với tiết diện tiếp xúc; còn
+       * khoảng cách giữa hai cấu kiện thì lớn hơn nhiều so với bề dày của chúng.
+       */
+      const positiveOverlaps = [ox, oy, oz].filter((v) => v > 0);
+      const minCross = positiveOverlaps.length ? Math.min(...positiveOverlaps) : 0;
+      if (gap > maxGap && gap > 0.6 * minCross) continue;
 
       const key = `${Math.round(gap * 1000)}:${Math.round(Math.min(_boxA.min.x, _boxB.min.x) * 100)}`;
       if (seen.has(key) && gap > maxGap) continue;

@@ -11,6 +11,7 @@ import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { createPost } from './post';
 import { createWorld } from './world';
+import { buildBuddha, buildQuanAm } from './statues';
 import { ACTION_RULES, ROOMS, type MeditationInfo, type QuestState } from '../shared/game';
 import {
   MAP_HALF, OUTFIT_COLOR, levelOf, meritForLevel,
@@ -748,4 +749,4 @@ const focusIdle = new THREE.Vector3(0, 0, 8);
 let loadedHidden = false;
 requestAnimationFrame(loop);
 
-if (import.meta.env.DEV) (window as any).__co = { me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr };
+if (import.meta.env.DEV) (window as any).__co = { me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr, buildBuddha, buildQuanAm };

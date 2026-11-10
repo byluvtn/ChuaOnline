@@ -104,50 +104,6 @@ export function signTexture(text: string) {
   return t;
 }
 
-const HAN_FONT = '"Noto Serif CJK TC","Songti TC","STSong","PMingLiU","PingFang TC","Hiragino Mincho ProN",serif';
-
-/** Vertical couplet board (câu đối): Han characters top-to-bottom, gold on red lacquer. */
-export function coupletTexture(han: string, w = 160, h = 880) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const g = c.getContext('2d')!;
-  const gr = g.createLinearGradient(0, 0, w, 0);
-  gr.addColorStop(0, '#5a0e0a'); gr.addColorStop(.5, '#7a1812'); gr.addColorStop(1, '#5a0e0a');
-  g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  g.strokeStyle = '#e8b64a'; g.lineWidth = 5; g.strokeRect(7, 7, w - 14, h - 14);
-  g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = 2; g.strokeRect(15, 15, w - 30, h - 30);
-  const chars = [...han];
-  const step = (h - 70) / chars.length;
-  const font = Math.min(step * 0.86, w * 0.62);
-  g.fillStyle = '#f6d67c'; g.font = `700 ${font}px ${HAN_FONT}`;
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 3;
-  chars.forEach((ch, i) => g.fillText(ch, w / 2, 35 + step * (i + 0.5)));
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  return t;
-}
-
-/** Horizontal board (hoành phi): Han characters left-to-right, gold on black lacquer. */
-export function hoanhPhiTexture(han: string, w = 1024, h = 256) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#1b0d08'; g.fillRect(0, 0, w, h);
-  g.strokeStyle = '#e8b64a'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
-  g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = 3; g.strokeRect(24, 24, w - 48, h - 48);
-  const chars = [...han];
-  const step = (w - 120) / chars.length;
-  const font = Math.min(step * 0.86, h * 0.66);
-  g.fillStyle = '#f6d67c'; g.font = `700 ${font}px ${HAN_FONT}`;
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 4;
-  chars.forEach((ch, i) => g.fillText(ch, 60 + step * (i + 0.5), h / 2 + 4));
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  return t;
-}
-
 /* ------------------------------------------------------------------ *
  * Khuôn mặt Chibi vẽ bằng CanvasTexture 2D
  * Trả về texture trong suốt, chỉ chứa nét (mắt cong, miệng, má hồng) để
