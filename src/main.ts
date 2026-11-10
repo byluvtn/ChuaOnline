@@ -6,7 +6,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { clampToCompound } from './layout';
+import { clampToCompound, resolveBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { createPost } from './post';
@@ -169,7 +169,7 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState }
+interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
 let myId = '';
@@ -189,11 +189,12 @@ const joy = { x: 0, y: 0, id: -1 };
 
 function addPlayer(p: PlayerState) {
   if (remotes.has(p.id)) return remotes.get(p.id)!;
-  const char = buildCharacter(p.outfit, p.color, p.name);
-  char.setLabel(p.name, levelOf(p.merit), p.id === myId);
+  const char = p.npc ? buildCharacter(p.outfit, p.color, p.name, { scale: p.role === 'abbot' ? 1.15 : 0.9, role: p.role }) : buildCharacter(p.outfit, p.color, p.name);
+  char.setLabel(p.name, p.npc ? undefined : levelOf(p.merit), p.id === myId);
   char.label.visible = settings.showNames;
   char.setAccessory(p.accessory);
   char.root.position.set(p.x, 0, p.z);
+  if (p.npc) char.root.visible = settings.showNpcs;
   world.scene.add(char.root);
   const r: Remote = { char, target: new THREE.Vector3(p.x, world.groundY(p.x, p.z), p.z), ry: p.ry, anim: p.anim, actionUntil: 0, data: p };
   remotes.set(p.id, r);
@@ -310,6 +311,7 @@ onSettings((st, key) => {
     resize();
   }
   if (key === null || key === 'showNames') remotes.forEach((r) => (r.char.label.visible = st.showNames));
+  if (key === null || key === 'showNpcs') remotes.forEach((r) => { if (r.data.npc) r.char.root.visible = st.showNpcs; });
   if (key === null || key === 'showCouplets') { if (!st.showCouplets) hideCouplet(); else curZone = null; }
   if (key === 'showTips' || key === null) $('marquee').style.display = st.showTips ? '' : 'none';
 });
@@ -432,7 +434,7 @@ function startMenu() {
   initMenu({
     socket: socket!, profile: () => profile, quests: () => quests, room: () => roomId, switchRoom, toast, logout,
     myPos: () => (me ? { x: me.char.root.position.x, z: me.char.root.position.z } : null),
-    players: () => [...remotes.entries()].map(([id, r]) => ({ id, name: r.data.name, x: r.char.root.position.x, z: r.char.root.position.z, level: levelOf(r.data.merit) })),
+    players: () => [...remotes.entries()].filter(([, r]) => !r.data.npc).map(([id, r]) => ({ id, name: r.data.name, x: r.char.root.position.x, z: r.char.root.position.z, level: levelOf(r.data.merit) })),
     goTo: (x, z) => { clickTarget = new THREE.Vector3(x, 0, z); setSitting(false); },
     changeLook, chatLog: () => chatLog,
   });
@@ -543,7 +545,7 @@ function nearestFreeSeat(limit = Infinity): { x: number; z: number; ry: number }
     const d = Math.hypot(st.x - root.position.x, st.z - root.position.z);
     if (d >= bd) continue;
     let taken = false;
-    remotes.forEach((r, id) => { if (id !== myId && Math.hypot(r.target.x - st.x, r.target.z - st.z) < 0.6) taken = true; });
+    remotes.forEach((r, id) => { if (id !== myId && !r.data.npc && Math.hypot(r.target.x - st.x, r.target.z - st.z) < 0.6) taken = true; });
     if (!taken) { best = st; bd = d; }
   }
   return best;
@@ -634,16 +636,27 @@ const clock = new THREE.Clock();
 let lastSend = 0;
 const tmp = new THREE.Vector3();
 
+const prevPos = { x: 0, z: 0 };
 function collide(pos: THREE.Vector3) {
+  const onDeck = resolveBridge(pos, prevPos);
   for (const c of world.colliders) {
     const dx = pos.x - c.x, dz = pos.z - c.z;
     const d = Math.hypot(dx, dz), min = c.r + 0.4;
     if (d < min && d > 0.0001) { pos.x = c.x + (dx / d) * min; pos.z = c.z + (dz / d) * min; }
   }
-  world.resolveWater(pos);
+  world.resolveWater(pos, onDeck);
   clampToCompound(pos);
   pos.x = Math.max(-MAP_HALF, Math.min(MAP_HALF, pos.x));
   pos.z = Math.max(-MAP_HALF, Math.min(MAP_HALF, pos.z));
+  prevPos.x = pos.x; prevPos.z = pos.z;
+}
+
+const teacherBtn = $('teacherBtn');
+teacherBtn.onclick = () => openPanel('teacher', panelCtx());
+function updateTeacherBtn() {
+  const abbot = remotes.get('npc1');
+  const near = !!(me && abbot && abbot.char.root.visible && Math.hypot(abbot.char.root.position.x - me.char.root.position.x, abbot.char.root.position.z - me.char.root.position.z) < 3);
+  if (teacherBtn.hidden === near) teacherBtn.hidden = !near;
 }
 
 function hideCouplet() { $('couplet').classList.remove('show'); }
@@ -757,8 +770,16 @@ function loop() {
 
   remotes.forEach((r, id) => {
     if (id !== myId) {
+      const px = r.char.root.position.x, pz = r.char.root.position.z;
       r.char.root.position.lerp(r.target, 1 - Math.pow(0.0005, dt));
-      if (now > r.actionUntil && /^(bow|incense|chant|lantern)$/.test(r.anim)) r.anim = 'idle';
+      if (!r.data.npc && now > r.actionUntil && /^(bow|incense|chant|lantern)$/.test(r.anim)) r.anim = 'idle';
+      if (r.data.npc) {
+        // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân
+        if (Math.hypot(r.char.root.position.x - px, r.char.root.position.z - pz) > 0.004 || r.lastMoveAt === undefined) r.lastMoveAt = now;
+        if (r.anim === 'walk' && now - r.lastMoveAt > 500) r.anim = 'idle';
+        if (id === 'npc4' && r.anim === 'ring' && r.prevAnim !== 'ring') { world.ringBell(); audio.play('bow'); }
+        r.prevAnim = r.anim;
+      }
     }
     let d = r.ry - r.char.root.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
@@ -766,8 +787,8 @@ function loop() {
     animateCharacter(r.char, r.anim, t);
   });
 
-  if (t - lastBell > 45) { lastBell = t; if (me) { world.ringBell(); audio.play('bow'); } }
   if (t - lastDrum > 45) { lastDrum = t; if (me) { world.ringDrum(); audio.play('bow'); } }
+  updateTeacherBtn();
   updateCouplet();
   world.update(t, me ? me.char.root.position : focusIdle);
   post.render();
@@ -778,7 +799,6 @@ function loop() {
     setTimeout(() => l.remove(), 700);
   }
 }
-let lastBell = 20;
 let lastDrum = 42;
 const focusIdle = new THREE.Vector3(0, 0, 8);
 let loadedHidden = false;

@@ -7,8 +7,9 @@ export interface Settings {
   showNames: boolean;
   showBubbles: boolean;
   showTips: boolean;
+  showNpcs: boolean;
 }
-const DEFAULTS: Settings = { sound: true, volume: 0.8, quality: 'high', showCouplets: true, showNames: true, showBubbles: true, showTips: true };
+const DEFAULTS: Settings = { sound: true, volume: 0.8, quality: 'high', showCouplets: true, showNames: true, showBubbles: true, showTips: true, showNpcs: true };
 const KEY = 'co:settings';
 
 function load(): Settings {
@@ -18,7 +19,7 @@ function load(): Settings {
     if (typeof raw.sound === 'boolean') s.sound = raw.sound;
     if (typeof raw.volume === 'number' && raw.volume >= 0 && raw.volume <= 1) s.volume = raw.volume;
     if (raw.quality === 'low' || raw.quality === 'medium' || raw.quality === 'high') s.quality = raw.quality;
-    for (const k of ['showCouplets', 'showNames', 'showBubbles', 'showTips'] as const) if (typeof raw[k] === 'boolean') s[k] = raw[k];
+    for (const k of ['showCouplets', 'showNames', 'showBubbles', 'showTips', 'showNpcs'] as const) if (typeof raw[k] === 'boolean') s[k] = raw[k];
   } catch { /* ignore corrupt storage */ }
   return s;
 }

@@ -77,10 +77,26 @@ export function clampToCompound(p: { x: number; z: number }) {
   if (Math.abs(p.x) > WALL.gate && p.z > WALL.zS - 0.8 && p.z < WALL.zS + 1.5) p.z = WALL.zS - 0.8;
 }
 
+/** Thành cầu: giữ người đi trên mặt cầu, chặn bước ngang qua thành. Trả về true nếu đang trên mặt cầu. */
+export function resolveBridge(p: { x: number; z: number }, prev: { x: number; z: number }): boolean {
+  const inZ = (z: number) => z >= BRIDGE.z0 && z <= BRIDGE.z1;
+  if (!inZ(p.z)) return false;
+  const dx = p.x - BRIDGE.x;
+  const lim = BRIDGE.hw - 0.15;
+  const wasOn = inZ(prev.z) && Math.abs(prev.x - BRIDGE.x) <= BRIDGE.hw + 0.15;
+  const enteringFromEnd = !inZ(prev.z) && Math.abs(dx) <= BRIDGE.hw + 0.15;
+  if (wasOn || enteringFromEnd) {
+    p.x = BRIDGE.x + Math.max(-lim, Math.min(lim, dx));
+    return true;
+  }
+  if (Math.abs(dx) < BRIDGE.hw + 0.15) p.x = BRIDGE.x + (prev.x >= BRIDGE.x ? 1 : -1) * (BRIDGE.hw + 0.15);
+  return false;
+}
+
 /** Keep walkers out of the lake except on the bridge deck. */
-export function resolveWater(p: { x: number; z: number }) {
+export function resolveWater(p: { x: number; z: number }, onDeck = true) {
   if (!inLake(p.x, p.z)) return;
-  if (Math.abs(p.x - BRIDGE.x) < BRIDGE.hw + 0.6) {
+  if (onDeck && Math.abs(p.x - BRIDGE.x) < BRIDGE.hw + 0.6) {
     p.x = Math.max(BRIDGE.x - BRIDGE.hw + 0.1, Math.min(BRIDGE.x + BRIDGE.hw - 0.1, p.x));
     return;
   }

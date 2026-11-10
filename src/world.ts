@@ -32,7 +32,7 @@ export interface World {
   sun: THREE.DirectionalLight;
   seats: Seat[];
   zoneAt(x: number, z: number): string | null;
-  resolveWater(p: { x: number; z: number }): void;
+  resolveWater(p: { x: number; z: number }, onDeck?: boolean): void;
   groundY(x: number, z: number): number;
   ringBell(): void;
   ringDrum(): void;

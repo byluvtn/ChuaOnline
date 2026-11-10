@@ -4,7 +4,7 @@ import type { MenuCtx } from '../menu';
 
 export function openSettings(ctx: MenuCtx) {
   openCustomPanel('Cài đặt', (body) => {
-    const toggle = (key: 'sound' | 'showCouplets' | 'showNames' | 'showBubbles' | 'showTips', label: string, hint?: string) => {
+    const toggle = (key: 'sound' | 'showCouplets' | 'showNames' | 'showBubbles' | 'showTips' | 'showNpcs', label: string, hint?: string) => {
       const cb = h('input', { type: 'checkbox', role: 'switch', id: `st-${key}` });
       cb.checked = settings[key];
       cb.onchange = () => setSetting(key, cb.checked);
@@ -25,6 +25,7 @@ export function openSettings(ctx: MenuCtx) {
       toggle('showNames', 'Hiện tên người chơi'),
       toggle('showBubbles', 'Hiện bóng chat'),
       toggle('showTips', 'Hiện gợi ý'),
+      toggle('showNpcs', 'Hiện NPC sư thầy/chú tiểu'),
       h('button', { class: 'ghost wide danger', onclick: () => ctx.logout() }, 'Đăng xuất'));
   });
 }

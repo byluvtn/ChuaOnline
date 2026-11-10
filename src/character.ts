@@ -16,6 +16,10 @@ export interface Character {
   hold: THREE.Group;
   holdInc: THREE.Group;
   holdLotus: THREE.Group;
+  holdBroom: THREE.Group;
+  role?: 'abbot' | 'novice';
+  poseW: number;
+  poseKind: 'abbot' | 'sweep' | 'ring';
   prayW: number;
   lastT: number;
   lap: THREE.Mesh;
@@ -179,8 +183,9 @@ function embroideryTexture() {
   lotusEmbroidery = t; return t;
 }
 
-export function buildCharacter(outfit: Outfit, color: string, name: string): Character {
+export function buildCharacter(outfit: Outfit, color: string, name: string, opts?: { scale?: number; role?: 'abbot' | 'novice' }): Character {
   const root = new THREE.Group();
+  if (opts?.scale) root.scale.setScalar(opts.scale);
   const body = new THREE.Group();
   root.add(body);
 
@@ -376,6 +381,10 @@ export function buildCharacter(outfit: Outfit, color: string, name: string): Cha
   body.add(hold);
   const holdInc = new THREE.Group(); holdInc.visible = false; hold.add(holdInc);
   const holdLotus = new THREE.Group(); holdLotus.visible = false; hold.add(holdLotus);
+  // chổi quét lá: cán nghiêng ra trước, đầu chổi chạm đất; chỉ hiện khi anim = sweep
+  const holdBroom = new THREE.Group(); holdBroom.visible = false; holdBroom.rotation.x = -0.5; hold.add(holdBroom);
+  mesh(geo('broomHandle', () => new THREE.CylinderGeometry(0.018, 0.018, 1.25, 6)), tmat(0x6b4423), holdBroom, 0, -0.32, 0, false);
+  mesh(geo('broomHead', () => new THREE.ConeGeometry(0.15, 0.4, 8)), tmat(0x9a6b35), holdBroom, 0, -0.84, 0, false);
   for (let i = -1; i <= 1; i++) { // three incense sticks, red glowing tips
     const st = new THREE.Group(); st.position.set(i * 0.016, 0.02, 0); st.rotation.z = -i * 0.1; holdInc.add(st);
     mesh(geo('stick', () => new THREE.CylinderGeometry(0.0065, 0.0065, 0.212, 5)), tmat(0x8a4b2a), st, 0, 0.106, 0, false);
@@ -442,7 +451,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string): Cha
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, prayW: 0, lastT: 0, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
@@ -588,11 +597,42 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.legL.rotation.x = c.legR.rotation.x = -th;
   } else if (anim === 'chant') {
     c.body.rotation.x = Math.sin(t * 3) * 0.07;
+  } else if (anim === 'sweep') {
+    const ph = (t * Math.PI * 2) / 1.1;
+    c.body.rotation.y = Math.sin(ph) * 0.32;
+    c.body.position.y = Math.cos(ph * 2) * 0.03;
+  } else if (anim === 'ring') {
+    const pull = Math.sin((t * Math.PI * 2) / 1.0) * 0.5 + 0.5;
+    c.body.rotation.x = pull * 0.12;
+    c.body.position.y = -pull * 0.03;
   } else if (anim === 'lantern') {
     const lf = Math.sin(t * 4) * 0.12;
     c.armL.rotation.set(-2.1 + lf, 0, 0.25); c.armR.rotation.set(-2.1 + lf, 0, -0.25);
     c.foreL.rotation.set(-0.5, 0, 0); c.foreR.rotation.set(-0.5, 0, 0);
   }
+
+  // tay của NPC: sư thầy chắp tay sau lưng khi đứng yên, quét lá hai tay cầm chổi, đánh chuông hai tay kéo dây
+  const npcPose = anim === 'sweep' || anim === 'ring' || (anim === 'idle' && c.role === 'abbot');
+  c.poseW += ((npcPose ? 1 : 0) - c.poseW) * Math.min(1, dt * 9);
+  if (!npcPose && c.poseW < 0.002) c.poseW = 0;
+  if (npcPose) c.poseKind = anim === 'idle' ? 'abbot' : (anim as 'sweep' | 'ring');
+  if (c.poseW > 0 && w === 0) {
+    const pw = ease(c.poseW);
+    if (c.poseKind === 'sweep') {
+      _tg.set(0.07, 0.86, 0.4); solveArm(c.armR, c.foreR, 1, _tg, pw);
+      _tg.set(-0.07, 0.71, 0.48); solveArm(c.armL, c.foreL, -1, _tg, pw);
+    } else if (c.poseKind === 'ring') {
+      const pull = Math.sin((t * Math.PI * 2) / 1.0) * 0.5 + 0.5;
+      _tg.set(0.1, 1.22 - pull * 0.34, 0.46); solveArm(c.armR, c.foreR, 1, _tg, pw);
+      _tg.set(-0.1, 1.22 - pull * 0.34, 0.46); solveArm(c.armL, c.foreL, -1, _tg, pw);
+    } else {
+      _tg.set(0.05, 0.62, 0.38); solveArm(c.armR, c.foreR, 1, _tg, pw);
+      _tg.set(-0.08, 0.66, -0.36); solveArm(c.armL, c.foreL, -1, _tg, pw);
+    }
+  }
+  const sweeping = anim === 'sweep' && c.poseW > 0.6;
+  if (sweeping) c.hold.position.set(0, 0.86, 0.4);
+  c.holdBroom.visible = sweeping;
 
   // ritual hands: round palms pressed together (gap 0), fingertips up, blended in by the prayer weight
   if (w > 0) {
@@ -609,5 +649,5 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   const held = w > 0.6;
   c.holdInc.visible = held && anim === 'incense';
   c.holdLotus.visible = held && (anim === 'chant' || anim === 'bow');
-  c.hold.visible = held;
+  c.hold.visible = held || sweeping;
 }

@@ -12,7 +12,7 @@ export interface PanelCtx {
   switchRoom: (id: string) => void;
   toast: (t: string) => void;
 }
-export type PanelKind = 'shop' | 'bag' | 'quests' | 'rank' | 'rooms' | 'chant';
+export type PanelKind = 'shop' | 'bag' | 'quests' | 'rank' | 'rooms' | 'chant' | 'teacher';
 type Cur = PanelKind | 'custom';
 
 type Child = Node | string;
@@ -45,7 +45,7 @@ function price(n: number): HTMLElement {
   return s;
 }
 
-export const TITLES: Record<PanelKind, string> = { shop: 'Cửa hàng', bag: 'Túi đồ', quests: 'Nhiệm vụ', rank: 'Xếp hạng công đức', rooms: 'Chọn chùa', chant: 'Tụng kinh' };
+export const TITLES: Record<PanelKind, string> = { shop: 'Cửa hàng', bag: 'Túi đồ', quests: 'Nhiệm vụ', rank: 'Xếp hạng công đức', rooms: 'Chọn chùa', chant: 'Tụng kinh', teacher: 'Sư Thầy' };
 let current: Cur | null = null;
 let cleanup: (() => void) | null = null;
 let ctxRef: PanelCtx | null = null;
@@ -79,7 +79,7 @@ export function openPanel(kind: PanelKind, ctx: PanelCtx) {
   render();
 }
 /** Re-render when live data (profile/quests) changes while a panel is open. */
-export function refreshPanel() { if (current && current !== 'custom' && current !== 'rank' && current !== 'rooms' && current !== 'chant') render(); }
+export function refreshPanel() { if (current && current !== 'custom' && current !== 'rank' && current !== 'rooms' && current !== 'chant' && current !== 'teacher') render(); }
 
 function render() {
   const body = document.getElementById('panelBody')!;
@@ -92,6 +92,7 @@ function render() {
   else if (current === 'rank') renderRank(body, ctx);
   else if (current === 'rooms') renderRooms(body, ctx);
   else if (current === 'chant') renderChant(body, ctx);
+  else if (current === 'teacher') renderTeacher(body);
 }
 
 // ------------------------------------------------------------------ cửa hàng (tab category)
@@ -287,3 +288,27 @@ function renderRooms(body: HTMLElement, ctx: PanelCtx) {
 }
 
 export { levelOf };
+
+// ------------------------------------------------------------------ sư thầy (NPC)
+const TEACHER_SECTIONS: { title: string; lines: string[] }[] = [
+  { title: 'Chào mừng bạn', lines: [
+    'A Di Đà Phật. Chùa Online là nơi bạn có thể dừng chân giữa ngày bận rộn, đi dạo, lễ Phật và trò chuyện cùng mọi người.',
+    'Bạn hãy bắt đầu từ việc nhỏ: đi qua cầu cong vào sân chùa, rồi thắp một nén hương trước chánh điện. Nhiệm vụ đầu tiên trong mục Nhiệm vụ sẽ được ghi nhận ngay.',
+  ] },
+  { title: 'Cách tu tập', lines: [
+    'Thắp hương: đứng gần bàn thờ rồi bấm "Thắp hương". Ba nén hương tượng trưng cho giới, định, tuệ.',
+    'Lạy Phật: bấm "Lạy Phật" hoặc chạm vào bồ đoàn để ngồi xuống rồi lạy. Lạy chậm, giữ tâm lắng.',
+    'Tụng kinh: mở "Tụng kinh", chọn một bài và đọc theo từng câu được sáng lên. Mỗi biến hoàn thành đều được cộng công đức.',
+    'Thiền: bấm "Thiền" để ngồi yên. Nhiều người cùng ngồi một lúc sẽ nhận thêm công đức.',
+  ] },
+  { title: 'Công đức là gì', lines: [
+    'Công đức ghi lại sự đều đặn trong việc tu tập của bạn, không dùng để so bì. Mỗi lần thắp hương, lạy, tụng hay thiền đều góp phần.',
+    'Đủ công đức thì bạn lên cấp, nhận xu thưởng để mua lễ vật, hoa và vật phẩm trong Cửa hàng. Cấp càng cao thì cần càng nhiều công đức hơn cấp trước.',
+    'Hãy đến đều đặn mỗi ngày một chút, như vậy tốt hơn một lần làm thật nhiều.',
+  ] },
+];
+function renderTeacher(body: HTMLElement) {
+  body.replaceChildren(...TEACHER_SECTIONS.map((s) => h('section', { class: 'tile', style: 'display:block;margin-bottom:10px' },
+    h('h3', { style: 'margin:0 0 6px' }, s.title),
+    ...s.lines.map((ln) => h('p', { style: 'margin:4px 0;line-height:1.55;font-size:14px' }, ln)))));
+}

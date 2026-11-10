@@ -11,6 +11,7 @@ import {
   MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
 } from '../shared/types.js';
 import * as db from './db.js';
+import { createNpcRoom, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const DIST = resolve('dist');
@@ -100,11 +101,19 @@ const roomMinutes = new Map<string, number>();
 let seq = 1;
 
 const OUTFITS: Outfit[] = ['monk', 'nun', 'male', 'female'];
-const ANIMS: Anim[] = ['idle', 'walk', 'run', 'sit', 'incense', 'bow', 'chant', 'lantern'];
+const ANIMS: Anim[] = ['idle', 'walk', 'run', 'sit', 'sweep', 'ring', 'incense', 'bow', 'chant', 'lantern'];
+/** Mỗi phòng có bộ NPC riêng (cùng id npc1..npc4); NPC không phải phiên nên không tính vào số người online. */
+const npcRooms = new Map<string, NpcRoom>();
+const npcRoom = (room: string) => { let r = npcRooms.get(room); if (!r) { r = createNpcRoom(); npcRooms.set(room, r); } return r; };
 const clean = (s: unknown, max: number) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max);
 const cleanColor = (c: unknown) => (/^#[0-9a-fA-F]{6}$/.test(String(c)) ? String(c) : '#d99a1e');
 const roomSessions = (room: string) => [...sessions.values()].filter((s) => s.room === room);
 const roomOk = (id: string) => ROOMS.some((r) => r.id === id);
+function npcStates(room: string): PlayerState[] {
+  const nr = npcRoom(room);
+  resumeNpcs(nr);
+  return nr.npcs.map((n) => n.state);
+}
 
 function roomList(): RoomInfo[] {
   return ROOMS.map((r) => ({ id: r.id, name: r.name, online: roomSessions(r.id).length, capacity: ROOM_CAPACITY }));
@@ -201,7 +210,7 @@ io.on('connection', (socket) => {
 
     socket.emit('welcome', {
       id: socket.id, room,
-      players: roomSessions(room).map((x) => x.state),
+      players: [...roomSessions(room).map((x) => x.state), ...npcStates(room)],
       chat: (roomChat.get(room) ?? []).slice(-30),
       lanterns: (roomLanterns.get(room) ?? []).slice(-20),
       meditation: meditationInfo(room),
@@ -399,10 +408,13 @@ io.on('connection', (socket) => {
 setInterval(() => {
   for (const r of ROOMS) {
     const list = roomSessions(r.id);
-    if (!list.length) continue;
+    const nr = npcRoom(r.id);
+    if (!list.length) { nr.sleeping = true; continue; }
+    resumeNpcs(nr);
+    const npcs = tickNpcs(nr);
     io.to(r.id).volatile.emit('state', {
       online: list.length,
-      players: list.map(({ state: p }) => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, anim: p.anim })),
+      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, anim: p.anim })),
     });
   }
 }, 100);
