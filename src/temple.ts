@@ -436,25 +436,27 @@ export function buildTemple(c: TempleCtx) {
   };
   wallSeg(-WALL.x, WALL.zN, WALL.x, WALL.zN);
   wallSeg(-WALL.x, WALL.zN, -WALL.x, WALL.zS); wallSeg(WALL.x, WALL.zN, WALL.x, WALL.zS);
-  wallSeg(-WALL.x, WALL.zS, -WALL.gate - 1.6, WALL.zS); wallSeg(WALL.gate + 1.6, WALL.zS, WALL.x, WALL.zS);
+  wallSeg(-WALL.x, WALL.zS, -WALL.gate - 5.1, WALL.zS); wallSeg(WALL.gate + 5.1, WALL.zS, WALL.x, WALL.zS);
+  wallSeg(-WALL.gate - 1.7, WALL.zS, -WALL.gate - 0.6, WALL.zS); wallSeg(WALL.gate + 0.6, WALL.zS, WALL.gate + 1.7, WALL.zS);
   const gate = new THREE.Group();
   for (const x of [-WALL.gate, WALL.gate]) {
     const pl = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6.4, 1.2), c.redM); pl.position.set(x, 3.2, 0); pl.castShadow = true; pl.userData.sealable = true; gate.add(pl);
     const b = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 1.7), stoneBase); b.position.set(x, 0.25, 0); b.userData.sealable = true; gate.add(b);
     colliders.push({ x, z: WALL.zS, r: 0.9 });
     const sx = x + Math.sign(x) * 3.2;
-    for (const px of [sx - 1.1, sx + 1.1]) {
+    for (const px of [sx - 1.5, sx + 1.5]) {
       const sp = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.6, 0.8), c.redM); sp.position.set(px, 2.3, 0); sp.castShadow = true; sp.userData.sealable = true; gate.add(sp);
       const sb = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 1.2), stoneBase); sb.position.set(px, 0.2, 0); sb.userData.sealable = true; gate.add(sb);
       colliders.push({ x: px, z: WALL.zS, r: 0.55 });
     }
-    const sl = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.5, 1.1), c.redM); sl.position.set(sx, 4.7, 0); sl.castShadow = true; sl.userData.sealable = true; gate.add(sl);
-    const sr = new THREE.Mesh(c.roofGeometry(4.6, 3.6, 1.2, 0.5), c.tileM); sr.position.set(sx, 5.4, 0); sr.castShadow = true; sr.userData.sealable = true; gate.add(sr);
+    const sl = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.5, 1.1), c.redM); sl.position.set(sx, 4.7, 0); sl.castShadow = true; sl.userData.sealable = true; gate.add(sl);
+    const sr = new THREE.Mesh(c.roofGeometry(5.4, 3.6, 1.2, 0.5), c.tileM); sr.position.set(sx, 5.4, 0); sr.castShadow = true; sr.userData.sealable = true; gate.add(sr);
   }
   const lintel = new THREE.Mesh(new THREE.BoxGeometry(WALL.gate * 2 + 4.6, 0.8, 1.5), c.redM); lintel.position.y = 6.45; lintel.castShadow = true; lintel.userData.sealable = true; gate.add(lintel);
   const gRoof = new THREE.Mesh(c.roofGeometry(WALL.gate * 2 + 7.5, 5, 2.0, 0.8), c.tileM); gRoof.position.y = 7.45; gRoof.castShadow = true; gRoof.userData.sealable = true; gate.add(gRoof);
-  const gRoof2 = new THREE.Mesh(c.roofGeometry(WALL.gate * 2 + 4.2, 4.2, 1.5, 0.6), c.tileM); gRoof2.position.y = 8.4; gRoof2.castShadow = true; gRoof2.userData.sealable = true; gate.add(gRoof2);
-  const gFin = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.2, 8), c.goldM); gFin.position.y = 9.8; gFin.userData.sealable = true; gate.add(gFin);
+  const gNeck = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.2, 2.0), c.redM); gNeck.position.y = 7.95; gNeck.castShadow = true; gNeck.userData.sealable = true; gate.add(gNeck);
+  const gRoof2 = new THREE.Mesh(c.roofGeometry(WALL.gate * 2 + 4.2, 4.2, 1.5, 0.6), c.tileM); gRoof2.position.y = 8.85; gRoof2.castShadow = true; gRoof2.userData.sealable = true; gate.add(gRoof2);
+  const gFin = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.2, 8), c.goldM); gFin.position.y = 10.45; gFin.userData.sealable = true; gate.add(gFin);
   const gSign = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), new THREE.MeshBasicMaterial({ map: signTexture('CHÙA ONLINE') }));
   gSign.position.set(0, 5.35, 0.85); gate.add(gSign);
   for (let i = 0; i < 2; i++) {
