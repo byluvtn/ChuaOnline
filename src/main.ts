@@ -445,9 +445,10 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF' && profile?.admin && !e.repeat) {
     freeCam = !freeCam;
     if (freeCam) freePos.copy(camera.position);
-    toast(freeCam ? 'Camera tự do: WASD di chuyển, Q/E lên xuống, Shift nhanh, chuột kéo để xoay, F để thoát' : 'Đã thoát camera tự do');
+    toast(freeCam ? 'Camera tự do: WASD di chuyển, Space/E bay lên, Q xuống, lăn chuột zoom, Shift nhanh, kéo chuột để xoay, F để thoát' : 'Đã thoát camera tự do');
     return;
   }
+  if (e.code === 'Space' && freeCam && profile?.admin) e.preventDefault();
   keys.add(e.code);
   if (e.key === 'Enter') { e.preventDefault(); $('chatInput').focus(); }
 });
@@ -471,7 +472,16 @@ addEventListener('pointermove', (e) => {
   camYaw -= e.movementX * 0.005;
   camPitch = Math.min(camMaxPitch(), Math.max(profile?.admin ? -1.2 : 0.1, camPitch + e.movementY * 0.004));
 });
-canvas.addEventListener('wheel', (e) => { camDist = Math.min(camMaxDist(), Math.max(4, camDist + e.deltaY * (profile?.admin ? 0.03 : 0.01))); }, { passive: true });
+canvas.addEventListener('wheel', (e) => {
+  if (freeCam && profile?.admin) {
+    const k = -e.deltaY * 0.05;
+    freePos.x += -Math.sin(camYaw) * Math.cos(camPitch) * k;
+    freePos.y = Math.max(0.5, Math.min(250, freePos.y - Math.sin(camPitch) * k));
+    freePos.z += -Math.cos(camYaw) * Math.cos(camPitch) * k;
+    return;
+  }
+  camDist = Math.min(camMaxDist(), Math.max(4, camDist + e.deltaY * (profile?.admin ? 0.03 : 0.01)));
+}, { passive: true });
 
 // Joystick (touch)
 const joyEl = $('joystick'), stick = $('stick');
@@ -651,9 +661,7 @@ function updateCouplet() {
   const close = mk('button', 'cclose', '×');
   close.setAttribute('aria-label', 'Tắt bảng giải nghĩa');
   close.onclick = () => { dismissed.add(c.id); hideCouplet(); };
-  const han = mk('div', 'han', '');
-  c.han.forEach((l) => han.append(mk('span', '', l)));
-  el.append(close, mk('small', '', c.where), han, mk('p', '', c.am.join(' / ')), mk('em', '', c.nghia));
+  el.append(close, mk('small', '', c.where), mk('p', '', c.am.join(' / ')), mk('em', '', c.nghia));
   el.classList.add('show');
 }
 
@@ -736,7 +744,7 @@ function loop() {
       if (keys.has('KeyS') || keys.has('ArrowDown')) freePos.x -= fx * fs, freePos.y -= fy * fs, freePos.z -= fz * fs;
       if (keys.has('KeyA') || keys.has('ArrowLeft')) freePos.x -= rx * fs, freePos.z -= rz * fs;
       if (keys.has('KeyD') || keys.has('ArrowRight')) freePos.x += rx * fs, freePos.z += rz * fs;
-      if (keys.has('KeyE')) freePos.y += fs;
+      if (keys.has('KeyE') || keys.has('Space')) freePos.y += fs;
       if (keys.has('KeyQ')) freePos.y -= fs;
       freePos.y = Math.max(0.5, Math.min(250, freePos.y));
       camera.position.copy(freePos);

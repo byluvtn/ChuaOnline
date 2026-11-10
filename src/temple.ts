@@ -205,27 +205,30 @@ export function buildTemple(c: TempleCtx) {
   // ---- Quan Âm tower ----
   const qa = new THREE.Group();
   for (let i = 0; i < 3; i++) {
-    const tier = new THREE.Mesh(new THREE.CylinderGeometry(4.6 - i * 0.55, 4.8 - i * 0.55, 0.45, 8), stoneM);
-    tier.position.y = 0.22 + i * 0.45; tier.castShadow = tier.receiveShadow = true; tier.userData.sealable = true; qa.add(tier);
+    const tier = new THREE.Mesh(new THREE.CylinderGeometry(4.6 - i * 0.55, 4.8 - i * 0.55, 0.45, 4), stoneM);
+    tier.position.y = 0.22 + i * 0.45; tier.rotation.y = Math.PI / 4; tier.castShadow = tier.receiveShadow = true; tier.userData.sealable = true; qa.add(tier);
   }
-  const qy = 1.35, QR = 3.4, QH = 7.2;
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, QH, 12), c.redM);
-    p.position.set(Math.cos(a) * QR, qy + QH / 2, Math.sin(a) * QR); p.castShadow = true; p.userData.sealable = true; qa.add(p);
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.16, 0.16), c.redM);
-    rail.position.set(Math.cos(a + Math.PI / 8) * QR * 0.93, qy + QH - 0.3, Math.sin(a + Math.PI / 8) * QR * 0.93); rail.rotation.y = -(a + Math.PI / 8) + Math.PI / 2;
+  const qy = 1.35, QR = 3.4, QH = 7.2, QA = QR / Math.SQRT2;
+  const qCorners: [number, number][] = [[-QA, -QA], [QA, -QA], [QA, QA], [-QA, QA]];
+  for (let i = 0; i < 4; i++) {
+    const [px, pz] = qCorners[i], [nx, nz] = qCorners[(i + 1) % 4];
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, QH, 12), c.redM);
+    p.position.set(px, qy + QH / 2, pz); p.castShadow = true; p.userData.sealable = true; qa.add(p);
+    const len = Math.hypot(nx - px, nz - pz);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.18, 0.18), c.redM);
+    rail.position.set((px + nx) / 2, qy + QH - 0.3, (pz + nz) / 2); rail.rotation.y = -Math.atan2(nz - pz, nx - px);
     rail.userData.sealable = true; qa.add(rail);
-    colliders.push({ x: QUAN.x + Math.cos(a) * QR, z: QUAN.z + Math.sin(a) * QR, r: 0.3 });
+    const rail2 = rail.clone(); rail2.position.y = qy + 1.0; qa.add(rail2);
+    colliders.push({ x: QUAN.x + Math.cos(-Math.PI / 2 - 0.2) * px + Math.sin(-Math.PI / 2 - 0.2) * pz, z: QUAN.z - Math.sin(-Math.PI / 2 - 0.2) * px + Math.cos(-Math.PI / 2 - 0.2) * pz, r: 0.32 });
   }
-  const q1 = new THREE.Mesh(c.roofGeometry(11.5, 11.5, 2.8, 0.9), c.tileM); q1.position.y = qy + QH + 1.3; q1.rotation.y = Math.PI / 4; q1.castShadow = true; q1.userData.sealable = true; qa.add(q1);
-  const q2 = new THREE.Mesh(c.roofGeometry(7, 7, 2.2, 0.6), c.tileM); q2.position.y = qy + QH + 2.9; q2.rotation.y = Math.PI / 4; q2.castShadow = true; q2.userData.sealable = true; qa.add(q2);
+  const q1 = new THREE.Mesh(c.roofGeometry(11.5, 11.5, 2.8, 0.9), c.tileM); q1.position.y = qy + QH + 1.3; q1.rotation.y = 0; q1.castShadow = true; q1.userData.sealable = true; qa.add(q1);
+  const q2 = new THREE.Mesh(c.roofGeometry(7, 7, 2.2, 0.6), c.tileM); q2.position.y = qy + QH + 2.9; q2.rotation.y = 0; q2.castShadow = true; q2.userData.sealable = true; qa.add(q2);
   const qf = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), c.goldM); qf.position.y = qy + QH + 4.35; qf.userData.sealable = true; qa.add(qf);
   const quanAm = buildQuanAm(); quanAm.position.y = qy; quanAm.scale.setScalar(0.92); qa.add(quanAm);
   const qSign = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.76), new THREE.MeshBasicMaterial({ map: signTexture('THÁP QUAN ÂM') }));
-  qSign.position.set(0, qy + QH + 0.15, QR + 0.35); qa.add(qSign);
+  qSign.position.set(0, qy + QH + 0.15, QA + 0.35); qa.add(qSign);
   for (let i = 0; i < 2; i++) {
-    labelBoard(qa, COLUMN_LABELS.thap[i], 0.46, 2.8, i ? -1.6 : 1.6, qy + 3.3, QR + 0.1);
+    labelBoard(qa, COLUMN_LABELS.thap[i], 0.46, 2.8, i ? -QA : QA, qy + 3.3, QA + 0.1);
   }
   qa.position.set(QUAN.x, 0, QUAN.z); qa.rotation.y = -Math.PI / 2 - 0.2; scene.add(qa);
   sealArchitectureJoints(qa, { maxGap: 0.6 });

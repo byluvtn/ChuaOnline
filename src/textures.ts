@@ -178,31 +178,22 @@ export function vietnameseColumnTexture(text: string, w = 160, h = 900, opts: { 
   g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = Math.max(1, w * 0.012);
   g.strokeRect(w * 0.09, w * 0.09, w * 0.82, h - w * 0.18);
 
-  const padX = w * 0.16, maxW = w - padX * 2;
+  const padX = w * 0.14, maxW = w - padX * 2;
   const family = '"Segoe UI", "Be Vietnam Pro", system-ui, sans-serif';
-  // cỡ chữ theo bề rộng tấm bảng, sau đó ngắt dòng cho vừa
-  let font = Math.round(w * 0.19);
+  const words = text.split(/\s+/).filter(Boolean);
+  const padY = w * 0.14 + (opts.title ? h * 0.07 : 0);
+  const lineH = (h - padY * 2) / Math.max(1, words.length);
+  let font = Math.min(Math.round(lineH * 0.72), Math.round(w * 0.5));
   g.font = `600 ${font}px ${family}`;
-  while (g.measureText('M').width > maxW * 0.55 && font > 10) { font -= 1; g.font = `600 ${font}px ${family}`; }
-
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let cur = '';
-  for (const word of words) {
-    const next = cur ? `${cur} ${word}` : word;
-    if (g.measureText(next).width > maxW && cur) { lines.push(cur); cur = word; } else cur = next;
-  }
-  if (cur) lines.push(cur);
-
-  const lineH = font * 1.42;
-  const totalH = lines.length * lineH;
-  const startY = (h - totalH) / 2 + lineH * 0.5;
+  const widest = () => Math.max(...words.map((wd) => g.measureText(wd).width));
+  while (widest() > maxW && font > 8) { font -= 1; g.font = `600 ${font}px ${family}`; }
   g.fillStyle = '#f6d67c';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.shadowColor = 'rgba(0,0,0,.55)';
   g.shadowBlur = 3;
-  lines.forEach((ln, i) => g.fillText(ln, w / 2, startY + i * lineH, maxW));
+  const y0 = padY + lineH / 2;
+  words.forEach((wd, i) => g.fillText(wd, w / 2, y0 + i * lineH, maxW));
 
   if (opts.title) {
     g.fillStyle = '#e8b64a';

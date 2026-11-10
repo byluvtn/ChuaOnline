@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { HALL } from './layout';
 import { buildBuddha } from './statues';
 import { sealArchitectureJoints } from './compound';
@@ -7,13 +7,14 @@ import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = HALL.h; // top of platform
 
-/** CÃ¢u Ä‘á»‘i tiáº¿ng Viá»‡t treo trÃªn hai cá»™t tiá»n Ä‘Æ°á»ng (thay chá»¯ HÃ¡n). */
-const COLUMN_LABELS = ['Cá»­a thiá»n rá»™ng má»Ÿ Ä‘Ã³n ngÆ°á»i vá» nÆ°Æ¡ng Pháº­t', 'LÃ²ng tá»‹nh an nhiÃªn nghe chuÃ´ng vá»ng nÃºi xa'];
+/** Câu đối tiếng Việt treo trên hai cột tiền đường (thay chữ Hán). */
+const COLUMN_LABELS = ['Cửa thiền rộng mở đón người về nương Phật', 'Lòng tịnh an nhiên nghe chuông vọng núi xa'];
 
-/** Open-sided main hall (chÃ­nh Ä‘iá»‡n): columns + roof only, meditation seating inside, altar with Tam Tháº¿ Pháº­t. */
+/** Open-sided main hall (chính điện): columns + roof only, meditation seating inside, altar with Tam Thế Phật. */
 export function buildHall(c: TempleCtx) {
   const { scene, colliders, lamb } = c;
   const g = new THREE.Group();
+  g.name = 'hall';
   g.position.set(HALL.x, 0, HALL.z);
   const seats: Seat[] = [];
   const zones: Zone[] = [];
@@ -37,13 +38,13 @@ export function buildHall(c: TempleCtx) {
 
   // ---- columns (no middle columns in front of the altar) ----
   const colH = 7.6;
-  // thÃ¢n cá»™t dÃ i hÆ¡n khoáº£ng thÃ´ng thuá»· Ä‘á»ƒ Äƒn sÃ¢u vÃ o bá»‡ Ä‘Ã¡ (dÆ°á»›i) vÃ  Ä‘áº¥u gá»— (trÃªn)
+  // thân cột dài hơn khoảng thông thuỷ để ăn sâu vào bệ đá (dưới) và đấu gỗ (trên)
   const colG = new THREE.CylinderGeometry(0.42, 0.5, colH + 0.34, 18);
   const baseG = new THREE.CylinderGeometry(0.7, 0.8, 0.34, 16);
   const stoneBase = lamb(0x7a7466);
   const capG = new THREE.BoxGeometry(1.5, 0.38, 1.5);
   const addCol = (x: number, z: number) => {
-    // cá»™t háº¡ tháº¥p 0.16 vÃ o bá»‡ Ä‘Ã¡ vÃ  vÆ°Æ¡n lÃªn 0.3 vÃ o Ä‘áº¥u (cap) â†’ khÃ´ng cÃ²n khe sÃ¡ng chÃ¢n/Ä‘áº§u cá»™t
+    // cột hạ thấp 0.16 vào bệ đá và vươn lên 0.3 vào đấu (cap) → không còn khe sáng chân/đầu cột
     const col = new THREE.Mesh(colG, c.redM);
     col.position.set(x, BASE + colH / 2 - 0.08, z); col.castShadow = true; col.userData.sealable = true; add(col);
     const b = new THREE.Mesh(baseG, stoneBase); b.position.set(x, BASE + 0.17, z); b.userData.sealable = true; add(b);
@@ -51,40 +52,99 @@ export function buildHall(c: TempleCtx) {
     colliders.push({ x: HALL.x + x, z: HALL.z + z, r: 0.5 });
   };
   const fz = HALL.hz - 0.7, bz = -HALL.hz + 0.7, sx = HALL.hx - 0.7;
-  const ENT = 4.9; // the two entrance columns carry the couplet
-  const frontX = [-16, -12.3, -8.6, -ENT, ENT, 8.6, 12.3, 16];
+  const ENT = 4.9; // hai cột tiền đường mang câu đối
+  // 8 cột chính: 2 cột tiền đường + 2 cột hậu + 4 cột góc (hàng trước và sau)
+  const frontX = [-sx, -ENT, ENT, sx];
   for (const x of frontX) { addCol(x, fz); addCol(x, bz); }
-  for (const z of [-6.4, -2.1, 2.2, 6.5]) { addCol(-sx, z); addCol(sx, z); }
 
-  // beams + ceiling
+  // ---- hệ xà: vành chu vi + xà dọc trục giữa ----
   const beamY = BASE + colH + 0.5;
-  box(W + 0.8, 0.6, 1.0, c.redM, 0, beamY, fz); box(W + 0.8, 0.6, 1.0, c.redM, 0, beamY, bz);
-  box(1.0, 0.6, D + 0.8, c.redM, -sx, beamY, 0); box(1.0, 0.6, D + 0.8, c.redM, sx, beamY, 0);
-  for (const z of [-6.4, -2.1, 2.2, 6.5]) box(W - 1.4, 0.38, 0.6, c.redM, 0, beamY - 0.06, z, false);
+  box(W + 0.8, 0.6, 1.0, c.redM, 0, beamY, fz, true, true); box(W + 0.8, 0.6, 1.0, c.redM, 0, beamY, bz, true, true);
+  box(1.0, 0.6, D + 0.8, c.redM, -sx, beamY, 0, true, true); box(1.0, 0.6, D + 0.8, c.redM, sx, beamY, 0, true, true);
+  box(0.7, 0.5, D + 0.8, c.redM, 0, beamY - 0.04, 0, false);
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(W, D), lamb(0x4a1c12, { map: woodTexture([8, 4]) }));
   ceiling.rotation.x = Math.PI / 2; ceiling.position.y = beamY - 0.25; add(ceiling);
 
-  // ---- roofs (taller, three tiers) ----
-  const roof1 = new THREE.Mesh(c.roofGeometry(W + 9, D + 7.5, 5.6, 1.2), c.tileM);
-  roof1.position.y = beamY + 0.3 + 2.8; roof1.castShadow = true; add(roof1);
-  const roof2 = new THREE.Mesh(c.roofGeometry(W * 0.62, D * 0.6, 4.2, 0.9), c.tileM);
-  roof2.position.y = beamY + 3.6 + 2.1; roof2.castShadow = true; add(roof2);
-  const roof3 = new THREE.Mesh(c.roofGeometry(W * 0.3, D * 0.3, 3.0, 0.7), c.tileM);
-  roof3.position.y = beamY + 7.0 + 1.5; roof3.castShadow = true; add(roof3);
-  for (const x of [-9, 9]) for (const z of [-4.5, 4.5]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 3.2, 8), c.redM);
-    post.position.set(x, beamY + 2.0, z); add(post);
-  }
-  const fin = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.0, 8), c.goldM); fin.position.y = beamY + 8.9 + 1.0; add(fin);
+  // vành đòn tay lùi vào 0.8 so với mặt xà, nằm trên xà: mái tầng 1 tựa lên vành này
+  const purY = beamY + 0.3 + 0.2;
+  const purW = W + 0.8 - 1.6, purD = D + 0.8 - 1.6;
+  box(purW, 0.4, 0.4, c.redM, 0, purY, purD / 2, false); box(purW, 0.4, 0.4, c.redM, 0, purY, -purD / 2, false);
+  box(0.4, 0.4, purD, c.redM, purW / 2, purY, 0, false); box(0.4, 0.4, purD, c.redM, -purW / 2, purY, 0, false);
+  const roofBaseY = purY + 0.2;
 
-  // ---- hoÃ nh phi ----
-  const hpFront = new THREE.Mesh(new THREE.PlaneGeometry(9.0, 2.25), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('Äáº I HÃ™NG Báº¢O ÄIá»†N'), toneMapped: false }));
+  // ---- mái 3 tầng dạng khối đặc ----
+  // hàm cao độ sườn mái tại tỉ lệ t (0 = đỉnh, 1 = chân) — theo đúng roofGeometry
+  const roofGeo = (w: number, d: number, h: number, lift: number) => c.roofGeometry(w, d, h, lift);
+  const darkTile = lamb(0x6a2a1a, { roughness: 0.7 });
+  const soffitM = lamb(0x3a1710, { map: woodTexture([6, 2]) });
+  /** Dựng 1 tầng mái: thân + diềm + soffit. y0 = cao độ chân mái. Trả về cao độ đỉnh. */
+  const tier = (w: number, d: number, h: number, lift: number, y0: number) => {
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(roofGeo(w, d, h, lift), c.tileM);
+    body.position.y = y0 + h / 2; body.castShadow = true; grp.add(body);
+    // diềm mái quanh chu vi chân
+    const fw = w * 0.7071 * 1.0 * Math.SQRT2 * 0.5, fd = d * 0.7071 * Math.SQRT2 * 0.5;
+    const fh = 0.38, ft = 0.18, fy = y0 + fh / 2 - 0.05;
+    const fas = (bw: number, bd: number, x: number, z: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(bw, fh, bd), darkTile); m.position.set(x, fy, z); m.castShadow = true; grp.add(m);
+    };
+    fas(fw * 2, ft, 0, fd); fas(fw * 2, ft, 0, -fd); fas(ft, fd * 2, fw, 0); fas(ft, fd * 2, -fw, 0);
+    // soffit: mặt ngang nối diềm vào vành đòn tay
+    const sof = new THREE.Mesh(new THREE.PlaneGeometry(fw * 2, fd * 2), soffitM);
+    sof.rotation.x = Math.PI / 2; sof.position.y = y0 + 0.02; grp.add(sof);
+    add(grp);
+    return y0 + h;
+  };
+  // cổ diêm: vành tường đứng đỏ + cửa sổ hoa, chôn 0.3 vào sườn mái dưới, đỉnh đỡ chân mái trên
+  const goldBar = lamb(0xe8b64a, { emissive: 0x3a2a08 });
+  const clerestory = (w: number, d: number, yBase: number, hgt: number) => {
+    const grp = new THREE.Group();
+    const t = 0.35;
+    const mk = (bw: number, bd: number, x: number, z: number) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(bw, hgt, bd), c.redM); m.position.set(x, yBase + hgt / 2, z); m.castShadow = true; grp.add(m);
+      const n = Math.max(2, Math.floor(Math.max(bw, bd) / 0.9));
+      for (let i = 0; i < n; i++) {
+        const k = ((i + 0.5) / n - 0.5) * (Math.max(bw, bd) - 0.8);
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(bw > bd ? 0.08 : bd + 0.02, hgt * 0.6, bw > bd ? bd + 0.02 : 0.08), goldBar);
+        bar.position.set(x + (bw > bd ? k : 0), yBase + hgt / 2, z + (bw > bd ? 0 : k)); grp.add(bar);
+      }
+    };
+    mk(w, t, 0, d / 2); mk(w, t, 0, -d / 2); mk(t, d, w / 2, 0); mk(t, d, -w / 2, 0);
+    add(grp);
+  };
+
+  // tầng 1
+  const h1 = 4.8, lift1 = 0.6;
+  const top1 = tier(W + 5, D + 4.5, h1, lift1, roofBaseY);
+  // sườn tầng 1 tại t=0.18 → thu về chu vi còn ~0.2 của chân
+  const cw1 = (W + 5) * 0.2, cd1 = (D + 4.5) * 0.2;
+  const yc1 = top1 - h1 * 0.2 - 0.3;
+  clerestory(cw1 * 0.78, cd1 * 0.78, yc1, 1.2);
+  // tầng 2
+  const y2 = yc1 + 1.2;
+  const top2 = tier(W * 0.34, D * 0.34, 3.6, 0.5, y2 - 0.1);
+  const cw2 = W * 0.34 * 0.2, cd2 = D * 0.34 * 0.2;
+  const yc2 = top2 - 3.6 * 0.2 - 0.3;
+  clerestory(cw2 * 0.7, cd2 * 0.7, yc2, 0.9);
+  // tầng 3
+  const y3 = yc2 + 0.9;
+  const top3 = tier(W * 0.16, D * 0.16, 2.6, 0.45, y3 - 0.1);
+  // nóc: xà nóc vàng + 2 đầu đao + chóp
+  const ridge = new THREE.Mesh(new THREE.BoxGeometry(W * 0.16 * 0.5, 0.3, 0.4), c.goldM); ridge.position.y = top3 - 0.1; add(ridge);
+  for (const sgn of [-1, 1]) {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.9, 6), c.goldM);
+    horn.position.set(sgn * W * 0.16 * 0.25, top3 + 0.2, 0); horn.rotation.z = -sgn * 0.5; add(horn);
+  }
+  const fin = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.0, 8), c.goldM); fin.position.y = top3 + 0.7; add(fin);
+
+  // ---- hoành phi ----
+  const hpFront = new THREE.Mesh(new THREE.PlaneGeometry(9.0, 2.25), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('ĐẠI HÙNG BẢO ĐIỆN'), toneMapped: false }));
   hpFront.position.set(0, beamY - 1.5, fz + 0.62); add(hpFront);
-  const hpBack = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 2.05), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('PHáº¬T NHáº¬T TÄ‚NG HUY'), toneMapped: false }));
+  const hpBack = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 2.05), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('PHẬT NHẬT TĂNG HUY'), toneMapped: false }));
   hpBack.position.set(0, BASE + 7.0, -HALL.hz + 0.3); add(hpBack);
 
-  // ---- cÃ¢u Ä‘á»‘i on the two entrance columns only ----
-  // ---- cÃ¢u Ä‘á»‘i tiáº¿ng Viá»‡t trÃªn hai cá»™t tiá»n Ä‘Æ°á»ng ----
+  // ---- câu đối on the two entrance columns only ----
+  // ---- câu đối tiếng Việt trên hai cột tiền đường ----
   const board = (text: string, x: number) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 5.2), new THREE.MeshBasicMaterial({ map: vietnameseColumnTexture(text, 200, 1090), toneMapped: false }));
     m.position.set(x, BASE + 4.15, fz + 0.54);
@@ -166,9 +226,12 @@ export function buildHall(c: TempleCtx) {
   mats.receiveShadow = cush.receiveShadow = true; add(mats); add(cush);
 
   scene.add(g);
-  // khÃ­t má»i khe cá»™tâ€“kÃ¨oâ€“mÃ¡i trong chÃ¡nh Ä‘iá»‡n
+  // khít mọi khe cột–kèo–mái trong chánh điện
   const seal = sealArchitectureJoints(g, { maxGap: 0.9, minOverlap: 0.05 });
-  if (seal.remaining.length > 8) console.warn(`chánh điện: ${seal.filled} khe đã bù, ${seal.remaining.length} khe lớn còn lại`);
+  if (seal.remaining.length > 8) {
+    console.warn(`chánh điện: ${seal.filled} khe đã bù, ${seal.remaining.length} khe lớn còn lại`);
+    if (import.meta.env.DEV) console.warn('gapdump ' + JSON.stringify(seal.remaining));
+  }
   const halos = [mainB, ...sideBs].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
   return { group: g, seats, zones, halos };
 }
