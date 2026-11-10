@@ -6,10 +6,10 @@ export const CORR = { x: 20.5, z0: -19, z1: -1, half: 1.9, y: 0.12 };
 export const LAKE = { x: 0, z: 22, a: 9, b: 6.5 };
 /** Cầu cong bắc qua hồ theo trục z (lối đi chính từ sân chùa ra cổng). */
 export const BRIDGE = { x: 0, z0: 14.2, z1: 29.8, hw: 1.15, peak: 1.4 };
-export const WALL = { x: 47, zN: -45, zS: 45, gate: 4.4 };
+export const WALL = { x: 47, zN: -64, zS: 45, gate: 4.4 };
 export const BELL = { x: -34, z: -6 };
 export const DRUM = { x: 34, z: -6 };
-export const DEN_TRINH = { x: 9, z: 39 };
+export const DEN_TRINH = { x: 11, z: 39 };
 export const QUAN = { x: 28, z: 14 };
 export const PIER = { x0: -10.6, x1: -4.4, z: 23, hw: 1.6, y: 0.55 };
 export const PIER_RAMP = 1.3;
@@ -20,6 +20,28 @@ export const QUAN_PLAT = [{ hs: 4.8 / Math.SQRT2, y: 0.45 }, { hs: 4.25 / Math.S
 export const PATH_Z = 2;
 export const SIDE_X = 28;
 export const PAGODA = { x: 38, z: -14 };
+export const TAM_THE = { x: 0, z: -54 };
+export const BAO_THAP = { x: -17, z: -52 };
+/**
+ * Nền + bậc thềm Bảo Tháp: mặt nền đi được cao 0.9, bậc thềm thấp dần về phía Nam
+ * (cửa của tháp quay về hướng Nam) để khách hành hương đi tới được cửa.
+ */
+export const BAO_THAP_PLAT = {
+  x: BAO_THAP.x, z: BAO_THAP.z,
+  r: 5.0,          // bán kính mặt nền đi được (nằm trong bệ đá 2 tầng)
+  y: 0.9,          // cao độ mặt nền
+  stepW: 1.3,      // nửa rộng bậc thềm
+  step1: { z0: 5.0, z1: 5.9, y: 0.6 },
+  step2: { z0: 5.9, z1: 6.8, y: 0.3 },
+};
+export const NHA_TO = { x: 10, z: -56 };
+export const NHA_TO_PLAT = { x: NHA_TO.x, z: NHA_TO.z, hx: 5.0, hz: 3.6, y: 0.3, ramp: 0.8 };
+export const TANG_XA = { x: 22, z: -56 };
+export const TANG_XA_PLAT = { x: TANG_XA.x, z: TANG_XA.z, hx: 5.0, hz: 3.6, y: 0.25, ramp: 0.8 };
+export const AM_CO = { x: -38, z: -50 };
+export const AM_CO_PLAT = { x: AM_CO.x, z: AM_CO.z, hx: 3.0, hz: 2.6, y: 0.35, ramp: 0.8 };
+export const VUON_THAP = { x: 36, z: -48 };
+export const VUON_THAP_PLAT = { x: VUON_THAP.x, z: VUON_THAP.z, hx: 6.5, hz: 4.5, y: 0.2, ramp: 0.8 };
 export const BUDDHA_YARD = { x: -28, z: 14 };
 /** Sân trước chùa (quảng trường nhỏ) — thu gọn để nhường chỗ cho hồ sen giữa khuôn viên. */
 export const PLAZA = { x: 0, z: 6, r: 8.4 };
@@ -55,6 +77,27 @@ export function groundY(x: number, z: number) {
   }
   if (x >= PIER.x0 && x <= PIER.x1 && Math.abs(z - PIER.z) <= PIER.hw) y = Math.max(y, PIER.y * Math.min(1, (x - PIER.x0) / PIER_RAMP));
   if (Math.abs(x - PIER_FLOOR.x) <= PIER_FLOOR.hx && Math.abs(z - PIER_FLOOR.z) <= PIER_FLOOR.hz) y = Math.max(y, PIER_FLOOR.y);
+  // nền Bảo Tháp + bậc thềm phía Nam
+  const bp = BAO_THAP_PLAT;
+  if (Math.hypot(x - bp.x, z - bp.z) < bp.r) y = Math.max(y, bp.y);
+  if (Math.abs(x - bp.x) <= bp.stepW) {
+    const dz = z - bp.z;
+    if (dz > bp.step1.z0 && dz <= bp.step1.z1) y = Math.max(y, bp.step1.y);
+    else if (dz > bp.step2.z0 && dz <= bp.step2.z1) y = Math.max(y, bp.step2.y);
+  }
+  const ap = AM_CO_PLAT;
+  const adx = Math.max(Math.abs(x - ap.x) - ap.hx, 0), adz = Math.max(Math.abs(z - ap.z) - ap.hz, 0);
+  const ad = Math.hypot(adx, adz);
+  if (ad < ap.ramp) y = Math.max(y, ap.y * (1 - ad / ap.ramp));
+  for (const np of [NHA_TO_PLAT, TANG_XA_PLAT]) {
+    const ndx = Math.max(Math.abs(x - np.x) - np.hx, 0), ndz = Math.max(Math.abs(z - np.z) - np.hz, 0);
+    const nd = Math.hypot(ndx, ndz);
+    if (nd < np.ramp) y = Math.max(y, np.y * (1 - nd / np.ramp));
+  }
+  const vp = VUON_THAP_PLAT;
+  const vdx = Math.max(Math.abs(x - vp.x) - vp.hx, 0), vdz = Math.max(Math.abs(z - vp.z) - vp.hz, 0);
+  const vd = Math.hypot(vdx, vdz);
+  if (vd < vp.ramp) y = Math.max(y, vp.y * (1 - vd / vp.ramp));
   return Math.max(y, bridgeY(x, z));
 }
 
@@ -83,6 +126,12 @@ export function blocked(x: number, z: number) {
   for (const f of FLOWER_BEDS) if (((x - f.x) / (f.a + 1)) ** 2 + ((z - f.z) / (f.b + 1)) ** 2 < 1) return true;
   if (Math.hypot(x - REST.x, z - REST.z) < 9 || (x > 0 && x < 20 && Math.abs(z - REST.z) < 2.5)) return true;
   if (Math.abs(x - PAGODA.x) < 2.5 && z > PAGODA.z - 3 && z < PATH_Z + 2.5) return true;
+  if (ax < 24 && z < HALL.z - HALL.hz - 2 && z > WALL.zN + 6) return true;
+  if (Math.hypot(x - BAO_THAP.x, z - BAO_THAP.z) < 9) return true;
+  if (Math.hypot(x - AM_CO.x, z - AM_CO.z) < 8) return true;
+  if (Math.abs(x - NHA_TO.x) < 8 && Math.abs(z - NHA_TO.z) < 6.5) return true;
+  if (Math.abs(x - TANG_XA.x) < 8 && Math.abs(z - TANG_XA.z) < 6.5) return true;
+  if (Math.hypot(x - VUON_THAP.x, z - VUON_THAP.z) < 10) return true;
   return false;
 }
 

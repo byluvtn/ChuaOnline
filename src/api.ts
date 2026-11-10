@@ -1,7 +1,7 @@
 const KEY = 'co:session';
-export const getToken = () => localStorage.getItem(KEY) || '';
-export const setToken = (t: string) => localStorage.setItem(KEY, t);
-export const clearToken = () => localStorage.removeItem(KEY);
+export const getToken = () => { try { return localStorage.getItem(KEY) || ''; } catch { return ''; } };
+export const setToken = (t: string) => { try { localStorage.setItem(KEY, t); } catch { /* storage blocked */ } };
+export const clearToken = () => { try { localStorage.removeItem(KEY); } catch { /* storage blocked */ } };
 
 async function post<T>(path: string, body: unknown = {}, auth = true): Promise<T> {
   const res = await fetch(path, {

@@ -32,6 +32,31 @@ export const COUPLETS: Record<string, Couplet> = {
     am: ['Thủy thượng đình đài, nhất niệm tâm đăng chiếu bích ba', 'Liên trung thiền ảnh, vạn duyên trần cảnh tận thành không'],
     nghia: 'Đình dựng trên mặt nước, một niệm đèn tâm soi sáng làn sóng biếc; bóng thiền giữa hoa sen, muôn duyên bụi trần đều hóa thành không.',
   },
+  baoThap: {
+    id: 'baoThap', where: 'Bảo Tháp — nơi thờ xá lợi',
+    am: ['Xá lợi cung tàng, bảo tháp thập trùng quang chiếu thế', 'Giác hoa thường thịnh, từ bi nhất niệm phổ lưu phương'],
+    nghia: 'Xá lợi được tôn thờ trong tháp báu nhiều tầng, ánh sáng soi khắp cõi đời; hoa giác ngộ mãi nở, một niệm từ bi lan tỏa muôn nơi.',
+  },
+  nhaTo: {
+    id: 'nhaTo', where: 'Nhà Tổ — thờ chư vị tổ sư',
+    am: ['Tổ đức lưu phương, đèn tuệ soi đường muôn kiếp', 'Thiền phong truyền thế, nguồn từ thấm đượm ngàn đời'],
+    nghia: 'Đức Tổ sư lưu truyền, đèn tuệ soi đường muôn kiếp; thiền phong nối tiếp, nguồn từ bi thấm đượm ngàn đời.',
+  },
+  tangXa: {
+    id: 'tangXa', where: 'Tăng xá — nơi chư tăng tu học',
+    am: ['Tăng xá thanh u, sớm chuông chiều mõ nuôi đạo hạnh', 'Thiền phòng tĩnh tại, đèn kinh một ngọn sáng lòng người'],
+    nghia: 'Nhà tăng thanh tịnh, chuông mai mõ chiều nuôi dưỡng đạo hạnh; thiền phòng yên lặng, một ngọn đèn kinh sáng lòng người.',
+  },
+  vuonThap: {
+    id: 'vuonThap', where: 'Vườn Tháp — nơi an nghỉ chư tăng',
+    am: ['Tháp cổ rêu phong, bóng thiền lặng giữ ngàn năm', 'Nắm tro đã tịnh, hương linh về cõi Niết Bàn'],
+    nghia: 'Tháp xưa rêu phủ, bóng thiền lặng lẽ giữ ngàn năm; nắm tro đã tịnh, hương linh về cõi Niết Bàn.',
+  },
+  amCo: {
+    id: 'amCo', where: 'Am Cổ — nơi tĩnh tu',
+    am: ['Am cổ u tịch, một nén hương trầm thông cõi tịnh', 'Rêu xanh phủ mái, ngàn năm tiếng kệ vọng non cao'],
+    nghia: 'Am xưa vắng lặng, một nén hương trầm nối về cõi tịnh; rêu xanh phủ mái, tiếng kệ ngàn năm còn vọng núi cao.',
+  },
   thap: {
     id: 'thap', where: 'Tháp Quan Âm',
     am: ['Bảo tháp lăng vân thiên thu bất hoại', 'Kim thân ánh nhật vạn thế thường tồn'],

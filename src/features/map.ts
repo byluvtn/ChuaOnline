@@ -1,5 +1,5 @@
 import { MAP_HALF } from '../../shared/types';
-import { BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, WALL } from '../layout';
+import { AM_CO, NHA_TO, TANG_XA, VUON_THAP, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 
@@ -12,7 +12,12 @@ const PLACES: Place[] = [
   { name: 'Gác chuông', x: BELL.x, z: BELL.z, r: 4 },
   { name: 'Tháp Quan Âm', x: QUAN.x, z: QUAN.z, r: 4 },
   { name: 'Đại Phật', x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 5 },
-  { name: 'Bảo tháp', x: PAGODA.x, z: PAGODA.z, r: 4 },
+  { name: 'Bảo tháp', x: BAO_THAP.x, z: BAO_THAP.z, r: 4 },
+  { name: 'Tháp cảnh', x: PAGODA.x, z: PAGODA.z, r: 4 },
+  { name: 'Nhà Tổ', x: NHA_TO.x, z: NHA_TO.z, r: 4 },
+  { name: 'Tăng xá', x: TANG_XA.x, z: TANG_XA.z, r: 4 },
+  { name: 'Am Cổ', x: AM_CO.x, z: AM_CO.z, r: 4 },
+  { name: 'Vườn Tháp', x: VUON_THAP.x, z: VUON_THAP.z, r: 4 },
   { name: 'Hồ cá koi', x: LAKE.x, z: LAKE.z + 8.5, r: 4 },
   { name: 'Cầu cong', x: BRIDGE.x, z: (BRIDGE.z0 + BRIDGE.z1) / 2, r: 3 },
   { name: 'Tam quan', x: 0, z: WALL.zS - 4, r: 4 },
@@ -24,9 +29,10 @@ export function openMap(ctx: MenuCtx) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const cv = h('canvas', { class: 'tmap', width: SIZE * dpr, height: SIZE * dpr, 'aria-label': 'Bản đồ chùa, bấm vào địa điểm để đi tới' });
     const g = cv.getContext('2d')!;
-    const k = (SIZE * dpr) / (MAP_HALF * 2);
-    const X = (x: number) => (x + MAP_HALF) * k;
-    const Z = (z: number) => (z + MAP_HALF) * k;
+    const PAD = 16 * dpr;
+    const k = (SIZE * dpr - PAD * 2) / (MAP_HALF * 2);
+    const X = (x: number) => (x + MAP_HALF) * k + PAD;
+    const Z = (z: number) => (z + MAP_HALF) * k + PAD;
     const rect = (x0: number, z0: number, x1: number, z1: number, fill: string, stroke?: string) => {
       g.fillStyle = fill; g.fillRect(X(x0), Z(z0), (x1 - x0) * k, (z1 - z0) * k);
       if (stroke) { g.strokeStyle = stroke; g.lineWidth = dpr; g.strokeRect(X(x0), Z(z0), (x1 - x0) * k, (z1 - z0) * k); }
@@ -41,7 +47,7 @@ export function openMap(ctx: MenuCtx) {
       g.fillStyle = color; g.fillText(t, X(x), Z(z));
     };
     const drawStatic = () => {
-      rect(-MAP_HALF, -MAP_HALF, MAP_HALF, MAP_HALF, '#c9d9a8');
+      g.fillStyle = '#c9d9a8'; g.fillRect(0, 0, SIZE * dpr, SIZE * dpr);
       rect(-WALL.x, WALL.zN, WALL.x, WALL.zS, '#e4e8c4', '#8a5a2b');
       // gate gap
       g.fillStyle = '#e4e8c4'; g.fillRect(X(-WALL.gate), Z(WALL.zS) - 2 * dpr, WALL.gate * 2 * k, 4 * dpr);
@@ -63,12 +69,16 @@ export function openMap(ctx: MenuCtx) {
       ellipse(LAKE.x, LAKE.z, LAKE.a, LAKE.b, '#8ec6e0', '#4f8fb0');
       rect(BRIDGE.x - BRIDGE.hw, BRIDGE.z0, BRIDGE.x + BRIDGE.hw, BRIDGE.z1, '#a9733c', '#6e4a22');
       // towers
-      for (const [p, c] of [[BELL, '#8a5a2b'], [QUAN, '#e6e0d0'], [PAGODA, '#b5542f']] as const) ellipse(p.x, p.z, 2.2, 2.2, c, '#4a2e18');
+      for (const [p, c] of [[BELL, '#8a5a2b'], [QUAN, '#e6e0d0'], [PAGODA, '#b5542f'], [BAO_THAP, '#d9c27a']] as const) ellipse(p.x, p.z, 2.2, 2.2, c, '#4a2e18');
+      rect(NHA_TO.x - 5, NHA_TO.z - 3.6, NHA_TO.x + 5, NHA_TO.z + 3.6, '#b5542f', '#6e2a14');
+      rect(TANG_XA.x - 5, TANG_XA.z - 3.6, TANG_XA.x + 5, TANG_XA.z + 3.6, '#b5542f', '#6e2a14');
+      rect(AM_CO.x - 3, AM_CO.z - 2.6, AM_CO.x + 3, AM_CO.z + 2.6, '#9a7a4a', '#4a2e18');
+      rect(VUON_THAP.x - 6.5, VUON_THAP.z - 4.5, VUON_THAP.x + 6.5, VUON_THAP.z + 4.5, '#cfc4ae', '#8a8270');
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 4.5, 4.5, '#e8d9a0', '#c9a96a');
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 1.4, 1.4, '#e8b64a', '#8a5a2b');
       label('Chánh điện', HALL.x, HALL.z, '#fff3dc');
       for (const p of PLACES.slice(1)) label(p.name, p.x, p.z + (p.name === 'Hồ cá koi' ? 0 : p.name === 'Cầu cong' ? -7 : p.r > 4 ? 0 : 4));
-      label('Bắc', 0, -47.5); label('Nam', 0, 48.6);
+      label('Bắc', 0, WALL.zN - 2.5); label('Nam', 0, WALL.zS + 3.6);
     };
     const draw = () => {
       drawStatic();
@@ -90,8 +100,8 @@ export function openMap(ctx: MenuCtx) {
     const timer = window.setInterval(draw, 500);
     cv.onclick = (e) => {
       const r = cv.getBoundingClientRect();
-      const x = ((e.clientX - r.left) / r.width) * MAP_HALF * 2 - MAP_HALF;
-      const z = ((e.clientY - r.top) / r.height) * MAP_HALF * 2 - MAP_HALF;
+      const x = (((e.clientX - r.left) / r.width) * SIZE * dpr - PAD) / k - MAP_HALF;
+      const z = (((e.clientY - r.top) / r.height) * SIZE * dpr - PAD) / k - MAP_HALF;
       let best: Place | null = null, bd = 1e9;
       for (const p of PLACES) { const d = Math.hypot(p.x - x, p.z - z); if (d < Math.max(p.r, 5) && d < bd) { best = p; bd = d; } }
       if (best) { closePanel(); ctx.goTo(best.x, best.z); ctx.toast(`Đang đi tới ${best.name}`); }

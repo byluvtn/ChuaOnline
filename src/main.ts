@@ -106,7 +106,7 @@ async function loadSession() {
     color = profile.color;
     buildPickers();
     rebuildPreview();
-  } catch { clearToken(); profile = null; }
+  } catch (e) { if ((e as { status?: number }).status === 401) { clearToken(); profile = null; } }
   refreshAuthButton();
 }
 refreshAuthButton();
@@ -686,6 +686,53 @@ const clock = new THREE.Clock();
 let lastSend = 0;
 const tmp = new THREE.Vector3();
 
+let pathQueue: THREE.Vector3[] = [];
+let pathTarget: THREE.Vector3 | null = null;
+function segmentClear(ax: number, az: number, bx: number, bz: number) {
+  const dx = bx - ax, dz = bz - az;
+  const len2 = dx * dx + dz * dz;
+  for (const c of world.colliders) {
+    const t = len2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((c.x - ax) * dx + (c.z - az) * dz) / len2));
+    const px = ax + dx * t, pz = az + dz * t;
+    if (Math.hypot(c.x - px, c.z - pz) < c.r + 0.4 + 0.15) return false;
+  }
+  return true;
+}
+function planPath(from: THREE.Vector3, to: THREE.Vector3): THREE.Vector3[] {
+  if (segmentClear(from.x, from.z, to.x, to.z)) return [to.clone()];
+  const nodes: { x: number; z: number }[] = [{ x: from.x, z: from.z }, { x: to.x, z: to.z }];
+  const STEP = 1.2;
+  for (const c of world.colliders) {
+    if (c.r < 0.3) continue;
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2, rr = c.r + 0.4 + 0.5;
+      nodes.push({ x: c.x + Math.cos(a) * rr, z: c.z + Math.sin(a) * rr });
+    }
+  }
+  for (let z = -62; z <= 44; z += 6) for (const x of [-6.5, 0, 6.5]) nodes.push({ x, z });
+  const free = nodes.filter((n, i) => i < 2 || world.colliders.every((c) => Math.hypot(c.x - n.x, c.z - n.z) > c.r + 0.45));
+  const N = free.length;
+  const dist = new Array(N).fill(Infinity), prev = new Array(N).fill(-1), done = new Array(N).fill(false);
+  dist[0] = 0;
+  for (let it = 0; it < N; it++) {
+    let u = -1;
+    for (let i = 0; i < N; i++) if (!done[i] && (u < 0 || dist[i] < dist[u])) u = i;
+    if (u < 0 || dist[u] === Infinity) break;
+    done[u] = true;
+    if (u === 1) break;
+    for (let v = 0; v < N; v++) {
+      if (done[v]) continue;
+      const d = Math.hypot(free[u].x - free[v].x, free[u].z - free[v].z);
+      if (d > 40 || d < STEP * 0.1) continue;
+      if (dist[u] + d < dist[v] && segmentClear(free[u].x, free[u].z, free[v].x, free[v].z)) { dist[v] = dist[u] + d; prev[v] = u; }
+    }
+  }
+  if (prev[1] < 0) return [to.clone()];
+  const out: THREE.Vector3[] = [];
+  for (let i = 1; i >= 0 && i !== -1; i = prev[i]) { if (i !== 0) out.unshift(new THREE.Vector3(free[i].x, 0, free[i].z)); if (prev[i] < 0) break; }
+  return out.length ? out : [to.clone()];
+}
+
 const prevPos = { x: 0, z: 0 };
 function collide(pos: THREE.Vector3) {
   const onDeck = resolveBridge(pos, prevPos);
@@ -768,9 +815,12 @@ function loop() {
       me.ry = Math.atan2(dx, dz);
       moving = true;
     } else if (clickTarget) {
-      tmp.copy(clickTarget).sub(root.position);
+      if (pathTarget !== clickTarget) { pathTarget = clickTarget; pathQueue = planPath(root.position, clickTarget); }
+      const wp = pathQueue.length ? pathQueue[0] : clickTarget;
+      tmp.copy(wp).sub(root.position);
       tmp.y = 0;
-      if (tmp.length() < 0.2) clickTarget = null;
+      if (tmp.length() < 0.3 && pathQueue.length > 1) { pathQueue.shift(); }
+      else if (tmp.length() < 0.2) { clickTarget = null; pathTarget = null; pathQueue = []; }
       else {
         tmp.normalize();
         root.position.addScaledVector(tmp, speed * dt);

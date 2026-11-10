@@ -36,6 +36,6 @@ export interface Profile {
   admin?: boolean;
 }
 
-export const MAP_HALF = 50;
+export const MAP_HALF = 68;
 export const levelOf = (merit: number) => Math.floor(Math.sqrt(merit / 10)) + 1;
 export const meritForLevel = (lv: number) => (lv - 1) * (lv - 1) * 10;

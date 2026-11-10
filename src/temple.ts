@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -361,6 +361,242 @@ export function buildTemple(c: TempleCtx) {
   sealArchitectureJoints(pagoda, { maxGap: 1.4 });
   colliders.push({ x: PAGODA.x, z: PAGODA.z, r: 3.4 });
 
+  // ---- Bảo Tháp thờ xá lợi (phía Tây Điện Tam Thế) — tháp đá bát giác nhiều tầng, cao ~26 m ----
+  const baoThap = new THREE.Group();
+  baoThap.name = 'bao-thap';
+  const btSeal = <T extends THREE.Mesh>(m: T) => { m.castShadow = m.receiveShadow = true; m.userData.sealable = true; baoThap.add(m); return m; };
+  /*
+   * Nền 2 tầng thấp + bậc thềm phía Nam: mặt nền đi được cao 0.9 (đúng BAO_THAP_PLAT.y),
+   * hai bậc thấm dần xuống phía Nam để khách đi tới được cửa tháp.
+   */
+  const BT = BAO_THAP_PLAT;
+  const btBase1 = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(6.5, 6.8, BT.y / 2, 8), stoneM));
+  btBase1.position.y = BT.y / 4; btBase1.rotation.y = Math.PI / 8;
+  const btBase2 = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(5.6, 6.0, BT.y / 2, 8), stoneM));
+  btBase2.position.y = BT.y * 0.75; btBase2.rotation.y = Math.PI / 8;
+  const btFloorY = BT.y;
+  for (const s of [BT.step1, BT.step2]) {
+    const st = btSeal(new THREE.Mesh(new THREE.BoxGeometry(BT.stepW * 2, s.y, s.z1 - s.z0), stoneM));
+    st.position.set(BT.x, s.y / 2, BT.z + (s.z0 + s.z1) / 2);
+  }
+  const BT_TIERS = 7;
+  const btTierH = 2.5;
+  let btY = btFloorY;
+  for (let i = 0; i < BT_TIERS; i++) {
+    const r = 3.6 - i * 0.34;
+    const body = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.86, r * 0.92, btTierH * 0.62, 8), stoneM));
+    body.position.y = btY + btTierH * 0.31; body.rotation.y = Math.PI / 8;
+    const band = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.9, r * 0.9, 0.16, 8), c.goldM));
+    band.position.y = btY + btTierH * 0.62 + 0.08; band.rotation.y = Math.PI / 8;
+    const roof = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.52, r * 1.28, btTierH * 0.34, 8), c.tileM));
+    roof.position.y = btY + btTierH * 0.62 + 0.16 + btTierH * 0.17; roof.rotation.y = Math.PI / 8;
+    btY += btTierH;
+  }
+  const btTopR = 3.6 - (BT_TIERS - 1) * 0.34;
+  const btKnob = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(btTopR * 0.22, btTopR * 0.4, 0.5, 8), c.goldM));
+  btKnob.position.y = btY + 0.25;
+  const btOrb = btSeal(new THREE.Mesh(new THREE.SphereGeometry(btTopR * 0.34, 14, 10), c.goldM));
+  btOrb.position.y = btY + 0.5 + btTopR * 0.28;
+  const btSpire = btSeal(new THREE.Mesh(new THREE.ConeGeometry(btTopR * 0.2, 3.4, 8), c.goldM));
+  btSpire.position.y = btY + 0.5 + btTopR * 0.56 + 1.4;
+  // cửa nhỏ duy nhất ở tầng trệt, quay về hướng Nam (+z)
+  const btDoorR = 3.6 * 0.92;
+  const btDoorFrame = btSeal(new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.7, 0.3), c.redM));
+  btDoorFrame.position.set(0, btFloorY + 0.85, btDoorR * Math.cos(Math.PI / 8) - 0.02);
+  const btDoor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, 0.12), lamb(0x1a1410));
+  btDoor.position.set(0, btFloorY + 0.78, btDoorR * Math.cos(Math.PI / 8) + 0.16);
+  baoThap.add(btDoor);
+  baoThap.position.set(BAO_THAP.x, 0, BAO_THAP.z); scene.add(baoThap);
+  sealArchitectureJoints(baoThap, { maxGap: 0.5 });
+  // collider thân tháp: vòng các trụ sát thân, chừa hẳn lối vào cửa Nam (|x| <= stepW, z > 0)
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2;
+    const lx = Math.sin(a) * 3.9, lz = Math.cos(a) * 3.9;
+    if (Math.abs(lx) < BT.stepW + 0.1 && lz > 0) continue;
+    colliders.push({ x: BAO_THAP.x + lx, z: BAO_THAP.z + lz, r: 0.45 });
+  }
+  zones.push({ x: BAO_THAP.x, z: BAO_THAP.z, r: 8, id: 'baoThap' });
+
+  type BoxAdd = (w: number, h: number, dp: number, x: number, y: number, z: number, mat?: THREE.Material) => unknown;
+  /** Tường có một ô cửa sổ chấn song: tường chạy dọc trục `axis` tại toạ độ `fixed`, dài `len`, dày `thick`, từ y0 đến y1. */
+  const windowWall = (add: BoxAdd, axis: 'x' | 'z', fixed: number, len: number, thick: number, y0: number, y1: number,
+    win: { c: number; w: number; s: number; t: number }, wallMat: THREE.Material, frameMat: THREE.Material) => {
+    const put = (u0: number, u1: number, ya: number, yb: number, mat: THREE.Material, t = thick) => {
+      const uw = u1 - u0, uc = (u0 + u1) / 2, h = yb - ya, yc = (ya + yb) / 2;
+      if (axis === 'x') add(uw, h, t, uc, yc, fixed, mat); else add(t, h, uw, fixed, yc, uc, mat);
+    };
+    const a = win.c - win.w / 2, b = win.c + win.w / 2;
+    put(-len / 2, len / 2, y0, win.s, wallMat);
+    put(-len / 2, len / 2, win.t, y1, wallMat);
+    put(-len / 2, a, win.s, win.t, wallMat);
+    put(b, len / 2, win.s, win.t, wallMat);
+    const ft = thick + 0.08, fw = 0.1;
+    put(a - 0.02, b + 0.02, win.s - 0.04, win.s + fw - 0.04, frameMat, ft);
+    put(a - 0.02, b + 0.02, win.t - fw + 0.04, win.t + 0.04, frameMat, ft);
+    put(a - 0.02, a + fw - 0.02, win.s, win.t, frameMat, ft);
+    put(b - fw + 0.02, b + 0.02, win.s, win.t, frameMat, ft);
+    for (let i = 1; i <= 3; i++) {
+      const u = a + (win.w * i) / 4;
+      put(u - 0.025, u + 0.025, win.s, win.t, frameMat, thick * 0.5);
+    }
+  };
+
+  // ---- Am Cổ (góc Tây–Bắc): am nhỏ mái ngói rêu phong, mở mặt Đông (lối vào từ vườn Thiền), tường hậu + hai tường bên có cửa sổ ----
+  const amCo = new THREE.Group();
+  amCo.name = 'am-co';
+  const acStone = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+    m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; amCo.add(m); return m;
+  };
+  const acWood = lamb(0x5a3a22, { roughness: 0.85 });
+  const acMoss = lamb(0x5f7a4a, { roughness: 1 });
+  const AP = AM_CO_PLAT;
+  acStone(AP.hx * 2, AP.y, AP.hz * 2, 0, AP.y / 2, 0);
+  const acBase = AP.y;
+  const acH = 2.6, acHx = 2.2, acHz = 1.8;
+  for (const [px, pz] of [[-acHx, -acHz], [acHx, -acHz], [-acHx, acHz], [acHx, acHz]] as [number, number][]) {
+    acStone(0.5, 0.2, 0.5, px, acBase + 0.1, pz);
+    const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, acH + 0.1, 10), acWood);
+    pl.position.set(px, acBase + 0.2 + acH / 2 - 0.05, pz); pl.castShadow = true; pl.userData.sealable = true; amCo.add(pl);
+  }
+  const acY0 = acBase + 0.2 - 0.05, acY1 = acY0 + acH;
+  const acWin = { c: 0, w: 1.2, s: acY0 + 0.9, t: acY0 + 2.0 };
+  for (const sz of [-acHz, acHz]) windowWall(acStone, 'x', sz, 2 * acHx - 0.2, 0.2, acY0, acY1, acWin, c.wallM, acWood);
+  acStone(0.2, acH, 2 * acHz - 0.2, -acHx, acBase + 0.2 + acH / 2 - 0.05, 0, c.wallM);
+  const acBeamY = acBase + 0.2 + acH + 0.05;
+  for (const s of [-acHz, acHz]) { const b = new THREE.Mesh(new THREE.BoxGeometry(2 * acHx + 0.6, 0.24, 0.26), acWood); b.position.set(0, acBeamY, s); b.castShadow = true; b.userData.sealable = true; amCo.add(b); }
+  for (const s of [-acHx, acHx]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 2 * acHz + 0.6), acWood); b.position.set(s, acBeamY, 0); b.castShadow = true; b.userData.sealable = true; amCo.add(b); }
+  const acRoofH = 1.7, acRoofY = acBeamY + 0.12 + acRoofH / 2 - 0.2;
+  const acRoof = new THREE.Mesh(c.roofGeometry(6.4, 5.2, acRoofH, 0.5), c.tileM);
+  acRoof.position.y = acRoofY; acRoof.castShadow = true; acRoof.userData.sealable = true; amCo.add(acRoof);
+  const acMossCap = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.1, 1.2), acMoss);
+  acMossCap.position.set(0.4, acRoofY + acRoofH / 2 - 0.35, 0.3); amCo.add(acMossCap);
+  const acFin = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.7, 8), c.goldM);
+  acFin.position.y = acRoofY + acRoofH / 2 + 0.25; acFin.userData.sealable = true; amCo.add(acFin);
+  acStone(1.0, 0.6, 0.7, -1.2, acBase + 0.5, -0.8);
+  const acCenser = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.24, 12), c.goldM);
+  acCenser.position.set(-1.2, acBase + 0.92, -0.8); acCenser.castShadow = true; amCo.add(acCenser);
+  const acSign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('AM CỔ') }));
+  acSign.position.set(acHx + 0.2, acBeamY - 0.4, 0); acSign.rotation.y = Math.PI / 2; amCo.add(acSign);
+  for (let i = 0; i < 2; i++) labelBoard(amCo, COUPLETS.amCo.am[i].split(',')[0], 0.4, 2.0, acHx + 0.22, acBase + 1.5, i ? acHz : -acHz, Math.PI / 2);
+  amCo.position.set(AM_CO.x, 0, AM_CO.z); scene.add(amCo);
+  const acSeal = sealArchitectureJoints(amCo, { maxGap: 0.5 });
+  if (import.meta.env.DEV) console.warn(`gapdump amCo: filled=${acSeal.filled} remaining=${acSeal.remaining.length}`);
+  for (const [px, pz] of [[-acHx, -acHz], [acHx, -acHz], [-acHx, acHz], [acHx, acHz]] as [number, number][]) colliders.push({ x: AM_CO.x + px, z: AM_CO.z + pz, r: 0.3 });
+  for (const lz of [-1.2, 0, 1.2]) colliders.push({ x: AM_CO.x - acHx, z: AM_CO.z + lz, r: 0.7 });
+  for (const sz of [-acHz, acHz]) colliders.push({ x: AM_CO.x, z: AM_CO.z + sz, r: 1.4 }, { x: AM_CO.x + 1.4, z: AM_CO.z + sz, r: 1.0 }, { x: AM_CO.x - 1.4, z: AM_CO.z + sz, r: 1.0 });
+  zones.push({ x: AM_CO.x, z: AM_CO.z, r: 7, id: 'amCo' });
+
+  // ---- Vườn Tháp (góc Đông–Bắc): sân đá nhỏ với các tháp mộ chư tăng nhiều cỡ, lối vào từ phía Nam ----
+  const vuon = new THREE.Group();
+  vuon.name = 'vuon-thap';
+  const vtStone = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+    m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; vuon.add(m); return m;
+  };
+  const VP = VUON_THAP_PLAT;
+  vtStone(VP.hx * 2, VP.y, VP.hz * 2, 0, VP.y / 2, 0);
+  const vtCapM = lamb(0xb9ad94, { map: stoneTexture([190, 180, 160], [1, 1], 2) });
+  const vtSlots: { x: number; z: number; tiers: number }[] = [
+    { x: -4.2, z: -2.6, tiers: 5 }, { x: -1.4, z: -2.8, tiers: 7 }, { x: 1.4, z: -2.8, tiers: 7 }, { x: 4.2, z: -2.6, tiers: 5 },
+    { x: -3.4, z: 0.4, tiers: 3 }, { x: 0, z: 0.2, tiers: 5 }, { x: 3.4, z: 0.4, tiers: 3 },
+  ];
+  for (const s of vtSlots) {
+    const bw = 1.5;
+    vtStone(bw, 0.4, bw, s.x, VP.y + 0.2, s.z);
+    let y = VP.y + 0.4, r = 0.62;
+    for (let i = 0; i < s.tiers; i++) {
+      const h = i === 0 ? 0.9 : 0.62;
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.82, r, h, 8), stoneM);
+      body.position.set(s.x, y + h / 2, s.z); body.rotation.y = Math.PI / 8; body.castShadow = body.receiveShadow = true; body.userData.sealable = true; vuon.add(body);
+      y += h;
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.5, r * 1.12, 0.16, 8), vtCapM);
+      cap.position.set(s.x, y + 0.08, s.z); cap.rotation.y = Math.PI / 8; cap.castShadow = true; cap.userData.sealable = true; vuon.add(cap);
+      y += 0.16; r *= 0.86;
+    }
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(r * 0.55, 10, 8), c.goldM);
+    knob.position.set(s.x, y + r * 0.45, s.z); knob.userData.sealable = true; vuon.add(knob);
+    colliders.push({ x: VUON_THAP.x + s.x, z: VUON_THAP.z + s.z, r: 0.85 });
+  }
+  for (const sx of [-1, 1]) {
+    vtStone(0.5, 0.5, 0.5, sx * 3.2, VP.y + 0.25, 3.6);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), lamb(0xffd27a, { emissive: 0xff9a2a, emissiveIntensity: 0.9, roughness: 0.6 }));
+    lamp.scale.set(1, 1.25, 1); lamp.position.set(sx * 3.2, VP.y + 0.8, 3.6); vuon.add(lamp);
+    glowSpr(VUON_THAP.x + sx * 3.2, VP.y + 0.8, VUON_THAP.z + 3.6, 1.4, 0xffb040, 0.4);
+    colliders.push({ x: VUON_THAP.x + sx * 3.2, z: VUON_THAP.z + 3.6, r: 0.35 });
+  }
+  const vtSign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: signTexture('VƯỜN THÁP') }));
+  vtSign.position.set(0, 1.4, VP.hz + 0.05); vuon.add(vtSign);
+  const vtPost = new THREE.Mesh(new THREE.BoxGeometry(0.2, 1.4, 0.2), lamb(0x5a3a22));
+  vtPost.position.set(0, 0.7, VP.hz); vtPost.userData.sealable = true; vuon.add(vtPost);
+  vuon.position.set(VUON_THAP.x, 0, VUON_THAP.z); scene.add(vuon);
+  const vtSeal = sealArchitectureJoints(vuon, { maxGap: 0.5 });
+  if (import.meta.env.DEV) console.warn(`gapdump vuonThap: filled=${vtSeal.filled} remaining=${vtSeal.remaining.length}`);
+  zones.push({ x: VUON_THAP.x, z: VUON_THAP.z, r: 8, id: 'vuonThap' });
+
+  // ---- Nhà Tổ + Tăng xá (sau Điện Tam Thế): hai dãy nhà mái ngói, cửa quay về hướng Nam ----
+  const buildHouse = (name: string, at: { x: number; z: number }, plat: { hx: number; hz: number; y: number }, sign: string, zoneId: string, wide: number, deep: number, openFront = false) => {
+    const g = new THREE.Group(); g.name = name;
+    const st = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+      m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; g.add(m); return m;
+    };
+    st(plat.hx * 2, plat.y, plat.hz * 2, 0, plat.y / 2, 0);
+    const base = plat.y, colH = 3.0, hx = wide, hz = deep;
+    const corners: [number, number][] = [[-hx, -hz], [hx, -hz], [-hx, hz], [hx, hz]];
+    for (const [px, pz] of corners) {
+      st(0.55, 0.2, 0.55, px, base + 0.1, pz);
+      const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, colH + 0.1, 10), c.redM);
+      pl.position.set(px, base + 0.2 + colH / 2 - 0.05, pz); pl.castShadow = true; pl.userData.sealable = true; g.add(pl);
+    }
+    const wy = base + 0.2 + colH / 2 - 0.05;
+    st(2 * hx - 0.2, colH, 0.22, 0, wy, -hz, c.wallM);
+    if (openFront) {
+      const y0 = base + 0.2 - 0.05;
+      const win = { c: 0, w: 1.6, s: y0 + 1.0, t: y0 + 2.2 };
+      for (const sx of [-hx, hx]) windowWall(st, 'z', sx, 2 * hz - 0.2, 0.22, y0, y0 + colH, win, c.wallM, c.redM);
+    } else {
+      st(0.22, colH, 2 * hz - 0.2, -hx, wy, 0, c.wallM);
+      st(0.22, colH, 2 * hz - 0.2, hx, wy, 0, c.wallM);
+      st(hx - 0.9, colH, 0.22, -(hx + 0.9) / 2, wy, hz, c.wallM);
+      st(hx - 0.9, colH, 0.22, (hx + 0.9) / 2, wy, hz, c.wallM);
+      st(1.8, 0.7, 0.22, 0, base + 0.2 + colH - 0.4, hz, c.wallM);
+    }
+    const beamY = base + 0.2 + colH + 0.05;
+    for (const s of [-hz, hz]) { const b = new THREE.Mesh(new THREE.BoxGeometry(2 * hx + 0.7, 0.26, 0.28), c.redM); b.position.set(0, beamY, s); b.castShadow = true; b.userData.sealable = true; g.add(b); }
+    for (const s of [-hx, hx]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.26, 2 * hz + 0.7), c.redM); b.position.set(s, beamY, 0); b.castShadow = true; b.userData.sealable = true; g.add(b); }
+    const roofH = 1.9, roofY = beamY + 0.13 + roofH / 2 - 0.2;
+    const roof = new THREE.Mesh(c.roofGeometry(2 * hx + 2.4, 2 * hz + 2.0, roofH, 0.6), c.tileM);
+    roof.position.y = roofY; roof.castShadow = true; roof.userData.sealable = true; g.add(roof);
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(2 * hx - 0.6, 0.2, 0.3), c.goldM);
+    ridge.position.y = roofY + roofH / 2 - 0.05; ridge.userData.sealable = true; g.add(ridge);
+    st(1.2, 0.7, 0.7, 0, base + 0.55, -hz + 0.9);
+    const cen = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.28, 12), c.goldM);
+    cen.position.set(0, base + 1.04, -hz + 0.9); cen.castShadow = true; g.add(cen);
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
+    sg.position.set(0, beamY - 0.5, hz + 0.25); g.add(sg);
+    return { g, hx, hz, corners };
+  };
+  const nt = buildHouse('nha-to', NHA_TO, NHA_TO_PLAT, 'NHÀ TỔ', 'nhaTo', 3.6, 2.6, true);
+  for (let i = 0; i < 2; i++) labelBoard(nt.g, COUPLETS.nhaTo.am[i].split(',')[0], 0.42, 2.2, i ? nt.hx : -nt.hx, NHA_TO_PLAT.y + 1.7, nt.hz + 0.22);
+  nt.g.position.set(NHA_TO.x, 0, NHA_TO.z); scene.add(nt.g);
+  const ntSeal = sealArchitectureJoints(nt.g, { maxGap: 0.5 });
+  if (import.meta.env.DEV) console.warn(`gapdump nhaTo: filled=${ntSeal.filled} remaining=${ntSeal.remaining.length}`);
+  for (const [px, pz] of nt.corners) colliders.push({ x: NHA_TO.x + px, z: NHA_TO.z + pz, r: 0.32 });
+  for (const lx of [-2.4, -0.8, 0.8, 2.4]) colliders.push({ x: NHA_TO.x + lx, z: NHA_TO.z - nt.hz, r: 0.9 });
+  for (const lz of [-1.2, 1.2]) colliders.push({ x: NHA_TO.x - nt.hx, z: NHA_TO.z + lz, r: 0.9 }, { x: NHA_TO.x + nt.hx, z: NHA_TO.z + lz, r: 0.9 });
+  zones.push({ x: NHA_TO.x, z: NHA_TO.z, r: 7, id: 'nhaTo' });
+
+  const tx = buildHouse('tang-xa', TANG_XA, TANG_XA_PLAT, 'TĂNG XÁ', 'tangXa', 3.6, 2.6);
+  for (let i = 0; i < 2; i++) labelBoard(tx.g, COUPLETS.tangXa.am[i].split(',')[0], 0.42, 2.2, i ? 1.2 : -1.2, TANG_XA_PLAT.y + 1.7, tx.hz + 0.2);
+  tx.g.position.set(TANG_XA.x, 0, TANG_XA.z); scene.add(tx.g);
+  const txSeal = sealArchitectureJoints(tx.g, { maxGap: 0.5 });
+  if (import.meta.env.DEV) console.warn(`gapdump tangXa: filled=${txSeal.filled} remaining=${txSeal.remaining.length}`);
+  for (const [px, pz] of tx.corners) colliders.push({ x: TANG_XA.x + px, z: TANG_XA.z + pz, r: 0.32 });
+  for (const lx of [-2.4, -0.8, 0.8, 2.4]) colliders.push({ x: TANG_XA.x + lx, z: TANG_XA.z - tx.hz, r: 0.9 });
+  for (const lz of [-1.2, 1.2]) colliders.push({ x: TANG_XA.x - tx.hx, z: TANG_XA.z + lz, r: 0.9 }, { x: TANG_XA.x + tx.hx, z: TANG_XA.z + lz, r: 0.9 });
+  zones.push({ x: TANG_XA.x, z: TANG_XA.z, r: 7, id: 'tangXa' });
+
   // ---- koi lake + arched bridge (hồ nằm giữa khuôn viên, cầu bắc dọc Bắc–Nam) ----
   const pond = new THREE.Group();            // toàn bộ hồ trong một nhóm → dễ dời tâm
   pond.name = 'koi-pond';
@@ -674,6 +910,11 @@ export function buildTemple(c: TempleCtx) {
   pathRect(BRIDGE.x + 1.4, DEN_TRINH.z - 1.2, DEN_TRINH.x - 2.6, DEN_TRINH.z + 1.2);
 
   pathRect(-SIDE_X - 1.2, ZEN.z, -SIDE_X + 1.2, PATH_Z);
+  pathRect(NHA_TO.x - 1.2, NHA_TO.z + NHA_TO_PLAT.hz, NHA_TO.x + 1.2, PATH_Z);
+  pathRect(TANG_XA.x - 1.2, TANG_XA.z + TANG_XA_PLAT.hz, TANG_XA.x + 1.2, PATH_Z);
+  pathRect(AM_CO.x + AM_CO_PLAT.hx, AM_CO.z - 1.2, -SIDE_X - 1.2, AM_CO.z + 1.2);
+  pathRect(-SIDE_X - 1.2, AM_CO.z, -SIDE_X + 1.2, ZEN.z);
+  pathRect(VUON_THAP.x - 1.2, VUON_THAP.z + VUON_THAP_PLAT.hz, VUON_THAP.x + 1.2, PATH_Z);
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
   buildZenGarden(gardenCtx);
   buildFlowerBeds(gardenCtx);
