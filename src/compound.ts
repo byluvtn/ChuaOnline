@@ -433,3 +433,64 @@ export function buildZenGarden(g: GardenCtx) {
 
   g.addZone(cx, cz, 9, 'vuonThien');
 }
+
+/** Khu 2 — hai bồn hoa cong ôm bờ hồ (Đông + Tây, đối xứng): đất, viền cuội, thảm hoa, bụi cây, cây anh đào, ghế gỗ. */
+export function buildFlowerBeds(g: GardenCtx) {
+  const grp = new THREE.Group(); grp.name = 'flower-beds'; g.scene.add(grp);
+  const soilM = g.lamb(0x6b4a2e, { roughness: 1 });
+  const pebM = g.lamb(0xbdb5a6, { flatShading: true });
+  const bushM = g.lamb(0x3f8a3e, { flatShading: true });
+  const trunkM = g.lamb(0x6b4a2b), blossomM = g.lamb(0xf6b8c1, { flatShading: true, emissive: 0x2b0f18 });
+  const flowerM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, emissive: 0x1a0c10 });
+  const palette = [0xf4978e, 0xf2c14e, 0x9b7ede].map((c) => new THREE.Color(c));
+  const o = new THREE.Object3D();
+  const nFl = 130, nPeb = 40;
+  const flowers = new THREE.InstancedMesh(new THREE.SphereGeometry(0.17, 8, 6), flowerM, FLOWER_BEDS.length * nFl);
+  const pebbles = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), pebM, FLOWER_BEDS.length * nPeb);
+  let fi = 0, pi = 0;
+  const bushes: [number, number, number][] = [[-3, 0.6, 0.7], [-0.5, -2.0, 0.55], [-0.8, 2.1, 0.6], [1.2, 0, 0.5]];
+  const trees: [number, number][] = [[3, -2.4], [3, 2.4]];
+  for (const bed of FLOWER_BEDS) {
+    const side = Math.sign(bed.x);
+    const soil = new THREE.Mesh(new THREE.CircleGeometry(1, 56), soilM);
+    soil.scale.set(bed.a, bed.b, 1); soil.rotation.x = -Math.PI / 2; soil.position.set(bed.x, GY + 0.005, bed.z); soil.receiveShadow = true; grp.add(soil);
+    for (let i = 0; i < nPeb; i++) {
+      const t = (i / nPeb) * Math.PI * 2, s = 0.8 + ((i * 37) % 7) / 9;
+      o.position.set(bed.x + Math.cos(t) * (bed.a + 0.12), GY + 0.06, bed.z + Math.sin(t) * (bed.b + 0.12));
+      o.scale.set(s, 0.65, s); o.rotation.set(0, i, 0); o.updateMatrix(); pebbles.setMatrixAt(pi++, o.matrix);
+    }
+    const keep: [number, number, number][] = [
+      ...bushes.map(([dx, dz, r]): [number, number, number] => [bed.x + dx * side, bed.z + dz, r + 0.25]),
+      ...trees.map(([dx, dz]): [number, number, number] => [bed.x + dx * side, bed.z + dz, 1.0]),
+    ];
+    for (let i = 0; i < nFl; i++) {
+      const r = Math.sqrt((i + 0.5) / nFl) * 0.93, ang = i * 2.39996;
+      const x = bed.x + Math.cos(ang) * r * bed.a, z = bed.z + Math.sin(ang) * r * bed.b;
+      const hit = keep.some(([kx, kz, kr]) => Math.hypot(x - kx, z - kz) < kr);
+      o.position.set(x, hit ? -5 : GY + 0.2, z); o.scale.set(1, hit ? 0.01 : 0.6, 1); o.rotation.set(0, 0, 0); o.updateMatrix();
+      flowers.setMatrixAt(fi, o.matrix); flowers.setColorAt(fi, palette[(i * 7 + (i >> 2)) % 3]); fi++;
+    }
+    for (const [dx, dz, r] of bushes) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), bushM);
+      b.scale.y = 0.85; b.position.set(bed.x + dx * side, GY + r * 0.7, bed.z + dz); b.castShadow = b.receiveShadow = true; grp.add(b);
+    }
+    for (const [dx, dz] of trees) {
+      const x = bed.x + dx * side, z = bed.z + dz;
+      const t = new THREE.Group();
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 2.3, 8), trunkM); tr.position.y = 1.15; tr.castShadow = true; t.add(tr);
+      for (let k = 0; k < 3; k++) {
+        const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), blossomM);
+        cr.scale.setScalar(1.35 - k * 0.2); cr.position.set((k - 1) * 0.45 * (k % 2 ? 1 : -1), 2.7 + k * 0.6, k * 0.2 - 0.2); cr.castShadow = true; t.add(cr);
+      }
+      t.position.set(x, GY, z); t.rotation.y = x + z; grp.add(t);
+      g.colliders.push({ x, z, r: 0.35 });
+    }
+    for (const sz of [-1, 1]) {
+      const bx = side * 13.6, bz = bed.z + sz * (bed.b + 1.3);
+      woodBench(g, grp, bx, bz, Math.atan2(LAKE.x - bx, LAKE.z - bz));
+    }
+  }
+  flowers.instanceMatrix.needsUpdate = true; if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
+  pebbles.instanceMatrix.needsUpdate = true;
+  pebbles.castShadow = true; grp.add(flowers, pebbles);
+}

@@ -6,7 +6,7 @@ import {
 } from './layout';
 import { buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
-import { buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
+import { buildFlowerBeds, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, vietnameseColumnTexture, woodTexture } from './textures';
 
 export interface Seat { x: number; z: number; ry: number }
@@ -393,6 +393,7 @@ export function buildTemple(c: TempleCtx) {
   pathRect(-SIDE_X - 1.2, ZEN.z, -SIDE_X + 1.2, PATH_Z);
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
   buildZenGarden(gardenCtx);
+  buildFlowerBeds(gardenCtx);
 
   // ---- animation ----
   let ring = 0;
