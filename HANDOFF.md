@@ -150,3 +150,42 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
 - Commit `605c05d`. Nếu cần sửa tiếp: ưu tiên (1) runtime verify `startBow` bằng cách mở chùa thật,
   (2) thu hẹp áo Quan Âm trong tháp, (3) tinh chỉnh khe kiến trúc còn lại, (4) cân nhắc bỏ export
   `hoanhPhiTexture`/`coupletTexture` không dùng.
+---
+
+## GĐ1 Gói 5 — Thủy Đình (commit 873bf47)
+
+### Đã làm
+- `layout.ts`: `PIER {x0:-10.6,x1:-4.4,z:23,hw:1.6,y:0.55}`, `PIER_RAMP` 1.3 (đoạn dốc ở đầu bờ, tránh nhân vật nhảy bậc), `PIER_FLOOR` (sàn đình, y 0.77). `groundY()` nâng theo cầu gỗ + sàn đình; `resolveWater()` bỏ qua hình chữ nhật PIER (nới 0.2).
+- `temple.ts`: nhóm `thuy-dinh`: cầu gỗ có dốc + cọc chìm, sàn đá, 4 cột đỏ, mái `roofGeometry(5.8,5,1.6,0.6)` + chóp vàng, bảng `THỦY ĐÌNH` quay Đông, đèn lồng, lan can 3 phía (Bắc, Nam, Đông; hở phía Tây để vào), 3 chỗ ngồi (Đông/Bắc/Nam), collider 4 cột + lan can, zone `thuyDinh` r4.5. Bỏ đá bờ hồ nằm trên đường cầu.
+- `couplets.ts`: `thuyDinh`. `Seat` thêm cờ `rest`; `main.ts::nearestFreeSeat` bỏ qua ghế `rest` khi bấm Lạy Phật (không kéo người chơi ra giữa hồ), nhưng nút Thiền (limit 3.2m) vẫn ngồi được.
+- `main.ts` dev hook `__co.walkTo(x,z)`; `tools/steps-thuydinh*.mjs`.
+
+### Kiểm chứng
+- typecheck pass; gapdump thuyDinh filled=5 remaining=0.
+- Đi thử thật: bờ Tây → lên dốc → sàn đình y=0.77 → ngồi được (ry 0); lan can chặn ở x≈-4.95, z≈21.75 và 24.25; (-5,19.5) bị đẩy ra bờ như cũ; cầu trục đi tới đỉnh y=1.52.
+- Đầu cầu gỗ (x0=-10.6) không đè bồn hoa (ảnh b3), không phải dịch PIER xuống 24.2.
+
+### Chưa làm / chưa chắc chắn
+- Mục mở rộng 4 (thả đèn khi vào zone `thuyDinh`): không làm. `main.ts` chỉ thả đèn qua nút "Thả đèn nguyện" (modal điều ước, `doAction('lantern', wish)`), không có điểm gọi theo zone.
+- Cảnh báo cũ trong spec: nhân vật đi bộ tới ghế bằng ngồi/Thiền, chưa có hành động "ngồi ghế đình" riêng.
+
+---
+
+## GĐ1 Gói 6 — Tượng La Hán dọc hai hành lang
+
+### Đã làm
+- `statues.ts`: `buildArhat(variant 0|1|2)`: thân lathe bo tròn + áo tràng 3 màu trầm (vàng đất, xám lam, nâu), đầu trọc dùng lại `buildHead` + `faceTexture` (mắt cong nhắm, không tạc hốc mắt/sống mũi), 3 tư thế tay: để trong lòng / một tay nâng / ôm bát. Cao ~1.15 khi ngồi.
+- `temple.ts`: 20 tượng (10/bên) trên bệ đá 0.8×0.55×0.8, z = -17.5 + 1.8k (k=0..9), quay mặt vào trục, collider r0.42.
+
+### Vị trí (đã tính lại, spec cũ lệch)
+- Spec ghi "z so le 0.9 so với cột", nhưng bước 1.82 từ -18.2 làm cột (z = -18.4 + 3.6j) trùng tượng ở k chẵn. Dùng z = -17.5 + 1.8k thì mọi tượng cách cột đúng 0.9.
+- Ghế dài (hàng trong, z = -16.6, -9.4, -2.2) trùng slot k=1, 5, 9 → các slot đó và k=0, 4, 8 ở hàng ngoài (+side×1.5); k=2,3,6,7 ở hàng trong (-side×1.5). Không cần dịch ±0.3.
+
+### Kiểm chứng
+- typecheck pass; gapdump arhats filled=0 remaining=0.
+- Đi thử thật dọc tâm lối đi (x=±20.5) từ z=-0.4 tới -18.5 ở cả hai hành lang, không kẹt.
+- Ảnh trong `shots/arhat-*.png`.
+
+### Chưa chắc chắn
+- Tượng ở hàng trong cách ghế dài ~0.4 về ngang (ghế lệch 1.3, tượng lệch 1.5); chỉ so le về z, nhìn gần hơi sát.
+- 3 mẫu tượng clone dùng chung geometry/material; chưa đo hiệu năng trên máy yếu (20 bệ + 20 tượng).

@@ -392,3 +392,65 @@ export function buildQuanAm(): THREE.Group {
   addGlow(guanyinGroup, 0, headY * GUANYIN_SCALE, -0.4, 6.6, 0xfff2d0);
   return guanyinGroup;
 }
+// =====================================================================
+//  LA HÁN CHIBI — ngồi xếp bằng, áo tràng trầm, 3 biến thể tay
+// =====================================================================
+const ARHAT_SCALE = 0.434;
+const ARHAT_ROBE = [0xc8963e, 0x6f8394, 0x8a5a3a];
+const ARHAT_SASH = [0x8a5a3a, 0xc9d3da, 0xd8b36a];
+
+/**
+ * Tượng La Hán ngồi, cao ~1.15. Gốc y=0 (mặt ngồi), mặt hướng +z.
+ * variant 0: hai tay để trong lòng · 1: một tay nâng · 2: hai tay ôm bát.
+ * Đầu trọc, mặt vẽ bằng texture (mắt cong nhắm, miệng cười), không tạc hốc mắt/sống mũi.
+ */
+export function buildArhat(variant: 0 | 1 | 2 = 0): THREE.Group {
+  const arhatGroup = new THREE.Group();
+  arhatGroup.name = 'arhatGroup';
+  const fig = new THREE.Group();
+  fig.scale.setScalar(ARHAT_SCALE);
+  arhatGroup.add(fig);
+
+  const skin = std(COL.skinBody, 0.55);
+  const robe = std(ARHAT_ROBE[variant], 0.6, { side: THREE.DoubleSide });
+  const sash = std(ARHAT_SASH[variant], 0.6);
+
+  blob(fig, robe, [0, 0.3, 0.05], [1.02, 0.34, 0.86]);
+  const body = add(fig, geo('a-robe', () => new THREE.LatheGeometry(
+    ([[0, 0.05], [0.9, 0.08], [0.98, 0.3], [0.84, 0.7], [0.66, 1.1], [0.56, 1.4], [0.42, 1.58], [0, 1.62]] as [number, number][]).map(([x, y]) => new THREE.Vector2(x, y)), 28)), robe);
+  body.scale.z = 0.88;
+  blob(fig, robe, [0, 1.5, 0], [0.58, 0.26, 0.44]);
+
+  const sashCurve = new THREE.CatmullRomCurve3([
+    v3(-0.42, 1.55, 0.12), v3(-0.24, 1.3, 0.52), v3(0.06, 1.02, 0.66), v3(0.36, 0.76, 0.72), v3(0.62, 0.5, 0.62),
+  ]);
+  add(fig, new THREE.TubeGeometry(sashCurve, 24, 0.075, 8, false), sash);
+  const collar = add(fig, geo('a-collar', () => new THREE.TorusGeometry(0.4, 0.07, 8, 24)), sash);
+  collar.rotation.x = Math.PI / 2; collar.position.y = 1.6;
+
+  const arm = (s: number, elbow: THREE.Vector3, hand: THREE.Vector3, palm: [number, number, number] = [0.14, 0.12, 0.14]) => {
+    const shoulder = v3(s * 0.55, 1.4, 0.02);
+    limb(fig, robe, shoulder, elbow, 0.17);
+    limb(fig, robe, elbow, hand, 0.15);
+    blob(fig, skin, [hand.x, hand.y, hand.z], palm);
+  };
+  if (variant === 0) {
+    arm(-1, v3(-0.8, 0.95, 0.3), v3(-0.14, 0.68, 0.78));
+    arm(1, v3(0.8, 0.95, 0.3), v3(0.14, 0.68, 0.78));
+  } else if (variant === 1) {
+    arm(-1, v3(-0.8, 0.95, 0.3), v3(-0.2, 0.68, 0.76));
+    arm(1, v3(0.9, 1.15, 0.3), v3(0.74, 1.72, 0.62), [0.17, 0.2, 0.08]);
+  } else {
+    const bowM = std(0x3a2a22, 0.5, { side: THREE.DoubleSide });
+    const bowPts = ([[0, 0], [0.18, 0.02], [0.3, 0.1], [0.36, 0.22], [0.34, 0.27]] as [number, number][]).map(([x, y]) => new THREE.Vector2(x, y));
+    const bowl = add(fig, geo('a-bowl', () => new THREE.LatheGeometry(bowPts, 20)), bowM);
+    bowl.position.set(0, 0.7, 0.8);
+    arm(-1, v3(-0.82, 0.95, 0.32), v3(-0.34, 0.82, 0.8));
+    arm(1, v3(0.82, 0.95, 0.32), v3(0.34, 0.82, 0.8));
+  }
+
+  const head = buildHead('guanyin');
+  head.position.set(0, 2.0, 0.05);
+  fig.add(head);
+  return arhatGroup;
+}

@@ -4,7 +4,7 @@ import { buildHall } from './hall';
 import {
   BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
-import { buildBuddha, buildQuanAm } from './statues';
+import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
@@ -158,6 +158,31 @@ export function buildTemple(c: TempleCtx) {
     labelBoard(corridor, COLUMN_LABELS.hanhLang[side > 0 ? 0 : 1], 0.5, 2.4, side * (CORR.x - 1.7), CORR.y + 1.9, CORR.z1 - 1.2, side > 0 ? 0 : Math.PI);
   }
   sealArchitectureJoints(corridor, { maxGap: 0.4 });
+
+  // ---- tượng La Hán dọc hai hành lang: 10 tượng mỗi bên, quay mặt vào trục ----
+  /*
+   * z = -17.5 + 1.8k (k = 0..9): luôn cách cột hành lang (z = -18.4 + 3.6j) đúng 0.9.
+   * Ghế dài nằm ở hàng trong (lệch -side × 1.3) tại z = -16.6, -9.4, -2.2, nên các slot trùng ghế
+   * (k = 0, 1, 4, 5, 8, 9) đặt ở hàng ngoài; k = 2, 3, 6, 7 đặt ở hàng trong → thứ tự ngoài-ngoài-trong-trong.
+   */
+  const arhatGroup = new THREE.Group(); arhatGroup.name = 'arhats'; scene.add(arhatGroup);
+  const arhatModels = ([0, 1, 2] as const).map((v) => buildArhat(v));
+  const arhatPedM = lamb(0x9a8f7a, { map: stoneTexture([170, 160, 140], [1, 1], 2) });
+  const ARHAT_INNER = new Set([2, 3, 6, 7]);
+  for (const side of [-1, 1] as const) {
+    for (let k = 0; k < 10; k++) {
+      const z = -17.5 + 1.8 * k;
+      const x = side * CORR.x + (ARHAT_INNER.has(k) ? -side : side) * 1.5;
+      const ped = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.8), arhatPedM);
+      ped.position.set(x, CORR.y + 0.275, z); ped.castShadow = ped.receiveShadow = true; ped.userData.sealable = true; arhatGroup.add(ped);
+      const a = arhatModels[(k + (side > 0 ? 1 : 0)) % 3].clone(true);
+      a.position.set(x, CORR.y + 0.55, z); a.rotation.y = -side * Math.PI / 2;
+      arhatGroup.add(a);
+      colliders.push({ x, z, r: 0.42 });
+    }
+  }
+  const arhatSeal = sealArchitectureJoints(arhatGroup, { maxGap: 0.3 });
+  if (import.meta.env.DEV) console.warn(`gapdump arhats: filled=${arhatSeal.filled} remaining=${arhatSeal.remaining.length} ` + JSON.stringify(arhatSeal.remaining));
 
   // ---- bell tower ----
   const tower = (x: number, z: number, ry: number, sign: string, coupletId?: keyof typeof COUPLETS) => {
