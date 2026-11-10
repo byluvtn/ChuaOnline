@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
-import { buildFlowerBeds, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
+import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, vietnameseColumnTexture, woodTexture } from './textures';
 
 export interface Seat { x: number; z: number; ry: number }
@@ -394,6 +394,8 @@ export function buildTemple(c: TempleCtx) {
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
   buildZenGarden(gardenCtx);
   buildFlowerBeds(gardenCtx);
+  pathRect(BRIDGE.x + 1.4, REST.z - 1.2, REST.x - 2, REST.z + 1.2);
+  buildRestArea(gardenCtx);
 
   // ---- animation ----
   let ring = 0;

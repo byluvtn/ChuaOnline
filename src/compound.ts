@@ -494,3 +494,30 @@ export function buildFlowerBeds(g: GardenCtx) {
   pebbles.instanceMatrix.needsUpdate = true;
   pebbles.castShadow = true; grp.add(flowers, pebbles);
 }
+
+/** Khu 3 — khu nghỉ bóng cây (Đông–Nam): 3 cây lớn tam giác, 2 bộ bàn đá, 3 ghế gỗ dài. */
+export function buildRestArea(g: GardenCtx) {
+  const grp = new THREE.Group(); grp.name = 'rest-area'; g.scene.add(grp);
+  const cx = REST.x, cz = REST.z;
+  const trunkM = g.lamb(0x5f4026);
+  const canopyMs = [g.lamb(0x3f8a3e, { flatShading: true }), g.lamb(0x4e9c45, { flatShading: true }), g.lamb(0x2f7a40, { flatShading: true })];
+  for (let i = 0; i < 3; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI * 2) / 3, x = cx + Math.cos(a) * 4.2, z = cz + Math.sin(a) * 4.2;
+    const t = new THREE.Group();
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.5, 3.2, 10), trunkM); tr.position.y = 1.6; tr.castShadow = true; t.add(tr);
+    const parts: [number, number, number, number][] = [[0, 4.0, 0, 2.5], [1.3, 3.8, 0.5, 1.9], [-1.2, 3.9, -0.6, 2.0], [0.2, 5.0, 0.3, 1.7]];
+    parts.forEach(([px, py, pz, r], k) => {
+      const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), canopyMs[(i + k) % 3]);
+      cr.scale.y = 0.8; cr.position.set(px, py, pz); cr.castShadow = true; cr.receiveShadow = true; t.add(cr);
+    });
+    t.position.set(x, GY, z); t.rotation.y = i * 2; grp.add(t);
+    g.colliders.push({ x, z, r: 0.5 });
+  }
+  stoneTableSet(g, grp, cx - 1.9, cz - 0.9, 0.3);
+  stoneTableSet(g, grp, cx + 2.3, cz - 1.1, 1.1);
+  for (const deg of [-30, 90, 210]) {
+    const a = (deg * Math.PI) / 180, bx = cx + Math.cos(a) * 6.2, bz = cz + Math.sin(a) * 6.2;
+    woodBench(g, grp, bx, bz, Math.atan2(cx - bx, cz - bz), 2.6);
+  }
+  g.addZone(cx, cz, 8, 'nghiChan');
+}
