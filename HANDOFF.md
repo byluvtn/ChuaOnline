@@ -102,6 +102,26 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
 
 ---
 
+## GĐ1 Gói 1 — Gác Trống (commit b3ee146)
+
+### Đã làm
+- `layout.ts`: `DRUM = {x:34, z:-6}` + vòng cấm `blocked()` r7.
+- `temple.ts`: `COLUMN_LABELS.trong`; `tower()` dùng đúng cặp bảng theo `coupletId` (tháp chuông vẫn dùng `chuong`); dựng `drumTower` (trống trụ nằm ngang R0.85 dài 1.1, 2 mặt da bò, vành vàng + 16 đinh tán/mặt, chân gỗ + đế), glowSpr, zone `trong` r7, 3 `pathRect` lát đá, `ringDrum()` (drumHit decay, rung/nảy ~0.4s trong `update()`). `tower()` nay log `gapdump tower <sign>` ở DEV.
+- `couplets.ts`: `COUPLETS.trong`. `world.ts`: phơi `ringDrum`. `main.ts`: timer tự gõ trống mỗi 45s (`lastDrum`, lệch pha 22s so với chuông).
+- `tools/steps-drum.mjs`, `tools/steps-drum-walk.mjs`: script chụp + đi thử.
+
+### Kết quả kiểm chứng
+- `npm run typecheck`: pass (sau khi sửa trùng tên biến `dt`).
+- gapdump: THÁP CHUÔNG filled=5 remaining=0; THÁP TRỐNG filled=5 remaining=0.
+- Đi thử nhân vật thật (đặt vị trí rồi giữ phím): từ (30,-6) giữ D 1.5s chỉ tới x=30.19 (bị chặn); từ (34,-2.5) giữ W dừng ở z=-2.69; zone `trong` + popup câu đối hiện đúng.
+
+### Chưa chắc chắn / lưu ý
+- `main.ts:769` KHÔNG phải tương tác ở khu chuông mà là timer 45s tự động; đã nhân bản đúng kiểu đó cho trống. Chưa có tương tác chủ động gõ trống/chuông.
+- Ảnh `drum-walk-couplet.png` và các ảnh walk chụp khi camera chưa bám nhân vật (freeze) nên không phải góc nhìn tháp trống; ảnh nghiệm thu đúng spec là `drum-plaza-both.png` (chuông + trống một khung) và `drum-front.png` (cận cảnh).
+- Chưa kiểm chứng riêng bằng ảnh hiệu ứng `ringDrum` (có `drum-hit.png` nhưng chụp 150ms sau khi gọi, rung biên độ nhỏ).
+
+---
+
 ## Chạy / chụp kiểm tra
 - `STEPS=./steps-chibi.mjs` hoặc `steps-round2.mjs` với `node tools/shot.mjs <prefix> http://localhost:5173/ 1280 800`.
   Các steps tự bật `window.__co.freeze = true` để khoá camera.
