@@ -30,6 +30,7 @@ export interface Profile {
   accessory: string | null;
   username: string | null; // null = guest
   inventory: Record<string, number>;
+  admin?: boolean;
 }
 
 export const MAP_HALF = 50;

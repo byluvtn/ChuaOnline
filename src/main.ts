@@ -178,6 +178,10 @@ let meditation: MeditationInfo = { sitting: 0, minutes: 0, goal: 500, bonus: fal
 
 const keys = new Set<string>();
 let camYaw = 0, camPitch = isTouch ? 0.55 : 0.45, camDist = isTouch ? 12 : 9;
+let freeCam = false;
+const freePos = new THREE.Vector3();
+const camMaxDist = () => (profile?.admin ? 160 : 18);
+const camMaxPitch = () => (profile?.admin ? 1.55 : 1.3);
 let clickTarget: THREE.Vector3 | null = null;
 let dragging = false, dragMoved = 0;
 let sitting = false;
@@ -438,6 +442,12 @@ const typing = () => document.activeElement instanceof HTMLInputElement || docum
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closePanel(); $('wishModal').hidden = true; return; }
   if (typing() || panelOpen()) return;
+  if (e.code === 'KeyF' && profile?.admin && !e.repeat) {
+    freeCam = !freeCam;
+    if (freeCam) freePos.copy(camera.position);
+    toast(freeCam ? 'Camera tự do: WASD di chuyển, Q/E lên xuống, Shift nhanh, chuột kéo để xoay, F để thoát' : 'Đã thoát camera tự do');
+    return;
+  }
   keys.add(e.code);
   if (e.key === 'Enter') { e.preventDefault(); $('chatInput').focus(); }
 });
@@ -459,9 +469,9 @@ addEventListener('pointermove', (e) => {
   if (!dragging) return;
   dragMoved += Math.abs(e.movementX) + Math.abs(e.movementY);
   camYaw -= e.movementX * 0.005;
-  camPitch = Math.min(1.3, Math.max(0.1, camPitch + e.movementY * 0.004));
+  camPitch = Math.min(camMaxPitch(), Math.max(profile?.admin ? -1.2 : 0.1, camPitch + e.movementY * 0.004));
 });
-canvas.addEventListener('wheel', (e) => { camDist = Math.min(18, Math.max(4, camDist + e.deltaY * 0.01)); }, { passive: true });
+canvas.addEventListener('wheel', (e) => { camDist = Math.min(camMaxDist(), Math.max(4, camDist + e.deltaY * (profile?.admin ? 0.03 : 0.01))); }, { passive: true });
 
 // Joystick (touch)
 const joyEl = $('joystick'), stick = $('stick');
@@ -493,7 +503,7 @@ canvas.addEventListener('pointermove', (e) => {
     const other = [...touches.entries()].find(([id]) => id !== e.pointerId)![1];
     const before = Math.hypot(prev.x - other.x, prev.y - other.y);
     const after = Math.hypot(e.clientX - other.x, e.clientY - other.y);
-    camDist = Math.min(18, Math.max(4, camDist - (after - before) * 0.03));
+    camDist = Math.min(camMaxDist(), Math.max(4, camDist - (after - before) * 0.03));
     dragMoved = 99;
   }
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -662,10 +672,12 @@ function loop() {
   if (me && socket) {
     const root = me.char.root;
     let ix = joy.x, iz = joy.y;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
+    if (!freeCam) {
+      if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) ix -= 1;
+      if (keys.has('KeyD') || keys.has('ArrowRight')) ix += 1;
+    }
     const mag = Math.min(1, Math.hypot(ix, iz));
     const running = keys.has('ShiftLeft') || keys.has('ShiftRight') || (joy.id !== -1 && mag > 0.85);
     const speed = running ? 7 : 3.8;
@@ -716,7 +728,20 @@ function loop() {
     const cx = root.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
     const cy = 1.4 + Math.sin(camPitch) * camDist;
     const cz = root.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
-    if (!(import.meta.env.DEV && (window as any).__co?.freeze)) {
+    if (freeCam && profile?.admin) {
+      const fs = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 40 : 14) * dt;
+      const fx = -Math.sin(camYaw) * Math.cos(camPitch), fy = -Math.sin(camPitch), fz = -Math.cos(camYaw) * Math.cos(camPitch);
+      const rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
+      if (keys.has('KeyW') || keys.has('ArrowUp')) freePos.x += fx * fs, freePos.y += fy * fs, freePos.z += fz * fs;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) freePos.x -= fx * fs, freePos.y -= fy * fs, freePos.z -= fz * fs;
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) freePos.x -= rx * fs, freePos.z -= rz * fs;
+      if (keys.has('KeyD') || keys.has('ArrowRight')) freePos.x += rx * fs, freePos.z += rz * fs;
+      if (keys.has('KeyE')) freePos.y += fs;
+      if (keys.has('KeyQ')) freePos.y -= fs;
+      freePos.y = Math.max(0.5, Math.min(250, freePos.y));
+      camera.position.copy(freePos);
+      camera.lookAt(freePos.x + fx * 10, freePos.y + fy * 10, freePos.z + fz * 10);
+    } else if (!(import.meta.env.DEV && (window as any).__co?.freeze)) {
       camera.position.lerp(tmp.set(cx, cy, cz), 1 - Math.pow(0.001, dt));
       camera.lookAt(root.position.x, 1.3, root.position.z);
     }

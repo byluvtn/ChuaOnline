@@ -78,6 +78,14 @@ CREATE TABLE IF NOT EXISTS feedback (
 CREATE INDEX IF NOT EXISTS idx_merit ON players(merit DESC);
 CREATE INDEX IF NOT EXISTS idx_weekly ON players(week_key, weekly_merit DESC);
 `);
+try { db.exec('ALTER TABLE players ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
+/** Cấp quyền quản trị theo biến môi trường ADMIN_USERNAMES (phân tách bằng dấu phẩy); không hardcode mật khẩu. */
+export function syncAdmins() {
+  const names = String(process.env.ADMIN_USERNAMES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  db.prepare('UPDATE players SET is_admin = 0').run();
+  for (const n of names) db.prepare('UPDATE players SET is_admin = 1 WHERE username = ?').run(n);
+}
+syncAdmins();
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const now = () => Date.now();
@@ -103,6 +111,7 @@ const checkPw = (pw: string, stored: string) => {
 
 // ---- sessions ----
 export function newSession(playerId: number): string {
+  syncAdmins();
   const token = randomBytes(32).toString('hex');
   db.prepare('INSERT INTO sessions (token_hash, player_id, created_at) VALUES (?,?,?)').run(sha(token), playerId, now());
   return token;
@@ -155,13 +164,13 @@ export function logoutToken(token: string) {
 }
 
 // ---- profile ----
-interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null }
+interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null; is_admin: number }
 export function getProfile(id: number): Profile | null {
-  const r = db.prepare('SELECT id, username, name, outfit, color, merit, coins, accessory FROM players WHERE id = ?').get(id) as Row | undefined;
+  const r = db.prepare('SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin FROM players WHERE id = ?').get(id) as Row | undefined;
   if (!r) return null;
   const inv: Record<string, number> = {};
   for (const i of db.prepare('SELECT item_id, qty FROM inventory WHERE player_id = ? AND qty > 0').all(id) as { item_id: string; qty: number }[]) inv[i.item_id] = i.qty;
-  return { name: r.name, outfit: r.outfit, color: r.color, merit: r.merit, coins: r.coins, accessory: r.accessory, username: r.username, inventory: inv };
+  return { name: r.name, outfit: r.outfit, color: r.color, merit: r.merit, coins: r.coins, accessory: r.accessory, username: r.username, inventory: inv, admin: r.is_admin === 1 };
 }
 
 export function saveLook(id: number, name: string, outfit: Outfit, color: string) {
