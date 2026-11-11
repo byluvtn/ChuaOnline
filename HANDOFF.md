@@ -443,3 +443,8 @@ Baseline: `main` sau commit `8d7fb8b`; không đổi schema DB.
 - Ảnh dùng sự kiện `pointerdown` giả lập qua CDP, chưa thử chạm thật trên điện thoại; chưa kiểm tay phím Space ngoài trình duyệt headless.
 - Ngày thưởng theo `dayKey()` UTC như các minigame khác (UI các nơi vẫn nói 07:00 VN).
 - Chưa deploy.
+
+## Rider — bong bóng chat tông kính tối
+- `src/character.ts::say()`: chỉ đổi 3 màu. Nền `rgba(255,250,238,.97)` → `rgba(38,24,14,.88)`, viền `rgba(120,80,30,.55)` → `rgba(246,217,138,.75)`, chữ `#2a170a` → `#FAF3E3` (cùng bộ `--glass`/`--gold2`/`--cream` của HUD). Đuôi bong bóng dùng chung fillStyle của nền nên tự đổi. Kích thước canvas, font, ngắt dòng, đuôi, thời gian hiện, scale sprite và bảng tên giữ nguyên. Áp dụng cho mọi nhân vật, kể cả NPC.
+- `npm run typecheck` pass. Ảnh `shots/bubble-dark.png` (390×844, `?touch=1`, tin gửi qua form chat thật, `tools/steps-bubble-dark.mjs`): nền nâu tối, viền vàng nhạt, chữ kem đọc rõ, bảng tên bên dưới không đổi.
+- Chưa kiểm trên điện thoại thật.
