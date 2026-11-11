@@ -164,31 +164,40 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
 
 @media (max-width: 760px) {
   .card { padding: 18px; border-radius: 22px; }
-  #actions { right: 8px; bottom: calc(80px + env(safe-area-inset-bottom)); flex-direction: column; gap: 6px; }
-  .act { width: 62px; height: 62px; border-radius: 17px; }
-  .act .ico { font-size: 22px; }
-  .act .lb { font-size: 10px; }
+  #actions { right: 6px; bottom: calc(72px + env(safe-area-inset-bottom)); flex-direction: column; gap: 5px; }
+  .act { width: 48px; height: 48px; border-radius: 14px; }
+  .act .ico { font-size: 20px; }
+  .act .lb { font-size: 9.5px; }
   #chat { left: 8px; bottom: calc(80px + env(safe-area-inset-bottom)); width: min(240px, 55vw); padding: 8px; }
-  #msgs { height: 90px; }
-  body.touch #chat { bottom: auto; top: 138px; width: min(250px, 62vw); z-index: 9; }
+  #chat .title { font-size: 13px; }
+  #msgs { height: 90px; font-size: 12.5px; }
+  body.touch #chat { bottom: auto; top: 116px; width: min(228px, 58vw); z-index: 9; }
   body.touch.menu-collapsed #chat { bottom: auto; }
-  body.touch #chat:not(.collapsed) { display: flex; flex-direction: column; max-height: min(46dvh, calc(100dvh - 442px - env(safe-area-inset-bottom))); }
+  body.touch #chat:not(.collapsed) { display: flex; flex-direction: column; max-height: min(38dvh, calc(100dvh - 380px - env(safe-area-inset-bottom))); }
   body.touch #chatBody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   body.touch #msgs { height: auto; flex: 1 1 auto; min-height: 64px; overflow-y: auto; overscroll-behavior: contain; }
   body.touch #chatForm { flex: none; }
+  #chatInput { padding: 8px 11px; }
   body.touch #chatInput { font-size: 16px; }
   body.touch #chatToggle { width: 40px; height: 40px; margin: -8px -4px -8px auto; }
-  body.touch #medBanner { top: 128px; }
-  body.touch #boostBanner { top: 186px; }
-  #joystick { bottom: calc(92px + env(safe-area-inset-bottom)); }
-  #profile { top: 36px; left: 6px; }
-  #online { top: 98px; left: 6px; font-size: 12px; }
-  #topright { top: 36px; right: 6px; }
-  #medBanner { top: 128px; font-size: 12px; width: 92vw; }
-  #boostBanner { top: 186px; font-size: 12px; max-width: 92vw; white-space: normal; }
+  body.touch #medBanner { top: 106px; }
+  body.touch #boostBanner { top: 144px; }
+  #joystick { left: 14px; bottom: calc(92px + env(safe-area-inset-bottom)); width: 104px; height: 104px; }
+  #stick { left: 29px; top: 29px; width: 46px; height: 46px; }
+  #profile { top: 30px; left: 6px; padding: 5px 12px 5px 5px; }
+  .avatar { width: 34px; height: 34px; font-size: 15px; }
+  .pinfo { line-height: 1.1; }
+  .pinfo b { font-size: 13.5px; display: block; }
+  #plevel { font-size: 11px; }
+  #online { top: 78px; left: 6px; font-size: 11px; padding: 4px 10px; }
+  #topright { top: 30px; right: 6px; }
+  #coins { font-size: 13.5px; padding: 5px 10px; }
+  #coins .ico { font-size: 17px; }
+  #medBanner { top: 106px; font-size: 12px; width: 92vw; }
+  #boostBanner { top: 144px; font-size: 12px; max-width: 92vw; white-space: normal; }
   #lanternFeed { display: none; }
-  #marquee { font-size: 12px; height: 26px; line-height: 26px; }
-  .bar { width: 100px; }
+  #marquee { font-size: 11px; height: 22px; line-height: 22px; }
+  .bar { width: 80px; height: 5px; margin-top: 3px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
@@ -197,7 +206,7 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
 #couplet small { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #e8b64a; margin-bottom: 6px; }
 #couplet p { font-size: 12.5px; margin: 0 0 4px; line-height: 1.5; color: #fff1d0; }
 #couplet em { display: block; font-size: 12px; color: #d9c7a0; line-height: 1.45; }
-@media (max-width: 700px) { #couplet { bottom: 170px; padding: 8px 12px 10px; } }
+@media (max-width: 700px) { #couplet { bottom: 148px; padding: 8px 12px 10px; } }
 #couplet .cclose { position: absolute; top: 6px; right: 8px; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(232,182,74,.5); background: rgba(0,0,0,.25); color: #f6e7c8; font-size: 18px; line-height: 1; cursor: pointer; padding: 0; }
 #couplet .cclose:hover { background: rgba(232,182,74,.3); }
 
@@ -211,3 +220,9 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
 /* nút trò chuyện với sư thầy (NPC) */
 #actions .act.teacher { width: auto; min-width: 78px; padding: 0 10px; border-color: var(--gold); background: linear-gradient(rgba(232,182,74,.45), rgba(120,76,22,.7)); }
 #actions .act.teacher .lb { font-size: 11px; line-height: 1.15; text-align: center; max-width: 100px; }
+
+@media (max-width: 760px) {
+  #joyGrip { width: 30px; height: 30px; }
+  #actions .act.teacher { min-width: 64px; }
+  #actions .act.teacher .lb { font-size: 10px; max-width: 84px; }
+}
