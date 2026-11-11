@@ -231,3 +231,43 @@ export interface MailAck {
   ok: boolean; error?: string; unread?: number; mails?: MailItem[];
   merit?: number; coins?: number; items?: Record<string, number>;
 }
+
+export interface SpinState { used: boolean }
+export interface SpinAck {
+  ok: boolean; error?: string;
+  segment?: number; merit?: number; coins?: number; item?: string;
+  used?: boolean;
+}
+
+export interface SpinSegment {
+  /** Nhãn ngắn in trên ô vòng quay. */
+  label: string;
+  merit: number;
+  coins: number;
+  /** Vật phẩm tặng kèm (id trong ITEMS), nếu có. */
+  item?: string;
+  /** Trọng số rút thăm; tổng cả bảng = 100. */
+  weight: number;
+}
+
+export const SPIN_SEGMENTS: SpinSegment[] = [
+  { label: '+10',       merit: 10,  coins: 0,   weight: 22 },
+  { label: '15 xu',     merit: 0,   coins: 15,  weight: 16 },
+  { label: '+15',       merit: 15,  coins: 0,   weight: 18 },
+  { label: '30 xu',     merit: 0,   coins: 30,  weight: 12 },
+  { label: '+25',       merit: 25,  coins: 0,   weight: 12 },
+  { label: 'Hương trầm', merit: 0,  coins: 0,   item: 'huong_tram', weight: 7 },
+  { label: '+40',       merit: 40,  coins: 0,   weight: 8 },
+  { label: 'ĐẠI CÁT',   merit: 100, coins: 100, weight: 5 },
+];
+
+/** Rút thăm ô quay theo trọng số. Thuần, không chạm DB — server gọi, client KHÔNG BAO GIỜ được tự rút. */
+export function drawSpinSegment(rng: () => number = Math.random): number {
+  const total = SPIN_SEGMENTS.reduce((s, x) => s + x.weight, 0);
+  let r = rng() * total;
+  for (let i = 0; i < SPIN_SEGMENTS.length; i++) {
+    r -= SPIN_SEGMENTS[i].weight;
+    if (r < 0) return i;
+  }
+  return SPIN_SEGMENTS.length - 1;
+}

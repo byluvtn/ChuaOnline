@@ -4,8 +4,8 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
-  QUESTS, ROOMS, ROOM_CAPACITY, SUTRAS, WEEKLY_QUESTS,
-  type CheckinAck, type MailAck, type QuestEvent, type QuestState, type RankRow, type RoomInfo,
+  QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, SUTRAS, WEEKLY_QUESTS, drawSpinSegment,
+  type CheckinAck, type MailAck, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
 } from '../shared/game.js';
 import {
   MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
@@ -220,6 +220,7 @@ io.on('connection', (socket) => {
     await pushQuests(s);
     socket.emit('checkin', await db.checkinState(pid));
     socket.emit('mail', { unread: await db.mailUnread(pid) });
+    socket.emit('spin', { used: (await db.minigameCount(pid, 'quay')) > 0 } satisfies SpinState);
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
@@ -423,6 +424,21 @@ io.on('connection', (socket) => {
     for (const [item, qty] of Object.entries(items ?? {})) await db.addItem(pid, item, qty);
     await grantRewards(s, merit, coins);
     cb?.({ ok: true, merit, coins, items: items ?? {}, unread: await db.mailUnread(pid) });
+  });
+
+  socket.on('spin:get', async (cb?: (r: SpinAck) => void) => {
+    if (!me()) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    cb?.({ ok: true, used: (await db.minigameCount(pid, 'quay')) > 0 });
+  });
+  socket.on('spin:play', async (cb?: (r: SpinAck) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    if (!(await db.claimMinigame(pid, 'quay', 1)))
+      return cb?.({ ok: false, error: 'Hôm nay bạn đã quay rồi, mai quay tiếp nhé', used: true });
+    const seg = SPIN_SEGMENTS[drawSpinSegment()];
+    if (seg.item) await db.addItem(pid, seg.item, 1);
+    await grantRewards(s, seg.merit, seg.coins);
+    cb?.({ ok: true, segment: SPIN_SEGMENTS.indexOf(seg), merit: seg.merit, coins: seg.coins, item: seg.item, used: true });
   });
 
   socket.on('feedback:send', async (p: { text?: string; contact?: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {

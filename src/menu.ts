@@ -28,6 +28,7 @@ import { openMap } from './features/map';
 import { openFortune } from './features/fortune';
 import { checkinPending, initCheckin, openCheckin } from './features/checkin';
 import { initMail, mailPending, openMail } from './features/mail';
+import { initSpin, spinPending } from './features/spin';
 import { newsUnread, openCommunity, openDonate, openFacebook, openFeedback, openGuide, openNews } from './features/misc';
 import { openCharacter } from './features/character';
 import { openSettings } from './features/settings';
@@ -109,6 +110,7 @@ export function initMenu(ctx: MenuCtx): void {
     if (d.id === 'quests') { const em = document.createElement('em'); em.id = 'questDot'; em.hidden = true; b.append(em); }
     if (d.id === 'checkin') { const em = document.createElement('em'); em.className = 'dot checkinDot'; em.hidden = true; b.append(em); }
     if (d.id === 'mail') { const em = document.createElement('em'); em.className = 'dot mailDot'; em.hidden = true; b.append(em); }
+    if (d.id === 'games') { const em = document.createElement('em'); em.className = 'dot gamesDot'; em.hidden = true; b.append(em); }
     if (d.id === 'news') { const em = document.createElement('em'); em.className = 'dot newsDot'; em.hidden = true; b.append(em); }
     if (d.id === 'logout') b.id = 'logoutBtn';
     return b;
@@ -123,10 +125,13 @@ export function initMenu(ctx: MenuCtx): void {
     if (c) c.hidden = !checkinPending();
     const m = bar.querySelector<HTMLElement>('.mailDot');
     if (m) m.hidden = !mailPending();
+    const g = bar.querySelector<HTMLElement>('.gamesDot');
+    if (g) g.hidden = !spinPending();
   };
   refreshDots();
   initCheckin(ctx, refreshDots);
   initMail(ctx, refreshDots);
+  initSpin(ctx, refreshDots);
 
   const setCollapsed = (c: boolean) => {
     bar.classList.toggle('collapsed', c);

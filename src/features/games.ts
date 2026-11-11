@@ -2,6 +2,7 @@ import { audio } from '../audio';
 import { iconSvg } from '../icons';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { openSpin, spinDone, spinPending } from './spin';
 
 type Reward = { ok: boolean; merit?: number; coins?: number; left?: number; error?: string };
 
@@ -16,6 +17,7 @@ export function openGames(ctx: MenuCtx) {
   openCustomPanel('Trò chơi', (body) => {
     body.append(
       h('p', { class: 'hint' }, 'Thư giãn với các trò chơi nhỏ. Phần thưởng do máy chủ quyết định, có giới hạn mỗi ngày.'),
+      gameCard('Vòng quay may mắn', spinDone() ? 'Đã quay hôm nay · Mai quay tiếp nhé' : spinPending() ? 'Hôm nay bạn còn 1 lượt quay miễn phí' : 'Mỗi ngày 1 lượt quay miễn phí', 'halo', () => openSpin(ctx, () => openGames(ctx))),
       gameCard('Gõ mõ', 'Gõ nhịp mõ theo tiếng niệm. Mỗi 108 nhịp nhận công đức và xu.', 'chant', () => openMoh(ctx)),
       gameCard('Lật thẻ biểu tượng', 'Tìm các cặp biểu tượng nhà Phật. Hoàn thành để nhận xu.', 'lotus', () => openMemory(ctx)),
     );

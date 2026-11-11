@@ -1,0 +1,32 @@
+export default async ({ ev, shot, sleep }) => {
+  await sleep(1500);
+  await ev(`document.getElementById('enter').click()`);
+  for (let i = 0; i < 20 && (await ev(`String(!!window.__co.me())`)) !== 'true'; i++) await sleep(1000);
+  await sleep(1500);
+  console.log('gamesDot hidden =', await ev(`String(document.querySelector('.gamesDot')?.hidden)`));
+  await shot('dot');
+  await ev(`document.querySelector('#menu [data-menu=games]').click()`);
+  await sleep(600);
+  console.log('card status =', await ev(`document.querySelector('#panelBody .room .hint')?.textContent`));
+  await ev(`document.querySelector('#panelBody .room button').click()`);
+  await sleep(800);
+  await shot('wheel');
+  await ev(`document.querySelector('.spin-go').click()`);
+  await sleep(5400);
+  console.log('result =', await ev(`document.querySelector('.spin-note')?.textContent`));
+  const info = await ev(`JSON.stringify((() => {
+    const w = document.querySelector('.spin-wheel');
+    const m = /rotate\\(([-\\d.]+)deg\\)/.exec(w.style.transform);
+    const rot = Number(m[1]);
+    const ang = ((360 - (rot % 360)) % 360);
+    const labels = [...w.querySelectorAll('.spin-lb')].map((l) => l.textContent);
+    return { rot, angleUnderPointer: ang, segIndex: Math.floor(ang / 45), label: labels[Math.floor(ang / 45)] };
+  })())`);
+  console.log('under pointer =', info);
+  console.log('used text =', await ev(`document.querySelector('.spin-used')?.textContent + ' | hidden=' + document.querySelector('.spin-used')?.hidden`));
+  console.log('gamesDot hidden after =', await ev(`String(document.querySelector('.gamesDot')?.hidden)`));
+  await shot('result');
+  await ev(`document.querySelector('#panelBody .back').click()`);
+  await sleep(500);
+  console.log('card status after =', await ev(`document.querySelector('#panelBody .room .hint')?.textContent`));
+};

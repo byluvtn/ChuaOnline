@@ -8,6 +8,13 @@ export const LATEST_NEWS_ID = 2;
 
 export const NEWS: NewsItem[] = [
   {
+    title: 'Vòng quay may mắn',
+    date: '2026-11-11',
+    items: [
+      'Mỗi ngày quay 1 lượt miễn phí trong mục Trò chơi: trúng công đức, xu, Hương trầm và ô ĐẠI CÁT 100 công đức + 100 xu.',
+    ],
+  },
+  {
     title: 'Hòm thư nhà chùa',
     date: '2026-11-11',
     items: [
