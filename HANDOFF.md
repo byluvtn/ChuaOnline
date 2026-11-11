@@ -420,3 +420,26 @@ Baseline mới: `main` sau commit `8b87c49` (trước đó `44a8628` feat R1.5, 
 
 ### Lưu ý
 - `src/menu.css` trong working tree còn các dòng `.bd-*` (giao diện lần hạt, R2.2) chưa commit từ trước, không thuộc spec này nên không đưa vào commit; cũng vậy cho các file `server/`, `shared/`, `src/main.ts`, `src/menu.ts`, `src/data/news.ts`, `src/features/stats.ts`.
+
+## R2.2 — Lần hạt 108 (giao diện lần tràng hạt + thưởng vòng + mốc thành tựu)
+Baseline: `main` sau commit `8d7fb8b`; không đổi schema DB.
+
+### Đã làm
+- **Server (`server/index.ts`):** `Session.beadStart?: number` (bộ nhớ). `beads:start` ghi `Date.now()` (gọi lại = ghi đè), ack `{ ok: true }`. `beads:done` luôn xóa mốc; thiếu mốc, `elapsed < 45_000` hoặc `> 30 phút` → `{ ok: false }`, không đếm, không thưởng. Hợp lệ: `countStatSafe(s, 'beads_rounds')` (luôn đếm, kể cả hết lượt, mốc bắn qua `countStat`), rồi `claimMinigame(pid, 'lanhat', 5)`; nếu được thưởng: `merit = Math.round(10 × meritBoost().mult)`, `grantRewards(s, merit, 5)`, `questEvent(s, 'beads')`. Ack `{ ok: true, rewarded, merit }`, rồi emit `beads { rewarded: minigameCount('lanhat') }`; cũng emit lúc join cạnh `spin`. Hằng số `BEAD_ROUND_MIN_MS`, `BEAD_ROUND_REWARD`, `BEAD_DAILY_CAP` đặt cạnh `MINIGAMES` (khai báo cục bộ trong khối connection, cùng chỗ với `MG_COOLDOWN_MS`; `BEAD_ROUND_MAX_MS = 30 phút` thêm cạnh). Nhánh animation beads trong `action` giữ nguyên.
+- **Mở rộng có chủ đích R1.4:** công đức của vòng nhân hệ số giờ lễ (`meritBoost`, `Math.round`), nhất quán với thắp hương/tụng kinh. Xu (5) không nhân.
+- **Mốc (`shared/game.ts`):** thêm `bead5` (5 vòng, 20 xu), `bead25` (25, 50 xu + Hương trầm), `bead100` (100, 120 xu + Đèn hoa đăng); kiểu `BeadsState`, `BeadsAck`. `stats.ts` thêm track thứ 5 "📿 Vòng hạt", đơn vị mặc định lấy số, mốc từ `STAT_MILESTONES`.
+- **Client:** `src/features/beads.ts` (`initBeads`, `openBeads`, `beadsPending`); nút menu "Lần hạt" (icon `beads`) + chấm đỏ khi vòng đã thưởng hôm nay < 5. Panel: vòng SVG 108 chấm (hạt mốc 27/54/81 to hơn, tô đỏ khi đã lần), hạt lớn 132px, số đếm `n / 108`, Space/chạm/click (`pointerdown`). Lần chạm đầu của vòng emit `beads:start` trước khi đếm; đủ 108 emit `beads:done` và hiện ba dạng dòng kết quả đúng chữ trong spec; nút "Bắt đầu vòng mới". Đóng panel: bỏ vòng dở phía client, hủy listener phím và nhịp hiện diện.
+- **Hiện diện trong phòng:** `MenuCtx.act(kind)` mới, `main.ts` nối vào `doAction`. Khi vòng đang dở, panel gọi `ctx.act('beads')` ngay lúc bắt đầu rồi mỗi 2,5 giây (cooldown phía game là 2,4 giây nên không bị nuốt); dừng khi hoàn thành hoặc đóng panel. Không sửa animation beads.
+- **News:** entry "Lần hạt 108" đứng đầu, `LATEST_NEWS_ID` 4 → 5.
+- Ghi chú ở mục "UI điện thoại" ở trên về các dòng `.bd-*` chưa commit nay đã lỗi thời: chúng được commit cùng R2.2.
+
+### Kiểm chứng
+- `npm run typecheck` pass.
+- `node tools/steps-verify-beads.mjs` (DB tạm, server thật; các ca cần chờ chạy song song nên mất một lần chờ ~47 giây, tổng ~80 giây): TẤT CẢ PASS (30 kiểm tra): done khi chưa start → false, rounds 0; start rồi done ngay → false; start lại giữa chừng ghi đè mốc (đã trôi 20 giây từ lần đầu vẫn bị chặn); vòng hợp lệ → `{ ok: true, rewarded: true }`, công đức +`Math.round(10 × mult)` (lúc chạy mult = 1 nên +10), xu +5, rounds = 1, event `beads { rewarded: 1 }`; seed `beads_rounds = 4` → vòng kế nhận đúng một event `bead5`, xu +25 (5 vòng + 20 mốc), `claimStatReward('bead5')` lần hai = false; seed `minigame_daily lanhat = 5` → `{ ok: true, rewarded: false, merit: 0 }`, rounds +1, công đức/xu không đổi; reconnect → `stats:get` có beadsRounds 5 và claimed chứa `bead5`; hồi quy incense `Math.round(1 × mult)` + 1 xu, action `beads` không công đức/xu và không đếm vòng.
+- Ảnh (`tools/steps-r22-beads.mjs` qua `tools/shot.mjs`, DB tạm; `MODE=desktop|mobile`): `shots/r22-panel.png` (1280×800, 54/108, hạt mốc 27/54 thấy rõ), `shots/r22-done.png` (dòng "Hoàn thành một vòng · +10 công đức · +5 xu" + nút Bắt đầu vòng mới), `shots/r22-m-panel.png` (390×844, hạt lớn 128px tại y 335–463, `scrollWidth` của trang = 390, panel 338px trong thẻ 363px, không tràn).
+
+### Chưa chắc chắn / việc còn treo
+- Hệ số giờ lễ khác ×1 chỉ kiểm được qua công thức; E2E chạy ở mult thực lúc chạy (×1).
+- Ảnh dùng sự kiện `pointerdown` giả lập qua CDP, chưa thử chạm thật trên điện thoại; chưa kiểm tay phím Space ngoài trình duyệt headless.
+- Ngày thưởng theo `dayKey()` UTC như các minigame khác (UI các nơi vẫn nói 07:00 VN).
+- Chưa deploy.
