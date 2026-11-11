@@ -4,10 +4,12 @@
 > Mỗi mục dưới đây sẽ thành spec riêng (1 spec = 1 session Kilo) khi bắt đầu làm.
 > Tài liệu này THAY THẾ trạng thái "Phần A đóng băng" trước đây: user quyết định mở lại
 > mặt bằng vì 5 nhà dịch vụ phải nới rộng để chứa nội thất đúng chức năng.
-> File kèm trong thư mục này: `ban-do-a2.png` (bản đồ v7), `concept-a-di-da.webp`,
-> `concept-di-lac.webp` (mẫu tượng cho Điện Tam Thế).
+> File kèm trong thư mục này: `Bản đồ Phần A2 v7.png` (bản đồ v7), `Concept A Di Đà.webp`,
+> `Concept Di Lặc.webp` (mẫu tượng cho Điện Tam Thế).
 
 ## 1. Bản đồ mới
+
+![Bản đồ Phần A2 v7](Ba%CC%89n%20%C4%91o%CC%82%CC%80%20Pha%CC%82%CC%80n%20A2%20v7.png)
 
 Tường bao: **Đông/Tây ±62, Bắc −82, Nam giữ 45** (cũ ±47 / −64 / 45; diện tích +54%).
 Trục thiêng giữ nguyên tuyệt đối: tam quan (0,45) → hồ sen (0,22) → sân chùa (0,6) →
@@ -130,7 +132,7 @@ Dựng mới:
 - **Bộ ba tượng Tam Thế** trên bệ thờ: **A Di Đà (trái) — Thích Ca (giữa, lớn nhất)
   — Di Lặc (phải)**; ban thờ phía trước (bát hương, hoa, đèn).
 - Mẫu tượng: Thích Ca dùng concept Phật Tổ đã duyệt; A Di Đà và Di Lặc dùng
-  `concept-a-di-da.webp` + `concept-di-lac.webp` kèm tài liệu này (cùng hệ chống
+  `Concept A Di Đà.webp` + `Concept Di Lặc.webp` kèm tài liệu này (cùng hệ chống
   creepy: mặt trơn, chi tiết vẽ bằng nét cong, không hốc mắt/mũi sắc).
 - Ghế ngồi thiền / zone thắp hương trước điện như chính điện nếu khuôn viên cho
   phép — chốt ở spec riêng.
