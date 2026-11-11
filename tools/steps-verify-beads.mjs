@@ -1,6 +1,6 @@
 // Nghiệm thu R2.2 (lần hạt 108: beads:start / beads:done, thưởng vòng, trần ngày, mốc bead5). DB tạm (DB_FILE); không đụng DB thật / Turso.
 // usage: node tools/steps-verify-beads.mjs
-// Ba ca cần chờ thật >= 46 giây (vòng hợp lệ, mốc, hết lượt) được khởi động song song nên chỉ tốn một lần chờ.
+// Các ca cần chờ thật (~32 giây, sàn là 30 giây) được khởi động song song nên chỉ tốn một lần chờ.
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -96,15 +96,21 @@ try {
   runHelper('bump', M.id, 'beads_rounds', 4);
   await tdb.execute({ sql: 'INSERT INTO minigame_daily (player_id, day_key, game, count) VALUES (?,?,?,5)', args: [C.id, today, 'lanhat'] });
   const mC = await newGuest();           // trùng lặp start (ghi đè mốc) - dùng khách riêng
+  const E = await newGuest();            // ca biên: done ở ~29 giây vẫn bị chặn
   const startedAt = Date.now();
   for (const G of [B, M, C]) check('   start ok', (await ask(G.c, 'beads:start'))?.ok === true);
   await ask(mC.c, 'beads:start');
-  await sleep(20_000);
+  await ask(E.c, 'beads:start');
+  const until = async (ms) => sleep(Math.max(0, ms - (Date.now() - startedAt)));
+  await until(29_000);
+  const rE = await ask(E.c, 'beads:done');
+  check('4a. ca biên: done ở ~29 giây (< 30s) -> { ok: false }, beads_rounds = 0', rE?.ok === false && rounds(E.id) === 0, JSON.stringify(rE));
+  await until(31_000);
   await ask(mC.c, 'beads:start'); // ghi đè: mốc mới
   const rEarly = await ask(mC.c, 'beads:done');
-  check('4a. start lại giữa chừng ghi đè mốc: done ngay sau đó -> { ok: false } dù đã trôi 20s từ lần start đầu', rEarly?.ok === false, JSON.stringify(rEarly));
-  const wait = 46_500 - (Date.now() - startedAt);
-  console.log(`   chờ thêm ${Math.ceil(wait / 1000)}s cho đủ ngưỡng 45s...`);
+  check('4b. start lại giữa chừng ghi đè mốc: done ngay sau đó -> { ok: false } dù đã trôi ~31s từ lần start đầu', rEarly?.ok === false && rounds(mC.id) === 0, JSON.stringify(rEarly));
+  const wait = 32_500 - (Date.now() - startedAt);
+  console.log(`   chờ thêm ${Math.max(0, Math.ceil(wait / 1000))}s cho đủ ngưỡng 30s (done ở ~32 giây)...`);
   await sleep(Math.max(0, wait));
 
   // 4. Vòng hợp lệ
@@ -116,7 +122,7 @@ try {
   const b1 = await prof(B.id);
   const dm = b1.merit - b0.merit;
   const okMerit = dm === Math.round(10 * m1) || dm === Math.round(10 * m2);
-  check('4. vòng hợp lệ -> { ok: true, rewarded: true }', rB?.ok === true && rB?.rewarded === true, JSON.stringify(rB));
+  check('4. vòng hợp lệ (done ở ~32 giây, sàn 30s) -> { ok: true, rewarded: true }', rB?.ok === true && rB?.rewarded === true, JSON.stringify(rB));
   check(`4. công đức +Math.round(10 x ${m1}) = ${Math.round(10 * m1)}, ack.merit khớp DB`, okMerit && rB.merit === dm, `dm=${dm}, ack=${rB?.merit}`);
   check('4. xu +5', b1.coins - b0.coins === 5, `xu ${b0.coins}->${b1.coins}`);
   check('4. beads_rounds = 1', rounds(B.id) === 1);
@@ -176,7 +182,7 @@ try {
   check('8. hồi quy: action animation beads không cho công đức/xu, không đếm vòng', q1.merit === q0.merit && q1.coins === q0.coins && rounds(G2.id) === 0, JSON.stringify({ q0, q1 }));
   G2.c.s.close();
 
-  for (const G of [A, B, C, mC]) G.c.s.close();
+  for (const G of [A, B, C, mC, E]) G.c.s.close();
   console.log(fails ? `\n${fails} FAIL` : '\nTẤT CẢ PASS');
 } catch (e) {
   fails++;

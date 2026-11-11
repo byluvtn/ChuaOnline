@@ -406,7 +406,7 @@ io.on('connection', (socket) => {
     memory: { merit: 2, coins: 5, cap: 5 },
   } as const;
   const MG_COOLDOWN_MS = 20_000;
-  const BEAD_ROUND_MIN_MS = 45_000;
+  const BEAD_ROUND_MIN_MS = 30_000;
   const BEAD_ROUND_MAX_MS = 30 * 60_000;
   const BEAD_ROUND_REWARD = { merit: 10, coins: 5 } as const;
   const BEAD_DAILY_CAP = 5;
