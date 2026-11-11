@@ -394,3 +394,29 @@ Baseline mới: `main` sau commit `8b87c49` (trước đó `44a8628` feat R1.5, 
 - Mốc tràng hạt + đếm `beads_rounds` (R2.2). Bia đá vinh danh (R3.3). Chưa deploy.
 - Chưa chạy E2E bằng trình duyệt thật cho toast `milestone` (chỉ kiểm bằng socket); mã toast là một dòng `ctx.toast`.
 - Quy ước đứng: mỗi tính năng mới thêm entry vào đầu `NEWS` và tăng `LATEST_NEWS_ID`.
+
+## UI điện thoại — thu nhỏ HUD (dọc compact + chế độ ngang) (commit `3631a8f` dọc, `cee1cdd` ngang)
+
+### Đã làm
+- Chỉ sửa CSS (`src/style.css`, `src/menu.css`), không đụng TS hay DOM. Desktop (> 760px, không phải màn ngang thấp) giữ nguyên: xem `shots/uim-desktop.png`.
+- **Dọc (`@media (max-width: 760px)`):** theo bảng spec. Marquee 22px; hồ sơ top 30, avatar 34, thanh cấp 80×5; `#online` top 78; nút hành động 48×48 (icon 20, nhãn 9.5), cột `right: 6`, `gap: 5`, cao 366px (từ 470px); chat cảm ứng top 116, rộng `min(228px, 58vw)`, cao tối đa `min(38dvh, 100dvh − 380px − safe)`; banner giờ lễ/boost top 106/144; joystick 104 (`left: 14`, stick 46 tại 29/29, `#joyGrip` 30); `#couplet` bottom 148. Nút `teacher/zone` min-width 64, nhãn 10px/max 84px. Menu: nút 54×50, padding/gap 3, icon 19/nhãn 9, nút Thu gọn cảm ứng 54×50 (min 48) tại bottom `208px + safe`.
+- **Giữ nguyên theo spec:** `#soundBtn` 38×38, `#chatToggle` cảm ứng 40×40, `#chatInput` font 16px.
+- **Ngang (mới):** điều kiện của khối HUD mobile mở rộng thành `(max-width: 760px), (orientation: landscape) and (max-height: 500px)`; thêm khối `@media (orientation: landscape) and (max-height: 500px)` ở cuối `style.css` và cuối phần menu của `menu.css`, đúng bảng vị trí trong spec.
+- Phần ghi đè riêng cho `#joyGrip` 30px và nút teacher/zone nằm ở một khối media riêng cuối `style.css` (vì các quy tắc gốc của chúng đứng sau khối mobile chính trong file nên phải đặt sau mới thắng).
+
+### Lệch nhẹ so với spec (cần biết)
+- `.pinfo { line-height: 1.1 }`, `.pinfo b { display: block }`, `.bar { margin-top: 3px }` trong media mobile: với đúng các số của spec, hồ sơ cao 52px nên đè `#online` (top 78) 4px. Ba dòng này kéo hồ sơ xuống 47px, hết chồng.
+- Khối ngang: `#actions` thêm `flex-wrap: wrap-reverse; align-content: flex-start; max-height: calc(100dvh - 142px - safe)`. Với 7 nút × 48 + gap = 366px, cột đơn vượt quá 390px chiều cao nên tràn lên trên màn hình (nút đầu ở y = −46) và đè cụm `#topright`. Giờ cột tự tách thành 2 cột khi hết chỗ: ở 844×390 là 2 cột, hộp 101×207, không tràn. Spec ghi "cột hành động dọc bên phải", vẫn đúng nhưng là 2 cột dọc ở máy 390px cao.
+- Chat cảm ứng ở khối ngang: `max-height: 56dvh` đặt trên `body.touch #chat:not(.collapsed)` (cùng độ đặc hiệu với quy tắc max-height của khối mobile) chứ không phải `body.touch #chat`, nếu không sẽ bị quy tắc `calc(100dvh − 380px …)` thắng và khung chat co về 0 ở màn ngang.
+
+### Kiểm chứng
+- `npm run typecheck` pass.
+- Số đo từ `tools/steps-uim.mjs` (`UIM=portrait|chat|landscape|desktop`, chạy bằng `tools/shot.mjs`, `?touch=1`), kiểm tra chồng chéo giữa profile, online, topright, banner, chat, actions, joystick, menu, couplet:
+  - `shots/uim-portrait.png` (390×844): cột hành động 366px (y 406–772), nút 48×48, nhãn "Thắp hương" không tràn (`scrollWidth ≤ clientWidth`); joystick 104×104; menu cao 58px; không chồng nhau.
+  - `shots/uim-chat.png` (390×844, đồng hồ giả 05:30 ICT): chat mở cao 158px (giới hạn 38dvh = 321px); `#boostBanner` hidden (rider R1.5 còn đúng); ô nhập hiện đủ, font 16px; gõ "xin chao" + Enter ra tin trong `#msgs`.
+  - `shots/uim-landscape.png` (844×390): profile (28), online cạnh profile (left 190, top 34), 2 cột hành động ở y 113–320, joystick 96, menu cao 54 sát đáy (y 332–386); không phần tử nào quá 390. Giao nhau duy nhất đo được là `#couplet` với `#menu`, nhưng `#couplet` chỉ là hộp ẩn mờ khi không phát (opacity 0).
+  - `shots/uim-desktop.png` (1280×800): các hộp khớp giá trị CSS gốc (nút hành động 78×78, menu 64×62, hồ sơ 210×62); mọi quy tắc mới đều nằm trong media mobile/ngang nên không chạm desktop (không chụp bản trước để so từng pixel).
+- Chưa kiểm tay trên điện thoại thật (bấm lần lượt 7 nút hành động) — việc của người dùng.
+
+### Lưu ý
+- `src/menu.css` trong working tree còn các dòng `.bd-*` (giao diện lần hạt, R2.2) chưa commit từ trước, không thuộc spec này nên không đưa vào commit; cũng vậy cho các file `server/`, `shared/`, `src/main.ts`, `src/menu.ts`, `src/data/news.ts`, `src/features/stats.ts`.
