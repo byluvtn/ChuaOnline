@@ -12,11 +12,20 @@ export function boostText(b: MeritBoost): string {
   return parts.join(' · ');
 }
 
-function render(b: MeritBoost) {
+let current: MeritBoost = meritBoost(new Date());
+
+/** Trên điện thoại, khung chat đang mở phủ vùng banner nên ẩn banner cho tới khi chat thu gọn lại. */
+const chatCoversBanner = () => {
+  const chat = document.getElementById('chat');
+  return window.matchMedia('(max-width: 760px)').matches && !!chat && !chat.classList.contains('collapsed');
+};
+
+function render(b: MeritBoost = current) {
+  current = b;
   const el = document.getElementById('boostBanner');
   if (!el) return;
   const t = boostText(b);
-  el.hidden = !t;
+  el.hidden = !t || chatCoversBanner();
   el.textContent = t;
 }
 
@@ -25,4 +34,7 @@ export function initBoost(ctx: MenuCtx) {
   ctx.socket.on('boost', (b: MeritBoost) => render(b));
   render(meritBoost(new Date()));
   setInterval(() => render(meritBoost(new Date())), 30_000);
+  const chat = document.getElementById('chat');
+  if (chat) new MutationObserver(() => render()).observe(chat, { attributes: true, attributeFilter: ['class'] });
+  window.matchMedia('(max-width: 760px)').addEventListener('change', () => render());
 }
