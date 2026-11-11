@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -1024,19 +1024,173 @@ export function buildTemple(c: TempleCtx) {
   pathRect(-1.2, -51, 1.2, -41);
   pathRect(VIEN_KT.gateX - 1.2, VIEN_KT.z1, VIEN_KT.gateX + 1.2, -43);
   pathRect(VIEN_TO.gateX - 1.2, VIEN_TO.z1, VIEN_TO.gateX + 1.2, -43);
-  pathRect(58.2, -79, 60.2, 42);
-  pathRect(-58, 40, 59, 42);
+  pathRect(-60.3, -78, -57.7, 41);
+  pathRect(57.7, -78, 60.3, 41);
+  pathRect(-58, 39.8, 58, 42.2);
   pathRect(PHONG_CD.x - 1.2, 38.5, PHONG_CD.x + 1.2, 43);
-  pathRect(20, -32, 22, -18);
-  pathRect(PS_PIER.x0 - 2, PS_PIER.z - 1.2, 20, PS_PIER.z + 1.2);
+  pathRect(19.8, -31, 22.2, -19);
+  pathRect(19.8, -32.2, 25.5, -29.8);
+  pathRect(48.8, -31, 50.2, -23.4);
+  pathRect(33, -24.8, 50.2, -23.4);
   pathRect(BAO_THAP.x - 1.2, -48, BAO_THAP.x + 1.2, -44);
   pathRect(THIEN_DUONG.x + THIEN_DUONG_PLAT.hx, THIEN_DUONG.z - 1.2, -SIDE_X - 1.2, THIEN_DUONG.z + 1.2);
-  pathRect(DIEN_MAU.x + DIEN_MAU_PLAT.hx, DIEN_MAU.z - 1.2, 36, DIEN_MAU.z + 1.2);
+  pathRect(28, 8.8, 35, 11.2);
+  pathRect(-43.2, 39.5, -40.8, 42.2);
+  pathRect(-48, -59.2, -27, -56.8);
+  pathRect(-42.2, -67, -39.8, -58);
+  pathRect(27, -59.2, 50, -56.8);
+  pathRect(34.8, -63.75, 37.2, -58);
+  pathRect(27, -54, 29, -44.5);
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
   buildZenGarden(gardenCtx);
   buildFlowerBeds(gardenCtx);
   pathRect(BRIDGE.x + 1.4, REST.z - 1.2, REST.x - 2, REST.z + 1.2);
   buildRestArea(gardenCtx);
+
+  const psGroup = new THREE.Group(); psGroup.name = 'vuon-phong-sinh'; scene.add(psGroup);
+  const psGrass = new THREE.Mesh(new THREE.PlaneGeometry(PS.w, PS.d), lamb(0x5f9a4a, { roughness: 1 }));
+  psGrass.rotation.x = -Math.PI / 2; psGrass.position.set(PS.x, 0.02, PS.z); psGrass.receiveShadow = true; psGroup.add(psGrass);
+  const psBed = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshStandardMaterial({ color: 0x1d4f66, roughness: 1 }));
+  psBed.scale.set(PS_POND.a, PS_POND.b, 1); psBed.rotation.x = -Math.PI / 2; psBed.position.set(PS_POND.x, 0.03, PS_POND.z); psGroup.add(psBed);
+  const psWaterMat = new THREE.MeshStandardMaterial({ color: 0x46a8c4, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.82 });
+  const psWater = new THREE.Mesh(new THREE.CircleGeometry(1, 48), psWaterMat);
+  psWater.scale.set(PS_POND.a, PS_POND.b, 1); psWater.rotation.x = -Math.PI / 2; psWater.position.set(PS_POND.x, 0.1, PS_POND.z); psGroup.add(psWater);
+  const psRimStone = lamb(0x8b7a64, { map: stoneTexture([140, 128, 110], [10, 1], 3) });
+  const psRimPts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2; psRimPts.push(new THREE.Vector3(PS_POND.x + Math.cos(a) * (PS_POND.a + 0.3), 0, PS_POND.z + Math.sin(a) * (PS_POND.b + 0.3))); }
+  const psRim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(psRimPts, true), 96, 0.36, 8, true), psRimStone);
+  psRim.scale.y = 0.8; psRim.position.y = 0.16; psRim.castShadow = psRim.receiveShadow = true; psGroup.add(psRim);
+  const psRocks = lamb(0x6e675c, { flatShading: true });
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + 0.3, rr = 0.4 + ((i * 37) % 10) / 18;
+    const rx = PS_POND.x + Math.cos(a) * (PS_POND.a + 0.9), rz = PS_POND.z + Math.sin(a) * (PS_POND.b + 0.9);
+    if (rx < PS_PIER.x1 + 1 && Math.abs(rz - PS_PIER.z) < PS_PIER.hw + rr + 0.6) continue;
+    if (rz > PS.z + PS.d / 2 - 0.5 || rz < PS.z - PS.d / 2 + 0.5) continue;
+    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0), psRocks);
+    r.position.set(rx, rr * 0.3, rz); r.scale.y = 0.65; r.rotation.set(i, i * 2, 0); r.castShadow = true; psGroup.add(r);
+  }
+  {
+    const hedgeM = lamb(0x2f7a40, { flatShading: true });
+    const hx0 = PS.x - PS.w / 2, hx1 = PS.x + PS.w / 2, hz0 = PS.z - PS.d / 2, hz1 = PS.z + PS.d / 2;
+    const hedgePts: { x: number; z: number }[] = [];
+    for (let x = hx0 + 0.6; x <= hx1 - 0.5; x += 1.2) {
+      hedgePts.push({ x, z: hz0 + 0.4 });
+      if (!(x >= 47 && x <= 51.5)) hedgePts.push({ x, z: hz1 - 0.4 });
+    }
+    for (let z = hz0 + 1.8; z <= hz1 - 1.8; z += 1.2) {
+      hedgePts.push({ x: hx1 - 0.4, z });
+      if (Math.abs(z - PS.z) > PS_PIER.hw + 1.2) hedgePts.push({ x: hx0 + 0.4, z });
+    }
+    const hedgeIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.62, 1), hedgeM, hedgePts.length);
+    hedgeIM.castShadow = true;
+    const hm = new THREE.Matrix4(), hq = new THREE.Quaternion(), hs = new THREE.Vector3(1, 1.15, 1), hp = new THREE.Vector3();
+    hedgePts.forEach((p, i) => { hp.set(p.x, 0.5, p.z); hm.compose(hp, hq, hs); hedgeIM.setMatrixAt(i, hm); });
+    hedgeIM.instanceMatrix.needsUpdate = true;
+    psGroup.add(hedgeIM);
+    const psTrunkM = lamb(0x6b4a2b), psCanopyM = lamb(0x3f8a3e, { flatShading: true }), psBlossomM = lamb(0xf4a3bc, { flatShading: true, emissive: 0x2b0f18 });
+    const psTrees: [number, number, number][] = [[hx0 + 3.5, hz0 + 3, 1.1], [hx1 - 3.5, hz0 + 3, 1.2], [hx1 - 3.5, hz1 - 3, 1.0], [hx0 + 4.5, hz1 - 3, 0.95]];
+    psTrees.forEach(([x, z, s], i) => {
+      const t = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 2.2, 8), psTrunkM); trunk.position.y = 1.1; trunk.castShadow = true; t.add(trunk);
+      for (let k = 0; k < 3; k++) {
+        const cn = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), i === 1 ? psBlossomM : psCanopyM);
+        cn.scale.setScalar(1.5 - k * 0.22); cn.position.set((k - 1) * 0.5 * (k % 2 ? 1 : -1), 2.9 + k * 0.7, k * 0.2 - 0.2); cn.castShadow = true; t.add(cn);
+      }
+      t.position.set(x, 0, z); t.scale.setScalar(s); scene.add(t);
+      colliders.push({ x, z, r: 0.5 * s });
+    });
+  }
+  {
+    const P = PS_PIER, ppierW = lamb(0x8a5a32, { map: woodTexture([4, 1]) }), ppierD = lamb(0x4a2e18, { roughness: 0.85 });
+    const flatX = P.x0 + P.ramp;
+    const prm = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(P.ramp, P.y), 0.16, P.hw * 2), ppierW);
+    const pang = Math.atan2(P.y, P.ramp);
+    prm.position.set(P.x0 + P.ramp / 2, P.y / 2 - 0.08 / Math.cos(pang), P.z); prm.rotation.z = pang; prm.castShadow = prm.receiveShadow = true; psGroup.add(prm);
+    const pfl = new THREE.Mesh(new THREE.BoxGeometry(P.x1 - flatX, 0.16, P.hw * 2), ppierW);
+    pfl.position.set((flatX + P.x1) / 2, P.y - 0.08, P.z); pfl.castShadow = pfl.receiveShadow = true; psGroup.add(pfl);
+    for (let px = P.x0 + 0.1; px <= P.x1; px += 1.5) for (const s of [-1, 1]) {
+      const top = px < flatX ? P.y * Math.max(0.2, (px - P.x0) / P.ramp) - 0.16 : P.y - 0.16;
+      const bottom = inPsPond(px, P.z + s * (P.hw - 0.05)) ? 0.03 : 0;
+      if (top <= bottom + 0.05) continue;
+      const pile = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, top - bottom, 8), ppierD);
+      pile.position.set(px, (top + bottom) / 2, P.z + s * (P.hw - 0.05)); pile.castShadow = true; psGroup.add(pile);
+    }
+    const railM2 = c.redM;
+    const prY = P.y + 0.55;
+    for (const s of [-1, 1]) {
+      const rl = new THREE.Mesh(new THREE.BoxGeometry(P.x1 - flatX, 0.08, 0.08), railM2);
+      rl.position.set((flatX + P.x1) / 2, prY, P.z + s * (P.hw - 0.05)); rl.castShadow = true; psGroup.add(rl);
+      for (let px = flatX + 0.3; px <= P.x1 - 0.1; px += 1.2) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), railM2);
+        post.position.set(px, P.y + 0.3, P.z + s * (P.hw - 0.05)); psGroup.add(post);
+      }
+      for (let px = flatX; px <= P.x1; px += 0.8) colliders.push({ x: px, z: P.z + s * P.hw, r: 0.2 });
+    }
+  }
+  zones.push({ x: PS.x, z: PS.z, r: 13, id: 'vuonPhongSinh' });
+  const psSeal = sealArchitectureJoints(psGroup, { maxGap: 0.5 });
+  if (import.meta.env.DEV) console.warn(`gapdump vuonPhongSinh: filled=${psSeal.filled} remaining=${psSeal.remaining.length}`);
+
+  type StallKind = 'com' | 'tra' | 'chim' | 'pho' | 'ca';
+  const buildStall = (x: number, z: number, sign: string, kind: StallKind) => {
+    const g = new THREE.Group(); g.name = `sap-${sign}`;
+    const wood = lamb(0x6b4426), roofM = lamb(0x8a3a24, { roughness: 0.8 }), cloth = lamb(0xd9c9a3, { roughness: 0.95 });
+    const hw = 1.8, hd = 1.1;
+    for (const [px, pz] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]] as [number, number][]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.6, 0.14), wood); p.position.set(px, 1.3, pz); p.castShadow = true; g.add(p);
+      colliders.push({ x: x + px, z: z + pz, r: 0.35 });
+    }
+    const counter = new THREE.Mesh(new THREE.BoxGeometry(hw * 2, 0.9, 0.7), wood);
+    counter.position.set(0, 0.45, hd - 0.1); counter.castShadow = counter.receiveShadow = true; g.add(counter);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.2, 0.08, 0.85), cloth); top.position.set(0, 0.92, hd - 0.1); g.add(top);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.8, 0.12, hd * 2 + 0.8), roofM);
+    roof.position.set(0, 2.66, 0); roof.rotation.x = 0.12; roof.castShadow = true; g.add(roof);
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 0.6), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
+    sg.position.set(0, 2.2, hd + 0.5); sg.rotation.x = 0.12; g.add(sg);
+    const py = 0.96, pz = hd - 0.1;
+    if (kind === 'com' || kind === 'pho') {
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.34, 14), lamb(0x3a3a3a, { metalness: 0.5 }));
+      pot.position.set(-0.9, py + 0.17, pz); pot.castShadow = true; g.add(pot);
+      for (let i = 0; i < 2; i++) {
+        const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.12, 0.2 + i * 0.06, 12), lamb(0xf4f0e6));
+        stack.position.set(0.3 + i * 0.5, py + 0.1, pz); g.add(stack);
+      }
+    } else if (kind === 'tra') {
+      const kettle = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), lamb(0x9a6a2a, { metalness: 0.4 }));
+      kettle.scale.set(1, 0.9, 1); kettle.position.set(-0.7, py + 0.2, pz); kettle.castShadow = true; g.add(kettle);
+      for (let i = 0; i < 4; i++) {
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, 0.12, 10), lamb(0xeeeeee));
+        cup.position.set(0.1 + i * 0.3, py + 0.06, pz); g.add(cup);
+      }
+    } else if (kind === 'chim') {
+      const cageM = lamb(0x8a6a3a), birdM = lamb(0xe8c84a);
+      for (let i = 0; i < 3; i++) {
+        const cg = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.42, 10, 1, true), cageM); body.position.y = 0.21; cg.add(body);
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.16, 10), cageM); cap.position.y = 0.5; cg.add(cap);
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.42, 0.015), cageM); bar.position.set(Math.cos(a) * 0.22, 0.21, Math.sin(a) * 0.22); cg.add(bar);
+        }
+        const bird = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), birdM); bird.position.y = 0.12; cg.add(bird);
+        cg.position.set(-1.0 + i * 0.95, py, pz); g.add(cg);
+      }
+    } else {
+      const tank = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0xaad8ee, transparent: true, opacity: 0.4, roughness: 0.1 }));
+      tank.position.set(-0.5, py + 0.25, pz); g.add(tank);
+      const wtr = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.36, 0.44), new THREE.MeshStandardMaterial({ color: 0x46a8c4, transparent: true, opacity: 0.7 }));
+      wtr.position.set(-0.5, py + 0.2, pz); g.add(wtr);
+      const fish = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), lamb(0xff7a2a)); fish.scale.set(1.6, 1, 1); fish.position.set(-0.4, py + 0.22, pz); g.add(fish);
+    }
+    g.position.set(x, 0, z); scene.add(g);
+    for (let lx = -hw; lx <= hw + 0.01; lx += 1.0) colliders.push({ x: x + lx, z: z + hd + 0.6, r: 0.5 });
+  };
+  const STALLS: [number, string, StallKind][] = [
+    [-42, 'CƠM CHAY', 'com'], [-26, 'TRÀ ĐÁ', 'tra'], [-10, 'BÁN CHIM PHÓNG SINH', 'chim'],
+    [10, 'PHỞ CHAY', 'pho'], [26, 'TRÀ ĐÁ', 'tra'], [42, 'BÁN CÁ PHÓNG SINH', 'ca'],
+  ];
+  for (const [sx, name, kind] of STALLS) buildStall(sx, 54.5, name, kind);
+  pathRect(-62, 45, 62, 58);
 
   // ---- animation ----
   let ring = 0, drumHit = 0;
