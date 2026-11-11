@@ -10,13 +10,11 @@ export const WALL = { x: 47, zN: -64, zS: 45, gate: 4.4 };
 export const BELL = { x: -34, z: -6 };
 export const DRUM = { x: 34, z: -6 };
 export const DEN_TRINH = { x: 11, z: 39 };
+/** Sân tượng Quan Âm (Đông), đối xứng BUDDHA_YARD (Tây). */
 export const QUAN = { x: 28, z: 14 };
 export const PIER = { x0: -10.6, x1: -4.4, z: 23, hw: 1.6, y: 0.55 };
 export const PIER_RAMP = 1.3;
 export const PIER_FLOOR = { x: -6.7, z: 23, hx: 2.2, hz: 1.7, y: 0.77 };
-/** Đế tháp Quan Âm: các tầng vuông (nửa cạnh chân tầng, độ cao mặt tầng), xoay QUAN_ROT quanh trục Y. */
-export const QUAN_ROT = -Math.PI / 2 - 0.2;
-export const QUAN_PLAT = [{ hs: 4.8 / Math.SQRT2, y: 0.45 }, { hs: 4.25 / Math.SQRT2, y: 0.9 }];
 export const PATH_Z = 2;
 export const SIDE_X = 28;
 export const PAGODA = { x: 38, z: -14 };
@@ -83,14 +81,6 @@ export function groundY(x: number, z: number) {
   const ax = Math.abs(x);
   if (ax >= DECK.x0 && ax <= DECK.x1 && z >= DECK.z0 && z <= DECK.z1) y = Math.max(y, DECK.y);
   if (Math.abs(ax - CORR.x) <= CORR.half && z >= CORR.z0 && z <= CORR.z1) y = Math.max(y, CORR.y);
-  const wx = x - QUAN.x, wz = z - QUAN.z;
-  if (Math.abs(wx) < 5 && Math.abs(wz) < 5) {
-    const lx = Math.cos(QUAN_ROT) * wx - Math.sin(QUAN_ROT) * wz, lz = Math.sin(QUAN_ROT) * wx + Math.cos(QUAN_ROT) * wz;
-    for (const t of QUAN_PLAT) {
-      const e = Math.hypot(Math.max(Math.abs(lx) - t.hs, 0), Math.max(Math.abs(lz) - t.hs, 0));
-      if (e < 0.6) y = Math.max(y, t.y * (1 - e / 0.6));
-    }
-  }
   if (x >= PIER.x0 && x <= PIER.x1 && Math.abs(z - PIER.z) <= PIER.hw) y = Math.max(y, PIER.y * Math.min(1, (x - PIER.x0) / PIER_RAMP));
   if (Math.abs(x - PIER_FLOOR.x) <= PIER_FLOOR.hx && Math.abs(z - PIER_FLOOR.z) <= PIER_FLOOR.hz) y = Math.max(y, PIER_FLOOR.y);
   // nền Bảo Tháp + bậc thềm phía Nam
@@ -130,7 +120,7 @@ export function blocked(x: number, z: number) {
   if (ax < HALL.hx + 5 && Math.abs(z - HALL.z) < HALL.hz + 5) return true;
   if (ax < 24.5 && z > -21 && z < 1.5) return true;
   if (inLake(x, z, 3.5) || (Math.abs(x - BRIDGE.x) < 4 && z > BRIDGE.z0 - 2 && z < BRIDGE.z1 + 2)) return true;
-  if (Math.hypot(x - BELL.x, z - BELL.z) < 7 || Math.hypot(x - QUAN.x, z - QUAN.z) < 7) return true;
+  if (Math.hypot(x - BELL.x, z - BELL.z) < 7 || Math.hypot(x - QUAN.x, z - QUAN.z) < 9) return true;
   if (Math.hypot(x - DRUM.x, z - DRUM.z) < 7) return true;
   if (Math.hypot(x - DEN_TRINH.x, z - DEN_TRINH.z) < 5.5) return true;
   if (Math.hypot(x - PAGODA.x, z - PAGODA.z) < 6) return true;

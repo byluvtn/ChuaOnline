@@ -1,8 +1,9 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TANG_XA_TAY, TANG_XA_TAY_PLAT, TANG_XA_TAY_DOOR, TRAI_DUONG, TRAI_DUONG_PLAT, TRAI_DUONG_DOOR, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TANG_XA_TAY, TANG_XA_TAY_PLAT, TANG_XA_TAY_DOOR, TRAI_DUONG, TRAI_DUONG_PLAT, TRAI_DUONG_DOOR, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -31,7 +32,6 @@ const COLUMN_LABELS = {
   chuong: ['Tiếng chuông ngân tỉnh giấc mộng trần gian', 'Hương trầm thoảng dẫn lối về cõi tịnh'],
   trong: ['Tiếng trống vọng sân thiền tan phiền não', 'Âm vang cửa Phật tỏ rõ lòng thành'],
   denTrinh: ['Dừng chân trình diện gột bụi trần', 'Thắp nén hương lành mở lối vào chùa'],
-  thap: ['Tháp ngọc vươn mây ngàn thu vững chãi', 'Thân vàng soi nắng muôn thuở lung linh'],
   hanhLang: ['Dừng chân bên hiên vắng nghe gió hát', 'Rửa lòng nơi cửa Phật ngắm sen hồng'],
 };
 
@@ -305,67 +305,16 @@ export function buildTemple(c: TempleCtx) {
   glowSpr(0, drumTower.by + 3.2, 0, 3, 0xffb040, 0.45, drumTower.t);
   zones.push({ x: DRUM.x, z: DRUM.z, r: 7, id: 'trong' });
 
-  // ---- Quan Âm tower ----
-  const qa = new THREE.Group();
-  for (let i = 0; i < QUAN_PLAT.length; i++) {
-    const tier = new THREE.Mesh(new THREE.CylinderGeometry(4.6 - i * 0.55, 4.8 - i * 0.55, 0.45, 4), stoneM);
-    tier.position.y = 0.22 + i * 0.45; tier.rotation.y = Math.PI / 4; tier.castShadow = tier.receiveShadow = true; tier.userData.sealable = true; qa.add(tier);
+  // ---- Quan Âm statue in the eastern yard (đối xứng sân tượng Phật Tổ phía Tây) ----
+  const qyard = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(4.2 - i * 0.5, 4.5 - i * 0.5, 0.4, 8), stoneM);
+    t.position.y = 0.2 + i * 0.4; t.castShadow = t.receiveShadow = true; t.userData.sealable = true; qyard.add(t);
   }
-  const qy = QUAN_PLAT[QUAN_PLAT.length - 1].y, QR = 3.4, QH = 7.2, QA = QR / Math.SQRT2;
-  const qCorners: [number, number][] = [[-QA, -QA], [QA, -QA], [QA, QA], [-QA, QA]];
-  for (let i = 0; i < 4; i++) {
-    const [px, pz] = qCorners[i], [nx, nz] = qCorners[(i + 1) % 4];
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, QH, 12), c.redM);
-    p.position.set(px, qy + QH / 2, pz); p.castShadow = true; p.userData.sealable = true; qa.add(p);
-    const len = Math.hypot(nx - px, nz - pz);
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.18, 0.18), c.redM);
-    rail.position.set((px + nx) / 2, qy + QH - 0.3, (pz + nz) / 2); rail.rotation.y = -Math.atan2(nz - pz, nx - px);
-    rail.userData.sealable = true; qa.add(rail);
-    const rail2 = rail.clone(); rail2.position.y = qy + 1.0; qa.add(rail2);
-    colliders.push({ x: QUAN.x + Math.cos(QUAN_ROT) * px + Math.sin(QUAN_ROT) * pz, z: QUAN.z - Math.sin(QUAN_ROT) * px + Math.cos(QUAN_ROT) * pz, r: 0.32 });
-  }
-  const q1 = new THREE.Mesh(c.roofGeometry(11.5, 11.5, 2.8, 0.9), c.tileM); q1.position.y = qy + QH + 1.3; q1.rotation.y = 0; q1.castShadow = true; q1.userData.sealable = true; qa.add(q1);
-  const qBox = (mat: THREE.Material, w: number, h: number, dp: number, x: number, y: number, z: number) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
-    m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; qa.add(m); return m;
-  };
-  for (const [px, pz] of qCorners) {
-    qBox(stoneM, 0.72, 0.4, 0.72, px, qy + 0.2, pz);
-    qBox(c.redM, 0.6, 0.3, 0.6, px, qy + QH + 0.1, pz);
-  }
-  for (const s of [-QA, QA]) {
-    qBox(c.redM, 2 * QA + 1.2, 0.2, 0.34, 0, qy + QH + 0.35, s);
-    qBox(c.redM, 0.34, 0.2, 2 * QA + 1.2, s, qy + QH + 0.35, 0);
-  }
-  const qNK = 1.5, qNeckH = 1.4, qNeckY = qy + QH + 2.55 + qNeckH / 2 - 0.2;
-  for (const [px, pz] of [[-qNK, -qNK], [qNK, -qNK], [-qNK, qNK], [qNK, qNK]] as [number, number][]) {
-    const nc = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, qNeckH + 0.1, 10), c.redM);
-    nc.position.set(px, qNeckY, pz); nc.castShadow = true; nc.userData.sealable = true; qa.add(nc);
-  }
-  for (const y of [qNeckY - qNeckH / 2 + 0.12, qNeckY + qNeckH / 2 - 0.12]) for (const s of [-qNK, qNK]) {
-    qBox(c.redM, 2 * qNK + 0.4, 0.2, 0.22, 0, y, s);
-    qBox(c.redM, 0.22, 0.2, 2 * qNK + 0.4, s, y, 0);
-  }
-  const qPanelH = qNeckH * 0.42;
-  for (const s of [-qNK, qNK]) {
-    qBox(c.redM, 2 * qNK, qPanelH, 0.12, 0, qNeckY - qNeckH / 2 + 0.12 + qPanelH / 2 + 0.1, s);
-    qBox(c.redM, 0.12, qPanelH, 2 * qNK, s, qNeckY - qNeckH / 2 + 0.12 + qPanelH / 2 + 0.1, 0);
-  }
-  const q2 = new THREE.Mesh(c.roofGeometry(7, 7, 2.2, 0.6), c.tileM); q2.position.y = qNeckY + qNeckH / 2 + 1.1 - 0.3; q2.rotation.y = 0; q2.castShadow = true; q2.userData.sealable = true; qa.add(q2);
-  const qFinBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.4, 8), c.goldM);
-  qFinBase.position.y = q2.position.y + 1.2; qFinBase.userData.sealable = true; qa.add(qFinBase);
-  const qf = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), c.goldM); qf.position.y = q2.position.y + 1.6; qf.userData.sealable = true; qa.add(qf);
-  const quanAm = buildQuanAm(); quanAm.position.y = qy; quanAm.scale.setScalar(0.92); qa.add(quanAm);
-  const qSign = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.76), new THREE.MeshBasicMaterial({ map: signTexture('THÁP QUAN ÂM') }));
-  qSign.position.set(0, qy + QH + 0.15, QA + 0.35); qa.add(qSign);
-  for (let i = 0; i < 2; i++) {
-    labelBoard(qa, COLUMN_LABELS.thap[i], 0.46, 2.8, i ? -QA : QA, qy + 3.3, QA + 0.1);
-  }
-  qa.position.set(QUAN.x, 0, QUAN.z); qa.rotation.y = QUAN_ROT; scene.add(qa);
-  colliders.push({ x: QUAN.x, z: QUAN.z, r: 1.1 });
-  const qaSeal = sealArchitectureJoints(qa, { maxGap: 0.6 });
-  if (import.meta.env.DEV) console.warn(`gapdump quanAm: filled=${qaSeal.filled} remaining=${qaSeal.remaining.length} ` + JSON.stringify(qaSeal.remaining));
-  zones.push({ x: QUAN.x, z: QUAN.z, r: 6.5, id: 'thap' });
+  const quanAm = buildQuanAm(); quanAm.scale.setScalar(1.15); quanAm.position.y = 1.2; qyard.add(quanAm);
+  qyard.position.set(QUAN.x, 0, QUAN.z); qyard.rotation.y = -Math.PI * 0.5 - 0.3; scene.add(qyard);
+  sealArchitectureJoints(qyard, { maxGap: 0.3 });
+  colliders.push({ x: QUAN.x, z: QUAN.z, r: 4 });
 
   // ---- big Buddha in the western yard ----
   const yard = new THREE.Group();
@@ -650,6 +599,34 @@ export function buildTemple(c: TempleCtx) {
   const td = extraHouse('thien-duong', THIEN_DUONG, THIEN_DUONG_PLAT, 'THIỀN ĐƯỜNG', 'thienDuong', 2.6, 2.2, true);
   for (let i = 0; i < 2; i++) labelBoard(td.g, COUPLETS.thienDuong.am[i].split(',')[0], 0.42, 2.2, i ? td.hx : -td.hx, THIEN_DUONG_PLAT.y + 1.7, td.hz + 0.22);
 
+  /** Gộp các mesh tĩnh dùng chung một vật liệu thành một mesh (giảm draw call). Chạy SAU khi seal xong. */
+  const mergeStaticByMaterial = (root: THREE.Group) => {
+    root.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const buckets = new Map<THREE.Material, THREE.Mesh[]>();
+    root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh || Array.isArray(m.material) || m.userData.inscription) return;
+      const list = buckets.get(m.material) ?? [];
+      list.push(m); buckets.set(m.material, list);
+    });
+    for (const [mat, list] of buckets) {
+      if (list.length < 2) continue;
+      const geos = list.map((m) => {
+        const gg = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone());
+        gg.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+        for (const k of Object.keys(gg.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') gg.deleteAttribute(k);
+        return gg;
+      });
+      const merged = mergeGeometries(geos);
+      if (!merged) continue;
+      for (const m of list) m.removeFromParent();
+      const mm = new THREE.Mesh(merged, mat);
+      mm.castShadow = list.some((m) => m.castShadow); mm.receiveShadow = list.some((m) => m.receiveShadow);
+      root.add(mm);
+    }
+  };
+
   // ---- Khu sinh hoạt dọc tường Tây (GĐ3 #21): tăng xá + trai đường, nhà dài thấp, hiên quay về phía Đông ----
   // Hệ toạ độ cục bộ: trục dài = x, mặt tiền = +z. Quay Y = +π/2 đưa +z cục bộ thành +x thế giới (hướng Đông), x cục bộ thành −z.
   const longHouse = (name: string, at: { x: number; z: number }, plat: { hx: number; hz: number; y: number },
@@ -723,6 +700,7 @@ export function buildTemple(c: TempleCtx) {
     g.position.set(at.x, 0, at.z); scene.add(g);
     const sl = sealArchitectureJoints(g, { maxGap: 0.5 });
     if (import.meta.env.DEV) console.warn(`gapdump ${name}: filled=${sl.filled} remaining=${sl.remaining.length}`);
+    mergeStaticByMaterial(g);
     const wp = (lx: number, lz: number) => ({ x: at.x + lz, z: at.z - lx });
     for (let i = 0; i <= segN; i++) colliders.push({ ...wp(-hl + segL * i, verZ), r: 0.3 });
     for (let lx = -hl; lx <= hl + 0.01; lx += 0.9) colliders.push({ ...wp(lx, backZ), r: 0.5 });

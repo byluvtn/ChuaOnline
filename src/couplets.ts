@@ -82,10 +82,5 @@ export const COUPLETS: Record<string, Couplet> = {
     am: ['Am cổ u tịch, một nén hương trầm thông cõi tịnh', 'Rêu xanh phủ mái, ngàn năm tiếng kệ vọng non cao'],
     nghia: 'Am xưa vắng lặng, một nén hương trầm nối về cõi tịnh; rêu xanh phủ mái, tiếng kệ ngàn năm còn vọng núi cao.',
   },
-  thap: {
-    id: 'thap', where: 'Tháp Quan Âm',
-    am: ['Bảo tháp lăng vân thiên thu bất hoại', 'Kim thân ánh nhật vạn thế thường tồn'],
-    nghia: 'Tháp báu vươn mây, ngàn thu chẳng hư hoại; thân vàng soi nắng, muôn đời còn mãi.',
-  },
 };
 
