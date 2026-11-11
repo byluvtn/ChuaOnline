@@ -189,3 +189,30 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
 ### Chưa chắc chắn
 - Tượng ở hàng trong cách ghế dài ~0.4 về ngang (ghế lệch 1.3, tượng lệch 1.5); chỉ so le về z, nhìn gần hơi sát.
 - 3 mẫu tượng clone dùng chung geometry/material; chưa đo hiệu năng trên máy yếu (20 bệ + 20 tượng).
+---
+
+## GĐ3 Mục 21 — Tăng xá + Trai đường dọc tường Tây (commit `5b40c7b`)
+
+Mục 22 (Điện Mẫu), 23 (Nhà khách), 24 (Thiền đường) đã có từ commit `d25a7e4`.
+
+### Đã làm
+- `layout.ts`: `TANG_XA_TAY (−42.6, −14.5)`, `TRAI_DUONG (−42.6, −1)` (+ `_PLAT`, `_DOOR`). `*_DOOR` là điểm trống trước cửa (x = −39.0) để gắn NPC/shop sau. `groundY()` nâng bệ 0.2; `blocked()` thêm dải x < −37.5 (z −21.5..3.5) và hai hành lang chừa cho lối cửa.
+- `temple.ts::longHouse()`: nhà dài thấp (đỉnh mái ~6.2), trục dài Bắc–Nam, hiên 6 cột đỏ + cửa sổ, đèn lồng, bảng tên + 2 câu đối tiếng Việt. Trai đường có thêm ống khói và bàn bếp. Collider cột, tường hậu, hai hồi, tường trước (chừa cửa giữa). Zone `tangXaTay`, `traiDuong` r7. `pathRect` nối từ hiên ra đường dọc x = −28.
+- `couplets.ts`: `tangXaTay`, `traiDuong`.
+- `compound.ts`: Vườn Thiền bỏ bụi tre x = −44 với z > −23 và hàng rào Nam với x < −38 để nhường chỗ.
+
+### Kiểm chứng
+- typecheck pass. gapdump: tang-xa-tay filled=167 remaining=0; trai-duong filled=187 remaining=0.
+- Đi thử thật: vào cửa giữa tới x=−42.4 (z −14.5), tới x=−41.8 (z −1). Ra ngoài cửa, tường chặn ở x≈−41.4/−41.1. Zone popup Tăng xá hiện đúng.
+- Ảnh: `shots/gd3-21-*.png`, `gd3-21a-*.png` (4 hướng + trục), `gd3-21p-tangxa-inside.png`. Script: `tools/steps-tangxa*.mjs`, `steps-phan-a.mjs`.
+
+### Chưa chắc chắn
+- Nội thất mới là khối đơn giản (bệ gỗ, bàn bếp); chưa có bàn ghế/bồ đoàn riêng.
+- Biển "TĂNG XÁ" của nhà Tây trùng chữ với tăng xá phía Bắc `TANG_XA` (22, −56). Tên biến `TANG_XA_TAY`/`tangXaTay` tránh trùng; chữ trên biển chưa đổi.
+- Vị trí lệch masterplan (−40, −16) thành (−42.6, −14.5) để tránh hàng rào và tre Vườn Thiền.
+
+### Bổ sung sau commit `5b40c7b`
+- **Tháp Quan Âm → sân tượng:** bỏ tháp, giữ tượng, đối xứng sân Phật Tổ (`BUDDHA_YARD`). `temple.ts`: khối `qyard` gồm 3 bậc đá bát giác + `buildQuanAm()` scale 1.15, y=1.2, `rotation.y = -π/2 - 0.3`; collider r=4. `layout.ts`: bỏ `QUAN_ROT`, `QUAN_PLAT`, nhánh QUAN trong `groundY()`; `blocked()` bán kính 9 quanh QUAN. `couplets.ts`: bỏ zone `thap`. `server/npcs.ts` vẫn import `QUAN` (không đổi). Ảnh `shots/gd3-qa-*.png`. Hướng quay mặt của tượng chưa được xác nhận.
+- **Gộp mesh:** `temple.ts::mergeStaticByMaterial(root)` gọi trong `longHouse` sau `sealArchitectureJoints`, gộp theo material (bỏ qua mesh có `userData.inscription`). Mỗi nhà từ ≈300 xuống 11 mesh; scene 4542 → 3935 mesh, số tam giác không đổi. Biển/bảng không gắn cờ `inscription` cũng có thể bị gộp; ảnh `shots/gd3-21m-*.png` nhìn ổn. Script: `tools/steps-cost.mjs`.
+- **FPS (chưa kết luận):** `tools/shot.mjs` mặc định dùng SwiftShader (0.4–0.9 FPS, vô nghĩa). Đo GPU thật cần bản sao tạm của `shot.mjs` đổi sang `--use-angle=metal`. Sau gộp, bật/tắt nhà: Tây 29.3/41.8, Tây-rộng 19.2/29.2; sân chính ≈10 dù bật hay tắt nhà. Lần đo thứ hai (`tools/steps-fps2.mjs`) dao động rất lớn. Chưa thấy bằng chứng rõ về sụt FPS bất thường nhưng số đo nhiễu, nên **chưa coi là đã đóng băng layout**. Nên đo lại trên trình duyệt thật.
+- **Sự cố file:** lệnh `rm -f shots/probe-*.png` xóa nhầm 4 file. 3 file đã tracked (`probe-drum-from-north.png`, `probe-drum-from-south.png`, `probe-probe.png`) đã khôi phục bằng `git checkout --`. `shots/probe-plaza-wide.png` chưa tracked nên mất vĩnh viễn.
