@@ -1,7 +1,7 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
-export const CORR = { x: 20.5, z0: -19, z1: -1, half: 1.9, y: 0.12 };
+export const CORR = { x: 20.5, z0: -19, z1: -1, half: 2.6, y: 0.12 };
 /** Hồ cá koi nay nằm giữa khuôn viên, trên trục Bắc–Nam giữa sân chùa và tam quan. */
 export const LAKE = { x: 0, z: 22, a: 9, b: 6.5 };
 /** Cầu cong bắc qua hồ theo trục z (lối đi chính từ sân chùa ra cổng). */
