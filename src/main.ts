@@ -757,6 +757,23 @@ function updateTeacherBtn() {
   if (teacherBtn.hidden === near) teacherBtn.hidden = !near;
 }
 
+const zoneBtn = $('zoneBtn');
+const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
+  chuong: { label: 'Đánh chuông', run: () => { world.ringBell(); audio.play('bow'); } },
+  trong: { label: 'Đánh trống', run: () => { world.ringDrum(); audio.play('bow'); } },
+  thuyDinh: { label: 'Thả đèn nguyện', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
+};
+let zoneBtnId = '';
+zoneBtn.onclick = () => ZONE_ACTIONS[zoneBtnId]?.run();
+function updateZoneBtn() {
+  const id = me ? world.zoneAt(me.char.root.position.x, me.char.root.position.z) : null;
+  const key = id && ZONE_ACTIONS[id] ? id : '';
+  if (key === zoneBtnId) return;
+  zoneBtnId = key;
+  zoneBtn.hidden = !key;
+  if (key) zoneBtn.querySelector('.lb')!.textContent = ZONE_ACTIONS[key].label;
+}
+
 function hideCouplet() { $('couplet').classList.remove('show'); }
 function updateCouplet() {
   if (!me) return;
@@ -834,6 +851,7 @@ function loop() {
       root.position.set(bowSeat.x, world.groundY(bowSeat.x, bowSeat.z), bowSeat.z);
       bowSeat = null;
       clickTarget = null;
+      moving = false;
       setSitting(true);
       doAction('bow', undefined, true);
     }
@@ -851,7 +869,6 @@ function loop() {
     const cy = 1.4 + Math.sin(camPitch) * camDist;
     const cz = root.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
     if (freeCam && profile?.admin) {
-      moving = false;
       const fs = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 40 : 14) * dt;
       const fx = -Math.sin(camYaw) * Math.cos(camPitch), fy = -Math.sin(camPitch), fz = -Math.cos(camYaw) * Math.cos(camPitch);
       const rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
@@ -901,6 +918,7 @@ function loop() {
 
   if (t - lastDrum > 45) { lastDrum = t; if (me) { world.ringDrum(); audio.play('bow'); } }
   updateTeacherBtn();
+  updateZoneBtn();
   updateCouplet();
   world.update(t, me ? me.char.root.position : focusIdle);
   post.render();
