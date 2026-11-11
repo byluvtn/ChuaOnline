@@ -851,6 +851,7 @@ function loop() {
     const cy = 1.4 + Math.sin(camPitch) * camDist;
     const cz = root.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
     if (freeCam && profile?.admin) {
+      moving = false;
       const fs = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 40 : 14) * dt;
       const fx = -Math.sin(camYaw) * Math.cos(camPitch), fy = -Math.sin(camPitch), fz = -Math.cos(camYaw) * Math.cos(camPitch);
       const rx = Math.cos(camYaw), rz = -Math.sin(camYaw);
