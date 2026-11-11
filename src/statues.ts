@@ -267,11 +267,11 @@ const GUANYIN_SCALE = 1.6;
 /** Thân áo: Cylinder (0.35 → 0.85, cao 1.8, 24 segments) uốn nhẹ eo. */
 function robeBodyGeometry() {
   return geo('g-robe', () => {
-    const g = new THREE.CylinderGeometry(0.35, 0.68, 1.8, 24, 8);
+    const g = new THREE.CylinderGeometry(0.3, 0.5, 1.8, 24, 8);
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const t = (p.getY(i) + 0.9) / 1.8;               // 0 đáy … 1 đỉnh
-      const waist = 1 - 0.07 * Math.sin(Math.PI * Math.min(1, t * 1.15));
+      const waist = 1 - 0.12 * Math.sin(Math.PI * Math.min(1, t * 1.15));
       p.setX(i, p.getX(i) * waist);
       p.setZ(i, p.getZ(i) * waist);
     }
@@ -308,8 +308,9 @@ export function buildQuanAm(): THREE.Group {
   const body = add(fig, robeBodyGeometry(), white);
   body.position.y = bodyBottom + 0.9;
   blob(fig, white, [0, bodyBottom + 1.76, 0], [0.5, 0.22, 0.36]);
+  blob(fig, skin, [0, bodyBottom + 1.98, 0.02], [0.16, 0.14, 0.16]);
   // viền vàng ở gấu áo
-  const hem = add(fig, geo('g-hem', () => new THREE.TorusGeometry(0.685, 0.035, 8, 40)), gold);
+  const hem = add(fig, geo('g-hem', () => new THREE.TorusGeometry(0.5, 0.035, 8, 40)), gold);
   hem.rotation.x = Math.PI / 2; hem.position.y = bodyBottom + 0.05;
 
   // ---- hai tay: tay phải (bên trái người xem) cầm liễu, tay trái nâng bình
@@ -365,7 +366,7 @@ export function buildQuanAm(): THREE.Group {
   const veilHead = add(head, geo('g-veil-head', () => new THREE.SphereGeometry(HEAD_R + 0.11, 36, 24, Math.PI / 2 + gap, Math.PI * 2 - gap * 2, 0, 2.15)), veilM);
   veilHead.position.y = 0.04;
   // tà khăn chỉ rủ sau lưng: chừa hở 2.0 rad phía trước để lộ cổ và tay
-  const veilDrape = add(fig, geo('g-veil-drape', () => new THREE.CylinderGeometry(0.56, 0.72, 0.9, 28, 1, true, 1.0, Math.PI * 2 - 2.0)), veilM);
+  const veilDrape = add(fig, geo('g-veil-drape', () => new THREE.CylinderGeometry(0.4, 0.5, 0.9, 28, 1, true, 1.0, Math.PI * 2 - 2.0)), veilM);
   veilDrape.position.set(0, headY - 0.82, -0.06);
 
   // ---- mũ miện: vành cong vàng kim trên trán, gắn tượng Phật nhỏ
