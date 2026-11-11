@@ -448,3 +448,9 @@ Baseline: `main` sau commit `8d7fb8b`; không đổi schema DB.
 - `src/character.ts::say()`: chỉ đổi 3 màu. Nền `rgba(255,250,238,.97)` → `rgba(38,24,14,.88)`, viền `rgba(120,80,30,.55)` → `rgba(246,217,138,.75)`, chữ `#2a170a` → `#FAF3E3` (cùng bộ `--glass`/`--gold2`/`--cream` của HUD). Đuôi bong bóng dùng chung fillStyle của nền nên tự đổi. Kích thước canvas, font, ngắt dòng, đuôi, thời gian hiện, scale sprite và bảng tên giữ nguyên. Áp dụng cho mọi nhân vật, kể cả NPC.
 - `npm run typecheck` pass. Ảnh `shots/bubble-dark.png` (390×844, `?touch=1`, tin gửi qua form chat thật, `tools/steps-bubble-dark.mjs`): nền nâu tối, viền vàng nhạt, chữ kem đọc rõ, bảng tên bên dưới không đổi.
 - Chưa kiểm trên điện thoại thật.
+
+## Vá R2.2 — hạ sàn thời gian vòng hạt 45s → 30s
+- `server/index.ts`: `BEAD_ROUND_MIN_MS` 45_000 → 30_000. Lý do: người chơi thật lần đủ 108 hạt trên điện thoại dưới 45 giây và bị báo "Vòng chưa hợp lệ" (nhịp bấm nhanh nhất ~0,3 giây/hạt ≈ 32 giây/vòng). Giữ nguyên mọi thứ khác: mốc hết hạn 30 phút, cap 5 vòng/ngày, thưởng 10 công đức/5 xu, cách đếm stat, nội dung chữ trong panel.
+- `tools/steps-verify-beads.mjs`: ca chờ hợp lệ từ ~46 giây xuống ~32 giây; thêm ca biên (done ở ~29 giây → `{ ok: false }`, rounds = 0; done ở ~32 giây → hợp lệ); ca ghi đè mốc đổi từ 20 giây sang ~31 giây. Kết quả: TẤT CẢ PASS 28/28 (trước 27), tổng ~59 giây (trước ~80 giây). `npm run typecheck` pass.
+- Grep code còn một chỗ nhắc 45 giây: `tools/steps-r22-beads.mjs` (script chụp ảnh, chờ 46,5 giây và log "đủ 45s"). Không sửa vì ngoài phạm vi spec; script vẫn chạy đúng với sàn mới, chỉ chờ lâu hơn cần thiết. Các mục R2.2 phía trên trong file này ghi 45 giây là lịch sử, không sửa.
+- Không đổi giao diện, không đổi tin "Có gì mới" (`LATEST_NEWS_ID` giữ 5).
