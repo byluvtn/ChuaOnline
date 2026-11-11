@@ -346,8 +346,51 @@ Thuộc trường hợp **suy ra từ delta profile**: `updateProfileHud` (`src/
 ### Chưa chắc chắn / việc còn treo
 - E2E server chỉ chạy được ở mult thực lúc chạy (×2 lúc 12:3x ICT); các mốc ×1, ×1,5, ×3 chỉ được kiểm ở mức unit (`meritBoost` + bảng làm tròn), chưa qua socket vì server dùng đồng hồ thật.
 - Lần chạy cuối của script ảnh không in log (stdout bị chặn do script chạy quá timeout của công cụ); khoảng cách banner ghi ở trên đọc từ ảnh, không phải số đo `getBoundingClientRect`.
-- Chưa chụp/thử trên điện thoại (offset 186px dùng chung cho mọi cỡ, chưa kiểm khi `#chat` mở trên `body.touch` ở `top: 138px`: banner nằm giữa màn, chat ở bên trái nên có thể chạm trên màn hẹp).
+- (Đã xử lý ở rider R1.5: banner ẩn khi chat mở trên điện thoại.) Ban đầu chưa thử trên điện thoại: offset 186px dùng chung cho mọi cỡ, chat mở ở `top: 138px` chạm banner.
 - Banner dựa vào đồng hồ máy khách để tự cập nhật mỗi 30 giây; máy khách sai giờ chỉ làm banner lệch, số thật vẫn do server quyết định.
 - Ngày điểm danh/vòng quay/minigame vẫn theo `dayKey()` UTC (UI nói 07:00 VN); không đổi trong R1.4 theo spec.
 - Chưa có thông báo đẩy khi sắp tới giờ lễ (R4.3). Chưa deploy; không có bảng DB mới.
 - Chưa làm R1.5 trở đi.
+
+## R1.5 — Thống kê tích lũy trọn đời & mốc thành tựu (+ rider banner giờ lễ trên điện thoại)
+Baseline mới: `main` sau commit `8b87c49` (trước đó `44a8628` feat R1.5, `0d10619` docs), cộng commit HANDOFF này.
+
+### Đã làm
+- **DB (`server/db.ts`):** bảng `player_stats` (`bows`, `chants`, `lanterns`, `meditate_sec`, `beads_rounds`) và `stat_rewards` (PK `player_id, milestone_id`). Hàm `bumpStat(id, key, delta)` upsert nguyên tử bằng `INSERT … ON CONFLICT DO UPDATE … RETURNING`, trả giá trị mới; tên cột chỉ lấy từ bảng ánh xạ cố định `STAT_COLUMNS`, không nội suy chuỗi từ client. `getStatValue`, `getStats` (đủ 5 số, 0 nếu chưa có dòng), `claimStatReward` (INSERT OR IGNORE → boolean, theo mẫu `claimLevelReward`), `claimedStatRewards`.
+- **Điểm đếm (`server/index.ts`, helper `countStat`/`countStatSafe`):** `action` sau cổng cooldown và sau nhánh early-return palms/beads: `bow` → bows, `chant` → chants, `lantern` → lanterns; `incense` KHÔNG đếm. `sutra:done` (sau cổng cooldown) → chants +1. Tick thiền: mỗi người đang ngồi +10 giây `meditate_sec` (cùng vòng `grantRewards`). Đếm nằm sau khi thưởng gốc xong; lỗi đếm chỉ log `[stats]`, không làm hỏng hành động.
+- **Mốc (`shared/game.ts`):** `STAT_MILESTONES` 12 mốc đúng như spec (bow 100/300/1000, chant 50/200/500, lamp 20/50/150, med 30/60/180 phút tính bằng giây), kiểu `StatKey`, `PlayerStats`, `StatsState`, `MilestoneEvent`, thêm `StatsAck`.
+- **Trao thưởng:** sau mỗi `bumpStat`, với từng mốc đã vượt: `claimStatReward` TRƯỚC, rồi `addItem` (nếu có), `addRewards(pid, 0, coins)`, `pushProfile`, emit `milestone` và `stats`. Chỉ xu + vật phẩm, không công đức, không qua `grantRewards` (không kích hoạt nhiệm vụ 'merit' hay bonus cấp).
+- **Socket:** emit `stats` lúc join (sau `boost`); handler `stats:get` trả `StatsAck { ok, state }`.
+- **Client:** `src/features/stats.ts` (`initStats` nối trong `menu.ts` cạnh `initBoost`: nghe `stats`, nghe `milestone` → `ctx.toast`; `renderStatsSection` vẽ từ cache rồi gọi `stats:get` làm mới). `src/features/levels.ts` thêm mục "Thành tựu tích lũy": 4 dòng (Lạy Phật / Tụng kinh / Thả đèn / Ngồi thiền, thiền hiển thị bằng phút), thanh tiến độ từ ngưỡng trước tới ngưỡng sau, 3 chip (đã nhận = vàng + ✓, mốc kế = viền sáng, chưa tới = mờ), hết mốc thì ghi "Đã đạt tất cả các mốc". CSS ở cuối `src/menu.css` (`.st*`).
+- **News:** entry "Thành tựu tích lũy" đứng đầu `NEWS`, `LATEST_NEWS_ID` 3 → 4.
+
+### Rider: banner giờ lễ vs khung chat trên điện thoại (`src/features/boost.ts`)
+`render` ẩn `#boostBanner` khi `matchMedia('(max-width: 760px)')` khớp VÀ `#chat` không có class `collapsed`. Cập nhật tức thì nhờ `MutationObserver` trên thuộc tính `class` của `#chat` (bao cả nút `#chatToggle` lẫn mã khác) và listener `change` của media query, cộng nhịp 30 giây sẵn có. Không đổi CSS vị trí; desktop và điện thoại-khi-chat-đóng giữ nguyên.
+
+### Kiểm chứng
+- `npm run typecheck` pass (trước cả hai commit).
+- `node tools/steps-verify-stats.mjs` (DB tạm, server thật, helper `.mts`): TẤT CẢ PASS (19 kiểm tra). Cooldown: mỗi kind dùng một khách riêng; ca "lạy lần 2" chờ ≥ 1,2 giây sau 0,9 giây sẵn có (cooldown lạy 2 giây).
+  - Khách mới: `stats:get` và event join đều 5 số 0, `claimed` rỗng.
+  - bow/chant/lantern mỗi kind +1 đúng cột, các cột khác giữ 0; incense không đổi gì.
+  - `sutra:done` (bài đầu trong SUTRAS) làm chants từ 1 lên 2.
+  - Thiền: ngồi ~26 giây → `meditate_sec = 30` (bội số 10, ≥ 2 tick).
+  - bows đặt sẵn 99 qua `bumpStat`, lạy 1 lần → đúng 1 event `bow100`, xu +21 (1 của hành động + 20 mốc), `claimed` chứa `bow100`; lạy tiếp → không event mới, xu +1.
+  - Mốc có quà: bows 399 → `bow300` tặng 1 Nến sáp ong, xu +51.
+  - `claimStatReward` gọi 2 lần cùng mốc → true rồi false.
+  - Ngắt kết nối, vào lại cùng tài khoản: stats và claimed giữ nguyên, event join khớp.
+  - Hồi quy: thắp hương công đức = `Math.round(1 × mult)` tại thời điểm chạy (chạy lúc mult = 1: +1 công đức, +1 xu).
+- Ảnh (DB tạm `/tmp/co-r15/db.db`, `tools/shot.mjs`):
+  - `shots/r15-panel.png` (1280×800, script `tools/steps-r15-panel.mjs` dựng tài khoản có bows 137, chants 62, lanterns 8, thiền 2400 giây, mốc đã nhận bow100/chant50/med30): đủ 4 dòng, thanh tiến độ, chip đọc được.
+  - `shots/r15-m-banner-chat-open.png` và `shots/r15-m-banner-chat-closed.png` (390×844, `?touch=1`, `tools/steps-r15-banner.mjs`, đồng hồ client giả lập 05:30 ICT như R1.4). Số đo từ script: chat mở → `banner hidden=true`; chat thu gọn → banner hiện "Giờ tụng kinh · Công đức ×2", banner top=186 bottom=234, chat top=138 bottom=180, khoảng cách 6px, không chồng.
+
+### Lưu ý
+- **`beads_rounds`:** cột có sẵn nhưng chưa đếm và chưa có mốc. Sự kiện "hoàn thành 1 vòng 108 hạt" chỉ tồn tại khi R2.2 (giao diện lần hạt) làm xong; đếm số lần bấm animation beads là vô nghĩa. Mốc tràng hạt bổ sung trong spec R2.2 (thêm vào `STAT_MILESTONES` + dòng thứ 5 trong `stats.ts`).
+- **Số liệu bắt đầu từ 0** cho mọi người chơi khi tính năng lên sóng, không hồi tố (không có dữ liệu nguồn). Tin "Có gì mới" nói "từ nay" để phản ánh đúng điều này.
+- Hai hành động liên tiếp cùng vượt mốc chỉ nhận thưởng một lần nhờ `INSERT OR IGNORE`. Nếu người chơi vượt nhiều mốc cùng một bước (ví dụ helper cộng lớn), vòng lặp trao hết các mốc đã đủ ngưỡng.
+- Thưởng mốc cộng xu trực tiếp nên không hiện chữ nổi công đức; người chơi thấy toast "Đạt mốc thành tựu…".
+- Khi chạy ảnh banner, script phải chờ vào chùa xong (`__co.me()`) rồi mới đọc banner; lần đầu gặp banner rỗng chỉ do chưa vào chùa, không phải lỗi mã.
+
+### Việc còn treo
+- Mốc tràng hạt + đếm `beads_rounds` (R2.2). Bia đá vinh danh (R3.3). Chưa deploy.
+- Chưa chạy E2E bằng trình duyệt thật cho toast `milestone` (chỉ kiểm bằng socket); mã toast là một dòng `ctx.toast`.
+- Quy ước đứng: mỗi tính năng mới thêm entry vào đầu `NEWS` và tăng `LATEST_NEWS_ID`.
