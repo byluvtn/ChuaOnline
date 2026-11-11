@@ -502,3 +502,23 @@ Nguồn: `spec-a2-1-mo-rong-ban-do-chua-online.md`. Baseline: `d58bdea`.
 
 ### Chưa làm (còn lại của spec A2.1)
 §6 Vườn Phóng Sinh (dựng cảnh), §7 phố trước cổng, §8 phần map.ts, tin tức, hành lang La Hán đã xong ở phiên trước; script chụp `a21-*.png`.
+
+## A2.1 (lát 4) — ĐÃ XONG §10 bản đồ + §11 tin tức + §12 nghiệm thu
+Baseline: `ba8b0c1`. Commit: `3cc7dbd` (map.ts), `5eb81d5` (news.ts, `LATEST_NEWS_ID` 5 → 6).
+
+### Đã làm
+- **`src/features/map.ts`:** khung bản đồ riêng x −66..66, z −88..64; `PLACES` dùng điểm trước cửa (Nhà khách, Tăng xá, Trai đường, Nhà Tổ, Am Cổ) và thêm Thiền đường, Phòng Ghi Công Đức, Vườn Phóng Sinh, Điện Mẫu, Đền Trình; `drawStatic` vẽ lại hai viện, vườn phóng sinh + ao, phố trước cổng, các nhà theo `*_PLAT`.
+- **`src/data/news.ts`:** mục "Mở rộng khuôn viên chùa", `LATEST_NEWS_ID` = 6.
+- **Script nghiệm thu:** `tools/steps-a21.mjs` (chụp 8 ảnh `shots/a21-*.png`, đếm La Hán) và `tools/steps-a21-walk.mjs` (đi bộ kiểm bằng mô phỏng `collide` của game, dt cố định 0.05, không phụ thuộc FPS).
+
+### Kiểm chứng
+- `npm run typecheck` sạch. `tools/steps-verify-beads.mjs` (server thật) TẤT CẢ PASS.
+- 8 ảnh `a21-overview/vien-kt/vien-to/thien-duong/phong-sinh/pho/hanh-lang/map.png` đã chụp.
+- **Số tượng La Hán đếm được:** Tây 6, Đông 6 (tổng 12).
+- **Đi bộ kiểm 19/19 PASS:** cổng Nam ra phố và quay vào; vào cổng Viện Khách Tăng và Viện Tổ; tới cửa Nhà khách (−47,−57.5), Tăng xá, Trai đường, Nhà Tổ, Am Cổ, Thiền đường, Phòng Ghi Công Đức, Điện Mẫu (39,13), Đền Trình; đứng được trên bến phóng sinh (28,−31) và (33,−31); không xuyên tường Nam (cả hai chiều), không xuyên rào Viện KT và Viện Tổ.
+
+### Lệch so với spec / ghi chú
+- Cửa Nhà khách thực tế quay Nam (`z + hz`), cột mặt tiền chắn phía Bắc: điểm "trước cửa" spec ghi (−47,−55.5) nằm sát hàng cột ở z −54; đi bộ kiểm dùng điểm (−47,−57.5) và lộ trình vòng từ phía Nam.
+- Cửa Điện Mẫu (39,10) nằm trong nhà; hàng cột Bắc ở z 7.8, mặt hở phía Nam (z ≈ 12.2): điểm kiểm dùng (39,13), vào từ phía Đông–Nam. `PLACES` vẫn giữ (39,10) theo spec; `goTo` dùng `planPath` nên tự vòng được.
+- Chrome headless (SwiftShader) chỉ đạt ~1–1.7 FPS nên đi bộ kiểm qua `goTo` thật bị chậm; đã chuyển sang mô phỏng trong trang với đúng logic collider của game.
+- Ngưỡng kiểm "không xuyên tường Nam từ phố vào" là z > 45.4 (collider cột tường r 0.55 + bán kính người 0.4 giữ ở z ≈ 45.8).
