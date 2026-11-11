@@ -3,9 +3,9 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
-  ACTION_RULES, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
+  ACTION_RULES, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
   QUESTS, ROOMS, ROOM_CAPACITY, SUTRAS, WEEKLY_QUESTS,
-  type QuestEvent, type QuestState, type RankRow, type RoomInfo,
+  type CheckinAck, type QuestEvent, type QuestState, type RankRow, type RoomInfo,
 } from '../shared/game.js';
 import {
   MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
@@ -218,6 +218,7 @@ io.on('connection', (socket) => {
     socket.to(room).emit('player:join', state);
     await pushProfile(s);
     await pushQuests(s);
+    socket.emit('checkin', await db.checkinState(pid));
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
@@ -384,6 +385,21 @@ io.on('connection', (socket) => {
     await db.addRewards(pid, rule.merit, rule.coins);
     await pushProfile(s);
     cb?.({ ok: true, merit: rule.merit, coins: rule.coins, left: rule.cap - (await db.minigameCount(pid, game)) });
+  });
+
+  socket.on('checkin:get', async (cb?: (r: CheckinAck) => void) => {
+    if (!me()) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    cb?.({ ok: true, state: await db.checkinState(pid) });
+  });
+  socket.on('checkin:claim', async (cb?: (r: CheckinAck) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const got = await db.claimCheckin(pid);
+    if (!got) return cb?.({ ok: false, error: 'Hôm nay bạn đã điểm danh rồi', state: await db.checkinState(pid) });
+    const rw = CHECKIN_REWARDS[got.cycleDay - 1];
+    if (rw.item) await db.addItem(pid, rw.item, 1);
+    await grantRewards(s, rw.merit, rw.coins);
+    cb?.({ ok: true, streak: got.streak, cycleDay: got.cycleDay, merit: rw.merit, coins: rw.coins, item: rw.item, state: await db.checkinState(pid) });
   });
 
   socket.on('feedback:send', async (p: { text?: string; contact?: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {

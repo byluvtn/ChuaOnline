@@ -102,6 +102,17 @@ body.menu-collapsed #actions, body.menu-collapsed #chat { bottom: calc(84px + en
 .fq { display: flex; gap: 10px; padding: 8px 4px; border-bottom: 1px solid #e3d8c0; font-size: 14px; line-height: 1.45; }
 .fq b { width: 82px; flex: none; color: #8a5a1c; }
 
+.ckgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ckcell { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 12px; text-align: center; font-size: 12px; line-height: 1.3; border: 1px solid #d8c9a4; background: #fbf4df; }
+.ckcell small { opacity: .65; font-size: 11px; }
+.ckcell b { color: #8a2414; font-size: 13px; }
+.ckcell .itm { font-size: 11px; color: #8a5a1c; }
+.ckcell.big { grid-column: span 2; }
+.ckcell.now { background: linear-gradient(#fff3c4, #f0d98f); border: 2px solid #d9a02e; box-shadow: 0 0 14px rgba(240,190,70,.7); }
+.ckcell.done { background: #e9efd9; border-color: #a9bd7c; }
+.ckcell.next { opacity: .5; }
+.ckcell .tick { position: absolute; top: 4px; right: 7px; font-style: normal; font-weight: 800; color: #4c7a1d; }
+
 /* settings */
 .srow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 4px; border-bottom: 1px solid #e3d8c0; cursor: pointer; }
 .srow.col { flex-direction: column; align-items: stretch; }

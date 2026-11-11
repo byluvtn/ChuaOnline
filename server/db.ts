@@ -260,6 +260,39 @@ export async function claimLevelReward(id: number, level: number): Promise<boole
   return r.rowsAffected === 1;
 }
 
+// ---- daily check-in (R1.1) ----
+await db.execute(`CREATE TABLE IF NOT EXISTS checkins (
+  player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+  last_day TEXT NOT NULL,
+  streak INTEGER NOT NULL DEFAULT 0,
+  total INTEGER NOT NULL DEFAULT 0
+)`);
+const yesterdayKey = () => dayKey(new Date(Date.now() - 86_400_000));
+export async function checkinState(id: number): Promise<{ streak: number; claimedToday: boolean; total: number }> {
+  const r = (await db.execute({ sql: 'SELECT last_day, streak, total FROM checkins WHERE player_id = ?', args: [id] })).rows[0] as unknown as { last_day: string; streak: number; total: number } | undefined;
+  if (!r) return { streak: 0, claimedToday: false, total: 0 };
+  const claimedToday = r.last_day === dayKey();
+  const alive = claimedToday || r.last_day === yesterdayKey();
+  return { streak: alive ? Number(r.streak) : 0, claimedToday, total: Number(r.total) };
+}
+/** Điểm danh nguyên tử: null nếu hôm nay đã nhận. Ngày chu kỳ 1..7 tra bảng CHECKIN_REWARDS. */
+export async function claimCheckin(id: number): Promise<{ streak: number; cycleDay: number } | null> {
+  const today = dayKey();
+  const r = await db.execute({
+    sql: `INSERT INTO checkins (player_id, last_day, streak, total) VALUES (?, ?, 1, 1)
+    ON CONFLICT(player_id) DO UPDATE SET
+      streak = CASE WHEN last_day = ? THEN streak + 1 ELSE 1 END,
+      total = total + 1,
+      last_day = ?
+    WHERE last_day != ?`,
+    args: [id, today, yesterdayKey(), today, today],
+  });
+  if (r.rowsAffected !== 1) return null;
+  const row = (await db.execute({ sql: 'SELECT streak FROM checkins WHERE player_id = ?', args: [id] })).rows[0] as unknown as { streak: number };
+  const streak = Number(row.streak);
+  return { streak, cycleDay: ((streak - 1) % 7) + 1 };
+}
+
 // ---- ranking ----
 export async function topAllTime(limit = 20) {
   const rows = (await db.execute({ sql: 'SELECT name, merit FROM players WHERE merit > 0 ORDER BY merit DESC LIMIT ?', args: [limit] })).rows as unknown as { name: string; merit: number }[];

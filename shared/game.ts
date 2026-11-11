@@ -205,3 +205,19 @@ export const MEDITATE_GOAL_MIN = 500;
 
 export interface RankRow { name: string; merit: number; level: number }
 export interface MeditationInfo { sitting: number; minutes: number; goal: number; bonus: boolean }
+
+/** Thưởng điểm danh theo ngày chu kỳ 1..7 (streak vẫn tăng tiếp sau ngày 7). */
+export const CHECKIN_REWARDS: { merit: number; coins: number; item?: string }[] = [
+  { merit: 3, coins: 5 },
+  { merit: 5, coins: 5 },
+  { merit: 8, coins: 10 },
+  { merit: 10, coins: 10 },
+  { merit: 12, coins: 15 },
+  { merit: 15, coins: 15 },
+  { merit: 30, coins: 30, item: 'den_hoa_dang' },
+];
+export interface CheckinState { streak: number; claimedToday: boolean; total: number }
+export interface CheckinAck {
+  ok: boolean; error?: string; state?: CheckinState;
+  streak?: number; cycleDay?: number; merit?: number; coins?: number; item?: string;
+}

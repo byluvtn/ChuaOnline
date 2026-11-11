@@ -41,6 +41,7 @@ export const ICONS: Record<string, string> = {
   community: S('<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.400"/><path d="M16 14.200a5 5 0 0 1 5 5.800"/>'),
   level: S('<path d="M4 20V14h4v6M10 20V9h4v11M16 20V4h4v16"/>'),
   map: S('<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>'),
+  checkin: S('<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/><path d="m9 15 2 2 4-4"/>'),
   fortune: S('<path d="M8 21h8l-1-9H9l-1 9z"/><path d="M10 12 9 3M12 12V2M14 12l1-9"/>'),
   guide: S('<circle cx="12" cy="12" r="9"/><path d="M9.500 9.500a2.500 2.500 0 1 1 3.500 2.300c-.7.400-1 .9-1 1.700M12 17v.01"/>'),
   feedback: S('<path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9h8M8 12h5"/>'),
