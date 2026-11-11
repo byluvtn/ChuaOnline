@@ -18,6 +18,8 @@ body.menu-collapsed #actions, body.menu-collapsed #chat { bottom: calc(84px + en
 @media (max-width: 760px) {
   #menu { left: 6px; right: 6px; transform: none; width: auto; max-width: none; bottom: calc(6px + env(safe-area-inset-bottom)); padding: 4px; gap: 4px; border-radius: 18px; }
   #menu.collapsed { right: auto; }
+  body.touch #menu.collapsed { left: 12px; bottom: calc(228px + env(safe-area-inset-bottom)); padding: 4px; }
+  body.touch #menu.collapsed .mtoggle { width: 64px; height: 56px; min-width: 48px; min-height: 48px; }
   #menu .mscroll { flex: 1; gap: 4px; }
   #menu button { width: 58px; height: 56px; }
   #menu .lb { font-size: 9.5px; }

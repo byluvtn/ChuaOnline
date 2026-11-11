@@ -168,7 +168,14 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   .act .lb { font-size: 10px; }
   #chat { left: 8px; bottom: calc(80px + env(safe-area-inset-bottom)); width: min(240px, 55vw); padding: 8px; }
   #msgs { height: 90px; }
-  body.touch #chat { bottom: auto; top: 138px; width: min(250px, 62vw); }
+  body.touch #chat { bottom: auto; top: 138px; width: min(250px, 62vw); z-index: 9; }
+  body.touch.menu-collapsed #chat { bottom: auto; }
+  body.touch #chat:not(.collapsed) { display: flex; flex-direction: column; max-height: min(46dvh, calc(100dvh - 442px - env(safe-area-inset-bottom))); }
+  body.touch #chatBody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  body.touch #msgs { height: auto; flex: 1 1 auto; min-height: 64px; overflow-y: auto; overscroll-behavior: contain; }
+  body.touch #chatForm { flex: none; }
+  body.touch #chatInput { font-size: 16px; }
+  body.touch #chatToggle { width: 40px; height: 40px; margin: -8px -4px -8px auto; }
   body.touch #medBanner { top: 128px; }
   #joystick { bottom: calc(92px + env(safe-area-inset-bottom)); }
   #profile { top: 36px; left: 6px; }
