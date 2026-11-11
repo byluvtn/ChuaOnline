@@ -454,3 +454,36 @@ Baseline: `main` sau commit `8d7fb8b`; không đổi schema DB.
 - `tools/steps-verify-beads.mjs`: ca chờ hợp lệ từ ~46 giây xuống ~32 giây; thêm ca biên (done ở ~29 giây → `{ ok: false }`, rounds = 0; done ở ~32 giây → hợp lệ); ca ghi đè mốc đổi từ 20 giây sang ~31 giây. Kết quả: TẤT CẢ PASS 28/28 (trước 27), tổng ~59 giây (trước ~80 giây). `npm run typecheck` pass.
 - Grep code còn một chỗ nhắc 45 giây: `tools/steps-r22-beads.mjs` (script chụp ảnh, chờ 46,5 giây và log "đủ 45s"). Không sửa vì ngoài phạm vi spec; script vẫn chạy đúng với sàn mới, chỉ chờ lâu hơn cần thiết. Các mục R2.2 phía trên trong file này ghi 45 giây là lịch sử, không sửa.
 - Không đổi giao diện, không đổi tin "Có gì mới" (`LATEST_NEWS_ID` giữ 5).
+
+## A2.1 — Mở rộng khuôn viên: ĐÃ XONG §1 (layout.ts) + §3 (hành lang + La Hán)
+Nguồn thiết kế: `phan-a2/phan-a2-mo-rong-chua-online.md` (không có file spec A2.1 riêng). Baseline: `main` sau commit `dfc0fcd`. Commit: `dce2a94` (layout), `dab445e` (hành lang + La Hán); đã push `origin/main`.
+
+### Đã làm
+- **§1 `src/layout.ts`:** `CORR.half` 1.9 → 2.6 (hành lang rộng 3.8 → 5.2). `groundY()` và `src/features/map.ts` dùng `CORR.half` nên tự theo, không sửa thêm.
+- **§3 `src/temple.ts` (khối hành lang):** mái `slabG` rộng 2.7 → 3.4; cột `off` ±1.7 → ±2.4; vị trí tấm mái `s * 1.18` → `s * 1.62`; đèn lồng `off` ±1.15 → ±1.65; ghế đá `side * 1.3` → `side * 1.7`; bảng hiệu cột `CORR.x - 1.7` → `CORR.x - 2.4`.
+- **La Hán:** 10 → 6 tượng mỗi bên, `z = -16.5 + 3k` (k = 0..5), cách nhau 3, xếp mép NGOÀI hành lang `x = side * CORR.x + side * 2.0`. Bỏ `ARHAT_INNER` (không còn hàng trong), cập nhật comment tương ứng.
+- **Collider:** thêm collider cho ghế đá hành lang (`r: 0.5`); collider tượng La Hán giữ `r: 0.42`, tự theo vị trí mới.
+
+### Kiểm chứng
+- `npm run typecheck` pass; grep không còn tham chiếu `ARHAT_INNER`.
+- Chưa chụp ảnh / chưa chạy game để nhìn hành lang mới; chưa đối chiếu cột mới với `blocked()` (vùng cấm cây/hoa quanh hành lang ở `layout.ts` dòng 121, 143 còn theo bề rộng cũ).
+
+### Phần còn lại của A2.1 (§4–§13), chia cho các session sau
+Spec gốc của `phan-a2/...md` đánh số theo mục 1–9 (không có §10–§13 trong file đọc được); thứ tự gói đề xuất ở mục 9 của spec:
+1. **A2.1 (tiếp):** mở map (tường ±62, Bắc −82), dời/nới nhà (hai viện, thiền đường, phòng công đức, vườn phóng sinh, tháp nhỏ), phố trước cổng, mạng đường 4 cấp (mục 1–2). Chưa làm: đổi `WALL`, tọa độ các nhà, `blocked()` cho vùng mới.
+2. **A2.2:** trị đơ trên máy thật (merge mesh cho `buildHouse`/`extraHouse`/am cổ, pre-warm, đo frame-time) + lỗi lẻ (chuông treo ngược, collider) — mục 4 + 7.
+3. **A2.3:** nội thất 6 nhà — mục 3.
+4. **A2.4:** Điện Tam Thế + bộ ba tượng — mục 5.
+5. **A2.5:** NPC mở rộng + ca trực/nghỉ + di chuyển theo mạng đường — mục 6.
+
+### Prompt sẵn để mở session mới làm tiếp §4 + §5
+```
+Đọc HANDOFF.md (mục "A2.1" cuối file) và phan-a2/phan-a2-mo-rong-chua-online.md mục 4 (Trị đơ trên máy thật) + mục 5 (Điện Tam Thế — dựng từ zero). A2.1 §1 + §3 đã xong (CORR.half 2.6, 6 La Hán/bên) — không làm lại.
+Phạm vi session này: CHỈ mục 4 và mục 5 của spec. Không mở rộng sang mở map, nội thất, NPC.
+Mục 4: mở rộng mergeStaticByMaterial cho buildHouse, extraHouse, builder am cổ; pre-warm (renderer.compile + nạp trước texture bảng hiệu); nghiệm thu bằng frame-time trên máy thật theo tuyến cố định qua 5 nhà, có số liệu trước/sau.
+Mục 5: dựng Điện Tam Thế tại TAM_THE (0,-54): nền cao ~3.0, bậc lên từ đường trục, bộ ba tượng A Di Đà (trái) - Thích Ca (giữa, lớn nhất) - Di Lặc (phải), ban thờ phía trước; mẫu tượng theo Concept A Di Đà.webp / Concept Di Lặc.webp.
+Sau khi xong: typecheck, commit theo cụm, push, cập nhật HANDOFF.md.
+```
+
+### Lưu ý
+- Working tree còn nhiều file untracked không thuộc phạm vi (ảnh `shots/*.png`, `Bản đồ Phần A2 v7.png`, `Concept *.webp` ở gốc và trong `phan-a2/`); không đưa vào commit.
