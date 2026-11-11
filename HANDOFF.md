@@ -273,3 +273,38 @@ Mục 22 (Điện Mẫu), 23 (Nhà khách), 24 (Thiền đường) đã có từ
 - Chấm đỏ chỉ cập nhật khi đọc/nhận hoặc vào chùa; thư mới gửi lúc đang online (R3.1) sẽ cần event đẩy riêng.
 - Chưa deploy: bảng `mail`/`app_meta` và thư ra mắt sẽ tự tạo ở boot đầu trên Render/Turso.
 - Chưa làm R1.3 trở đi.
+
+---
+
+## R1.3 — Vòng quay may mắn + ghi bù "Có gì mới" + sửa UI điện thoại
+Baseline mới: `main` sau 4 commit R1.3 (trước đó `1ee97b0`). Commit: `d75ff79` (ghi bù news), `72d13ec` (vòng quay), `ce58118` (UI điện thoại), cộng commit HANDOFF này.
+
+### Đã làm
+- **Bước 0 (`d75ff79`):** `src/data/news.ts` thêm entry "Hòm thư nhà chùa" và "Điểm danh mỗi ngày", `LATEST_NEWS_ID` 1 → 2 (cả đợt chỉ tăng một lần). Quy ước đứng: mỗi tính năng ra mắt phải có entry trong file này, nếu không coi như chưa xong nghiệm thu.
+- **Vòng quay (`72d13ec`):** `shared/game.ts` có `SPIN_SEGMENTS` (8 ô, tổng weight 100), `drawSpinSegment(rng)` thuần, kiểu `SpinState`/`SpinAck`. `server/index.ts`: emit `spin { used }` lúc join, `spin:get`, `spin:play`. Lượt quay dùng lại `minigame_daily` (game `'quay'`, cap 1) qua `db.claimMinigame`, không có bảng mới. Lượt bị tiêu TRƯỚC khi rút ô; thưởng đi qua `grantRewards` (nhiệm vụ merit, bonus lên cấp, `pushProfile`), item qua `db.addItem`. `moh`/`memory` không đổi.
+- Client: `src/features/spin.ts` (vòng 8 ô bằng CSS `conic-gradient` + nhãn xoay, kim cố định ở đỉnh, nút QUAY ở tâm), thẻ đầu tiên "Vòng quay may mắn" trong `games.ts`, chấm đỏ `.gamesDot` ở nút Trò chơi (`menu.ts`, `initSpin`). Quy ước góc: ô i chiếm `[i×45°, (i+1)×45°)` theo chiều kim đồng hồ từ đỉnh; ack `segment = k` → xoay tới `360×5 + (360 − (k×45 + 22.5))` độ, 4,5 s `cubic-bezier(0.12, 0.8, 0.08, 1)`. Entry news "Vòng quay may mắn" đã thêm (không tăng `LATEST_NEWS_ID`).
+- **EV vòng quay (ghi theo spec):** ≈ 16,1 công đức + 11 xu + 7% Hương trầm mỗi lượt. Ô lớn nhất ĐẠI CÁT 100 công đức + 100 xu (weight 5) nằm trong trần Phần B (merit ≤ 100, xu ≤ 200). Chưa đổi số nào.
+- **Sửa UI điện thoại (`ce58118`)**, chỉ trong `@media (max-width: 760px)` / `body.touch`: `#chat` mở là flex cột, `max-height: min(46dvh, 100dvh − 442px − safe-area)` (số thứ hai giữ cạnh dưới chat cách nút Mở rộng, không chạm joystick trên màn thấp), `#msgs` co giãn và cuộn trong, `#chatForm` dính đáy, `#chat` z-index 9 (> joystick 8), `#chatInput` 16px, `#chatToggle` 40×40. Khi thanh menu thu gọn, nút Mở rộng chuyển thành nút nổi `left: 12px; bottom: calc(228px + safe-area)`, 64×56px. Desktop, kéo/thả joystick, logic thu gọn, nội dung chat không đổi.
+
+### Kiểm chứng
+- `npm run typecheck` pass (trước mỗi commit).
+- `node tools/steps-verify-spin.mjs` (DB tạm, spawn server thật): tất cả PASS:
+  - Khách mới: event `spin` used=false; `spin:get` used=false.
+  - `spin:play`: ok, segment ∈ [0,7], ack merit/coins/item khớp `SPIN_SEGMENTS[segment]`; profile tăng ≥ thưởng ô (lần chạy cuối: ô +25 → merit 0→30 do bonus lên cấp, coins 0→10); túi +1 đúng món nếu ô có item.
+  - Lần 2 cùng ngày: ok=false, used=true, profile không đổi. 4 lệnh song song: đúng 1 ok, `minigame_daily` count = 1.
+  - Phân phối 20.000 lần: +10=22,4% | 15 xu=15,9% | +15=18,5% | 30 xu=11,5% | +25=11,9% | Hương trầm=7,3% | +40=7,6% | ĐẠI CÁT=5,0%. Mọi ô trúng ≥ 1; ĐẠI CÁT trong 2–9%; ô weight ≥ 16 ≥ nửa kỳ vọng.
+  - `minigameCount('moh')` vẫn 0 sau khi quay; `minigame:reward 'moh'` vẫn nhận +3/+2. Dòng `quay` của hôm qua (UTC) → `spin:play` vẫn ok.
+- Ảnh vòng quay (`tools/steps-r13-spin.mjs`, DB tạm, 1280×800): `shots/r13-dot.png` (chấm đỏ ở Trò chơi), `r13-wheel.png` (8 ô đọc được + nút QUAY), `r13-result.png`. Đối chiếu tay: lần chụp cuối kim chỉ ô "15 xu" (rot = 2092,5°, góc dưới kim 67,5° → ô 1) và dòng kết quả "Chúc mừng: 15 xu!"; sau khi quay chấm đỏ tắt và thẻ Trò chơi đổi thành "Đã quay hôm nay · Mai quay tiếp nhé".
+- Ảnh điện thoại (`tools/steps-r13-mobile.mjs`, Chrome headless, `?touch=1`, 390×844 và 360×740, DB tạm): `shots/r13-m-chat-open.png`, `r13-m-chat-typing.png`, `r13-m-bar.png`, `r13-m360-chat-open.png`, `r13-m360-bar.png`. Số đo thật ở 390×844: chat 242×388 (top 138, bottom 526), ô nhập trong khung và là phần tử nhận chạm (`elementFromPoint` = `chatInput`), joystick top 628 → cách chat 102px; `#msgs` scrollHeight/clientHeight = 1086/292 (cuộn trong). Chạm vào ô nhập → focus; gõ + Enter → tin "Con xin gõ thử trên điện thoại" xuất hiện cuối danh sách. Nút Mở rộng 64×56 ở (17, 555)–(81, 611), cách joystick 17px, bấm được (`elementFromPoint` = `mtoggle`, bấm lại thì mở thanh). 360×740: chat bottom 436, joystick top 524, nút Mở rộng cách joystick 17px.
+- Kéo joystick khi chat đang mở: nhân vật di chuyển được (z 9,55 → 7,36 ở 390×844; 9,4 → 7,2 ở 360×740).
+- Ảnh desktop 1280×800 `shots/r13-desktop.png`: chat vẫn 340px neo đáy trái (rect 12,452–352,708), bố cục không đổi.
+
+### Chưa chắc chắn / việc còn treo
+- Chưa thử trên điện thoại thật: bàn phím ảo thật có đẩy/che khung chat hay không chưa được kiểm; ảnh chụp dùng giả lập cảm ứng của Chrome headless.
+- Giả lập `pointer: coarse` của `shot.mjs` không bật `body.touch`; script mobile phải dùng `?touch=1`.
+- Vòng quay chưa thử với mạng chậm/ngắt giữa chừng trên máy thật; thiết kế đã bảo đảm quà vào tài khoản trước khi ack. Nếu mất ack, client hiển thị lại trạng thái "đã quay" ở lần vào sau (event `spin` lúc join).
+- Ngày quay tính theo `dayKey()` UTC (như moh/memory), chưa là mốc 07:00 VN như văn bản UI nói; thuộc R1.4 cùng điểm danh.
+- Chấm đỏ Trò chơi chỉ cập nhật khi vào chùa hoặc sau khi quay; không đẩy trực tiếp lúc qua ngày (R3.1).
+- Ảnh PNG chưa nén (chưa có pngquant/oxipng).
+- Chưa deploy; không có bảng DB mới nên không cần migration.
+- Chưa làm R1.4 trở đi.
