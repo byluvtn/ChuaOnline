@@ -110,7 +110,7 @@ export function buildTemple(c: TempleCtx) {
   // ---- covered corridors (hành lang) ----
   const corridor = new THREE.Group(); corridor.name = 'corridors'; scene.add(corridor);
   const pillarG = new THREE.CylinderGeometry(0.17, 0.2, 3.3, 10), baseG = new THREE.BoxGeometry(0.5, 0.22, 0.5);
-  const slabG = new THREE.BoxGeometry(2.7, 0.16, CORR.z1 - CORR.z0 + 1.2);
+  const slabG = new THREE.BoxGeometry(3.4, 0.16, CORR.z1 - CORR.z0 + 1.2);
   const roofM = lamb(0xb4502c, { roughness: 0.6 }), stoneBase = lamb(0x6b6458);
   const floorT = stoneTexture([158, 150, 138], [2, 8]);
   const spacing = 3.6, zs: number[] = [];
@@ -121,7 +121,7 @@ export function buildTemple(c: TempleCtx) {
     const cx = side * CORR.x, zc = (CORR.z0 + CORR.z1) / 2, len = CORR.z1 - CORR.z0;
     const floor = new THREE.Mesh(new THREE.BoxGeometry(CORR.half * 2, 0.12, len), lamb(0xffffff, { map: floorT }));
     floor.position.set(cx, 0.06, zc); floor.receiveShadow = true; corridor.add(floor);
-    for (const off of [-1.7, 1.7]) {
+    for (const off of [-2.4, 2.4]) {
       for (const z of zs) {
         // cột ăn sâu vào nền 0.22 để không hở chân cột, và chạm đáy xà phía trên
         const p = new THREE.Mesh(pillarG, c.redM); p.position.set(cx + off, CORR.y + 1.55, z); p.castShadow = true;
@@ -135,17 +135,18 @@ export function buildTemple(c: TempleCtx) {
     }
     for (const s of [-1, 1]) {
       const slab = new THREE.Mesh(slabG, roofM);
-      slab.position.set(cx + s * 1.18, CORR.y + 3.86, zc); slab.rotation.z = -s * 0.45; slab.castShadow = true;
+      slab.position.set(cx + s * 1.62, CORR.y + 3.86, zc); slab.rotation.z = -s * 0.45; slab.castShadow = true;
       slab.userData.sealable = true; corridor.add(slab);
     }
     const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, len + 1.3), c.goldM);
     ridge.position.set(cx, CORR.y + 4.54, zc); ridge.userData.sealable = true; corridor.add(ridge);
-    for (const z of zs) for (const off of [-1.15, 1.15]) {
+    for (const z of zs) for (const off of [-1.65, 1.65]) {
       d.position.set(cx + off, CORR.y + 2.75, z + spacing / 2); d.scale.set(1, 1.2, 1); d.updateMatrix(); lanterns.setMatrixAt(li++, d.matrix);
     }
     for (let z = CORR.z0 + 2.4; z < CORR.z1 - 1; z += spacing * 2) {
       const bench = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 1.8), lamb(0x6d4426));
-      bench.position.set(cx - side * 1.3, CORR.y + 0.5, z); bench.castShadow = true; corridor.add(bench);
+      bench.position.set(cx - side * 1.7, CORR.y + 0.5, z); bench.castShadow = true; corridor.add(bench);
+      colliders.push({ x: bench.position.x, z, r: 0.5 });
       for (const lz of [-0.7, 0.7]) {
         const leg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.1), lamb(0x4a2e18));
         leg.position.set(bench.position.x, CORR.y + 0.25, z + lz); corridor.add(leg);
@@ -155,24 +156,18 @@ export function buildTemple(c: TempleCtx) {
   d.scale.setScalar(1); lanterns.count = li; scene.add(lanterns);
   // bảng chữ Việt treo trên hai cột đầu hành lang
   for (const side of [-1, 1]) {
-    labelBoard(corridor, COLUMN_LABELS.hanhLang[side > 0 ? 0 : 1], 0.5, 2.4, side * (CORR.x - 1.7), CORR.y + 1.9, CORR.z1 - 1.2, side > 0 ? 0 : Math.PI);
+    labelBoard(corridor, COLUMN_LABELS.hanhLang[side > 0 ? 0 : 1], 0.5, 2.4, side * (CORR.x - 2.4), CORR.y + 1.9, CORR.z1 - 1.2, side > 0 ? 0 : Math.PI);
   }
   sealArchitectureJoints(corridor, { maxGap: 0.4 });
 
-  // ---- tượng La Hán dọc hai hành lang: 10 tượng mỗi bên, quay mặt vào trục ----
-  /*
-   * z = -17.5 + 1.8k (k = 0..9): luôn cách cột hành lang (z = -18.4 + 3.6j) đúng 0.9.
-   * Ghế dài nằm ở hàng trong (lệch -side × 1.3) tại z = -16.6, -9.4, -2.2, nên các slot trùng ghế
-   * (k = 0, 1, 4, 5, 8, 9) đặt ở hàng ngoài; k = 2, 3, 6, 7 đặt ở hàng trong → thứ tự ngoài-ngoài-trong-trong.
-   */
+  // ---- tượng La Hán dọc hai hành lang: 6 tượng mỗi bên, cách nhau 3, xếp mép ngoài, quay mặt vào trục ----
   const arhatGroup = new THREE.Group(); arhatGroup.name = 'arhats'; scene.add(arhatGroup);
   const arhatModels = ([0, 1, 2] as const).map((v) => buildArhat(v));
   const arhatPedM = lamb(0x9a8f7a, { map: stoneTexture([170, 160, 140], [1, 1], 2) });
-  const ARHAT_INNER = new Set([2, 3, 6, 7]);
   for (const side of [-1, 1] as const) {
-    for (let k = 0; k < 10; k++) {
-      const z = -17.5 + 1.8 * k;
-      const x = side * CORR.x + (ARHAT_INNER.has(k) ? -side : side) * 1.5;
+    for (let k = 0; k < 6; k++) {
+      const z = -16.5 + 3 * k;
+      const x = side * CORR.x + side * 2.0;
       const ped = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.8), arhatPedM);
       ped.position.set(x, CORR.y + 0.275, z); ped.castShadow = ped.receiveShadow = true; ped.userData.sealable = true; arhatGroup.add(ped);
       const a = arhatModels[(k + (side > 0 ? 1 : 0)) % 3].clone(true);
