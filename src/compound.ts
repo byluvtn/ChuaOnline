@@ -382,7 +382,7 @@ export function buildZenGarden(g: GardenCtx) {
   };
   let sd = 0;
   for (let x = -45; x <= -25; x += 1.7) clump(x, -40 + ((sd++ % 3) - 1) * 0.25, sd);
-  for (let z = -38.3; z <= -16; z += 1.7) clump(-44 + ((sd++ % 3) - 1) * 0.25, z, sd);
+  for (let z = -38.3; z <= -23; z += 1.7) clump(-44 + ((sd++ % 3) - 1) * 0.25, z, sd);
 
   // bonsai trên đôn đá (4 chậu quanh vòng cát)
   const trunkM = g.lamb(0x5a3d22), crownM = g.lamb(0x3f8a3e, { flatShading: true });
@@ -428,7 +428,7 @@ export function buildZenGarden(g: GardenCtx) {
     const h = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 8), hedgeM); h.scale.y = 0.9; h.position.set(x, GY + 0.6, z); h.castShadow = h.receiveShadow = true; grp.add(h);
     g.colliders.push({ x, z, r: 0.7 });
   };
-  for (let x = -43.5; x <= -24.5; x += 1.2) { if (Math.abs(x + SIDE_X) < 1.3) continue; hedge(x, -17); }
+  for (let x = -43.5; x <= -24.5; x += 1.2) { if (Math.abs(x + SIDE_X) < 1.3 || x < -38) continue; hedge(x, -17); }
   for (let z = -18.2; z >= -35; z -= 1.2) hedge(-24.5, z);
 
   g.addZone(cx, cz, 9, 'vuonThien');

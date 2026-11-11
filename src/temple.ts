@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TANG_XA_TAY, TANG_XA_TAY_PLAT, TANG_XA_TAY_DOOR, TRAI_DUONG, TRAI_DUONG_PLAT, TRAI_DUONG_DOOR, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -650,6 +650,92 @@ export function buildTemple(c: TempleCtx) {
   const td = extraHouse('thien-duong', THIEN_DUONG, THIEN_DUONG_PLAT, 'THIỀN ĐƯỜNG', 'thienDuong', 2.6, 2.2, true);
   for (let i = 0; i < 2; i++) labelBoard(td.g, COUPLETS.thienDuong.am[i].split(',')[0], 0.42, 2.2, i ? td.hx : -td.hx, THIEN_DUONG_PLAT.y + 1.7, td.hz + 0.22);
 
+  // ---- Khu sinh hoạt dọc tường Tây (GĐ3 #21): tăng xá + trai đường, nhà dài thấp, hiên quay về phía Đông ----
+  // Hệ toạ độ cục bộ: trục dài = x, mặt tiền = +z. Quay Y = +π/2 đưa +z cục bộ thành +x thế giới (hướng Đông), x cục bộ thành −z.
+  const longHouse = (name: string, at: { x: number; z: number }, plat: { hx: number; hz: number; y: number },
+    sign: string, coupletId: 'tangXaTay' | 'traiDuong', hl: number, kitchen: boolean) => {
+    const g = new THREE.Group(); g.name = name;
+    const wood = lamb(0x5a3a22, { roughness: 0.85 });
+    const st = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+      m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; g.add(m); return m;
+    };
+    const PL = plat.y, colH = 3.0, y0 = PL + 0.15, backZ = -1.9, frontZ = 0.5, verZ = 2.2;
+    const segN = 5, segL = (2 * hl) / segN, mid = Math.floor(segN / 2);
+    const platW = plat.hx * 2, platL = plat.hz * 2;
+    st(platL, PL, platW, 0, PL / 2, 0.15);
+    const segX = (i: number) => -hl + segL * (i + 0.5);
+    const shifted = (off: number): BoxAdd => (w, h, dp, x, y, z, mat) => st(w, h, dp, x + off, y, z, mat ?? c.wallM);
+    for (let i = 0; i < segN; i++) {
+      const off = segX(i);
+      windowWall(shifted(off), 'x', backZ, segL, 0.22, y0, y0 + colH, { c: 0, w: segL * 0.55, s: y0 + 1.2, t: y0 + 2.3 }, c.wallM, wood);
+      if (i !== mid) windowWall(shifted(off), 'x', frontZ, segL, 0.22, y0, y0 + colH, { c: 0, w: segL * 0.6, s: y0 + 0.95, t: y0 + 2.25 }, c.wallM, wood);
+    }
+    const dh = 2.35;
+    st(segL, colH - dh, 0.22, segX(mid), y0 + dh + (colH - dh) / 2, frontZ, c.wallM);
+    for (const sx of [-1, 1]) st(0.2, dh, 0.3, segX(mid) + sx * (segL / 2 - 0.1), y0 + dh / 2, frontZ, c.redM);
+    st(segL, 0.18, 0.3, segX(mid), y0 + dh, frontZ, c.redM);
+    for (const sx of [-hl, hl]) st(0.22, colH, frontZ - backZ, sx, y0 + colH / 2, (frontZ + backZ) / 2, c.wallM);
+    const beamY = y0 + colH + 0.12;
+    for (let i = 0; i <= segN; i++) {
+      const x = -hl + segL * i;
+      st(0.5, 0.18, 0.5, x, PL + 0.09, verZ);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, colH + 0.1, 10), c.redM);
+      col.position.set(x, y0 + colH / 2 - 0.05, verZ); col.castShadow = true; col.userData.sealable = true; g.add(col);
+      const tie = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.24, verZ - backZ + 0.5), c.redM);
+      tie.position.set(x, beamY, (verZ + backZ) / 2); tie.castShadow = true; tie.userData.sealable = true; g.add(tie);
+    }
+    for (const z of [backZ, verZ]) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(2 * hl + 0.7, 0.26, 0.28), c.redM);
+      b.position.set(0, beamY, z); b.castShadow = true; b.userData.sealable = true; g.add(b);
+    }
+    const rw = 3.15, rh = 1.7, rLen = 2 * hl + 1.4;
+    const prof = new THREE.Shape();
+    prof.moveTo(-rw, 0); prof.lineTo(-rw - 0.25, 0.28);
+    prof.quadraticCurveTo(-rw * 0.45, rh * 0.25, 0, rh);
+    prof.quadraticCurveTo(rw * 0.45, rh * 0.25, rw + 0.25, 0.28);
+    prof.lineTo(rw, 0); prof.lineTo(-rw, 0);
+    const rg = new THREE.ExtrudeGeometry(prof, { depth: rLen, bevelEnabled: false });
+    rg.translate(0, 0, -rLen / 2); rg.rotateY(Math.PI / 2);
+    const roof = new THREE.Mesh(rg, c.tileM);
+    roof.position.set(0, beamY + 0.12, (verZ + backZ) / 2); roof.castShadow = true; roof.userData.sealable = true; g.add(roof);
+    const ridge = new THREE.Mesh(new THREE.BoxGeometry(rLen - 0.4, 0.2, 0.3), c.goldM);
+    ridge.position.set(0, beamY + 0.12 + rh - 0.02, (verZ + backZ) / 2); ridge.userData.sealable = true; g.add(ridge);
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
+    sg.position.set(segX(mid), beamY - 0.5, verZ + 0.2); g.add(sg);
+    for (let i = 0; i < 2; i++) labelBoard(g, COUPLETS[coupletId].am[i].split(',')[0], 0.42, 2.2, segX(mid) + (i ? 1 : -1) * 1.7, y0 + 1.7, verZ + 0.2);
+    for (const sx of [-1, 1]) {
+      const lx = segX(mid) + sx * (segL / 2 + segL * 0.5), ly = y0 + colH - 0.7;
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), lamb(0xffd27a, { emissive: 0xff9a2a, emissiveIntensity: 0.9, roughness: 0.6 }));
+      lamp.scale.set(1, 1.25, 1); lamp.position.set(lx, ly, verZ - 0.1); g.add(lamp);
+    }
+    if (kitchen) {
+      st(1.1, 4.4, 1.1, hl - 0.2, PL + 2.2, backZ - 0.3, stoneM);
+      st(1.5, 0.22, 1.5, hl - 0.2, PL + 4.5, backZ - 0.3, c.redM);
+      st(0.8, 0.5, 0.8, hl - 0.2, PL + 4.85, backZ - 0.3, stoneM);
+      st(2 * hl - 1.6, 0.08, 0.8, -0.3, PL + 0.8, backZ + 0.8, wood);
+      for (const sx of [-hl + 1.2, hl - 2.4]) st(0.1, 0.8, 0.7, sx, PL + 0.4, backZ + 0.8, wood);
+      for (const sz of [backZ + 0.25, backZ + 1.35]) st(2 * hl - 1.6, 0.05, 0.3, -0.3, PL + 0.45, sz, wood);
+    } else {
+      st(2 * hl - 1.2, 0.3, 0.9, 0, PL + 0.15, backZ + 0.75, wood);
+    }
+    g.rotation.y = Math.PI / 2;
+    g.position.set(at.x, 0, at.z); scene.add(g);
+    const sl = sealArchitectureJoints(g, { maxGap: 0.5 });
+    if (import.meta.env.DEV) console.warn(`gapdump ${name}: filled=${sl.filled} remaining=${sl.remaining.length}`);
+    const wp = (lx: number, lz: number) => ({ x: at.x + lz, z: at.z - lx });
+    for (let i = 0; i <= segN; i++) colliders.push({ ...wp(-hl + segL * i, verZ), r: 0.3 });
+    for (let lx = -hl; lx <= hl + 0.01; lx += 0.9) colliders.push({ ...wp(lx, backZ), r: 0.5 });
+    for (const sx of [-hl, hl]) for (let lz = backZ; lz <= frontZ + 0.01; lz += 0.8) colliders.push({ ...wp(sx, lz), r: 0.4 });
+    const doorHalf = segL / 2 + 0.25;
+    for (let lx = -hl; lx <= hl + 0.01; lx += 0.7) if (Math.abs(lx - segX(mid)) >= doorHalf) colliders.push({ ...wp(lx, frontZ), r: 0.35 });
+    if (kitchen) colliders.push({ ...wp(hl - 0.2, backZ - 0.3), r: 0.8 });
+    zones.push({ x: at.x, z: at.z, r: 7, id: coupletId });
+    return g;
+  };
+  longHouse('tang-xa-tay', TANG_XA_TAY, TANG_XA_TAY_PLAT, 'TĂNG XÁ', 'tangXaTay', 5.0, false);
+  longHouse('trai-duong', TRAI_DUONG, TRAI_DUONG_PLAT, 'TRAI ĐƯỜNG', 'traiDuong', 4.5, true);
+
   // ---- koi lake + arched bridge (hồ nằm giữa khuôn viên, cầu bắc dọc Bắc–Nam) ----
   const pond = new THREE.Group();            // toàn bộ hồ trong một nhóm → dễ dời tâm
   pond.name = 'koi-pond';
@@ -968,6 +1054,8 @@ export function buildTemple(c: TempleCtx) {
   pathRect(AM_CO.x + AM_CO_PLAT.hx, AM_CO.z - 1.2, -SIDE_X - 1.2, AM_CO.z + 1.2);
   pathRect(-SIDE_X - 1.2, AM_CO.z, -SIDE_X + 1.2, ZEN.z);
   pathRect(VUON_THAP.x - 1.2, VUON_THAP.z + VUON_THAP_PLAT.hz, VUON_THAP.x + 1.2, PATH_Z);
+  pathRect(TANG_XA_TAY_DOOR.x - 0.4, TANG_XA_TAY_DOOR.z - 1.2, -SIDE_X + 1.2, TANG_XA_TAY_DOOR.z + 1.2);
+  pathRect(TRAI_DUONG_DOOR.x - 0.4, TRAI_DUONG_DOOR.z - 1.2, -SIDE_X + 1.2, TRAI_DUONG_DOOR.z + 1.2);
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
   buildZenGarden(gardenCtx);
   buildFlowerBeds(gardenCtx);
