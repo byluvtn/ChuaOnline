@@ -27,6 +27,7 @@ import { openLevels } from './features/levels';
 import { openMap } from './features/map';
 import { openFortune } from './features/fortune';
 import { checkinPending, initCheckin, openCheckin } from './features/checkin';
+import { initMail, mailPending, openMail } from './features/mail';
 import { newsUnread, openCommunity, openDonate, openFacebook, openFeedback, openGuide, openNews } from './features/misc';
 import { openCharacter } from './features/character';
 import { openSettings } from './features/settings';
@@ -63,6 +64,7 @@ export function initMenu(ctx: MenuCtx): void {
     { id: 'games', icon: 'game', label: 'Trò chơi', run: () => openGames(ctx) },
     { id: 'fest', icon: 'festival', label: 'Lễ hội', run: openFestivals },
     { id: 'checkin', icon: 'checkin', label: 'Điểm danh', run: () => openCheckin(ctx) },
+    { id: 'mail', icon: 'mail', label: 'Hòm thư', run: () => openMail(ctx) },
     { id: 'news', icon: 'news', label: 'Có gì mới', run: () => { openNews(); refreshDots(); } },
     { id: 'quests', icon: 'scroll', label: 'Nhiệm vụ', run: legacy('quests') },
     { id: 'bag', icon: 'bag', label: 'Túi đồ', run: legacy('bag') },
@@ -106,6 +108,7 @@ export function initMenu(ctx: MenuCtx): void {
     b.onclick = () => { audio.play('click'); d.run?.(); };
     if (d.id === 'quests') { const em = document.createElement('em'); em.id = 'questDot'; em.hidden = true; b.append(em); }
     if (d.id === 'checkin') { const em = document.createElement('em'); em.className = 'dot checkinDot'; em.hidden = true; b.append(em); }
+    if (d.id === 'mail') { const em = document.createElement('em'); em.className = 'dot mailDot'; em.hidden = true; b.append(em); }
     if (d.id === 'news') { const em = document.createElement('em'); em.className = 'dot newsDot'; em.hidden = true; b.append(em); }
     if (d.id === 'logout') b.id = 'logoutBtn';
     return b;
@@ -118,9 +121,12 @@ export function initMenu(ctx: MenuCtx): void {
     if (d) d.hidden = !newsUnread();
     const c = bar.querySelector<HTMLElement>('.checkinDot');
     if (c) c.hidden = !checkinPending();
+    const m = bar.querySelector<HTMLElement>('.mailDot');
+    if (m) m.hidden = !mailPending();
   };
   refreshDots();
   initCheckin(ctx, refreshDots);
+  initMail(ctx, refreshDots);
 
   const setCollapsed = (c: boolean) => {
     bar.classList.toggle('collapsed', c);

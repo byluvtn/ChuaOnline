@@ -5,7 +5,7 @@ import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
   QUESTS, ROOMS, ROOM_CAPACITY, SUTRAS, WEEKLY_QUESTS,
-  type CheckinAck, type QuestEvent, type QuestState, type RankRow, type RoomInfo,
+  type CheckinAck, type MailAck, type QuestEvent, type QuestState, type RankRow, type RoomInfo,
 } from '../shared/game.js';
 import {
   MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
@@ -219,6 +219,7 @@ io.on('connection', (socket) => {
     await pushProfile(s);
     await pushQuests(s);
     socket.emit('checkin', await db.checkinState(pid));
+    socket.emit('mail', { unread: await db.mailUnread(pid) });
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
@@ -400,6 +401,28 @@ io.on('connection', (socket) => {
     if (rw.item) await db.addItem(pid, rw.item, 1);
     await grantRewards(s, rw.merit, rw.coins);
     cb?.({ ok: true, streak: got.streak, cycleDay: got.cycleDay, merit: rw.merit, coins: rw.coins, item: rw.item, state: await db.checkinState(pid) });
+  });
+
+  socket.on('mail:list', async (cb?: (r: MailAck) => void) => {
+    if (!me()) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    cb?.({ ok: true, mails: await db.mailList(pid), unread: await db.mailUnread(pid) });
+  });
+  socket.on('mail:read', async (mailId: unknown, cb?: (r: MailAck) => void) => {
+    if (!me()) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    if (typeof mailId !== 'number' || !Number.isFinite(mailId)) return cb?.({ ok: false, error: 'Thư không hợp lệ', unread: await db.mailUnread(pid) });
+    await db.markMailRead(pid, mailId);
+    cb?.({ ok: true, unread: await db.mailUnread(pid) });
+  });
+  socket.on('mail:claim', async (mailId: unknown, cb?: (r: MailAck) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    if (typeof mailId !== 'number' || !Number.isFinite(mailId)) return cb?.({ ok: false, error: 'Thư không hợp lệ', unread: await db.mailUnread(pid) });
+    const got = await db.claimMail(pid, mailId);
+    if (!got) return cb?.({ ok: false, error: 'Quà đã được nhận hoặc thư không có quà', unread: await db.mailUnread(pid) });
+    const { merit, coins, items } = got.gift;
+    for (const [item, qty] of Object.entries(items ?? {})) await db.addItem(pid, item, qty);
+    await grantRewards(s, merit, coins);
+    cb?.({ ok: true, merit, coins, items: items ?? {}, unread: await db.mailUnread(pid) });
   });
 
   socket.on('feedback:send', async (p: { text?: string; contact?: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {

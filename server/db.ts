@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { Outfit, Profile } from '../shared/types.js';
+import { ITEM_BY_ID, type MailGift, type MailItem } from '../shared/game.js';
 
 const localFile = process.env.DB_FILE ? process.env.DB_FILE : 'data/chuaonline.db';
 if (!process.env.TURSO_DATABASE_URL) {
@@ -123,6 +124,7 @@ export async function createGuest(): Promise<{ token: string; id: number }> {
   const name = `${GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)]} ${Math.floor(Math.random() * 99) + 1}`;
   const r = await db.execute({ sql: 'INSERT INTO players (name, created_at) VALUES (?,?)', args: [name, now()] });
   const id = Number(r.lastInsertRowid);
+  await sendWelcomeMail(id);
   return { id, token: await newSession(id) };
 }
 
@@ -143,7 +145,9 @@ export async function register(username: string, password: string, guestId: numb
     }
   }
   const r = await db.execute({ sql: 'INSERT INTO players (username, pass_hash, name, created_at) VALUES (?,?,?,?)', args: [username, hash, username, now()] });
-  return { token: await newSession(Number(r.lastInsertRowid)) };
+  const newId = Number(r.lastInsertRowid);
+  await sendWelcomeMail(newId);
+  return { token: await newSession(newId) };
 }
 
 export async function login(username: string, password: string): Promise<{ token: string } | { error: string }> {
@@ -292,6 +296,119 @@ export async function claimCheckin(id: number): Promise<{ streak: number; cycleD
   const streak = Number(row.streak);
   return { streak, cycleDay: ((streak - 1) % 7) + 1 };
 }
+
+// ---- mailbox (R1.2) ----
+await db.executeMultiple(`
+CREATE TABLE IF NOT EXISTS mail (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'system',
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  gift TEXT,
+  read_at INTEGER,
+  claimed INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_mail_player ON mail(player_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS app_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+`);
+
+/** Gói quà dùng chung cho thư chào mừng và thư ra mắt. */
+export const MAIL_STARTER_GIFT: MailGift = { merit: 20, coins: 30, items: { huong_tram: 2, nen_sap_ong: 1, den_hoa_dang: 1 } };
+const WELCOME_MAIL = {
+  kind: 'welcome',
+  title: 'Thư chào mừng từ nhà chùa',
+  body: 'Nam mô A Di Đà Phật. Nhà chùa xin chào mừng bạn đã ghé thăm. Kèm theo thư là một gói quà nhỏ gồm 20 công đức, 30 xu, 2 hương trầm, 1 nến sáp ong và 1 đèn hoa đăng, để bạn thắp hương, tụng kinh và thả đèn ngay những ngày đầu. Mỗi ngày bạn hãy ghé mục Điểm danh để nhận thêm quà và giữ chuỗi ngày liên tiếp. Chúc bạn một ngày an lạc.',
+};
+const LAUNCH_MAIL = {
+  kind: 'launch',
+  title: 'Quà ra mắt hòm thư',
+  body: 'Nam mô A Di Đà Phật. Cảm ơn bạn đã đồng hành cùng nhà chùa từ những ngày đầu. Từ nay nhà chùa có hòm thư để gửi đến bạn thông báo và quà tặng. Kèm theo thư là gói quà gồm 20 công đức, 30 xu, 2 hương trầm, 1 nến sáp ong và 1 đèn hoa đăng, công bằng với mọi người chơi. Chúc bạn một ngày an lạc.',
+};
+
+/** Chuẩn hóa gói quà: bỏ vật phẩm lạ (log cảnh báo), số lượng không hợp lệ; trả null nếu không có gì. */
+function cleanGift(gift: MailGift | null): MailGift | null {
+  if (!gift) return null;
+  const num = (n: unknown) => (Number.isFinite(n) && Number(n) > 0 ? Math.floor(Number(n)) : 0);
+  const items: Record<string, number> = {};
+  for (const [k, v] of Object.entries(gift.items ?? {})) {
+    if (!ITEM_BY_ID[k]) { console.warn(`[mail] bỏ vật phẩm lạ khỏi gói quà: ${k}`); continue; }
+    const q = num(v);
+    if (q > 0) items[k] = q;
+  }
+  const out: MailGift = { merit: num(gift.merit), coins: num(gift.coins) };
+  if (Object.keys(items).length) out.items = items;
+  return out.merit || out.coins || out.items ? out : null;
+}
+export async function sendMail(playerId: number, kind: string, title: string, body: string, gift: MailGift | null): Promise<number> {
+  const g = cleanGift(gift);
+  const r = await db.execute({
+    sql: 'INSERT INTO mail (player_id, kind, title, body, gift, created_at) VALUES (?,?,?,?,?,?)',
+    args: [playerId, kind, title, body, g ? JSON.stringify(g) : null, now()],
+  });
+  return Number(r.lastInsertRowid);
+}
+async function sendWelcomeMail(playerId: number) {
+  try { await sendMail(playerId, WELCOME_MAIL.kind, WELCOME_MAIL.title, WELCOME_MAIL.body, MAIL_STARTER_GIFT); } catch (err) {
+    console.warn(`[mail] không gửi được thư chào mừng cho ${playerId}: ${(err as Error).message}`);
+  }
+}
+const parseGift = (raw: unknown): MailGift | null => {
+  if (typeof raw !== 'string' || !raw) return null;
+  try { return JSON.parse(raw) as MailGift; } catch { return null; }
+};
+export async function mailList(id: number, limit = 50): Promise<MailItem[]> {
+  const rows = (await db.execute({
+    sql: 'SELECT id, kind, title, body, gift, read_at, claimed, created_at FROM mail WHERE player_id = ? ORDER BY created_at DESC, id DESC LIMIT ?',
+    args: [id, limit],
+  })).rows as unknown as { id: number; kind: string; title: string; body: string; gift: string | null; read_at: number | null; claimed: number; created_at: number }[];
+  return rows.map((r) => ({
+    id: Number(r.id), kind: r.kind, title: r.title, body: r.body, gift: parseGift(r.gift),
+    read: r.read_at != null, claimed: Number(r.claimed) === 1, createdAt: Number(r.created_at),
+  }));
+}
+export async function mailUnread(id: number): Promise<number> {
+  const r = (await db.execute({ sql: 'SELECT COUNT(*) AS n FROM mail WHERE player_id = ? AND read_at IS NULL', args: [id] })).rows[0] as unknown as { n: number };
+  return Number(r.n);
+}
+export async function markMailRead(id: number, mailId: number): Promise<boolean> {
+  const r = await db.execute({ sql: 'UPDATE mail SET read_at = ? WHERE id = ? AND player_id = ? AND read_at IS NULL', args: [now(), mailId, id] });
+  return r.rowsAffected === 1;
+}
+/** Nhận quà nguyên tử: null nếu thư không thuộc người chơi, không có quà hoặc đã nhận. */
+export async function claimMail(id: number, mailId: number): Promise<{ gift: MailGift } | null> {
+  const r = await db.execute({ sql: 'UPDATE mail SET claimed = 1 WHERE id = ? AND player_id = ? AND claimed = 0 AND gift IS NOT NULL', args: [mailId, id] });
+  if (r.rowsAffected !== 1) return null;
+  const row = (await db.execute({ sql: 'SELECT gift FROM mail WHERE id = ? AND player_id = ?', args: [mailId, id] })).rows[0] as unknown as { gift: string } | undefined;
+  const gift = parseGift(row?.gift);
+  return gift ? { gift } : null;
+}
+/** Phát thư ra mắt đúng một lần cho mọi người chơi hiện có; idempotent nhờ khóa app_meta. Trả số thư đã phát (0 nếu đã chạy trước đó). */
+export async function grantLaunchMail(): Promise<number> {
+  const tx = await db.transaction('write');
+  try {
+    const done = (await tx.execute({ sql: 'SELECT 1 FROM app_meta WHERE key = ?', args: ['mail_launch_v1'] })).rows[0];
+    if (done) { await tx.rollback(); return 0; }
+    const g = cleanGift(MAIL_STARTER_GIFT);
+    const r = await tx.execute({
+      sql: 'INSERT INTO mail (player_id, kind, title, body, gift, created_at) SELECT id, ?, ?, ?, ?, ? FROM players',
+      args: [LAUNCH_MAIL.kind, LAUNCH_MAIL.title, LAUNCH_MAIL.body, g ? JSON.stringify(g) : null, now()],
+    });
+    await tx.execute({ sql: 'INSERT INTO app_meta (key, value) VALUES (?, ?)', args: ['mail_launch_v1', 'done'] });
+    await tx.commit();
+    return r.rowsAffected;
+  } catch (err) {
+    try { await tx.rollback(); } catch { /* đã đóng */ }
+    throw err;
+  } finally {
+    tx.close();
+  }
+}
+console.log(`[db] mail launch grant: ${await grantLaunchMail()} thư`);
 
 // ---- ranking ----
 export async function topAllTime(limit = 20) {

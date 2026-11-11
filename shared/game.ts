@@ -221,3 +221,13 @@ export interface CheckinAck {
   ok: boolean; error?: string; state?: CheckinState;
   streak?: number; cycleDay?: number; merit?: number; coins?: number; item?: string;
 }
+
+export interface MailGift { merit: number; coins: number; items?: Record<string, number> }
+export interface MailItem {
+  id: number; kind: string; title: string; body: string;
+  gift: MailGift | null; read: boolean; claimed: boolean; createdAt: number;
+}
+export interface MailAck {
+  ok: boolean; error?: string; unread?: number; mails?: MailItem[];
+  merit?: number; coins?: number; items?: Record<string, number>;
+}
