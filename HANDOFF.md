@@ -243,3 +243,33 @@ Mục 22 (Điện Mẫu), 23 (Nhà khách), 24 (Thiền đường) đã có từ
 - Chưa thử trên mobile/cảm ứng. Thông báo thưởng dùng `ctx.toast`, chưa có hiệu ứng riêng.
 - Bảng `checkins` tự tạo trên Turso khi server Render khởi động lại; chưa deploy.
 - Chưa làm R1.2 (hòm thư) và các mục khác.
+
+---
+
+## R1.2 — Hòm thư + quà chào mừng (commit `ed8da1b`)
+
+### Đã làm
+- `shared/game.ts`: `MailGift`, `MailItem`, `MailAck`.
+- `server/db.ts`: bảng `mail` + index `idx_mail_player` và bảng `app_meta` (tạo lúc boot). Hàm `sendMail` (bỏ item lạ qua `ITEM_BY_ID` + log cảnh báo, gói rỗng lưu NULL), `mailList`, `mailUnread`, `markMailRead`, `claimMail` (UPDATE có điều kiện `claimed = 0 AND gift IS NOT NULL`, mọi truy vấn khóa `player_id`). Gói quà `MAIL_STARTER_GIFT` = 20 công đức, 30 xu, `huong_tram` ×2, `nen_sap_ong` ×1, `den_hoa_dang` ×1; nội dung thư chào mừng/ra mắt là hằng số `WELCOME_MAIL`/`LAUNCH_MAIL` ở một chỗ.
+- Thư chào mừng: gọi sau INSERT trong `createGuest()` và nhánh INSERT của `register()`; nhánh nâng cấp khách không gửi. Lỗi gửi thư chỉ log, không làm hỏng tạo tài khoản.
+- Thư ra mắt: `grantLaunchMail()` chạy lúc boot ngay sau khi tạo bảng, trong một transaction: nếu `app_meta.mail_launch_v1` chưa có thì `INSERT ... SELECT` cho mọi `players` rồi ghi cờ. Log `[db] mail launch grant: N thư`. Trên production tự chạy ở lần boot đầu sau deploy, không cần lệnh tay.
+- `server/index.ts`: emit `mail { unread }` trong `join`; `mail:list`, `mail:read` (mailId phải là số hữu hạn), `mail:claim` (addItem từng món trước, rồi `grantRewards`).
+- Client: `src/features/mail.ts` (nút "Hòm thư" + chấm đỏ `.mailDot`, panel danh sách / chi tiết / nút Nhận quà, thông báo bằng `ctx.toast`), icon `mail` trong `icons.ts`, CSS `.mrow`/`.mgift`... trong `menu.css`, nối vào `menu.ts`.
+
+### Kiểm chứng
+- `npm run typecheck` pass.
+- `node tools/steps-verify-mail.mjs` (DB tạm, không đụng DB thật/Turso): 30/30 PASS, gồm:
+  - Khách mới: 1 thư welcome, event `mail` unread = 1. Đăng ký mới: 1 thư welcome. Khách nâng cấp: vẫn 1 thư.
+  - Nhận quà: công đức 40→60, xu 0→30 (đúng +20/+30), túi đủ 3 món; nhận lần 2 và 4 lệnh song song bị chặn, profile không đổi.
+  - Người chơi B claim/read thư của C: bị chặn, `read_at` vẫn NULL, `claimed` = 0.
+  - Đọc thư: unread giảm, đọc lại không lỗi, mailId không phải số trả lỗi gọn.
+  - Ra mắt: 2 người chơi cũ, boot 2 lần liên tiếp (log 2 thư rồi 0 thư), mỗi người đúng 1 thư `launch`; người chơi tạo sau khi cờ set không có thư launch; boot lần 3 không phát thêm.
+  - Thư không quà (`sendMail(..., null)`): claim bị chặn, đọc bình thường.
+- Ảnh (chụp trên DB tạm bằng `tools/steps-r12-mail.mjs`): `shots/r12-menu-dot.png` (nút Hòm thư + chấm đỏ), `r12-list.png` (danh sách, thư chưa đọc có chấm, dòng tóm tắt quà), `r12-open.png` (thư mở ra với nút Nhận quà), `r12-claimed.png` (nút "Đã nhận quà"). Chưa nén: máy chưa có pngquant/oxipng, ảnh giữ nguyên bản PNG của `shot.mjs`, giống r11-*.
+
+### Chưa chắc chắn
+- Test ra mắt dùng DB cũ tự dựng (chỉ bảng `players` rồi boot); chưa chạy trên bản sao DB thật 72 tài khoản.
+- Chưa thử mobile/cảm ứng. Danh sách giới hạn 50 thư, chưa có phân trang. Chưa có xóa thư (theo spec).
+- Chấm đỏ chỉ cập nhật khi đọc/nhận hoặc vào chùa; thư mới gửi lúc đang online (R3.1) sẽ cần event đẩy riêng.
+- Chưa deploy: bảng `mail`/`app_meta` và thư ra mắt sẽ tự tạo ở boot đầu trên Render/Turso.
+- Chưa làm R1.3 trở đi.
