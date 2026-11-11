@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { Outfit, Profile } from '../shared/types.js';
-import { ITEM_BY_ID, type MailGift, type MailItem } from '../shared/game.js';
+import { ITEM_BY_ID, type MailGift, type MailItem, type PlayerStats, type StatKey } from '../shared/game.js';
 
 const localFile = process.env.DB_FILE ? process.env.DB_FILE : 'data/chuaonline.db';
 if (!process.env.TURSO_DATABASE_URL) {
@@ -262,6 +262,63 @@ await db.execute(`CREATE TABLE IF NOT EXISTS level_rewards (
 export async function claimLevelReward(id: number, level: number): Promise<boolean> {
   const r = await db.execute({ sql: 'INSERT OR IGNORE INTO level_rewards (player_id, level) VALUES (?,?)', args: [id, level] });
   return r.rowsAffected === 1;
+}
+
+// ---- lifetime stats & achievement milestones (R1.5) ----
+await db.executeMultiple(`
+CREATE TABLE IF NOT EXISTS player_stats (
+  player_id INTEGER PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
+  bows INTEGER NOT NULL DEFAULT 0,
+  chants INTEGER NOT NULL DEFAULT 0,
+  lanterns INTEGER NOT NULL DEFAULT 0,
+  meditate_sec INTEGER NOT NULL DEFAULT 0,
+  beads_rounds INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS stat_rewards (
+  player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+  milestone_id TEXT NOT NULL,
+  claimed_at INTEGER NOT NULL,
+  PRIMARY KEY (player_id, milestone_id)
+);
+`);
+const STAT_COLUMNS: Record<StatKey, string> = {
+  bows: 'bows', chants: 'chants', lanterns: 'lanterns', meditate_sec: 'meditate_sec', beads_rounds: 'beads_rounds',
+};
+/** Tăng bộ đếm trọn đời nguyên tử; trả về giá trị mới của cột. Tên cột chỉ lấy từ bảng cố định ở trên. */
+export async function bumpStat(id: number, key: StatKey, delta: number): Promise<number> {
+  const col = STAT_COLUMNS[key];
+  if (!col) throw new Error(`stat key không hợp lệ: ${String(key)}`);
+  const by = Math.max(0, Math.floor(delta));
+  const r = await db.execute({
+    sql: `INSERT INTO player_stats (player_id, ${col}) VALUES (?, ?)
+    ON CONFLICT(player_id) DO UPDATE SET ${col} = ${col} + ?
+    RETURNING ${col} AS v`,
+    args: [id, by, by],
+  });
+  return Number((r.rows[0] as unknown as { v: number }).v);
+}
+export async function getStatValue(id: number, key: StatKey): Promise<number> {
+  const col = STAT_COLUMNS[key];
+  if (!col) throw new Error(`stat key không hợp lệ: ${String(key)}`);
+  const r = (await db.execute({ sql: `SELECT ${col} AS v FROM player_stats WHERE player_id = ?`, args: [id] })).rows[0] as unknown as { v: number } | undefined;
+  return r ? Number(r.v) : 0;
+}
+export async function getStats(id: number): Promise<PlayerStats> {
+  const r = (await db.execute({ sql: 'SELECT bows, chants, lanterns, meditate_sec, beads_rounds FROM player_stats WHERE player_id = ?', args: [id] })).rows[0] as unknown as
+    { bows: number; chants: number; lanterns: number; meditate_sec: number; beads_rounds: number } | undefined;
+  return {
+    bows: Number(r?.bows ?? 0), chants: Number(r?.chants ?? 0), lanterns: Number(r?.lanterns ?? 0),
+    meditateSec: Number(r?.meditate_sec ?? 0), beadsRounds: Number(r?.beads_rounds ?? 0),
+  };
+}
+/** Ghi nhận mốc thành tựu đã thưởng; true nếu lần đầu đạt mốc này. */
+export async function claimStatReward(id: number, milestoneId: string): Promise<boolean> {
+  const r = await db.execute({ sql: 'INSERT OR IGNORE INTO stat_rewards (player_id, milestone_id, claimed_at) VALUES (?,?,?)', args: [id, milestoneId, now()] });
+  return r.rowsAffected === 1;
+}
+export async function claimedStatRewards(id: number): Promise<string[]> {
+  const rows = (await db.execute({ sql: 'SELECT milestone_id FROM stat_rewards WHERE player_id = ? ORDER BY claimed_at, milestone_id', args: [id] })).rows as unknown as { milestone_id: string }[];
+  return rows.map((r) => r.milestone_id);
 }
 
 // ---- daily check-in (R1.1) ----

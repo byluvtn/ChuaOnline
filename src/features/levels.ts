@@ -1,6 +1,7 @@
 import { levelOf, meritForLevel } from '../../shared/types';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { renderStatsSection } from './stats';
 
 const TIERS = ['Sơ phát tâm', 'Cư sĩ', 'Thiện nam tín nữ', 'Hộ pháp', 'Tịnh tín', 'Tinh tấn', 'Minh tâm', 'Giác hạnh', 'Từ bi', 'Trí tuệ'];
 export const levelTitle = (lv: number) => TIERS[Math.min(TIERS.length - 1, Math.floor((lv - 1) / 3))];
@@ -24,5 +25,6 @@ export function openLevels(ctx: MenuCtx) {
     const wrap = h('div', { class: 'lvwrap' }, t);
     body.append(wrap);
     if (cur) wrap.scrollTop = Math.max(0, cur.offsetTop - wrap.clientHeight / 2);
+    renderStatsSection(ctx, body);
   });
 }

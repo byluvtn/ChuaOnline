@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 3;
+export const LATEST_NEWS_ID = 4;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thành tựu tích lũy',
+    date: '2026-11-11',
+    items: [
+      'Từ nay mỗi lần lễ Phật, tụng kinh, thả đèn và ngồi thiền đều được nhà chùa ghi nhận vào thành tựu tích lũy trọn đời.',
+      'Đạt các mốc 100 lần lạy, 50 lượt kinh, 20 đèn hoa đăng, 30 phút thiền… là nhận xu và lễ vật ngay. Xem tiến độ trong mục Cấp độ.',
+    ],
+  },
   {
     title: 'Giờ lễ nhân công đức',
     date: '2026-11-11',

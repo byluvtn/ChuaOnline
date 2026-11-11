@@ -4,8 +4,9 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
-  QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, SUTRAS, WEEKLY_QUESTS, drawSpinSegment,
-  type CheckinAck, type MailAck, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
+  QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment,
+  type CheckinAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
+  type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
 import {
   MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
@@ -153,6 +154,24 @@ async function grantRewards(s: Session, merit: number, coins: number) {
   }
   await pushProfile(s);
 }
+async function currentStatsState(pid: number): Promise<StatsState> {
+  return { stats: await db.getStats(pid), claimed: await db.claimedStatRewards(pid) };
+}
+/** Tăng bộ đếm trọn đời rồi trao thưởng các mốc vừa đạt (mỗi mốc đúng một lần nhờ claimStatReward). */
+async function countStat(s: Session, stat: StatKey, delta = 1) {
+  const value = await db.bumpStat(s.pid, stat, delta);
+  for (const m of STAT_MILESTONES.filter((x) => x.stat === stat && value >= x.threshold)) {
+    if (!(await db.claimStatReward(s.pid, m.id))) continue;
+    if (m.item) await db.addItem(s.pid, m.item, 1);
+    await db.addRewards(s.pid, 0, m.coins);
+    await pushProfile(s);
+    s.socket.emit('milestone', { id: m.id, title: m.title, coins: m.coins, item: m.item } satisfies MilestoneEvent);
+    s.socket.emit('stats', await currentStatsState(s.pid));
+  }
+}
+async function countStatSafe(s: Session, stat: StatKey, delta = 1) {
+  try { await countStat(s, stat, delta); } catch (e) { console.warn('[stats]', (e as Error).message); }
+}
 function meditationInfo(room: string) {
   const sitting = roomSessions(room).filter((s) => s.state.anim === 'sit').length;
   return { sitting, minutes: Math.floor(roomMinutes.get(room) ?? 0), goal: MEDITATE_GOAL_MIN, bonus: sitting >= GROUP_MEDITATE_MIN };
@@ -223,6 +242,7 @@ io.on('connection', (socket) => {
     socket.emit('mail', { unread: await db.mailUnread(pid) });
     socket.emit('spin', { used: (await db.minigameCount(pid, 'quay')) > 0 } satisfies SpinState);
     socket.emit('boost', meritBoost(new Date()));
+    socket.emit('stats', await currentStatsState(pid));
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
@@ -289,6 +309,9 @@ io.on('connection', (socket) => {
     const finalMerit = Math.round(merit * meritBoost(new Date()).mult);
     await grantRewards(s, finalMerit, 1);
     await questEvent(s, kind);
+    if (kind === 'bow') await countStatSafe(s, 'bows');
+    else if (kind === 'chant') await countStatSafe(s, 'chants');
+    else if (kind === 'lantern') await countStatSafe(s, 'lanterns');
   });
 
   /** Hoàn thành một bài kinh trong cửa sổ tụng kinh: cộng đức theo ACTION_RULES.chant. */
@@ -315,6 +338,7 @@ io.on('connection', (socket) => {
     await grantRewards(s, finalMerit, 0);
     await questEvent(s, 'chant');
     await questEvent(s, 'sutra');
+    await countStatSafe(s, 'chants');
     cb?.({ ok: true, merit: finalMerit });
   });
 
@@ -406,6 +430,11 @@ io.on('connection', (socket) => {
     if (rw.item) await db.addItem(pid, rw.item, 1);
     await grantRewards(s, rw.merit, rw.coins);
     cb?.({ ok: true, streak: got.streak, cycleDay: got.cycleDay, merit: rw.merit, coins: rw.coins, item: rw.item, state: await db.checkinState(pid) });
+  });
+
+  socket.on('stats:get', async (cb?: (r: StatsAck) => void) => {
+    if (!me()) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    cb?.({ ok: true, state: await currentStatsState(pid) });
   });
 
   socket.on('mail:list', async (cb?: (r: MailAck) => void) => {
@@ -502,6 +531,7 @@ setInterval(async () => {
     for (const s of sitting) {
       await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0).catch((e) => console.warn('[meditate]', (e as Error).message));
       await questEvent(s, 'meditate').catch((e) => console.warn('[meditate]', (e as Error).message));
+      await countStatSafe(s, 'meditate_sec', MEDITATE_TICK_MS / 1000);
     }
     io.to(r.id).emit('meditation', meditationInfo(r.id));
   }

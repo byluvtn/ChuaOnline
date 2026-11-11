@@ -232,6 +232,27 @@ export interface MailAck {
   merit?: number; coins?: number; items?: Record<string, number>;
 }
 
+export type StatKey = 'bows' | 'chants' | 'lanterns' | 'meditate_sec' | 'beads_rounds';
+export interface StatMilestone { id: string; stat: StatKey; threshold: number; title: string; coins: number; item?: string }
+export const STAT_MILESTONES: StatMilestone[] = [
+  { id: 'bow100', stat: 'bows', threshold: 100, title: 'Chắp tay thành kính', coins: 20 },
+  { id: 'bow300', stat: 'bows', threshold: 300, title: 'Lễ Phật tinh tấn', coins: 50, item: 'nen_sap_ong' },
+  { id: 'bow1000', stat: 'bows', threshold: 1000, title: 'Nhất tâm lễ Phật', coins: 120, item: 'den_hoa_dang' },
+  { id: 'chant50', stat: 'chants', threshold: 50, title: 'Tụng niệm hằng ngày', coins: 20 },
+  { id: 'chant200', stat: 'chants', threshold: 200, title: 'Kinh âm vang xa', coins: 50, item: 'huong_tram' },
+  { id: 'chant500', stat: 'chants', threshold: 500, title: 'Tâm kinh thuần thục', coins: 120, item: 'den_hoa_dang' },
+  { id: 'lamp20', stat: 'lanterns', threshold: 20, title: 'Thắp sáng ước nguyện', coins: 20 },
+  { id: 'lamp50', stat: 'lanterns', threshold: 50, title: 'Hoa đăng rực rỡ', coins: 50, item: 'huong_tram' },
+  { id: 'lamp150', stat: 'lanterns', threshold: 150, title: 'Trăm đèn soi tâm', coins: 120, item: 'hoa_dang_phat' },
+  { id: 'med30', stat: 'meditate_sec', threshold: 1800, title: 'An trú hơi thở', coins: 20 },
+  { id: 'med60', stat: 'meditate_sec', threshold: 3600, title: 'Tâm như mặt hồ', coins: 50, item: 'nen_sap_ong' },
+  { id: 'med180', stat: 'meditate_sec', threshold: 10800, title: 'Định tĩnh như núi', coins: 120, item: 'den_hoa_dang' },
+];
+export interface PlayerStats { bows: number; chants: number; lanterns: number; meditateSec: number; beadsRounds: number }
+export interface StatsState { stats: PlayerStats; claimed: string[] }
+export interface StatsAck { ok: boolean; error?: string; state?: StatsState }
+export interface MilestoneEvent { id: string; title: string; coins: number; item?: string }
+
 export interface SpinState { used: boolean }
 export interface SpinAck {
   ok: boolean; error?: string;
