@@ -97,7 +97,11 @@ export function signTexture(text: string) {
   const g = c.getContext('2d')!;
   g.fillStyle = '#5a1a12'; g.fillRect(0, 0, 512, 128);
   g.strokeStyle = '#e8b64a'; g.lineWidth = 6; g.strokeRect(8, 8, 496, 112);
-  g.fillStyle = '#f4d27a'; g.font = '700 58px "Times New Roman", serif';
+  g.fillStyle = '#f4d27a';
+  let fs = 58;
+  g.font = `700 ${fs}px "Times New Roman", serif`;
+  const tw = g.measureText(text).width;
+  if (tw > 440) { fs = Math.floor(fs * 440 / tw); g.font = `700 ${fs}px "Times New Roman", serif`; }
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 256, 68);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;

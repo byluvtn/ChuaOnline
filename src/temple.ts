@@ -711,7 +711,7 @@ export function buildTemple(c: TempleCtx) {
     zones.push({ x: at.x, z: at.z, r: 7, id: coupletId });
     return g;
   };
-  longHouse('tang-xa-tay', TANG_XA_TAY, TANG_XA_TAY_PLAT, 'TĂNG XÁ', 'tangXaTay', 5.0, false);
+  longHouse('tang-xa-tay', TANG_XA_TAY, TANG_XA_TAY_PLAT, 'TĂNG XÁ TÂY', 'tangXaTay', 5.0, false);
   longHouse('trai-duong', TRAI_DUONG, TRAI_DUONG_PLAT, 'TRAI ĐƯỜNG', 'traiDuong', 4.5, true);
 
   // ---- koi lake + arched bridge (hồ nằm giữa khuôn viên, cầu bắc dọc Bắc–Nam) ----
