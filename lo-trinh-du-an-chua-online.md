@@ -14,7 +14,8 @@
 ## Trạng thái tại ngày lập (2026-11-10, HEAD `6871320`)
 
 - Đã xong: khuôn viên cơ bản (tam quan dạng cổng, hồ + cầu, quảng trường, chính
-  điện = Điện Pháp Chủ cao 22.47, tháp chuông, tháp Quan Âm tại (28, 14), Vườn
+  điện = Điện Pháp Chủ cao 22.47, tháp chuông, sân tượng Quan Âm tại (28, 14)
+  (thay tháp — quyết định của chủ dự án 11/11, commit `0dfbf6d`), Vườn
   Thiền, khu nghỉ, 2 bồn hoa), tượng Phật Tổ + Quan Âm, admin account + free cam,
   database người chơi trên Turso (72 tài khoản, sống qua restart).
 - Hệ thống đã có: tài khoản, Sen + công đức + cấp, socket.io multiplayer nhiều

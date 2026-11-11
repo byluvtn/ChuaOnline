@@ -59,7 +59,7 @@ hành trình có trạm đầu và đích cuối.
 | Hồ cá koi (LAKE) | (0, 22), a 9 × b 6.5 | Elip giữa tam quan và sân |
 | Cầu (BRIDGE) | x = 0, z 14.2..29.8 | Rộng 2.3, đỉnh cao 1.4 |
 | Tháp chuông (BELL) | (−34, −6) | Tây |
-| Tháp Quan Âm (QUAN) | (28, 14) | Đông, tháp vuông 4 trụ |
+| Sân tượng Quan Âm (QUAN) | (28, 14) | Đông, sân tượng ngoài trời đối xứng sân Phật Tây |
 | Tượng Phật sân Tây (BUDDHA_YARD) | (−28, 14) | |
 | Tháp nhỏ (PAGODA) | (38, −14) | Đông Bắc |
 | Vườn thiền (ZEN) | (−34, −26) | Tây Bắc |
@@ -85,7 +85,7 @@ sau); chưa có nhà Tổ/tăng xá; hành lang chưa có tượng La Hán.
 | 3 | Hồ + cầu trục | (0, 22) | [CÓ] |
 | 4 | **Thủy Đình** — đình nhỏ **giữa hồ** phía Tây cầu, điểm thả đèn hoa đăng/ngắm cảnh | (−6.5, 23) | [MỚI · GĐ1] — "chữ ký" Tam Chúc |
 | 5 | Sân Phật ngoài trời (BUDDHA_YARD) | (−28, 14) | [CÓ] |
-| 6 | Tháp Quan Âm | (28, 14) | [CÓ] |
+| 6 | Sân tượng Quan Âm | (28, 14) | [CÓ · đổi 11/11] — xem ghi chú sửa đổi dưới bảng |
 | 7 | Quảng trường | (0, 6) | [CÓ] — giữ nguyên bán kính 8.4 |
 | 8 | **Vườn Cột Kinh** — 2 hàng cột đá khắc kinh dọc mép đường trục, mỗi bên 5 cột | x ±3.4, z −2..−10 | [MỚI · GĐ1] — Kilo kiểm tra chồng lấn mép sàn bồ đoàn |
 | 9 | **Hành lang La Hán** — hành lang có mái dọc 2 hành lang hiện hữu + dãy tượng La Hán quay mặt vào trục, ~12 tượng/bên, điểm xuyết bia đá | x ±20.5, z −19..−1 | [MỚI · GĐ1] — mái hành lang thấp (5–6) để không át chính điện |
@@ -96,6 +96,15 @@ sau); chưa có nhà Tổ/tăng xá; hành lang chưa có tượng La Hán.
 | 14 | Vườn Thiền | (−34, −26) | [CÓ] |
 | 15 | Khu nghỉ + bồn hoa bờ hồ | (27, 31) · (±16.5, 23) | [CÓ] |
 | 9b | (Tùy chọn, sau khi mục 9 xong) kéo hành lang nối vòng quanh quảng trường thành khung bao sân kiểu Bái Đính | vòng quanh PLAZA | Cập nhật `CORR` + `blocked()`; chỉ làm nếu không chật trục/đường ngang |
+
+> **Sửa đổi 11/11 (quyết định của chủ dự án, đã thi công, commit `0dfbf6d`, HEAD `5c0bfed`):**
+> Tháp Quan Âm tại (28, 14) được **thay bằng sân tượng Quan Âm ngoài trời**, đối xứng
+> gương với sân Phật Tổ (−28, 14) qua trục chính. Hai tượng quay mặt vào trục
+> (`−(π/2+0.3)` / `+(π/2+0.3)`), cùng bệ đá 3 tầng bát giác. Hệ quả: chuẩn kiến trúc
+> tháp ở `e247807` (chân cột đá, đấu củng, nền tháp đi lên được) không còn áp dụng
+> cho vị trí này; cả hai sân tượng hiện **không có popup zone** (zone `thap` cũ biến
+> mất theo tháp) — để dành đợt polish sau. Mục 6 trong bảng trên, bảng bố cục
+> mục 3 và luồng người chơi mục 6 đã sửa theo quyết định này.
 
 ### Giai đoạn 2 — mở rộng phía Bắc: dời tường Bắc z −45 → −64, nền đất leo bậc
 
@@ -141,7 +150,7 @@ tam quan 9–10; chuông/trống 10–12; hành lang/tăng xá 5–6.
 
 1. Vào cổng Nam: qua Tam Quan, dừng Đền Trình "trình diện" (bắt đầu tuyến nhiệm vụ).
 2. Qua cầu trên hồ (ghé Thủy Đình thả đèn), đến quảng trường: thắp hương, nhận nhiệm vụ.
-3. Rẽ Tây: tháp chuông, Phật sân, Vườn Thiền. Rẽ Đông: tháp Quan Âm, khu nghỉ.
+3. Rẽ Tây: tháp chuông, Phật sân, Vườn Thiền. Rẽ Đông: sân tượng Quan Âm, khu nghỉ.
 4. Đi thẳng dọc Vườn Cột Kinh, qua hành lang La Hán, vào Điện Pháp Chủ lạy Phật.
 5. (GĐ2) Leo tiếp lên Điện Tam Thế — đích cao nhất; Am Cổ là điểm dừng cuối yên tĩnh,
    hợp để đặt nhiệm vụ đặc biệt.
