@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 2;
+export const LATEST_NEWS_ID = 3;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Giờ lễ nhân công đức',
+    date: '2026-11-11',
+    items: [
+      'Vào giờ tụng kinh 05:00, 12:00 và 20:00 mỗi ngày, mọi công đức từ thắp hương, lễ Phật, tụng kinh và thả đèn được nhân đôi (×2).',
+      'Ngày Mùng 1 và Rằm âm lịch, công đức được nhân ×1,5 cả ngày; trùng giờ tụng kinh thì nhân ×3.',
+    ],
+  },
   {
     title: 'Vòng quay may mắn',
     date: '2026-11-11',

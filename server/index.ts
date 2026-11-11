@@ -10,6 +10,7 @@ import {
 import {
   MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
 } from '../shared/types.js';
+import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
 import { createNpcRoom, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 
@@ -221,6 +222,7 @@ io.on('connection', (socket) => {
     socket.emit('checkin', await db.checkinState(pid));
     socket.emit('mail', { unread: await db.mailUnread(pid) });
     socket.emit('spin', { used: (await db.minigameCount(pid, 'quay')) > 0 } satisfies SpinState);
+    socket.emit('boost', meritBoost(new Date()));
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
@@ -284,7 +286,8 @@ io.on('connection', (socket) => {
       roomLanterns.set(s.room, arr);
       io.to(s.room).emit('lantern', l);
     }
-    await grantRewards(s, merit, 1);
+    const finalMerit = Math.round(merit * meritBoost(new Date()).mult);
+    await grantRewards(s, finalMerit, 1);
     await questEvent(s, kind);
   });
 
@@ -308,10 +311,11 @@ io.on('connection', (socket) => {
     }
     s.state.anim = 'chant';
     io.to(s.room).emit('player:action', { id: s.state.id, kind: 'chant' });
-    await grantRewards(s, merit, 0);
+    const finalMerit = Math.round(merit * meritBoost(new Date()).mult);
+    await grantRewards(s, finalMerit, 0);
     await questEvent(s, 'chant');
     await questEvent(s, 'sutra');
-    cb?.({ ok: true, merit });
+    cb?.({ ok: true, merit: finalMerit });
   });
 
   const buyItem = async (itemId: string, qty: number) => {

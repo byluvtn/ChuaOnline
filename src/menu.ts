@@ -28,6 +28,7 @@ import { openMap } from './features/map';
 import { openFortune } from './features/fortune';
 import { checkinPending, initCheckin, openCheckin } from './features/checkin';
 import { initMail, mailPending, openMail } from './features/mail';
+import { initBoost } from './features/boost';
 import { initSpin, spinPending } from './features/spin';
 import { newsUnread, openCommunity, openDonate, openFacebook, openFeedback, openGuide, openNews } from './features/misc';
 import { openCharacter } from './features/character';
@@ -132,6 +133,7 @@ export function initMenu(ctx: MenuCtx): void {
   initCheckin(ctx, refreshDots);
   initMail(ctx, refreshDots);
   initSpin(ctx, refreshDots);
+  initBoost(ctx);
 
   const setCollapsed = (c: boolean) => {
     bar.classList.toggle('collapsed', c);
