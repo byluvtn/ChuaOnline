@@ -25,6 +25,13 @@ body.menu-collapsed #actions, body.menu-collapsed #chat { bottom: calc(84px + en
   #menu .lb { font-size: 9px; }
   #menu .ico { font-size: 19px; }
 }
+@media (orientation: landscape) and (max-height: 500px) {
+  #menu { left: 6px; right: 6px; transform: none; width: auto; max-width: none; bottom: calc(4px + env(safe-area-inset-bottom)); padding: 3px; gap: 3px; border-radius: 16px; }
+  #menu button { width: 54px; height: 46px; }
+  #menu .ico { font-size: 19px; }
+  #menu .lb { font-size: 9px; }
+}
+
 /* ---------- panels: shared bits ---------- */
 .card .grow { flex: 1; min-width: 0; }
 .room .ic { font-size: 28px; color: #b3781c; width: 46px; height: 46px; flex: none; border-radius: 13px; display: grid; place-items: center; background: radial-gradient(circle, #fff3c4, #f0d98f); }

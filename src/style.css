@@ -162,7 +162,7 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
 #joystick { left: 22px; bottom: 170px; width: 124px; height: 124px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.1), rgba(255,255,255,.18)); border: 2px solid rgba(255,255,255,.32); touch-action: none; z-index: 8; backdrop-filter: blur(3px); }
 #stick { position: absolute; left: 36px; top: 36px; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1be, #e0ae3a); box-shadow: 0 3px 10px rgba(0,0,0,.45); }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 500px) {
   .card { padding: 18px; border-radius: 22px; }
   #actions { right: 6px; bottom: calc(72px + env(safe-area-inset-bottom)); flex-direction: column; gap: 5px; }
   .act { width: 48px; height: 48px; border-radius: 14px; }
@@ -221,8 +221,23 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
 #actions .act.teacher { width: auto; min-width: 78px; padding: 0 10px; border-color: var(--gold); background: linear-gradient(rgba(232,182,74,.45), rgba(120,76,22,.7)); }
 #actions .act.teacher .lb { font-size: 11px; line-height: 1.15; text-align: center; max-width: 100px; }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: landscape) and (max-height: 500px) {
   #joyGrip { width: 30px; height: 30px; }
   #actions .act.teacher { min-width: 64px; }
   #actions .act.teacher .lb { font-size: 10px; max-width: 84px; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  #profile { top: 28px; }
+  #online { top: 34px; left: 190px; }
+  #topright { top: 28px; }
+  #medBanner, body.touch #medBanner { top: 64px; }
+  #boostBanner, body.touch #boostBanner { top: 102px; }
+  #toast { top: 60px; }
+  #actions { flex-direction: column; flex-wrap: wrap-reverse; justify-content: flex-start; align-content: flex-start; right: 6px; bottom: calc(70px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 142px - env(safe-area-inset-bottom)); }
+  body.touch #chat { top: 76px; width: min(300px, 40vw); }
+  body.touch #chat:not(.collapsed) { max-height: 56dvh; }
+  #joystick { width: 96px; height: 96px; left: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); }
+  #stick { width: 44px; height: 44px; left: 26px; top: 26px; }
+  #couplet { bottom: calc(64px + env(safe-area-inset-bottom)); }
 }
