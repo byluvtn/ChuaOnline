@@ -308,3 +308,46 @@ Baseline mới: `main` sau 4 commit R1.3 (trước đó `1ee97b0`). Commit: `d75
 - Ảnh PNG chưa nén (chưa có pngquant/oxipng).
 - Chưa deploy; không có bảng DB mới nên không cần migration.
 - Chưa làm R1.4 trở đi.
+
+---
+
+## R1.4 — Hệ số công đức theo giờ lễ & ngày âm lịch
+Baseline mới: `main` sau commit `7517090` (trước đó `0adb61e`), cộng commit HANDOFF này.
+
+### Đã làm
+- **`shared/time.ts` (mới, thuần, dùng chung server/client):** `ictParts(d)` (Intl `Asia/Ho_Chi_Minh` + `formatToParts`), `solarToLunar(d, m, y)` (thuật toán Hồ Ngọc Đức, múi +7, tự cài, không thêm package), `meritBoost(d)` trả `{ mult, session, lunarDay, holy }`; hằng `SESSION_HOURS = [5, 12, 20]`, `SESSION_MULT = 2`, `LUNAR_MULT = 1.5`. Cửa sổ giờ lễ là `[h:00, h+1:00)` giờ ICT; ngày âm tính từ NGÀY ICT (không phải ngày UTC).
+- **Server (`server/index.ts`):** `action` (sau khi áp vật phẩm boost) và `sutra:done` tính `finalMerit = Math.round(merit × meritBoost(new Date()).mult)` rồi `grantRewards`. Xu giữ nguyên (action +1, kinh +0). Ack `sutra:done` trả số đã nhân. Lúc join, sau `spin`, emit `boost` (mỏ neo hiển thị). Thiền, điểm danh, vòng quay, thư, nhiệm vụ, minigame KHÔNG đổi; `dayKey()` (UTC) KHÔNG đổi.
+- **Client:** `#boostBanner` trong `index.html` (cạnh `#medBanner`), style ở `src/style.css`, logic `src/features/boost.ts` (`initBoost` nối trong `menu.ts` cạnh `initSpin`): nghe `boost` từ server rồi tự tính lại mỗi 30 giây bằng `meritBoost(new Date())`, chỉ để hiển thị. Vị trí: `top: 186px` (desktop, `body.touch` và `max-width: 760px` cùng 186px); `#medBanner` ở `top: 142px`, nên banner hệ số nằm dưới banner thiền, không chồng.
+- **News:** entry "Giờ lễ nhân công đức" đứng đầu `NEWS`, `LATEST_NEWS_ID` 2 → 3.
+
+### Bảng hệ số và làm tròn
+| Điều kiện (giờ/ngày ICT) | Hệ số |
+|---|---|
+| Không có | ×1 |
+| Giờ tụng kinh 05:00, 12:00, 20:00 (mỗi cửa sổ đúng 60 phút) | ×2 |
+| Mùng 1 hoặc Rằm âm lịch (cả ngày) | ×1,5 |
+| Giờ tụng kinh trùng Mùng 1/Rằm | ×3 |
+
+`Math.round(merit × hệ số)`, 0,5 làm tròn lên. Gốc 1 → 2 / 2 / 3; gốc 2 → 3 / 4 / 6; gốc 5 → 8 / 10 / 15; gốc 15 → 23 / 30 / 45 (ứng với ×1,5 / ×2 / ×3).
+
+### Chữ nổi "+N công đức" (Bước 3)
+Thuộc trường hợp **suy ra từ delta profile**: `updateProfileHud` (`src/main.ts:233`) so `profile.merit` mới với `lastMerit`, nên tự đúng số đã nhân, không phải sửa. Toast tụng kinh (`src/panels.ts:217`) dùng `r.merit` từ ack nên cũng đúng. Lưu ý có sẵn từ trước: chữ nổi tính cả bonus lên cấp nếu cùng đợt cập nhật profile.
+
+### Kiểm chứng
+- `npm run typecheck` pass.
+- `node tools/steps-verify-boost.mjs` (DB tạm, server thật): TẤT CẢ PASS (31 kiểm tra):
+  - `solarToLunar`: 17/02/2026 → 01/01/2026; 29/01/2025 → 01/01/2025; 10/02/2024 → 01/01/2024; 06/10/2025 → 15/08/2025; 17/09/2024 → 15/08/2024; 11/11/2026 → ngày âm 3 (không thuộc {1, 15}).
+  - `meritBoost` 10 mốc ICT trong spec đều đúng (04:59 ×1; 05:00 ×2; 05:59 ×2; 06:00 ×1; 12:30 ×2; 20:00 ×2; 21:00 ×1; 17/02/2026 08:00 ×1,5; 05:15 ×3; 06/10/2025 13:00 ×1,5). Thêm 2 mốc ranh giới ngày ICT/UTC: 17/02/2026 00:30 ICT (vẫn 16/02 theo UTC) → ×1,5; 16/02/2026 23:30 ICT → ×1.
+  - Bảng làm tròn 4 hàng × 3 cột đúng.
+  - E2E: event `boost` lúc join khớp helper; thắp hương +round(1×mult), xu +1; có Hương trầm: +round(5×mult), món bị tiêu (1 → 0), xu +1; `sutra:done` ack `merit` = round(2×mult), DB khớp ack, xu +0. Lúc chạy là 12:3x ICT (giờ tụng kinh) nên mult thực = 2: thắp hương +2, Hương trầm +10, kinh +4.
+  - Hồi quy: khách mới (merit đặt sẵn 100 để không lên cấp, nên không có bonus cấp) điểm danh ngày 1: ack và DB đúng +3 công đức / +5 xu, không bị nhân.
+- Ảnh (`tools/steps-r14-shots.mjs` qua `tools/shot.mjs`, DB tạm, 1280×800; đồng hồ client giả lập bằng `Page.addScriptToEvaluateOnNewDocument` ghi đè `Date`, chỉ trong phiên chụp, không có mã debug trong production): `shots/r14-banner.png` (đồng hồ giả 05:30 ICT 11/11/2026, banner "Giờ tụng kinh · Công đức ×2"), `shots/r14-news.png` (entry "Giờ lễ nhân công đức" trên cùng), `shots/r14-banner-with-meditation.png` (đã chèn `#medBanner` bằng script để kiểm không chồng; đọc từ ảnh, `#medBanner` kết thúc khoảng y=175, `#boostBanner` bắt đầu khoảng y=186, cách khoảng 10px).
+
+### Chưa chắc chắn / việc còn treo
+- E2E server chỉ chạy được ở mult thực lúc chạy (×2 lúc 12:3x ICT); các mốc ×1, ×1,5, ×3 chỉ được kiểm ở mức unit (`meritBoost` + bảng làm tròn), chưa qua socket vì server dùng đồng hồ thật.
+- Lần chạy cuối của script ảnh không in log (stdout bị chặn do script chạy quá timeout của công cụ); khoảng cách banner ghi ở trên đọc từ ảnh, không phải số đo `getBoundingClientRect`.
+- Chưa chụp/thử trên điện thoại (offset 186px dùng chung cho mọi cỡ, chưa kiểm khi `#chat` mở trên `body.touch` ở `top: 138px`: banner nằm giữa màn, chat ở bên trái nên có thể chạm trên màn hẹp).
+- Banner dựa vào đồng hồ máy khách để tự cập nhật mỗi 30 giây; máy khách sai giờ chỉ làm banner lệch, số thật vẫn do server quyết định.
+- Ngày điểm danh/vòng quay/minigame vẫn theo `dayKey()` UTC (UI nói 07:00 VN); không đổi trong R1.4 theo spec.
+- Chưa có thông báo đẩy khi sắp tới giờ lễ (R4.3). Chưa deploy; không có bảng DB mới.
+- Chưa làm R1.5 trở đi.
