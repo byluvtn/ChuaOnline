@@ -487,3 +487,18 @@ Sau khi xong: typecheck, commit theo cụm, push, cập nhật HANDOFF.md.
 
 ### Lưu ý
 - Working tree còn nhiều file untracked không thuộc phạm vi (ảnh `shots/*.png`, `Bản đồ Phần A2 v7.png`, `Concept *.webp` ở gốc và trong `phan-a2/`); không đưa vào commit.
+
+## A2.1 (tiếp) — ĐÃ XONG §1 còn lại + §4 + §5 (layout, nhà, hàng rào + cổng hai viện)
+Nguồn: `spec-a2-1-mo-rong-ban-do-chua-online.md`. Baseline: `d58bdea`.
+
+### Đã làm
+- **`src/layout.ts`:** `WALL` x 62 / zN -82 / zS 45; dời `PAGODA`, `NHA_TO`, `TANG_XA` (gộp), `AM_CO`, `NHA_KHACH`, `THIEN_DUONG`, `TRAI_DUONG`, `VUON_THAP` theo spec; thêm `PHONG_CD`, `VIEN_KT`, `VIEN_TO`, `PS`, `PS_POND`, `PS_PIER`, `inPsPond`; xóa `TANG_XA_TAY*`, `TRAI_DUONG_DOOR`. Cập nhật `groundY` (PHONG_CD_PLAT, bến PS_PIER), `blocked`, `clampToCompound` (mở lối ra phố, chặn xuyên tường hai chiều), `resolveWater` (ao phóng sinh).
+- **`src/temple.ts` §4:** đổi kích thước nhà tổ/tăng xá/nhà khách; thiền đường xoay hướng Đông (`ry = π/2`, collider hoán đổi trục); trai đường dựng bằng `extraHouse`; thêm Phòng Ghi Công Đức; xóa hẳn `longHouse`.
+- **`src/temple.ts` §5:** `buildVienFence` cho hai viện (InstancedMesh, bám `groundY`, collider r 0.6 cách ≤1.1, cổng rộng 3.2 có trụ + biển). Mạng `pathRect` cũ thay bằng đường mới (vành đai, đường hậu, cổng viện, bến phóng sinh, thiền đường, điện mẫu, phòng công đức, bảo tháp).
+
+### Kiểm chứng
+- `npm run typecheck` + `npm run build` sạch; grep không còn `longHouse`/`TANG_XA_TAY*`/`TRAI_DUONG_DOOR`; `tools/npc-sim.mjs` (chạy qua `npx tsx`) chạy bình thường với layout mới.
+- Chưa chụp ảnh, chưa đi bộ kiểm trong game.
+
+### Chưa làm (còn lại của spec A2.1)
+§6 Vườn Phóng Sinh (dựng cảnh), §7 phố trước cổng, §8 phần map.ts, tin tức, hành lang La Hán đã xong ở phiên trước; script chụp `a21-*.png`.
