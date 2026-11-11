@@ -382,7 +382,8 @@ export function buildZenGarden(g: GardenCtx) {
   };
   let sd = 0;
   for (let x = -45; x <= -25; x += 1.7) clump(x, -40 + ((sd++ % 3) - 1) * 0.25, sd);
-  for (let z = -38.3; z <= -23; z += 1.7) clump(-44 + ((sd++ % 3) - 1) * 0.25, z, sd);
+  for (let z = -38.3; z <= -33; z += 1.7) clump(-44 + ((sd++ % 3) - 1) * 0.25, z, sd);
+  for (const bx of [-44, -42, -40]) for (let z = -20; z <= 3; z += 1.9) clump(bx + ((sd++ % 3) - 1) * 0.3, z + ((sd % 2) - 0.5) * 0.3, sd);
 
   // bonsai trên đôn đá (4 chậu quanh vòng cát)
   const trunkM = g.lamb(0x5a3d22), crownM = g.lamb(0x3f8a3e, { flatShading: true });
@@ -400,11 +401,11 @@ export function buildZenGarden(g: GardenCtx) {
   }
 
   // 2 ghế đá hướng vào vòng cát + bộ bàn đá
-  stoneSeat(g, grp, cx - 7.0, cz - 1.5, Math.PI / 2 * 0 + Math.PI / 2 * 1, 1.8);
+  stoneSeat(g, grp, -38.5, -20.5, Math.PI / 2 * 0 + Math.PI / 2 * 1, 1.8);
   stoneSeat(g, grp, cx - 1.5, cz + 7.0, 0, 1.8);
   grp.children[grp.children.length - 2].rotation.y = -Math.PI / 2 + Math.PI;
   grp.children[grp.children.length - 1].rotation.y = Math.PI;
-  g.colliders.push({ x: cx - 7.0, z: cz - 1.5, r: 0.9 }, { x: cx - 1.5, z: cz + 7.0, r: 0.9 });
+  g.colliders.push({ x: -38.5, z: -20.5, r: 0.9 }, { x: cx - 1.5, z: cz + 7.0, r: 0.9 });
   stoneTableSet(g, grp, cx - 5.2, cz - 6.2);
 
   // 4 đèn đá ở 4 góc vòng cát
