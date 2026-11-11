@@ -504,11 +504,11 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       const lh = 38, h = shown.length * lh + 30;
       B.canvas.width = 420; B.canvas.height = h + 16;
       g.font = font;
-      g.fillStyle = 'rgba(255,250,238,.97)';
-      g.strokeStyle = 'rgba(120,80,30,.55)'; g.lineWidth = 3;
+      g.fillStyle = 'rgba(38,24,14,.88)';
+      g.strokeStyle = 'rgba(246,217,138,.75)'; g.lineWidth = 3;
       g.beginPath(); g.roundRect(6, 4, 408, h, 20); g.fill(); g.stroke();
       g.beginPath(); g.moveTo(200, h + 3); g.lineTo(210, h + 15); g.lineTo(222, h + 3); g.closePath(); g.fill();
-      g.fillStyle = '#2a170a'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = '#FAF3E3'; g.textAlign = 'center'; g.textBaseline = 'middle';
       shown.forEach((l, i) => g.fillText(l, 210, 4 + 15 + lh / 2 + i * lh));
       B.tex.dispose();
       B.tex.needsUpdate = true;
