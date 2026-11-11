@@ -152,13 +152,16 @@ export function blocked(x: number, z: number) {
   for (const v of [VIEN_KT, VIEN_TO]) if (x > v.x0 - 1 && x < v.x1 + 1 && z > v.z0 - 1 && z < v.z1 + 1) return true;
   if (inPsPond(x, z, 1)) return true;
   if (x >= PS_PIER.x0 - 1 && x <= PS_PIER.x1 + 1 && Math.abs(z - PS_PIER.z) <= PS_PIER.hw + 1) return true;
+  if (x > PS.x - PS.w / 2 - 1 && x < PS.x + PS.w / 2 + 1 && z > PS.z - PS.d / 2 - 1 && z < PS.z + PS.d / 2 + 1 && (Math.abs(x - PS.x) > PS.w / 2 - 0.3 || Math.abs(z - PS.z) > PS.d / 2 - 0.3)) return true;
   if (Math.abs(x) < 63 && z > 44 && z < 59.5) return true;
   if (z > -48 && z < -43 && ax < 57) return true;
   if ((Math.abs(x - 59) < 2.2 && z > -79 && z < 42) || (ax < 59 && z > 39.5 && z < 42.5)) return true;
   if (ax < 2.2 && z > -51 && z < -41) return true;
   for (const gx of [VIEN_KT.gateX, VIEN_TO.gateX]) if (Math.abs(x - gx) < 2.2 && z > -55 && z < -43) return true;
-  if (Math.abs(x - PS.x) < PS.w / 2 + 1 && Math.abs(z - PS.z) < PS.d / 2 + 1) return true;
+  if (x >= 19.8 && x <= 25.5 && z >= -32.5 && z <= -29.5) return true;
+  if ((x >= 48.5 && x <= 50.5 && z >= -31.5 && z <= -23) || (x >= 32.5 && x <= 50.5 && z >= -25.1 && z <= -23.1)) return true;
   if (Math.abs(x - 21) < 2.2 && z > -32 && z < -18) return true;
+  if (Math.abs(x + 59) < 2.2 && z > -79 && z < 42) return true;
   if (Math.abs(x - BAO_THAP.x) < 2.2 && z > -48 && z < -44) return true;
   if (x < -27 && x > -41 && Math.abs(z + 27) < 2.2) return true;
   if (x > 27 && x < 36 && Math.abs(z - DIEN_MAU.z) < 2.2) return true;
