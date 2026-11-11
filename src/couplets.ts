@@ -47,6 +47,21 @@ export const COUPLETS: Record<string, Couplet> = {
     am: ['Tăng xá thanh u, sớm chuông chiều mõ nuôi đạo hạnh', 'Thiền phòng tĩnh tại, đèn kinh một ngọn sáng lòng người'],
     nghia: 'Nhà tăng thanh tịnh, chuông mai mõ chiều nuôi dưỡng đạo hạnh; thiền phòng yên lặng, một ngọn đèn kinh sáng lòng người.',
   },
+  dienMau: {
+    id: 'dienMau', where: 'Điện Mẫu — thờ Thánh Mẫu',
+    am: ['Mẫu nghi thiên hạ, lòng từ che chở đàn con', 'Đức rộng sông trời, ơn người nuôi dưỡng muôn nhà'],
+    nghia: 'Mẫu là bậc mẹ của muôn dân, lòng từ che chở đàn con; đức rộng như sông trời, ơn nuôi dưỡng trải khắp muôn nhà.',
+  },
+  nhaKhach: {
+    id: 'nhaKhach', where: 'Nhà khách — đón khách thập phương',
+    am: ['Cửa chùa rộng mở, khách bốn phương đều là bạn', 'Chén trà thanh đạm, duyên lành gặp gỡ ngàn xưa'],
+    nghia: 'Cửa chùa luôn rộng mở, khách bốn phương đều thành bạn; chén trà thanh đạm gợi duyên lành gặp gỡ từ ngàn xưa.',
+  },
+  thienDuong: {
+    id: 'thienDuong', where: 'Thiền đường — nơi ngồi thiền tĩnh tâm',
+    am: ['Ngồi lặng giữa đời, tâm tĩnh như trăng soi đáy nước', 'Thở nhẹ theo hơi, lòng yên tựa núi giữa mây trời'],
+    nghia: 'Ngồi lặng giữa cõi đời, tâm tĩnh như trăng soi đáy nước; thở nhẹ theo hơi, lòng yên như núi giữa mây trời.',
+  },
   vuonThap: {
     id: 'vuonThap', where: 'Vườn Tháp — nơi an nghỉ chư tăng',
     am: ['Tháp cổ rêu phong, bóng thiền lặng giữ ngàn năm', 'Nắm tro đã tịnh, hương linh về cõi Niết Bàn'],

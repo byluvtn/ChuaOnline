@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
 import {
-  NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
+  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, QUAN_PLAT, QUAN_ROT, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -631,6 +631,24 @@ export function buildTemple(c: TempleCtx) {
   for (const lx of [-2.4, -0.8, 0.8, 2.4]) colliders.push({ x: TANG_XA.x + lx, z: TANG_XA.z - tx.hz, r: 0.9 });
   for (const lz of [-1.2, 1.2]) colliders.push({ x: TANG_XA.x - tx.hx, z: TANG_XA.z + lz, r: 0.9 }, { x: TANG_XA.x + tx.hx, z: TANG_XA.z + lz, r: 0.9 });
   zones.push({ x: TANG_XA.x, z: TANG_XA.z, r: 7, id: 'tangXa' });
+
+  const extraHouse = (name: string, at: { x: number; z: number }, plat: { hx: number; hz: number; y: number }, sign: string, zoneId: string, wide: number, deep: number, openFront: boolean) => {
+    const h = buildHouse(name, at, plat, sign, zoneId, wide, deep, openFront);
+    h.g.position.set(at.x, 0, at.z); scene.add(h.g);
+    const sl = sealArchitectureJoints(h.g, { maxGap: 0.5 });
+    if (import.meta.env.DEV) console.warn(`gapdump ${name}: filled=${sl.filled} remaining=${sl.remaining.length}`);
+    for (const [px, pz] of h.corners) colliders.push({ x: at.x + px, z: at.z + pz, r: 0.32 });
+    for (let lx = -wide + 1.2; lx <= wide - 1.2 + 0.01; lx += 1.6) colliders.push({ x: at.x + lx, z: at.z - h.hz, r: 0.9 });
+    for (const lz of [-1.2, 1.2]) colliders.push({ x: at.x - h.hx, z: at.z + lz, r: 0.9 }, { x: at.x + h.hx, z: at.z + lz, r: 0.9 });
+    zones.push({ x: at.x, z: at.z, r: 7, id: zoneId });
+    return h;
+  };
+  const dm = extraHouse('dien-mau', DIEN_MAU, DIEN_MAU_PLAT, 'ĐIỆN MẪU', 'dienMau', 2.6, 2.2, true);
+  for (let i = 0; i < 2; i++) labelBoard(dm.g, COUPLETS.dienMau.am[i].split(',')[0], 0.42, 2.2, i ? dm.hx : -dm.hx, DIEN_MAU_PLAT.y + 1.7, dm.hz + 0.22);
+  const nk = extraHouse('nha-khach', NHA_KHACH, NHA_KHACH_PLAT, 'NHÀ KHÁCH', 'nhaKhach', 3.0, 2.4, true);
+  for (let i = 0; i < 2; i++) labelBoard(nk.g, COUPLETS.nhaKhach.am[i].split(',')[0], 0.42, 2.2, i ? nk.hx : -nk.hx, NHA_KHACH_PLAT.y + 1.7, nk.hz + 0.22);
+  const td = extraHouse('thien-duong', THIEN_DUONG, THIEN_DUONG_PLAT, 'THIỀN ĐƯỜNG', 'thienDuong', 2.6, 2.2, true);
+  for (let i = 0; i < 2; i++) labelBoard(td.g, COUPLETS.thienDuong.am[i].split(',')[0], 0.42, 2.2, i ? td.hx : -td.hx, THIEN_DUONG_PLAT.y + 1.7, td.hz + 0.22);
 
   // ---- koi lake + arched bridge (hồ nằm giữa khuôn viên, cầu bắc dọc Bắc–Nam) ----
   const pond = new THREE.Group();            // toàn bộ hồ trong một nhóm → dễ dời tâm

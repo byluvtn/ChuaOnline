@@ -40,6 +40,12 @@ export const TANG_XA = { x: 22, z: -56 };
 export const TANG_XA_PLAT = { x: TANG_XA.x, z: TANG_XA.z, hx: 5.0, hz: 3.6, y: 0.25, ramp: 0.8 };
 export const AM_CO = { x: -38, z: -50 };
 export const AM_CO_PLAT = { x: AM_CO.x, z: AM_CO.z, hx: 3.0, hz: 2.6, y: 0.35, ramp: 0.8 };
+export const DIEN_MAU = { x: 39, z: 10 };
+export const DIEN_MAU_PLAT = { x: DIEN_MAU.x, z: DIEN_MAU.z, hx: 4.0, hz: 3.2, y: 0.25, ramp: 0.8 };
+export const NHA_KHACH = { x: 30, z: -26 };
+export const NHA_KHACH_PLAT = { x: NHA_KHACH.x, z: NHA_KHACH.z, hx: 4.4, hz: 3.4, y: 0.25, ramp: 0.8 };
+export const THIEN_DUONG = { x: -40, z: -36 };
+export const THIEN_DUONG_PLAT = { x: THIEN_DUONG.x, z: THIEN_DUONG.z, hx: 4.0, hz: 3.2, y: 0.25, ramp: 0.8 };
 export const VUON_THAP = { x: 36, z: -48 };
 export const VUON_THAP_PLAT = { x: VUON_THAP.x, z: VUON_THAP.z, hx: 6.5, hz: 4.5, y: 0.2, ramp: 0.8 };
 export const BUDDHA_YARD = { x: -28, z: 14 };
@@ -89,7 +95,7 @@ export function groundY(x: number, z: number) {
   const adx = Math.max(Math.abs(x - ap.x) - ap.hx, 0), adz = Math.max(Math.abs(z - ap.z) - ap.hz, 0);
   const ad = Math.hypot(adx, adz);
   if (ad < ap.ramp) y = Math.max(y, ap.y * (1 - ad / ap.ramp));
-  for (const np of [NHA_TO_PLAT, TANG_XA_PLAT]) {
+  for (const np of [NHA_TO_PLAT, TANG_XA_PLAT, DIEN_MAU_PLAT, NHA_KHACH_PLAT, THIEN_DUONG_PLAT]) {
     const ndx = Math.max(Math.abs(x - np.x) - np.hx, 0), ndz = Math.max(Math.abs(z - np.z) - np.hz, 0);
     const nd = Math.hypot(ndx, ndz);
     if (nd < np.ramp) y = Math.max(y, np.y * (1 - nd / np.ramp));
@@ -131,6 +137,9 @@ export function blocked(x: number, z: number) {
   if (Math.hypot(x - AM_CO.x, z - AM_CO.z) < 8) return true;
   if (Math.abs(x - NHA_TO.x) < 8 && Math.abs(z - NHA_TO.z) < 6.5) return true;
   if (Math.abs(x - TANG_XA.x) < 8 && Math.abs(z - TANG_XA.z) < 6.5) return true;
+  if (Math.abs(x - DIEN_MAU.x) < 7 && Math.abs(z - DIEN_MAU.z) < 6) return true;
+  if (Math.abs(x - NHA_KHACH.x) < 7.5 && Math.abs(z - NHA_KHACH.z) < 6) return true;
+  if (Math.abs(x - THIEN_DUONG.x) < 7 && Math.abs(z - THIEN_DUONG.z) < 6) return true;
   if (Math.hypot(x - VUON_THAP.x, z - VUON_THAP.z) < 10) return true;
   return false;
 }
