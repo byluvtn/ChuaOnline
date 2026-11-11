@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 5;
+export const LATEST_NEWS_ID = 6;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Mở rộng khuôn viên chùa',
+    date: '2026-11-11',
+    items: [
+      'Khuôn viên chùa rộng thêm hẳn: phía sau có Viện Khách Tăng và Viện Tổ — Tưởng niệm, mỗi viện một sân riêng có cổng.',
+      'Mới có Vườn Phóng Sinh ở phía Đông chánh điện với ao và bến thả cá, phố nhỏ trước cổng chùa bán cơm chay, trà đá, phở chay.',
+      'Thiền đường dời về bên vườn thiền, mặt hướng Đông; thêm Phòng Ghi Công Đức ở góc Tây Nam. Hành lang La Hán cũng rộng và thoáng hơn.',
+    ],
+  },
   {
     title: 'Lần hạt 108',
     date: '2026-11-11',
