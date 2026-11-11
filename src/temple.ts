@@ -1040,7 +1040,8 @@ export function buildTemple(c: TempleCtx) {
   pathRect(-42.2, -67, -39.8, -58);
   pathRect(27, -59.2, 50, -56.8);
   pathRect(34.8, -63.75, 37.2, -58);
-  pathRect(27, -54, 29, -44.5);
+  pathRect(VIEN_KT.gateX - 1.2, -58, VIEN_KT.gateX + 1.2, VIEN_KT.z1);
+  pathRect(VIEN_TO.gateX - 1.2, -58, VIEN_TO.gateX + 1.2, VIEN_TO.z1);
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
   buildZenGarden(gardenCtx);
   buildFlowerBeds(gardenCtx);
@@ -1182,8 +1183,8 @@ export function buildTemple(c: TempleCtx) {
       wtr.position.set(-0.5, py + 0.2, pz); g.add(wtr);
       const fish = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), lamb(0xff7a2a)); fish.scale.set(1.6, 1, 1); fish.position.set(-0.4, py + 0.22, pz); g.add(fish);
     }
-    g.position.set(x, 0, z); scene.add(g);
-    for (let lx = -hw; lx <= hw + 0.01; lx += 1.0) colliders.push({ x: x + lx, z: z + hd + 0.6, r: 0.5 });
+    g.position.set(x, 0, z); g.rotation.y = Math.PI; scene.add(g);
+    for (let lx = -hw; lx <= hw + 0.01; lx += 1.0) colliders.push({ x: x + lx, z: z - hd - 0.6, r: 0.5 });
   };
   const STALLS: [number, string, StallKind][] = [
     [-42, 'CƠM CHAY', 'com'], [-26, 'TRÀ ĐÁ', 'tra'], [-10, 'BÁN CHIM PHÓNG SINH', 'chim'],
