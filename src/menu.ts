@@ -16,7 +16,7 @@
  */
 import type { Socket } from 'socket.io-client';
 import type { QuestState } from '../shared/game';
-import type { ChatMessage, Outfit, Profile } from '../shared/types';
+import type { ActionKind, ChatMessage, Outfit, Profile } from '../shared/types';
 import { audio } from './audio';
 import { hydrateIcons, iconSvg } from './icons';
 import { openPanel, type PanelKind } from './panels';
@@ -31,6 +31,7 @@ import { initMail, mailPending, openMail } from './features/mail';
 import { initBoost } from './features/boost';
 import { initStats } from './features/stats';
 import { initSpin, spinPending } from './features/spin';
+import { beadsPending, initBeads, openBeads } from './features/beads';
 import { newsUnread, openCommunity, openDonate, openFacebook, openFeedback, openGuide, openNews } from './features/misc';
 import { openCharacter } from './features/character';
 import { openSettings } from './features/settings';
@@ -50,6 +51,7 @@ export interface MenuCtx {
   goTo(x: number, z: number): void;
   changeLook(name: string, outfit: Outfit, color: string): void;
   chatLog(): ChatMessage[];
+  act(kind: ActionKind): void;
 }
 
 const COLLAPSE_KEY = 'co:menuCollapsed';
@@ -67,6 +69,7 @@ export function initMenu(ctx: MenuCtx): void {
     { id: 'games', icon: 'game', label: 'Trò chơi', run: () => openGames(ctx) },
     { id: 'fest', icon: 'festival', label: 'Lễ hội', run: openFestivals },
     { id: 'checkin', icon: 'checkin', label: 'Điểm danh', run: () => openCheckin(ctx) },
+    { id: 'beads', icon: 'beads', label: 'Lần hạt', run: () => openBeads(ctx) },
     { id: 'mail', icon: 'mail', label: 'Hòm thư', run: () => openMail(ctx) },
     { id: 'news', icon: 'news', label: 'Có gì mới', run: () => { openNews(); refreshDots(); } },
     { id: 'quests', icon: 'scroll', label: 'Nhiệm vụ', run: legacy('quests') },
@@ -111,6 +114,7 @@ export function initMenu(ctx: MenuCtx): void {
     b.onclick = () => { audio.play('click'); d.run?.(); };
     if (d.id === 'quests') { const em = document.createElement('em'); em.id = 'questDot'; em.hidden = true; b.append(em); }
     if (d.id === 'checkin') { const em = document.createElement('em'); em.className = 'dot checkinDot'; em.hidden = true; b.append(em); }
+    if (d.id === 'beads') { const em = document.createElement('em'); em.className = 'dot beadsDot'; em.hidden = true; b.append(em); }
     if (d.id === 'mail') { const em = document.createElement('em'); em.className = 'dot mailDot'; em.hidden = true; b.append(em); }
     if (d.id === 'games') { const em = document.createElement('em'); em.className = 'dot gamesDot'; em.hidden = true; b.append(em); }
     if (d.id === 'news') { const em = document.createElement('em'); em.className = 'dot newsDot'; em.hidden = true; b.append(em); }
@@ -125,6 +129,8 @@ export function initMenu(ctx: MenuCtx): void {
     if (d) d.hidden = !newsUnread();
     const c = bar.querySelector<HTMLElement>('.checkinDot');
     if (c) c.hidden = !checkinPending();
+    const bd = bar.querySelector<HTMLElement>('.beadsDot');
+    if (bd) bd.hidden = !beadsPending();
     const m = bar.querySelector<HTMLElement>('.mailDot');
     if (m) m.hidden = !mailPending();
     const g = bar.querySelector<HTMLElement>('.gamesDot');
@@ -134,6 +140,7 @@ export function initMenu(ctx: MenuCtx): void {
   initCheckin(ctx, refreshDots);
   initMail(ctx, refreshDots);
   initSpin(ctx, refreshDots);
+  initBeads(ctx, refreshDots);
   initBoost(ctx);
   initStats(ctx);
 

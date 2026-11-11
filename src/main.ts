@@ -437,6 +437,7 @@ function startMenu() {
     players: () => [...remotes.entries()].filter(([, r]) => !r.data.npc).map(([id, r]) => ({ id, name: r.data.name, x: r.char.root.position.x, z: r.char.root.position.z, level: levelOf(r.data.merit) })),
     goTo: (x, z) => { clickTarget = new THREE.Vector3(x, 0, z); setSitting(false); },
     changeLook, chatLog: () => chatLog,
+    act: (kind) => doAction(kind),
   });
 }
 // ---------- Input ----------

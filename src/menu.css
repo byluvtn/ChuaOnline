@@ -170,3 +170,21 @@ body.menu-collapsed #actions, body.menu-collapsed #chat { bottom: calc(84px + en
 .stchip { padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; border: 1px solid rgba(138,90,28,.3); opacity: .45; }
 .stchip.next { opacity: 1; border-color: #e8b64a; box-shadow: 0 0 0 2px rgba(232,182,74,.45); }
 .stchip.done { opacity: 1; background: linear-gradient(#f8de8c, #e0b04a); border-color: #b9851f; color: #5a3410; }
+.bd-stage { position: relative; width: min(320px, 100%); aspect-ratio: 1; margin: 6px auto 8px; }
+.bd-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bd-dot { fill: #e4d6b0; stroke: #c9b27a; stroke-width: 1; transition: fill .15s; }
+.bd-dot.mark { fill: #d9c391; stroke: #8a5a1c; stroke-width: 2; }
+.bd-dot.lit { fill: #d9a02e; stroke: #8a5a1c; }
+.bd-dot.mark.lit { fill: #b3261e; stroke: #5e120c; }
+.bd-dot.cur { fill: #fff2b0; stroke: #e0a416; stroke-width: 2.5; }
+.bd-mid { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 6px; }
+.bd-bead { width: 132px; height: 132px; border-radius: 50%; border: 0; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-tap-highlight-color: transparent; background: radial-gradient(circle at 35% 30%, #a8693a, #5c3421 72%); box-shadow: 0 6px 0 #3a1f10, 0 12px 22px rgba(0,0,0,.35), inset 0 -6px 14px rgba(0,0,0,.3); display: grid; place-items: center; transition: transform .08s; }
+.bd-bead:disabled { opacity: .6; cursor: default; }
+.bd-bead .bd-face { color: #ffe6b0; font-weight: 800; font-size: 18px; letter-spacing: .04em; text-shadow: 0 2px 0 #3a1f10; pointer-events: none; }
+.bd-bead.hit { animation: bdhit .16s; }
+@keyframes bdhit { 40% { transform: scale(.93); } 100% { transform: scale(1); } }
+.bd-count { font-size: 24px; color: #8a2414; }
+.bd-result { text-align: center; min-height: 22px; font-weight: 700; color: #8a5a1c; line-height: 1.4; }
+.bd-result.bad { color: #8a2414; }
+.bd-again { display: block; margin: 10px auto 0; }
+.bd-again[hidden] { display: none; }

@@ -18,6 +18,7 @@ const ROWS: Row[] = [
   { stat: 'chants', label: 'Tụng kinh', icon: '📿', value: (s) => s.stats.chants },
   { stat: 'lanterns', label: 'Thả đèn', icon: '🏮', value: (s) => s.stats.lanterns },
   { stat: 'meditate_sec', label: 'Ngồi thiền', icon: '🧘', value: (s) => s.stats.meditateSec },
+  { stat: 'beads_rounds', label: 'Vòng hạt', icon: '📿', value: (s) => s.stats.beadsRounds },
 ];
 
 const nf = new Intl.NumberFormat('vi-VN');

@@ -247,11 +247,17 @@ export const STAT_MILESTONES: StatMilestone[] = [
   { id: 'med30', stat: 'meditate_sec', threshold: 1800, title: 'An trú hơi thở', coins: 20 },
   { id: 'med60', stat: 'meditate_sec', threshold: 3600, title: 'Tâm như mặt hồ', coins: 50, item: 'nen_sap_ong' },
   { id: 'med180', stat: 'meditate_sec', threshold: 10800, title: 'Định tĩnh như núi', coins: 120, item: 'den_hoa_dang' },
+  { id: 'bead5', stat: 'beads_rounds', threshold: 5, title: 'Khởi tâm lần hạt', coins: 20 },
+  { id: 'bead25', stat: 'beads_rounds', threshold: 25, title: 'Tràng hạt không rời tay', coins: 50, item: 'huong_tram' },
+  { id: 'bead100', stat: 'beads_rounds', threshold: 100, title: 'Một trăm vòng an nhiên', coins: 120, item: 'den_hoa_dang' },
 ];
 export interface PlayerStats { bows: number; chants: number; lanterns: number; meditateSec: number; beadsRounds: number }
 export interface StatsState { stats: PlayerStats; claimed: string[] }
 export interface StatsAck { ok: boolean; error?: string; state?: StatsState }
 export interface MilestoneEvent { id: string; title: string; coins: number; item?: string }
+
+export interface BeadsState { rewarded: number }
+export interface BeadsAck { ok: boolean; rewarded?: boolean; merit?: number }
 
 export interface SpinState { used: boolean }
 export interface SpinAck {

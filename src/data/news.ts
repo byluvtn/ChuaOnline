@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 4;
+export const LATEST_NEWS_ID = 5;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Lần hạt 108',
+    date: '2026-11-11',
+    items: [
+      'Thêm tính năng Lần hạt: chạm từng hạt, đủ 108 hạt là hoàn thành một vòng — nhận công đức và xu.',
+      'Mỗi ngày thưởng tối đa 5 vòng; các vòng sau vẫn tính vào Thành tựu tích lũy.',
+      'Thêm 3 mốc thành tựu mới cho người lần hạt: 5, 25 và 100 vòng (xem trong mục Cấp độ).',
+      'Vào giờ lễ và ngày Mùng 1, Rằm, công đức lần hạt cũng được nhân như các hành lễ khác.',
+    ],
+  },
   {
     title: 'Thành tựu tích lũy',
     date: '2026-11-11',

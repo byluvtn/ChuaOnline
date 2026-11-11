@@ -5,7 +5,7 @@ import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
   QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment,
-  type CheckinAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
+  type BeadsAck, type BeadsState, type CheckinAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
 import {
@@ -95,6 +95,8 @@ interface Session {
   last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
+  /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
+  beadStart?: number;
 }
 const sessions = new Map<string, Session>();
 const roomChat = new Map<string, ChatMessage[]>();
@@ -241,6 +243,7 @@ io.on('connection', (socket) => {
     socket.emit('checkin', await db.checkinState(pid));
     socket.emit('mail', { unread: await db.mailUnread(pid) });
     socket.emit('spin', { used: (await db.minigameCount(pid, 'quay')) > 0 } satisfies SpinState);
+    socket.emit('beads', { rewarded: await db.minigameCount(pid, 'lanhat') } satisfies BeadsState);
     socket.emit('boost', meritBoost(new Date()));
     socket.emit('stats', await currentStatsState(pid));
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
@@ -403,6 +406,10 @@ io.on('connection', (socket) => {
     memory: { merit: 2, coins: 5, cap: 5 },
   } as const;
   const MG_COOLDOWN_MS = 20_000;
+  const BEAD_ROUND_MIN_MS = 45_000;
+  const BEAD_ROUND_MAX_MS = 30 * 60_000;
+  const BEAD_ROUND_REWARD = { merit: 10, coins: 5 } as const;
+  const BEAD_DAILY_CAP = 5;
   socket.on('minigame:reward', async (game: string, cb?: (r: { ok: boolean; merit?: number; coins?: number; left?: number; error?: string }) => void) => {
     const s = me();
     if (!s || (game !== 'moh' && game !== 'memory')) return cb?.({ ok: false, error: 'Trò chơi không hợp lệ' });
@@ -415,6 +422,30 @@ io.on('connection', (socket) => {
     await db.addRewards(pid, rule.merit, rule.coins);
     await pushProfile(s);
     cb?.({ ok: true, merit: rule.merit, coins: rule.coins, left: rule.cap - (await db.minigameCount(pid, game)) });
+  });
+
+  socket.on('beads:start', (cb?: (r: { ok: boolean }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false });
+    s.beadStart = Date.now();
+    cb?.({ ok: true });
+  });
+  socket.on('beads:done', async (cb?: (r: BeadsAck) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false });
+    const started = s.beadStart;
+    s.beadStart = undefined;
+    const elapsed = started === undefined ? -1 : Date.now() - started;
+    if (elapsed < BEAD_ROUND_MIN_MS || elapsed > BEAD_ROUND_MAX_MS) return cb?.({ ok: false });
+    await countStatSafe(s, 'beads_rounds');
+    const rewarded = await db.claimMinigame(pid, 'lanhat', BEAD_DAILY_CAP);
+    const merit = rewarded ? Math.round(BEAD_ROUND_REWARD.merit * meritBoost(new Date()).mult) : 0;
+    if (rewarded) {
+      await grantRewards(s, merit, BEAD_ROUND_REWARD.coins);
+      await questEvent(s, 'beads');
+    }
+    cb?.({ ok: true, rewarded, merit });
+    socket.emit('beads', { rewarded: await db.minigameCount(pid, 'lanhat') } satisfies BeadsState);
   });
 
   socket.on('checkin:get', async (cb?: (r: CheckinAck) => void) => {
