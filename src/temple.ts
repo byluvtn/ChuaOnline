@@ -325,8 +325,36 @@ export function buildTemple(c: TempleCtx) {
     colliders.push({ x: QUAN.x + Math.cos(QUAN_ROT) * px + Math.sin(QUAN_ROT) * pz, z: QUAN.z - Math.sin(QUAN_ROT) * px + Math.cos(QUAN_ROT) * pz, r: 0.32 });
   }
   const q1 = new THREE.Mesh(c.roofGeometry(11.5, 11.5, 2.8, 0.9), c.tileM); q1.position.y = qy + QH + 1.3; q1.rotation.y = 0; q1.castShadow = true; q1.userData.sealable = true; qa.add(q1);
-  const q2 = new THREE.Mesh(c.roofGeometry(7, 7, 2.2, 0.6), c.tileM); q2.position.y = qy + QH + 2.9; q2.rotation.y = 0; q2.castShadow = true; q2.userData.sealable = true; qa.add(q2);
-  const qf = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), c.goldM); qf.position.y = qy + QH + 4.35; qf.userData.sealable = true; qa.add(qf);
+  const qBox = (mat: THREE.Material, w: number, h: number, dp: number, x: number, y: number, z: number) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+    m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; qa.add(m); return m;
+  };
+  for (const [px, pz] of qCorners) {
+    qBox(stoneM, 0.72, 0.4, 0.72, px, qy + 0.2, pz);
+    qBox(c.redM, 0.6, 0.3, 0.6, px, qy + QH + 0.1, pz);
+  }
+  for (const s of [-QA, QA]) {
+    qBox(c.redM, 2 * QA + 1.2, 0.2, 0.34, 0, qy + QH + 0.35, s);
+    qBox(c.redM, 0.34, 0.2, 2 * QA + 1.2, s, qy + QH + 0.35, 0);
+  }
+  const qNK = 1.5, qNeckH = 1.4, qNeckY = qy + QH + 2.55 + qNeckH / 2 - 0.2;
+  for (const [px, pz] of [[-qNK, -qNK], [qNK, -qNK], [-qNK, qNK], [qNK, qNK]] as [number, number][]) {
+    const nc = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, qNeckH + 0.1, 10), c.redM);
+    nc.position.set(px, qNeckY, pz); nc.castShadow = true; nc.userData.sealable = true; qa.add(nc);
+  }
+  for (const y of [qNeckY - qNeckH / 2 + 0.12, qNeckY + qNeckH / 2 - 0.12]) for (const s of [-qNK, qNK]) {
+    qBox(c.redM, 2 * qNK + 0.4, 0.2, 0.22, 0, y, s);
+    qBox(c.redM, 0.22, 0.2, 2 * qNK + 0.4, s, y, 0);
+  }
+  const qPanelH = qNeckH * 0.42;
+  for (const s of [-qNK, qNK]) {
+    qBox(c.redM, 2 * qNK, qPanelH, 0.12, 0, qNeckY - qNeckH / 2 + 0.12 + qPanelH / 2 + 0.1, s);
+    qBox(c.redM, 0.12, qPanelH, 2 * qNK, s, qNeckY - qNeckH / 2 + 0.12 + qPanelH / 2 + 0.1, 0);
+  }
+  const q2 = new THREE.Mesh(c.roofGeometry(7, 7, 2.2, 0.6), c.tileM); q2.position.y = qNeckY + qNeckH / 2 + 1.1 - 0.3; q2.rotation.y = 0; q2.castShadow = true; q2.userData.sealable = true; qa.add(q2);
+  const qFinBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.4, 8), c.goldM);
+  qFinBase.position.y = q2.position.y + 1.2; qFinBase.userData.sealable = true; qa.add(qFinBase);
+  const qf = new THREE.Mesh(new THREE.SphereGeometry(0.34, 12, 10), c.goldM); qf.position.y = q2.position.y + 1.6; qf.userData.sealable = true; qa.add(qf);
   const quanAm = buildQuanAm(); quanAm.position.y = qy; quanAm.scale.setScalar(0.92); qa.add(quanAm);
   const qSign = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.76), new THREE.MeshBasicMaterial({ map: signTexture('THÁP QUAN ÂM') }));
   qSign.position.set(0, qy + QH + 0.15, QA + 0.35); qa.add(qSign);
@@ -335,7 +363,8 @@ export function buildTemple(c: TempleCtx) {
   }
   qa.position.set(QUAN.x, 0, QUAN.z); qa.rotation.y = QUAN_ROT; scene.add(qa);
   colliders.push({ x: QUAN.x, z: QUAN.z, r: 1.1 });
-  sealArchitectureJoints(qa, { maxGap: 0.6 });
+  const qaSeal = sealArchitectureJoints(qa, { maxGap: 0.6 });
+  if (import.meta.env.DEV) console.warn(`gapdump quanAm: filled=${qaSeal.filled} remaining=${qaSeal.remaining.length} ` + JSON.stringify(qaSeal.remaining));
   zones.push({ x: QUAN.x, z: QUAN.z, r: 6.5, id: 'thap' });
 
   // ---- big Buddha in the western yard ----
@@ -356,9 +385,15 @@ export function buildTemple(c: TempleCtx) {
     const f = new THREE.Mesh(new THREE.BoxGeometry(w - 1, 1.3, w - 1), i % 2 ? c.wallM : c.redM); f.position.y = 0.9 + i * 2.6; f.castShadow = true; f.userData.sealable = true; pagoda.add(f);
     const r = new THREE.Mesh(c.roofGeometry(w * 1.45, w * 1.45, 1.1, 0.5), c.tileM); r.position.y = 2.0 + i * 2.6; r.castShadow = true; r.userData.sealable = true; pagoda.add(r);
   }
+  for (let i = 0; i < 2; i++) {
+    const pb = new THREE.Mesh(new THREE.BoxGeometry(6.2 - i * 0.8, 0.3, 6.2 - i * 0.8), stoneM);
+    pb.position.y = 0.15 + i * 0.3 - 0.0; pb.castShadow = pb.receiveShadow = true; pb.userData.sealable = true; pagoda.add(pb);
+  }
+  const spireBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, 0.5, 8), c.goldM); spireBase.position.y = 13.1; spireBase.userData.sealable = true; pagoda.add(spireBase);
   const spire = new THREE.Mesh(new THREE.ConeGeometry(0.2, 2.2, 8), c.goldM); spire.position.y = 14.4; spire.userData.sealable = true; pagoda.add(spire);
   pagoda.position.set(PAGODA.x, 0, PAGODA.z); scene.add(pagoda);
-  sealArchitectureJoints(pagoda, { maxGap: 1.4 });
+  const pgSeal = sealArchitectureJoints(pagoda, { maxGap: 1.4 });
+  if (import.meta.env.DEV) console.warn(`gapdump pagoda: filled=${pgSeal.filled} remaining=${pgSeal.remaining.length} ` + JSON.stringify(pgSeal.remaining));
   colliders.push({ x: PAGODA.x, z: PAGODA.z, r: 3.4 });
 
   // ---- Bảo Tháp thờ xá lợi (phía Tây Điện Tam Thế) — tháp đá bát giác nhiều tầng, cao ~26 m ----
