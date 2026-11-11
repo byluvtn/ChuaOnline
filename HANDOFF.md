@@ -191,7 +191,7 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
 - 3 mẫu tượng clone dùng chung geometry/material; chưa đo hiệu năng trên máy yếu (20 bệ + 20 tượng).
 ---
 
-## GĐ3 Mục 21 — Tăng xá + Trai đường dọc tường Tây (commit `5b40c7b`)
+## GĐ3 Mục 21 — Tăng xá + Trai đường dọc tường Tây (commit `aa97684`; code Quan Âm + gộp mesh ở `0dfbf6d`)
 
 Mục 22 (Điện Mẫu), 23 (Nhà khách), 24 (Thiền đường) đã có từ commit `d25a7e4`.
 
@@ -216,3 +216,30 @@ Mục 22 (Điện Mẫu), 23 (Nhà khách), 24 (Thiền đường) đã có từ
 - **Gộp mesh:** `temple.ts::mergeStaticByMaterial(root)` gọi trong `longHouse` sau `sealArchitectureJoints`, gộp theo material (bỏ qua mesh có `userData.inscription`). Mỗi nhà từ ≈300 xuống 11 mesh; scene 4542 → 3935 mesh, số tam giác không đổi. Biển/bảng không gắn cờ `inscription` cũng có thể bị gộp; ảnh `shots/gd3-21m-*.png` nhìn ổn. Script: `tools/steps-cost.mjs`.
 - **FPS (chưa kết luận):** `tools/shot.mjs` mặc định dùng SwiftShader (0.4–0.9 FPS, vô nghĩa). Đo GPU thật cần bản sao tạm của `shot.mjs` đổi sang `--use-angle=metal`. Sau gộp, bật/tắt nhà: Tây 29.3/41.8, Tây-rộng 19.2/29.2; sân chính ≈10 dù bật hay tắt nhà. Lần đo thứ hai (`tools/steps-fps2.mjs`) dao động rất lớn. Chưa thấy bằng chứng rõ về sụt FPS bất thường nhưng số đo nhiễu, nên **chưa coi là đã đóng băng layout**. Nên đo lại trên trình duyệt thật.
 - **Sự cố file:** lệnh `rm -f shots/probe-*.png` xóa nhầm 4 file. 3 file đã tracked (`probe-drum-from-north.png`, `probe-drum-from-south.png`, `probe-probe.png`) đã khôi phục bằng `git checkout --`. `shots/probe-plaza-wide.png` chưa tracked nên mất vĩnh viễn.
+
+---
+
+## R1.1 — Điểm danh 7 ngày + streak (commit `8e6a5cb`; bước 0 sửa biển `101d2a5`)
+
+### Đã làm
+- **Bước 0:** biển nhà Tây đổi thành "TĂNG XÁ TÂY" (`temple.ts`). `signTexture` (`textures.ts`) tự thu cỡ chữ khi chữ rộng quá 440px; biển cũ không đổi. Ảnh `shots/r11-sign-tangxatay.png`.
+- `shared/game.ts`: `CHECKIN_REWARDS` (7 ngày, ngày 7 kèm `den_hoa_dang`), `CheckinState`, `CheckinAck`.
+- `server/db.ts`: bảng `checkins` (tạo lúc boot, `CREATE TABLE IF NOT EXISTS`), `checkinState()`, `claimCheckin()` (một lệnh upsert nguyên tử, `rowsAffected` quyết định). Dùng nguyên `dayKey()` (ngày UTC, reset 07:00 giờ VN), không sửa `dayKey()`.
+- `server/index.ts`: `checkin:get`, `checkin:claim` (thêm item trước, rồi `grantRewards`), và emit `checkin` sau `pushQuests` trong handler `join`.
+- Client: `src/features/checkin.ts` (panel 7 ô, ✓ / sáng / mờ, dòng "Chuỗi điểm danh: X ngày · Tổng lượt: Y"), nút "Điểm danh" trong `menu.ts` + icon `checkin` + chấm đỏ (`.checkinDot`) bật khi vào chùa chưa nhận, tắt sau khi nhận. CSS ở `menu.css`.
+
+### Kiểm chứng
+- typecheck pass.
+- `node tools/steps-verify-checkin.mjs` (server riêng + DB tạm trong thư mục tạm, không đụng DB thật/Turso): 19/19 PASS.
+  - Lần đầu: streak 1, ngày 1, +3 công đức/+5 xu, profile đẩy về client.
+  - Lần 2 cùng ngày (kể cả 5 lệnh song song): chặn, profile không đổi.
+  - last_day = hôm qua: streak 2, ngày 2, +5/+5.
+  - last_day = 2 ngày trước: state hiển thị 0, claim về streak 1, ngày 1.
+  - streak 6 + hôm qua: ngày 7, +30/+30, túi +1 `den_hoa_dang`; ngày kế tiếp: streak 8, ngày chu kỳ 1.
+- Ảnh: `shots/r11-menu-dot.png` (nút Điểm danh + chấm đỏ), `r11-panel-before.png`, `r11-panel-after.png`. Script chụp: `tools/steps-r11-checkin.mjs`.
+
+### Chưa chắc chắn
+- Streak/ngày game theo UTC (reset 07:00 VN); chưa có hàm giờ VN, thuộc R1.4.
+- Chưa thử trên mobile/cảm ứng. Thông báo thưởng dùng `ctx.toast`, chưa có hiệu ứng riêng.
+- Bảng `checkins` tự tạo trên Turso khi server Render khởi động lại; chưa deploy.
+- Chưa làm R1.2 (hòm thư) và các mục khác.
