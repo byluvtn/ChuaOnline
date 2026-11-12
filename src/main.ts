@@ -13,6 +13,7 @@ import { createPost } from './post';
 import { createWorld } from './world';
 import { buildBuddha, buildQuanAm } from './statues';
 import { ACTION_RULES, ROOMS, type MeditationInfo, type QuestState } from '../shared/game';
+import { createPathfinder } from '../shared/pathfind';
 import {
   MAP_HALF, MAP_Z_MIN, OUTFIT_COLOR, levelOf, meritForLevel,
   type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState, type Profile,
@@ -159,6 +160,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
 const world = createWorld(renderer);
+const pathfinder = createPathfinder(world.colliders);
 const post = createPost(renderer, world.scene, camera, isTouch);
 const prewarm = () => {
   const seen = new Set<THREE.Texture>();
@@ -705,50 +707,6 @@ const tmp = new THREE.Vector3();
 
 let pathQueue: THREE.Vector3[] = [];
 let pathTarget: THREE.Vector3 | null = null;
-function segmentClear(ax: number, az: number, bx: number, bz: number) {
-  const dx = bx - ax, dz = bz - az;
-  const len2 = dx * dx + dz * dz;
-  for (const c of world.colliders) {
-    const t = len2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((c.x - ax) * dx + (c.z - az) * dz) / len2));
-    const px = ax + dx * t, pz = az + dz * t;
-    if (Math.hypot(c.x - px, c.z - pz) < c.r + 0.4 + 0.15) return false;
-  }
-  return true;
-}
-function planPath(from: THREE.Vector3, to: THREE.Vector3): THREE.Vector3[] {
-  if (segmentClear(from.x, from.z, to.x, to.z)) return [to.clone()];
-  const nodes: { x: number; z: number }[] = [{ x: from.x, z: from.z }, { x: to.x, z: to.z }];
-  const STEP = 1.2;
-  for (const c of world.colliders) {
-    if (c.r < 0.3) continue;
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2, rr = c.r + 0.4 + 0.5;
-      nodes.push({ x: c.x + Math.cos(a) * rr, z: c.z + Math.sin(a) * rr });
-    }
-  }
-  for (let z = -62; z <= 44; z += 6) for (const x of [-6.5, 0, 6.5]) nodes.push({ x, z });
-  const free = nodes.filter((n, i) => i < 2 || world.colliders.every((c) => Math.hypot(c.x - n.x, c.z - n.z) > c.r + 0.45));
-  const N = free.length;
-  const dist = new Array(N).fill(Infinity), prev = new Array(N).fill(-1), done = new Array(N).fill(false);
-  dist[0] = 0;
-  for (let it = 0; it < N; it++) {
-    let u = -1;
-    for (let i = 0; i < N; i++) if (!done[i] && (u < 0 || dist[i] < dist[u])) u = i;
-    if (u < 0 || dist[u] === Infinity) break;
-    done[u] = true;
-    if (u === 1) break;
-    for (let v = 0; v < N; v++) {
-      if (done[v]) continue;
-      const d = Math.hypot(free[u].x - free[v].x, free[u].z - free[v].z);
-      if (d > 40 || d < STEP * 0.1) continue;
-      if (dist[u] + d < dist[v] && segmentClear(free[u].x, free[u].z, free[v].x, free[v].z)) { dist[v] = dist[u] + d; prev[v] = u; }
-    }
-  }
-  if (prev[1] < 0) return [to.clone()];
-  const out: THREE.Vector3[] = [];
-  for (let i = 1; i >= 0 && i !== -1; i = prev[i]) { if (i !== 0) out.unshift(new THREE.Vector3(free[i].x, 0, free[i].z)); if (prev[i] < 0) break; }
-  return out.length ? out : [to.clone()];
-}
 
 const ACCEL_S = 0.25, DECEL_S = 0.25, WALK_SPEED = 3.8, RUN_SPEED = 7, ARRIVE_DIST = 1.5;
 const STRIDE_M = WALK_SPEED * 1.24;
@@ -764,9 +722,16 @@ const prevPos = { x: 0, z: 0 };
 function collide(pos: THREE.Vector3) {
   const onDeck = resolveBridge(pos, prevPos);
   for (const c of world.colliders) {
-    const dx = pos.x - c.x, dz = pos.z - c.z;
+    const w = c as typeof c & { x2?: number; z2?: number };
+    let cx = c.x, cz = c.z;
+    if (w.x2 !== undefined && w.z2 !== undefined) {
+      const sx = w.x2 - c.x, sz = w.z2 - c.z;
+      const t = Math.max(0, Math.min(1, ((pos.x - c.x) * sx + (pos.z - c.z) * sz) / (sx * sx + sz * sz)));
+      cx = c.x + sx * t; cz = c.z + sz * t;
+    }
+    const dx = pos.x - cx, dz = pos.z - cz;
     const d = Math.hypot(dx, dz), min = c.r + 0.4;
-    if (d < min && d > 0.0001) { pos.x = c.x + (dx / d) * min; pos.z = c.z + (dz / d) * min; }
+    if (d < min && d > 0.0001) { pos.x = cx + (dx / d) * min; pos.z = cz + (dz / d) * min; }
   }
   world.resolveWater(pos, onDeck);
   clampToCompound(pos);
@@ -860,7 +825,7 @@ function loop() {
       me.ry = Math.atan2(dx, dz);
       moving = true;
     } else if (clickTarget) {
-      if (pathTarget !== clickTarget) { pathTarget = clickTarget; pathQueue = planPath(root.position, clickTarget); }
+      if (pathTarget !== clickTarget) { pathTarget = clickTarget; pathQueue = pathfinder.findPath({ x: root.position.x, z: root.position.z }, { x: clickTarget.x, z: clickTarget.z }).map((p) => new THREE.Vector3(p.x, 0, p.z)); }
       const wp = pathQueue.length ? pathQueue[0] : clickTarget;
       tmp.copy(wp).sub(root.position);
       tmp.y = 0;

@@ -1107,6 +1107,7 @@ export function buildTemple(c: TempleCtx) {
     const gateHalf = 1.6;
     const postStep = 1.1;
     const posts: { x: number; z: number }[] = [];
+    const fenceCols: { x: number; z: number; r: number; x2?: number; z2?: number }[] = [];
     const rails: { x: number; z: number; len: number; ang: number }[] = [];
     const addLine = (xa: number, za: number, xb: number, zb: number) => {
       const len = Math.hypot(xb - xa, zb - za);
@@ -1114,6 +1115,14 @@ export function buildTemple(c: TempleCtx) {
       const n = Math.max(1, Math.ceil(len / postStep));
       const ang = Math.atan2(zb - za, xb - xa);
       for (let i = 0; i <= n; i++) posts.push({ x: xa + ((xb - xa) * i) / n, z: za + ((zb - za) * i) / n });
+      const wr = len / n / 2 + 0.002 - 0.4;
+      for (let i = 0; i <= n; i++) {
+        const wall: { x: number; z: number; r: number; x2?: number; z2?: number } = {
+          x: xa + ((xb - xa) * i) / n, z: za + ((zb - za) * i) / n, r: wr,
+        };
+        if (i < n) { wall.x2 = xa + ((xb - xa) * (i + 1)) / n; wall.z2 = za + ((zb - za) * (i + 1)) / n; }
+        fenceCols.push(wall);
+      }
       rails.push({ x: (xa + xb) / 2, z: (za + zb) / 2, len, ang });
     };
     addLine(v.x0, v.z0, v.x1, v.z0);
@@ -1148,14 +1157,13 @@ export function buildTemple(c: TempleCtx) {
     railIM.instanceMatrix.needsUpdate = true;
     fence.add(railIM);
     scene.add(fence);
-    for (const p of posts) colliders.push({ x: p.x, z: p.z, r: 0.6 });
+    for (const w of fenceCols) colliders.push(w);
     const gp = new THREE.Group();
     for (const sx of [-gateHalf, gateHalf]) {
       const gpost = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, 0.4), c.redM);
       gpost.position.set(sx, 1.1, 0); gpost.castShadow = true; gpost.userData.sealable = true; gp.add(gpost);
       const gbase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.25, 0.6), stoneM);
       gbase.position.set(sx, 0.125, 0); gbase.userData.sealable = true; gp.add(gbase);
-      colliders.push({ x: v.gateX + sx, z: v.z1, r: 0.45 });
     }
     const gbeam = new THREE.Mesh(new THREE.BoxGeometry(gateHalf * 2 + 0.6, 0.28, 0.4), c.redM);
     gbeam.position.set(0, 2.1, 0); gbeam.castShadow = true; gbeam.userData.sealable = true; gp.add(gbeam);
@@ -1201,7 +1209,7 @@ export function buildTemple(c: TempleCtx) {
   pathRect(19.8, -32.2, 25.5, -29.8);
   pathRect(48.8, -31, 50.2, -23.4);
   pathRect(33, -24.8, 50.2, -23.4);
-  pathRect(BAO_THAP.x - 1.2, -48, BAO_THAP.x + 1.2, -44);
+  pathRect(BAO_THAP.x - 1.2, BAO_THAP.z + BAO_THAP_PLAT.step2.z1, BAO_THAP.x + 1.2, ZEN.z - 1);
   pathRect(THIEN_DUONG.x + THIEN_DUONG_PLAT.hx, THIEN_DUONG.z - 1.2, -SIDE_X - 1.2, THIEN_DUONG.z + 1.2);
   pathRect(28, 8.8, 35, 11.2);
   pathRect(-43.2, 39.5, -40.8, 42.2);
@@ -1225,6 +1233,19 @@ export function buildTemple(c: TempleCtx) {
   const psWaterMat = new THREE.MeshStandardMaterial({ color: 0x46a8c4, roughness: 0.08, metalness: 0.3, transparent: true, opacity: 0.82 });
   const psWater = new THREE.Mesh(new THREE.CircleGeometry(1, 48), psWaterMat);
   psWater.scale.set(PS_POND.a, PS_POND.b, 1); psWater.rotation.x = -Math.PI / 2; psWater.position.set(PS_POND.x, 0.1, PS_POND.z); psGroup.add(psWater);
+  // ---- cá koi ao Phóng Sinh: 6 con, tái dùng createKoi/swimKoi (chỉ để nhìn) ----
+  const psKoi: Koi[] = [];
+  for (let i = 0; i < 6; i++) {
+    const k = createKoi(KOI_VARIETIES[i % 4], 0.85 + (i % 3) * 0.12);
+    k.a = i * 1.1;
+    k.rx = PS_POND.a * (0.35 + (i % 3) * 0.15);
+    k.rz = PS_POND.b * (0.35 + (i % 3) * 0.15);
+    k.s = (i % 2 ? 1 : -1) * (0.25 + (i % 3) * 0.1);
+    k.phase = (i / 6) * Math.PI * 2;
+    k.root.position.set(PS_POND.x + Math.cos(k.a) * k.rx, 0.16, PS_POND.z + Math.sin(k.a) * k.rz);
+    psGroup.add(k.root);
+    psKoi.push(k);
+  }
   const psRimStone = lamb(0x8b7a64, { map: stoneTexture([140, 128, 110], [10, 1], 3) });
   const psRimPts: THREE.Vector3[] = [];
   for (let i = 0; i <= 48; i++) { const a = (i / 48) * Math.PI * 2; psRimPts.push(new THREE.Vector3(PS_POND.x + Math.cos(a) * (PS_POND.a + 0.3), 0, PS_POND.z + Math.sin(a) * (PS_POND.b + 0.3))); }
@@ -1381,6 +1402,16 @@ export function buildTemple(c: TempleCtx) {
       const x = Math.cos(kk.a) * kk.rx, z = Math.sin(kk.a) * kk.rz;
       kk.root.position.set(x, 0.16 + Math.sin(t * 2 + kk.a * 3) * 0.012, z);
       // hướng đầu (+z cục bộ) trùng tiếp tuyến đường bơi
+      const tx = -Math.sin(kk.a) * kk.rx * Math.sign(kk.s);
+      const tz = Math.cos(kk.a) * kk.rz * Math.sign(kk.s);
+      kk.root.rotation.y = Math.atan2(tx, tz);
+      swimKoi(kk, t);
+    });
+    // cá ao Phóng Sinh: bơi bằng tọa độ tuyệt đối (psGroup ở gốc thế giới)
+    psKoi.forEach((kk) => {
+      kk.a += dt * kk.s;
+      const x = PS_POND.x + Math.cos(kk.a) * kk.rx, z = PS_POND.z + Math.sin(kk.a) * kk.rz;
+      kk.root.position.set(x, 0.16 + Math.sin(t * 2 + kk.a * 3) * 0.012, z);
       const tx = -Math.sin(kk.a) * kk.rx * Math.sign(kk.s);
       const tz = Math.cos(kk.a) * kk.rz * Math.sign(kk.s);
       kk.root.rotation.y = Math.atan2(tx, tz);

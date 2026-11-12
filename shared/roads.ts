@@ -40,6 +40,8 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'axisMid', x: 3, z: -17 },
   { id: 'hallFront', x: 0, z: -20 },
   { id: 'hallIn', x: 0, z: -24 },
+  { id: 'hallWestWp', x: -21, z: -12.5 }, // west of the x=-18.1 colonnade; was (-18,-10), 0.50 from r0.50 column (-18.8,-9.4)
+  { id: 'hallEastWp', x: 22.8, z: -12.3 }, // gap between columns (22.5,-13.5) and (22.9,-11.2); was (24,-12.5)
   // Rear west / east
   { id: 'rearW', x: -46, z: -46 },
   { id: 'rearKT', x: -30, z: -46 },
@@ -54,30 +56,49 @@ export const ROAD_NODES: RoadNode[] = [
   // Stair approach (east aisle, around the altar)
   { id: 'hallAisleE', x: 14, z: -38 },
   { id: 'hallAisleN', x: 14, z: -41.8 },
-  { id: 'stairApp', x: 4, z: -41.8 },
-  { id: 'stairTop', x: 0, z: -42 },
-  { id: 'tamThe', x: 0, z: -44 },
+  { id: 'stairApp', x: 4, z: -49.8 },
+  { id: 'stairTop', x: 0, z: -50 },
+  { id: 'tamThe', x: 0, z: -52 },
   // Branch
   { id: 'bellTower', x: -34, z: -6 },
   { id: 'drumTower', x: 34, z: -6 },
   { id: 'quanYard', x: 28, z: 19.5 },
   { id: 'buddhaYard', x: -22.6, z: 14 },
   { id: 'denTrinh', x: 10, z: 39 },
-  { id: 'restArea', x: 27, z: 31 },
+  { id: 'restArea', x: 27, z: 33.5 },
+  { id: 'restEast', x: 34.5, z: 26 },
+  { id: 'restSE', x: 34.5, z: 36 },
+  { id: 'denN', x: 11.5, z: 35.5 },
+  { id: 'denE', x: 18, z: 37 },
   { id: 'dienMau', x: 39, z: 14.5 },
-  // baoThap stops south of the Tam The platform edge (z = -42): the thap's steps
-  // (z -47..-45.2) sit inside the platform footprint, so the node cannot sit at the steps.
-  { id: 'baoThap', x: -17, z: -41 },
+  // baoThap stops 2.2 m south of the thap's south steps (z -33..-31.2); the steps
+  // no longer sit inside the Tam The platform (platform z -74..-50).
+  { id: 'baoThap', x: -30, z: -28 }, // was -29: pillar r0.5 at (-30.2,-29.8) left only 0.33 clearance at the node
   { id: 'phongCDDoor', x: -42, z: 39.5 },
   { id: 'psPier', x: 30, z: -31 },
-  { id: 'thienDuong', x: -39.5, z: -27 },
+  { id: 'thienDuong', x: -39.5, z: -27.5 },
   { id: 'zenGarden', x: -34, z: -26 },
   { id: 'corrW', x: -20.5, z: -6 },
   { id: 'pillars', x: 0, z: -5.9 },
+  // Waypoints that route around the zen-garden/drum/pier colliders
+  { id: 'zenIn', x: -28.3, z: -27 }, // inside the zen pocket, east of pillar (-29.4,-26); start of the x=-28.3 run to the z=-17 wall gap
+  { id: 'zenOut', x: -28.3, z: -8 }, // south of the z=-17 wall gap (-30.3..-26.7), north-east of the bell-tower pillars at z=-7.9
+  { id: 'drumTowerW', x: 29, z: -8 },
+  { id: 'psW', x: 25.5, z: -31 },
   // Garden (rest route)
-  { id: 'ktGate', x: -30, z: -49 },
+  { id: 'ktGate', x: -30, z: -54 },
+  { id: 'ktIn', x: -30, z: -57 },
+  { id: 'ktMid', x: -34, z: -56 },
   { id: 'ktYard', x: -41, z: -60 },
   { id: 'tangXaDoor', x: -41, z: -68 },
+  // East garden (Am Co)
+  { id: 'toGate', x: 30, z: -54 },
+  { id: 'toIn', x: 30, z: -58 },
+  { id: 'toYard', x: 41, z: -58 },
+  { id: 'toE', x: 50, z: -58 },
+  { id: 'amCoE1', x: 55, z: -58 },
+  { id: 'amCoE2', x: 55, z: -68.5 },
+  { id: 'amCoDoor', x: 53, z: -71 },
 ]
 
 export const ROAD_EDGES: [string, string][] = [
@@ -85,23 +106,25 @@ export const ROAD_EDGES: [string, string][] = [
   ['gate', 'bridgeS'], ['bridgeS', 'bridgeN'], ['bridgeN', 'plaza'],
   ['plaza', 'axisMid'], ['axisMid', 'hallFront'], ['hallFront', 'hallIn'],
   // Axis to sides
-  ['hallFront', 'corrW'], ['hallFront', 'drumTower'], ['plaza', 'pillars'],
-  ['pillars', 'axisMid'], ['corrW', 'pillars'], ['drumTower', 'pillars'],
+  ['plaza', 'pillars'],
+  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['hallFront', 'hallEastWp'], ['hallEastWp', 'drumTowerW'],
   // West
   ['corrW', 'westMid'], ['westMid', 'westNorth'], ['westNorth', 'rearKT'],
-  ['rearKT', 'rearW'], ['rearKT', 'ktGate'], ['ktGate', 'ktYard'], ['ktYard', 'tangXaDoor'],
+  ['rearKT', 'rearW'], ['rearKT', 'ktGate'], ['ktGate', 'ktIn'], ['ktIn', 'ktMid'], ['ktMid', 'ktYard'], ['ktYard', 'tangXaDoor'],
   // East
-  ['drumTower', 'eastMid'], ['eastMid', 'eastNorth'], ['eastNorth', 'rearTO'], ['rearTO', 'rearE'],
+  ['drumTower', 'drumTowerW'], ['drumTowerW', 'eastMid'], ['eastMid', 'eastNorth'], ['eastNorth', 'rearTO'], ['rearTO', 'rearE'],
+  ['psPier', 'psW'], ['psW', 'eastMid'],
+  // East garden (Am Co)
+  ['rearTO', 'toGate'], ['toGate', 'toIn'], ['toIn', 'toYard'], ['toYard', 'toE'], ['toE', 'amCoE1'], ['amCoE1', 'amCoE2'], ['amCoE2', 'amCoDoor'],
   // Stair
   ['hallIn', 'hallAisleE'], ['hallAisleE', 'hallAisleN'], ['hallAisleN', 'stairApp'], ['stairApp', 'stairTop'], ['stairTop', 'tamThe'],
   // Branch
-  ['bellTower', 'corrW'], ['bellTower', 'baoThap'], ['baoThap', 'zenGarden'],
-  ['zenGarden', 'thienDuong'], ['zenGarden', 'westMid'], ['quanYard', 'plaza'],
-  ['quanYard', 'restArea'], ['quanYard', 'dienMau'], ['buddhaYard', 'plaza'],
-  ['buddhaYard', 'bridgeN'], ['denTrinh', 'gate'], ['denTrinh', 'restArea'],
-  ['restArea', 'plaza'], ['dienMau', 'restArea'], ['phongCDDoor', 'gate'],
-  ['phongCDDoor', 'denTrinh'], ['psPier', 'dienMau'], ['psPier', 'eastNorth'],
-  ['thienDuong', 'westNorth'],
+  ['bellTower', 'corrW'], ['baoThap', 'zenGarden'],
+  ['zenGarden', 'thienDuong'], ['baoThap', 'zenIn'], ['zenIn', 'zenOut'], ['zenOut', 'bellTower'],
+  ['quanYard', 'plaza'],
+  ['quanYard', 'restEast'], ['restEast', 'restSE'], ['restSE', 'restArea'], ['quanYard', 'dienMau'], ['buddhaYard', 'plaza'],
+  ['buddhaYard', 'bridgeN'], ['denTrinh', 'gate'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'restArea'],
+  ['phongCDDoor', 'gate'],
 ]
 
 const NODE_BY_ID = new Map<string, RoadNode>(ROAD_NODES.map((n) => [n.id, n]))

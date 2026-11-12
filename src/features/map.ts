@@ -60,9 +60,9 @@ export function openMap(ctx: MenuCtx) {
       rect(-WALL.x, WALL.zN, WALL.x, WALL.zS, '#e4e8c4', '#8a5a2b');
       rect(-WALL.x, WALL.zS, WALL.x, 58, '#e8d6a4', '#c9a96a');
       g.fillStyle = '#e4e8c4'; g.fillRect(X(-WALL.gate), Z(WALL.zS) - 2 * dpr, WALL.gate * 2 * k, 4 * dpr);
-      rect(-2, -54, 2, WALL.zS, '#e8d6a4');
+      rect(-2, TAM_THE_PLAT.zStart, 2, WALL.zS, '#e8d6a4');
       rect(-58, PATH_Z - 1.5, 58, PATH_Z + 1.5, '#e8d6a4');
-      rect(-58, -48, 58, -43, '#e8d6a4');
+      rect(-58, -47, 58, -45, '#e8d6a4');
       rect(-60.3, -78, -57.7, 41, '#e8d6a4'); rect(57.7, -78, 60.3, 41, '#e8d6a4'); rect(-58, 39.8, 58, 42.2, '#e8d6a4');
       for (const v of [VIEN_KT, VIEN_TO]) {
         rect(v.x0, v.z0, v.x1, v.z1, '#ddd9b0', '#8a5a2b');

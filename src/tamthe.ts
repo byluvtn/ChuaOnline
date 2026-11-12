@@ -41,7 +41,7 @@ export function buildTamThe(c: TempleCtx) {
 
   const sz0 = TAM_THE_PLAT.zStart - TAM_THE.z;
   const sz1 = TAM_THE_PLAT.hz;
-  const nSteps = 14;
+  const nSteps = 20;
   const stairM = lamb(0xb9ae98);
   for (let i = 0; i < nSteps; i++) {
     const t0 = i / nSteps, t1 = (i + 1) / nSteps;

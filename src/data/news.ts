@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 16;
+export const LATEST_NEWS_ID = 17;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa lỗi đơ máy và kẹt sau chùa',
+    date: '2026-11-12',
+    items: [
+      'Đã sửa lỗi game đơ 20–40 giây khi bấm đi xa: đường đi giờ tính trong chưa tới 1 mili giây thay vì 5–28 giây.',
+      'Nhân vật không còn kẹt ở hàng rào hai viện: hàng rào đổi thành tường liên tục, vẫn chặn được nhưng trượt dọc mượt, cổng vẫn đi qua được.',
+      'Điện Tam Thế dời ra xa Chính Điện 8 m; Bảo Tháp dời về phía tây, không còn đè lên nền Tam Thế; cầu thang Tam Thế dài ra thành 20 bậc, dốc vừa phải.',
+      'Ao Vườn Phóng Sinh có 6 cá koi bơi; bảng câu đối của các nhà thu nhỏ lại, vừa màn hình điện thoại.',
+    ],
+  },
   {
     title: 'Thêm sư thầy trực bàn, chú tiểu và phật tử',
     date: '2026-11-12',

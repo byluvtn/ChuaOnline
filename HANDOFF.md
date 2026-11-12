@@ -790,3 +790,40 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - Số đo TRÊN MÁY THẬT (§5.3, user làm cùng): đứng sân quan sát 10 phút giờ thực — tiểu đánh chuông có rời tháp không, chú tiểu nào về tăng xá nằm không, sư thầy trực bàn có ngồi yên không, khách có rẽ vào khu mới không; đứng trước cửa tăng xá nhìn vào: NPC nằm có đúng trên giường không (đầu tây, không lơ lửng/chìm).
 - Hai công trình vẫn chồng footprint (Bảo Tháp (−17,−52) nằm trong nền Điện Tam Thế) — nút baoThap đã dời ra ngoài nhưng kiến trúc cần sửa riêng (gói phản hồi sau chùa).
 - Tin tức: thêm entry "Thêm sư thầy trực bàn, chú tiểu và phật tử", `LATEST_NEWS_ID` 15 → 16.
+
+## Phản hồi sau chùa (điện thoại) — sửa đơ máy, kẹt hàng rào, dời Tam Thế/Bảo Tháp, ao cá, bảng nhà
+
+### §0. Baseline đã đo (điện thoại thật Note20, giờ VN 2026-11-12)
+- FPS nền 36,2.
+- Dạng A (đơ): `planPath` cũ mất 5–28 giây mỗi click (7208 nút, 0,7–1,7 triệu lần `segmentClear`, 986 collider). 3/7 tuyến có `prev[1] = -1` nên code trả `[to]` và nhân vật đi thẳng vào rào.
+- Dạng B (kẹt): kẹt cứng tại (-45,33; -54,85) trên rào Nam VIEN_KT.
+- Sim hàng rào baseline: 2762 mẫu kẹt.
+- Tọa độ đo: Tam Thế–Chính Điện 0 m; bậc Tam Thế 14 bậc, run 1,8 m, rise 3,0 m (~59°); bệ tháp giao nền Tam Thế ~9,8×13,6 m.
+
+### §1. Sửa đơ và kẹt
+- Module mới `shared/pathfind.ts` (152 dòng): spatial hash ô 4 m, Dijkstra trên đồ thị đường. `findPath` không bao giờ trả `[to]` khi đoạn thẳng bị chặn. `lastFallback` và `console.warn` khi đích không tới được.
+- `main.ts`: xóa `segmentClear` và `planPath` cũ, dùng `createPathfinder(world.colliders)`.
+- Đồ thị `shared/roads.ts`: 56 nút, 57 cạnh, probe 0 cạnh xấu, 0 nút xấu. Có đi qua khe tường ngang z=-17, x≈-28,5 để nối cụm Bảo Tháp và Vườn Thiền.
+- `buildVienFence` đổi sang collider capsule `{x,z,r,x2?,z2?}`, r≈0,15, đoạn thẳng giữa 2 cột kề. `collide()` đẩy theo điểm gần nhất trên đoạn.
+- Bỏ collider cổng r0,45: cột cuối tuyến đã ở gateX ± 1,6, khe cổng ~2,1 m vẫn đi qua được.
+
+### §2. Bố cục
+- `TAM_THE.z` -54 → **-62** (nền z -74..-50; cách Chính Điện 8,0 m, cách tường Bắc 8,0 m).
+- `TAM_THE_PLAT.zStart` -40,2 → **-44** (thang dài 6,0 m).
+- `BAO_THAP` (-17,-52) → **(-30,-38)**: bệ x -36,8..-23,2, z -44,8..-31,2; bậc tháp phía nam z -33..-31,2.
+- 4 khoảng đo: 8,0 m (Tam Thế–Chính Điện) / 3,2 m (bệ tháp–nền Tam Thế) / 1,2 m (bệ tháp–đường hậu z=-46) / 3,7 m.
+
+### §3. Bậc Tam Thế
+- `nSteps` 14 → **20**: rise 0,15 m/bậc, tread 0,30 m/bậc, dốc 26,6°.
+
+### §4. Ao cá
+- 6 cá koi `createKoi`/`swimKoi` (xoay 4 mẫu, scale 0,85–1,09), tọa độ tuyệt đối, rx tối đa 4,9 (điểm Tây nhất x=36,1, không chạm bến).
+
+### §5. Bảng nhà
+- `#couplet` (không phải `#panel`, vì panel là overlay Shop/Quests, không đụng): `width: min(280px, 88vw)` (280 px trên điện thoại 390 px), chữ 10/11/10,5 px, nút X 44×44, `max-height: 38vh` + cuộn.
+
+### Nghiệm thu (coordinator đo trên cây thật)
+- `npx tsc --noEmit` 0 lỗi; `npm run build` sạch (trừ warning chunk > 500 kB đã có từ trước); sim NPC 24/24 PASS; probe đồ thị 0/0; benchmark 8 tuyến median 0,04–0,37 ms (trước: 5–28 giây), `createPathfinder` 3 ms; sim hàng rào 0 mẫu kẹt (trước: 2762), 8 phía vẫn chặn, 2 cổng vẫn qua; 0 chữ Hán; file LF.
+
+### Chưa chắc chắn / việc còn treo (làm cùng user, máy thật)
+- Chụp lại ảnh điện thoại sau sửa (8 tuyến đi bộ, ngồi thiền, bảng nhà); đo FPS thực trên máy thật; kiểm tra cá koi trong ao PS trên điện thoại; kiểm tra hàng rào trượt dọc mượt.
