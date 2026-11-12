@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 15;
+export const LATEST_NEWS_ID = 16;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thêm sư thầy trực bàn, chú tiểu và phật tử',
+    date: '2026-11-12',
+    items: [
+      'Chùa có 12 NPC: sư thầy trực bàn ghi công đức, 4 chú tiểu quét dọn, tiểu đánh chuông và 5 phật tử đi lễ.',
+      'Tiểu đánh chuông đi lại quanh tháp và vườn cột kinh, về thỉnh chuông đúng giờ.',
+      'Chú tiểu làm theo ca 20 phút, hết ca về tăng xá nằm nghỉ 10 phút trên giường rồi quay lại làm.',
+      'Phật tử đi lễ có lúc rẽ thăm bến thả cá, bàn công đức, Điện Tam Thế hoặc đường hậu.',
+    ],
+  },
   {
     title: 'Sửa lỗi kẹt trong nhà',
     date: '2026-11-12',

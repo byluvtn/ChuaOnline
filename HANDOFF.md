@@ -722,3 +722,71 @@ Số mesh/tri thực tế từng nhà: chưa đo (không có quyền chạy dev 
 
 ### Tin tức
 - Tin tức: thêm entry "Tượng Quan Âm chibi mới", `LATEST_NEWS_ID` 13 → 14.
+
+## A2.9 — Mở rộng NPC: roster 5 → 12, ca trực + nghỉ, di chuyển theo mạng đường
+
+### Đối chiếu thực trạng (bước 0 — khác spec cũ)
+- `planPath` (main.ts:718) KHÔNG phải đồ thị đường: nó là Dijkstra riêng của client cho người chơi. NPC dùng đồ thị mới `shared/roads.ts` — hai hệ độc lập.
+- Câu đóng cuối phiên của sư thầy có sĩ số ĐÃ CÓ SẴN trong code cũ (không làm lại): sim bắt được `05:20:00 VN Hết thời khóa. Hiện có 3 đạo hữu đang ở trong chùa. Mang sự bình an này về với gia đình và bạn bè. A Di Đà Phật.`
+- Đường hậu (§0.12): KHÔNG có đường thẳng dọc z = −46 và KHÔNG có đường vòng z = −40 (z = −40, |x| < 17 là sàn chính điện, y = 1.35, nằm trong nhà). Đường hậu CHIA ĐÔI đông/tây; qua giữa chỉ bằng chính điện + cầu thang giữa (qua hành lang đông hallIn → hallAisleE → hallAisleN → stairApp → stairTop → tamThe).
+- Ban thờ chính điện là khối đặc 24 m × 3,3 m tại (0,−40), mặt trên y = 1,9; bậc dưới của cầu thang Tam Thế NẰM TRONG khối ban thờ — nên tuyến thẳng hallIn → stairBase đi XUYÊN ban thờ. Đã sửa bằng tuyến hành lang đông (nút hallAisleE (14,−38), hallAisleN (14,−41.8), stairApp (4,−41.8)).
+- Nút baoThap ban đầu (−17,−45) NẰM TRONG footprint Điện Tam Thế (nền cao 3,0) — NPC sẽ trèo lên nền Tam Thế để thăm Bảo Tháp. Đã dời về (−17,−41), phía nam mặt nam của nền (z = −42). Bản thân hai công trình vẫn chồng footprint — đó là lỗi kiến trúc (xem mục phản hồi sau chùa), không sửa trong gói này.
+- **Hướng nằm trên giường — spec cũ SAI:** giường tăng xá dài 2,0 m theo trục X, sâu chỉ 0,9 m; NPC cao 2,12 m KHÔNG THỂ nằm bắc-nam (chân thò ra ngoài giường 1,2 m). Nằm ĐÔNG-TÂY, đầu hướng TÂY, ry = +PI/2. Tư thế `lie` nghiêng người NGỬA (mặt hướng lên, đầu về local −Z) — nghiêng tới (+PI/2) sẽ úp mặt xuống, đọc như ngã. Nâng thân 0,65 (mặt nệm +0,35 so với gốc nhóm, bán kính áo ~0,33) và nghiêng đầu lên 0,13 rad để đầu (r 0,53) không chìm vào nệm; dịch thân +0,8 theo z để thân căn giữa giường 2,0 m.
+- Màu npc4 `#7a4a6a` là lựa chọn của người viết gói (spec chỉ nói "khác npc2").
+
+### Roster cuối (12 NPC)
+| id | Tên | Outfit | Màu | Scale | Role | Behavior | Slot / vị trí |
+| npc1 | Sư Thầy | monk | #d9a62b | 1.15 | abbot | wander | đi lễ quanh chùa, giữ thời khóa |
+| npc2 | Tiểu Quét Sân | monk | #8a5a2b | 0.9 | novice | sweepPlaza | quét sân chùa (plaza) |
+| npc3 | Tiểu Quét Cầu | monk | #8c8c90 | 0.9 | novice | sweepBridge | quét cầu (đi hai đầu cầu) |
+| npc4 | Tiểu Đánh Chuông | monk | #7a4a6a | 0.9 | novice | bell | tháp chuông, roam corrW → pillars → corrW → bellTower |
+| npc5 | Phật Tử Đi Lễ | female | #bc7672 | 1.0 | lay | visitor | vòng cổng → ban thờ → sân → cổng, 30% rẽ nhánh |
+| npc6 | Sư Thầy Trực Bàn | monk | #b98a2e | 1.15 | abbot | desk | ngồi ghế trực (−42, 32.6), ry = 0, anim 'sit' |
+| npc7 | Tiểu Quét Vườn | monk | #7a6a8a | 0.9 | novice | sweepZen | quét vườn thiền (zenGarden) |
+| npc8 | Tiểu Quét Đường | monk | #5a7a5a | 0.9 | novice | sweepRoad | quét đường hậu (một phía đông/tây, không sang giữa) |
+| npc9 | Cụ Ông Đi Lễ | male | #72818e | 1.0 | lay | visitor | như npc5 |
+| npc10 | Cụ Bà Đi Lễ | female | #a86a7a | 1.0 | lay | visitor | như npc5 |
+| npc11 | Cô Gái Đi Lễ | female | #d98a7a | 1.0 | lay | visitor | như npc5 |
+| npc12 | Chàng Trai Đi Lễ | male | #5a7a8a | 1.0 | lay | visitor | như npc5 |
+
+### Mạng đường (shared/roads.ts — 37 nút, 47 cạnh)
+Kiểm tra bằng `check-roads.ts` (23/23 PASS: đồ thị liên thông từ cổng, không cạnh nào cắt hồ/vườn phóng sinh, không cạnh nào lọt vào footprint chính điện/Tam Thế) và bằng sim (0 lần `step()` hủy tuyến trong cả 3 kịch bản). Bảng nút (đã kiểm tra từng cạnh — xem cạnh dưới):
+| id | x | z | id | x | z | id | x | z |
+| gate | 0 | 43.5 | bridgeS | 0 | 30.2 | bridgeN | 0 | 13.8 |
+| plaza | 0 | 6 | axisMid | 3 | -17 | hallFront | 0 | -20 |
+| hallIn | 0 | -24 | rearW | -46 | -46 | rearKT | -30 | -46 |
+| rearTO | 30 | -46 | rearE | 46 | -46 | westMid | -22 | -26 |
+| westNorth | -22 | -46 | eastMid | 22 | -26 | eastNorth | 22 | -46 |
+| hallAisleE | 14 | -38 | hallAisleN | 14 | -41.8 | stairApp | 4 | -41.8 |
+| stairTop | 0 | -42 | tamThe | 0 | -44 | bellTower | -34 | -6 |
+| drumTower | 34 | -6 | quanYard | 28 | 19.5 | buddhaYard | -22.6 | 14 |
+| denTrinh | 10 | 39 | restArea | 27 | 31 | dienMau | 39 | 14.5 |
+| baoThap | -17 | -41 | phongCDDoor | -42 | 39.5 | psPier | 30 | -31 |
+| thienDuong | -39.5 | -27 | zenGarden | -34 | -26 | corrW | -20.5 | -6 |
+| pillars | 0 | -5.9 | ktGate | -30 | -49 | ktYard | -41 | -60 |
+| tangXaDoor | -41 | -68 | | | | | | |
+Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza, plaza–axisMid, axisMid–hallFront, hallFront–hallIn, hallFront–corrW, hallFront–drumTower, plaza–pillars, pillars–axisMid, corrW–pillars, drumTower–pillars, corrW–westMid, westMid–westNorth, westNorth–rearKT, rearKT–rearW, rearKT–ktGate, ktGate–ktYard, ktYard–tangXaDoor, drumTower–eastMid, eastMid–eastNorth, eastNorth–rearTO, rearTO–rearE, hallIn–hallAisleE, hallAisleE–hallAisleN, hallAisleN–stairApp, stairApp–stairTop, stairTop–tamThe, bellTower–corrW, bellTower–baoThap, baoThap–zenGarden, zenGarden–thienDuong, zenGarden–westMid, quanYard–plaza, quanYard–restArea, quanYard–dienMau, buddhaYard–plaza, buddhaYard–bridgeN, denTrinh–gate, denTrinh–restArea, restArea–plaza, dienMau–restArea, phongCDDoor–gate, phongCDDoor–denTrinh, psPier–dienMau, psPier–eastNorth, thienDuong–westNorth.
+
+### Ca trực + nghỉ (20' làm / 10' nghỉ)
+- Ca đầu: tạo phòng + 20 phút + chỉ số NPC × 5 phút (npc2 +25', npc3 +30', npc4 +35', npc7 +50', npc8 +55') để các chú tiểu không nghỉ cùng lúc.
+- Hết ca: giữ 1 trong 2 giường (`room.beds[2]`, giường 0 x = −44, giường 1 x = −38, tâm z = −73.05); hết giường thì làm tiếp, thử lại sau 60 giây.
+- Đi nghỉ: theo đồ thị tới ktGate → ktYard → tangXaDoor → điểm đứng cạnh giường (bedX, −72.0) → tâm giường (bedX, −73.05). Dậy: ngược lại về slot quét (HOME_NODE: sweepPlaza→plaza, sweepBridge→bridgeS, sweepZen→zenGarden, sweepRoad→rearKT, bell→bellTower).
+- Tiểu đánh chuông: không bắt đầu nghỉ nếu đang trong cửa sổ chuông hoặc chuông còn < 4 phút (guard đã nới từ 2' lên 4' vì đi tới giường ~110 giây, về ~80 giây); đang nằm thì dậy trước chuông 2 phút.
+- `resumeNpcs` dịch cả `shiftEnd`/`restEnd` theo khoảng phòng trống, như `until`/`nextChat` — NPC không dậy sai giờ VN khi phòng có người quay lại.
+- Rẽ nhánh phật tử (§1.6): sau tụng kinh, 30% rẽ tới 1 trong 5 điểm (psPier, phongCDDoor, tamThe, rearKT, rearTO), đứng 5–10 giây rồi về sân và tiếp tục vòng.
+
+### Nghiệm thu sim (§5.1 — `npx tsx tools/npc-a29-sim.mjs`, 24/24 PASS)
+- Kịch bản A (04:50→05:35 VN, phiên sáng + chuông 05:00): roster 12 tên không trùng; npc6 ngồi (−42, 32.6) ry 0 anim 'sit'; 2 chú tiểu hoàn thành đủ vòng nghỉ (npc2 về plaza d = 0,0; npc3 về bridgeS d = 0,1); tối đa 2 NPC resting cùng lúc; 0 hủy tuyến; câu đóng cuối phiên có sĩ số; cả 5 phật tử đều rẽ nhánh và quay về.
+- Kịch bản B (17:50→18:15, chuông 18:00): npc4 roam xa tháp nhất 34,0 m trước chuông, `ring` bắt đầu đúng 18:00:00, kéo dài 60 giây, đi lại tiếp lúc 18:01:00.
+- Kịch bản C (40 phút tùy ý): npc2 hoàn thành đủ vòng nghỉ (về plaza d = 0,0); tối đa 2 resting; 0 hủy tuyến; 4/5 phật tử rẽ nhánh và quay về.
+- `npx tsc --noEmit`: 0 lỗi.
+
+### Ảnh (§5.2 — `STEPS=./tools/steps-a29-npc.mjs node tools/shot.mjs shots/a29`)
+- `a29-roster.png`, `a29-bell-roam.png`, `a29-bell-ring.png`, `a29-desk-monk.png`, `a29-rest-bed1.png`, `a29-rest-bed2.png`, `a29-visitor-tamthe.png`, `a29-visitor-ps-pier.png`.
+- **Chưa kiểm chứng runtime** (chưa chạy headless/điện thoại trong lượt viết patch này): tư thế nằm phải đọc được là ngủ (không phải ngã, đầu hướng tây, thân trên nệm), npc6 ngồi yên ở bàn, npc4 phải thấy đi lại quanh tháp.
+- Người chơi tự đi bộ tuyến nghỉ (cổng viện → sân chung → cửa tăng xá → điểm đứng cạnh giường) bằng `window.__co.walkTo` trong cùng script để chứng minh cạnh thông thật.
+
+### Chưa chắc chắn / việc còn treo
+- Số đo TRÊN MÁY THẬT (§5.3, user làm cùng): đứng sân quan sát 10 phút giờ thực — tiểu đánh chuông có rời tháp không, chú tiểu nào về tăng xá nằm không, sư thầy trực bàn có ngồi yên không, khách có rẽ vào khu mới không; đứng trước cửa tăng xá nhìn vào: NPC nằm có đúng trên giường không (đầu tây, không lơ lửng/chìm).
+- Hai công trình vẫn chồng footprint (Bảo Tháp (−17,−52) nằm trong nền Điện Tam Thế) — nút baoThap đã dời ra ngoài nhưng kiến trúc cần sửa riêng (gói phản hồi sau chùa).
+- Tin tức: thêm entry "Thêm sư thầy trực bàn, chú tiểu và phật tử", `LATEST_NEWS_ID` 15 → 16.

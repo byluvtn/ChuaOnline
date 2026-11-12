@@ -569,6 +569,7 @@ const CLIPS: Record<string, Clip> = {
   run: { period: TAU / 14, amp: 0.95 },
   idle: { period: Math.PI, amp: 0 },
   sit: { period: TAU / 1.3, amp: 0 },
+  lie: { period: TAU / 0.9, amp: 0 },
 };
 const phaseOf = (clip: Clip, e: number) => { const p = (e / clip.period) % 1; return p < 0 ? p + 1 : p; };
 const RITUAL = /^(incense|chant|bow|palms)$/;
@@ -600,7 +601,11 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   const dt = Math.max(0, Math.min(0.1, t - c.lastT)); c.lastT = t;
   const faceMat = c.face.material as THREE.MeshToonMaterial;
   if (c.blinkNext === 0) c.blinkNext = t + 1 + Math.random() * 4;
-  if (c.blinkUntil > 0) {
+  if (anim === 'lie') {
+    c.blinkUntil = 0;
+    c.blinkNext = t;
+    if (faceMat.map !== c.faceShut) { faceMat.map = c.faceShut; }
+  } else if (c.blinkUntil > 0) {
     if (t >= c.blinkUntil) {
       c.blinkUntil = 0;
       c.blinkNext = t + 2 + Math.random() * 4;
@@ -649,6 +654,17 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.armR.rotation.set(-0.75, 0, -0.62);
     c.foreL.rotation.set(-0.95, 0, 0);
     c.foreR.rotation.set(-0.95, 0, 0);
+  } else if (anim === 'lie') {
+    // sleeping on the tang-xa bed: flat on the back, head toward local -Z (west once the server sets ry = +PI/2), slow breathing
+    const br = cycle * 0.012;
+    c.body.position.set(0, 0.65 + br, 0.8); // spine high enough that the back rests on the mattress (top +0.35) and the head clears it; z +0.8 centres the body on the 2.0 m bed
+    c.body.rotation.set(-Math.PI / 2 + 0.13, 0, 0); // pitch back onto the back, head end slightly raised
+    c.lap.visible = false;
+    c.legL.visible = c.legR.visible = false; // legs are children of body and would poke through the robe hem when flat
+    c.armL.rotation.set(0, 0, -HANG_Z); // arms relaxed at the sides, no forward tilt, so they rest on the mattress beside the torso
+    c.armR.rotation.set(0, 0, HANG_Z);
+    c.foreL.rotation.set(-0.1, 0, 0);
+    c.foreR.rotation.set(-0.1, 0, 0);
   } else if (anim === 'bow') {
     // full prostration (láº¡y nÄƒm vÃ³c sÃ¡t Ä‘áº¥t): palms joined at chest, kneel, lean down, palms to forehead, rise
     const e = t - c.t0;
