@@ -1,6 +1,6 @@
 # Prompt: Gắn tượng Phật ngồi scan 3D (Cleveland, CC0) vào Vườn Tháp
 
-> **XẾP HÀNG SAU A2.4** — Kilo đang làm Điện Tam Thế; chỉ làm gói này sau khi A2.4 xong + push.
+> **XẾP HÀNG SAU A2.4 + A2.5** — hai gói đó đã xong + push (994827e, 56c5196); gói này làm tiếp được. **Quyết định của chủ dự án 2026-11-12 15:30: GIỮ tượng Cleveland, phủ vật liệu vàng bóng trong game** (xem mục 1) — các mẫu vàng bóng trên Sketchfab đều không tải được/không có license dùng được, scan bảo tàng CC0 đều phủ patina đỏ/sẫm, nên không đổi mẫu khác.
 
 Mục tiêu: đặt một tượng Phật ngồi bằng đá (scan 3D thật của bảo tàng) ở Vườn Tháp làm tượng nền trang trí — cho khu vườn tưởng niệm có một điểm nhấn thật, đỡ phải thiết kế thêm. Đây KHÔNG phải tượng chính điện và KHÔNG phải bộ ba Tam Thế (A2.4): không đụng `src/statues.ts`, `src/hall.ts`, không sửa tượng procedural nào.
 
@@ -17,7 +17,7 @@ Mục tiêu: đặt một tượng Phật ngồi bằng đá (scan 3D thật c�
 
 - Vị trí: **Vườn Tháp, `VUON_THAP` (49, −63)**, nền `VUON_THAP_PLAT` (hx 7.0, hz 5.0, y 0.2) trong `src/layout.ts`. Dựng thêm **bệ đá** (procedural, như bệ tượng ở các sân khác) dưới chân tượng để nó đọc là tượng đá cổ trong vườn, không đặt trực tiếp xuống đất.
 - Tượng thật chỉ cao 0,72 m — **scale lên ~2,5–3×** (cao ~1,8–2,2 m cả bệ) để nhìn ra tượng vườn từ đường đi; giữ nguyên tỉ lệ 3 chiều, không kéo dãn. Xoay mặt tượng về phía đường vào vườn (hướng Nam / lối đi), không quay lưng vào đường.
-- Giữ nguyên texture gốc của scan (vẻ đá cổ) — không tô màu lại, không gắn outline toon (tượng này realistic, đứng riêng một góc vườn, không chung khung hình với tượng chibi chính điện).
+- **Phủ vàng bóng (quyết định của chủ dự án 2026-11-12 15:30):** bản scan gốc màu đồng sẫm bụi bặm — sau khi load GLB, duyệt toàn bộ mesh và thay material bằng **vàng bóng**: `MeshStandardMaterial` màu vàng gold (~`0xD4AF37`), `metalness: 1.0`, `roughness: ~0.2` (bóng như tượng sơn vàng trong chùa, không bóng gương). Bỏ qua texture đồng sẫm gốc (vẫn nằm trong file nhưng không dùng). Mặt mũi tượng là hình khối thật trong scan (mắt nhắm, mũi, miệng đều là geometry) nên phủ vàng không làm mất nét mặt. Không gắn outline toon (tượng realistic, đứng riêng một góc vườn). Bệ đá procedural giữ màu đá xám để tương phản với vàng.
 - Không lấn vào: Bảo Tháp (−17, −52), Am Cổ (53, −75), Nhà Tổ (36, −68), rào Viện Tổ và đường đi trong vườn.
 
 ## 2. Collider + zone (nếu chưa có)
@@ -34,8 +34,8 @@ Mục tiêu: đặt một tượng Phật ngồi bằng đá (scan 3D thật c�
 
 - `npm run typecheck` + `npm run build` sạch.
 - Đi bộ kiểm: từ cổng Nam tới Vườn Tháp, đứng trước tượng, đi vòng quanh — không xuyên tượng/bệ, popup vườn hiện (nếu có).
-- Ảnh vào `shots/`: toàn cảnh vườn có tượng, cận cảnh tượng, bản đồ (Vườn Tháp).
+- Ảnh vào `shots/`: toàn cảnh vườn có tượng, cận cảnh tượng, bản đồ (Vườn Tháp). **Ảnh cận cảnh phải thấy rõ tượng VÀNG BÓNG** (không còn màu đồng sẫm bụi như bản scan gốc).
 - **Kiểm FPS trên điện thoại thật** khi nhìn thẳng tượng (150k tris): ghi số FPS, so với khi không nhìn tượng. Nếu tụt rõ rệt thì báo lại (hướng xử lý sau: giảm poly), không tự ý xóa tượng.
 - Cập nhật `HANDOFF.md` (mục tượng scan Vườn Tháp) + thêm mục tin tức "Có gì mới" vào đầu `src/data/news.ts` (tăng `LATEST_NEWS_ID`).
 
-> Nhiệm vụ: gắn tượng Phật ngồi scan 3D (Cleveland, CC0) vào Vườn Tháp theo đúng thứ tự (0 đối chiếu file + hash → 1 đặt tượng + bệ đá → 2 collider + zone → 3 load an toàn → 4 nghiệm thu), 1 commit riêng rồi push. **Việc đầu tiên là tạo todo list bằng `todowrite` liệt kê đủ các việc.** Đọc `src/models.ts` + `public/models/README.md` trước khi code; chỉ làm tượng nền ở Vườn Tháp, **không đụng tượng chính điện, bộ ba Tam Thế, NPC, animation**. Chạy `npm run typecheck` + `npm run build` sau từng việc, nghiệm thu theo mục 4 rồi mới báo xong.
+> Nhiệm vụ: gắn tượng Phật ngồi scan 3D (Cleveland, CC0) vào Vườn Tháp theo đúng thứ tự (0 đối chiếu file + hash → 1 đặt tượng + bệ đá + **phủ vật liệu vàng bóng** → 2 collider + zone → 3 load an toàn → 4 nghiệm thu), 1 commit riêng rồi push. **Việc đầu tiên là tạo todo list bằng `todowrite` liệt kê đủ các việc.** Đọc `src/models.ts` + `public/models/README.md` trước khi code; chỉ làm tượng nền ở Vườn Tháp, **không đụng tượng chính điện, bộ ba Tam Thế, NPC, animation**. Chạy `npm run typecheck` + `npm run build` sau từng việc, nghiệm thu theo mục 4 rồi mới báo xong.
