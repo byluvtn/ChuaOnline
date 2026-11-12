@@ -263,7 +263,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(stringPts, true).getPoints(160)),
     new THREE.LineBasicMaterial({ color: 0x3a2412 })));
 
-  const temple = buildTemple({ scene, colliders, lamb, roofGeometry, tileM, redM, goldM, wallM, redBase, glowSprites });
+  const temple = buildTemple({ scene, colliders, lamb, roofGeometry, tileM, redM, goldM, wallM, redBase, glowSprites, renderer });
   buildSeatedBuddhaStatue(scene, renderer, colliders);
 
   // ---- Sửa cảnh quan khuôn viên ----

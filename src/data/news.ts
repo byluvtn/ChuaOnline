@@ -4,9 +4,16 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 9;
+export const LATEST_NEWS_ID = 10;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hành lang tượng vàng',
+    date: '2026-11-12',
+    items: [
+      '12 tượng La Hán dọc hai hành lang giờ là 4 tượng cổ bằng vàng: La Hán cầm bình, nhà sư gỗ, Quan Âm ngồi và Quan Âm Thủy Nguyệt.',
+    ],
+  },
   {
     title: 'Tượng Phật vàng ở Vườn Tháp',
     date: '2026-11-12',

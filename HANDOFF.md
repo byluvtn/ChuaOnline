@@ -582,3 +582,38 @@ Chỉ đụng `src/statue-scan.ts` (mới), `src/world.ts`, `src/main.ts`, `src/
 - Gapdump `vuonThap` vẫn `remaining=40` (có từ trước).
 - Chưa deploy.
 - Tin tức: thêm entry "Tượng Phật vàng ở Vườn Tháp", `LATEST_NEWS_ID` 8 → 9.
+
+## A2.8 — 4 tượng scan vàng thay 12 La Hán hành lang
+Chỉ đụng `src/statue-corridor.ts` (mới), `src/temple.ts` (đoạn La Hán), `public/models/*.glb` + `README.md`, `src/data/news.ts`, `tools/steps-corridor*.mjs`. (Lưu ý: số tin đã đánh lại theo HEAD khi tách commit khỏi A2.2 chưa commit; khi A2.2 commit sau cần rebase LATEST_NEWS_ID.)
+
+### 4 tượng (đã đối chiếu SHA-256 với file user gửi; riêng arhat-binh là bản decimate)
+| Tên file | Tượng / nguồn | Giấy phép | Byte | Mặt | SHA-256 |
+|---|---|---|---|---|---|
+| `arhat-binh.glb` | Figure of seated arhat with a vase (Bảo tàng Quốc gia Kraków) | CC0 | 6.303.376 (gốc 13.183.332) | 143.498 (gốc 358.748) | `d7cd30e88642c78b053a729b349fbc0d46c76e11cb01432b65001b37a4a65ede` (gốc `40334c2b…9d06`) |
+| `monk-go.glb` | 10th C BCE Chinese monk (Minneapolis Institute of Art) | CC0 | 5.435.936 | 50.000 | `e6be082c2d0ead8c7e94a2f55deffab279dc7dcb9a76003ff783a482f434f542` |
+| `guanyin-ngoi.glb` | Seated bodhisattva Guanyin, 12th C. CE (Minneapolis Institute of Art) | CC0 | 9.603.608 | 200.000 | `11ae46c74552e88e9e338cc5017a6571e20f56d5afa8ae7b2712a13aefb5fc13` |
+| `guanyin-go-minh.glb` | Water Moon Guanyin, nebulousflynn | CC-BY-4.0 (credit trong `public/models/README.md`) | 7.434.520 | 53.958 | `e044dd79d10cf9f52720f43ab6af9e363d76069c9896dd566acdbf46cba47b32` |
+
+### Giảm tải (§0.3)
+- Tổng mặt 12 tượng trước decimate: 358.748×3 + 50.000×3 + 200.000×3 + 53.958×3 = 1.988.118 (> 1,5 triệu).
+- Decimate arhat-binh bằng `gltfpack -si 0.4`: 358.748 → 143.498 mặt, 4 mesh → 1 mesh. Tổng 12 tượng sau: **1.342.368 mặt**. Không cần giảm số bản.
+- Đo trong scene (`tools/steps-corridor-slots.mjs` đã chạy): từng khe đúng 143.498 / 50.000 / 200.000 / 53.958 tris, tất cả mesh có `metalness === 1` (vàng).
+
+### Xếp xen kẽ và hướng mặt
+- `modelIndex = (k + (side > 0 ? 2 : 0)) % 4` với [A arhat-binh, B monk-go, C guanyin-ngoi, D guanyin-go-minh]: bên Tây (side −1) bắt đầu từ A, bên Đông bắt đầu từ C; hai tượng đối diện nhau luôn khác mẫu.
+- Hướng mặt: `rotation.y = -side * PI / 2` cộng góc bù từng mẫu trong `FACE_OFFSET`: arhat-binh 0, monk-go 0, guanyin-ngoi +PI/2, guanyin-go-minh +PI/2. arhat-binh nằm ngang trong file gốc nên có `UPRIGHT_X = -PI/2`. Góc bù xác định bằng ảnh `shots/face-{front,back,left,right}-*.png`.
+- Cao 0,8 m (`fitModel` kiểu: đo bbox, scale về `TARGET_HEIGHT`), đáy đặt đúng mặt bục (CORR.y + 0,55). Vàng 0xD4AF37, metalness 1.0, roughness 0.2, envMap RoomEnvironment + PMREM; bỏ texture gốc, không viền toon.
+- Tải bất đồng bộ: khối chibi `buildArhat` hiện trước, thay bằng tượng scan khi GLB tải xong; mẫu nào lỗi thì giữ chibi và `console.warn` (không crash). Lần chạy nghiệm thu không có mẫu nào rơi về fallback.
+- Vị trí, bục đá, collider r 0.42 và `sealArchitectureJoints` của hành lang giữ nguyên.
+
+### Nghiệm thu
+- `npm run typecheck` sạch; `npm run build` sạch (chỉ cảnh báo chunk > 500 kB có từ trước).
+- Ảnh đã xem bằng mắt: `shots/corr2-wide.png`, `shots/corr-close-*.png` / `corr2-close-*.png` (4 mẫu), `shots/corr-map.png`, `shots/face-*.png`. Vàng bóng rõ, tượng đứng trên bục, mặt hướng vào trục hành lang.
+- Ảnh `corr2-close-monk-go.png` có một bục trống ở giữa khung hình. Đã chụp góc cao (không commit) kiểm tra: bục đó có tượng nhà sư vàng ngồi trên (do tượng nhỏ 0,24 m gốc nên bị khuất sau cột/bục ở góc thấp), không phải khe thiếu tượng. Số đếm scene xác nhận đủ 12 khe có tượng vàng.
+- Walk-sim (`tools/steps-corridor-walk.mjs`): 2 hành lang × 21.168 điểm, khoảng cách nhỏ nhất tới tâm tượng 0,82 m, 0 điểm lọt vào bán kính collider 0,42.
+- FPS máy thật: **chờ số đo máy thật** (headless chỉ ~2 FPS). Chưa đo bảng mesh/triangles trước-sau bằng `steps-cost.mjs`; chỉ có số tris từng khe ở trên.
+- Chưa deploy.
+
+### Việc người dùng
+- Các GLB đã nằm trong `public/models/`; thư mục trung gian `statues-hanh-lang/` và các file scan gốc khác (`figure_of_seated_arhat_with_a_vase.glb`, `10th_c_bce_chinese_monk.glb`, thư mục `12th_c_ce_water-moon_guanyin*`) KHÔNG commit.
+- Tin tức: thêm entry "Hành lang tượng vàng", `LATEST_NEWS_ID` 9 → 10.

@@ -7,6 +7,7 @@ import {
   NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
+import { buildCorridorStatues } from './statue-corridor';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
@@ -24,6 +25,7 @@ export interface TempleCtx {
   wallM: THREE.Material;
   redBase: THREE.Material;
   glowSprites: THREE.Sprite[];
+  renderer: THREE.WebGLRenderer;
 }
 export { groundY, resolveWater };
 
@@ -165,6 +167,7 @@ export function buildTemple(c: TempleCtx) {
   const arhatGroup = new THREE.Group(); arhatGroup.name = 'arhats'; scene.add(arhatGroup);
   const arhatModels = ([0, 1, 2] as const).map((v) => buildArhat(v));
   const arhatPedM = lamb(0x9a8f7a, { map: stoneTexture([170, 160, 140], [1, 1], 2) });
+  const corridorSlots: { x: number; z: number; side: number; idx: number; fallback: THREE.Object3D }[] = [];
   for (const side of [-1, 1] as const) {
     for (let k = 0; k < 6; k++) {
       const z = -16.5 + 3 * k;
@@ -174,9 +177,21 @@ export function buildTemple(c: TempleCtx) {
       const a = arhatModels[(k + (side > 0 ? 1 : 0)) % 3].clone(true);
       a.position.set(x, CORR.y + 0.55, z); a.rotation.y = -side * Math.PI / 2;
       arhatGroup.add(a);
+      corridorSlots.push({ x, z, side, idx: (k + (side > 0 ? 2 : 0)) % 4, fallback: a });
       colliders.push({ x, z, r: 0.42 });
     }
   }
+  buildCorridorStatues(c.renderer).then((models) => {
+    for (const s of corridorSlots) {
+      const m = models[s.idx];
+      if (!m) continue;
+      const inst = m.clone(true);
+      inst.position.set(s.x, CORR.y + 0.55, s.z);
+      inst.rotation.y = -s.side * Math.PI / 2;
+      arhatGroup.add(inst);
+      arhatGroup.remove(s.fallback);
+    }
+  }).catch((e) => { console.warn('statue-corridor: lỗi dựng, giữ tượng chibi', e); });
   const arhatSeal = sealArchitectureJoints(arhatGroup, { maxGap: 0.3 });
   if (import.meta.env.DEV) console.warn(`gapdump arhats: filled=${arhatSeal.filled} remaining=${arhatSeal.remaining.length} ` + JSON.stringify(arhatSeal.remaining));
 
