@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 8;
+export const LATEST_NEWS_ID = 9;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tượng Phật vàng ở Vườn Tháp',
+    date: '2026-11-12',
+    items: [
+      'Vườn Tháp có thêm một pho tượng Phật ngồi dát vàng bóng, đặt trên bệ đá, được dựng từ bản quét 3D của Bảo tàng Nghệ thuật Cleveland (CC0).',
+      'Đi tới Vườn Tháp để ngắm tượng; tượng và bệ đá là vật cản nên nhân vật sẽ đi vòng quanh.',
+    ],
+  },
   {
     title: 'Chuyển động mượt hơn',
     date: '2026-11-12',

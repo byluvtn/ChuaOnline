@@ -6,6 +6,7 @@ import { glowTexture, grassTexture, petalTexture, signTexture, stoneTexture } fr
 import { geo, outlined, toon } from './toon';
 import { blocked, LAKE, HALL, PLAZA } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
+import { buildSeatedBuddhaStatue } from './statue-scan';
 
 export interface Mood { sky: string; zenith: string; sun: string; sunI: number; hemi: string; fog: number; night?: boolean }
 /**
@@ -62,7 +63,7 @@ function roofGeometry(w: number, d: number, h: number, lift = 0.55) {
   return g;
 }
 
-export function createWorld(): World {
+export function createWorld(renderer: THREE.WebGLRenderer): World {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(SERENE_SKY.day.fog);
   scene.fog = new THREE.FogExp2(SERENE_SKY.day.fog, SERENE_SKY.day.fogDensity);
@@ -263,6 +264,7 @@ export function createWorld(): World {
     new THREE.LineBasicMaterial({ color: 0x3a2412 })));
 
   const temple = buildTemple({ scene, colliders, lamb, roofGeometry, tileM, redM, goldM, wallM, redBase, glowSprites });
+  buildSeatedBuddhaStatue(scene, renderer, colliders);
 
   // ---- Sửa cảnh quan khuôn viên ----
   // 1) bỏ hết bụi cỏ dạng khối cứng còn sót; 2) lát mặt sân gạch phẳng sạch sẽ

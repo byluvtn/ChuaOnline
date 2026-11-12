@@ -562,3 +562,23 @@ Chỉ đụng `src/main.ts` (vòng lặp `loop()`), `src/character.ts`, `src/dat
 - Animation khác (ngồi, lạy, NPC) không đổi; NPC/remote vẫn dùng pha theo thời gian vì `gait = -1`.
 - Chưa deploy.
 - Tin tức: thêm entry "Chuyển động mượt hơn", `LATEST_NEWS_ID` 7 → 8.
+
+## A2.6 — Tượng Phật scan vàng bóng ở Vườn Tháp
+Chỉ đụng `src/statue-scan.ts` (mới), `src/world.ts`, `src/main.ts`, `src/data/news.ts`, `public/models/seated-buddha.glb`, `tools/steps-statue-scan*.mjs`, `shots/statue-scan-*.png`.
+
+### Đã làm
+- **`public/models/seated-buddha.glb`:** tải từ https://www.yeldabalta.com/models/seated-buddha.glb, 10.282.820 byte, SHA-256 khớp `cb326ff9...0c78be` (CC0, Cleveland Museum of Art).
+- **`src/statue-scan.ts`:** `buildSeatedBuddhaStatue(scene, renderer, colliders)` dựng bệ đá procedural (1,9×1,9×0,55 + mũ bệ) tại tọa độ cục bộ (−5,4; 2,3) trong Vườn Tháp (thế giới ≈ 43,6; −60,7), nạp GLB qua `loadModel`, phủ vàng bóng (0xD4AF37, metalness 1, roughness 0,2) với `envMap` cục bộ từ `RoomEnvironment` + PMREM (scene không có environment nên metalness 1 sẽ render đen; không đổi `scene.environment`). Tượng cao 1,6 m trên bệ, cả khối ~2,3 m. Lỗi hoặc thiếu file: `console.warn` và giữ khối đá giữ chỗ, không crash. Collider r 1,2.
+- **`src/world.ts` / `src/main.ts`:** `createWorld(renderer)` nhận renderer và gọi `buildSeatedBuddhaStatue` sau `buildTemple`.
+
+### Kiểm chứng
+- `npm run typecheck` và `npm run build` sạch.
+- `tools/steps-statue-scan.mjs`: ảnh `shots/statue-scan-wide.png`, `statue-scan-close.png`, `statue-scan-map.png`; zone `vuonThap` và popup hiện.
+- `tools/steps-statue-scan-walk.mjs`: mô phỏng 7.434 điểm quanh tượng với collider thật, `minD` 1,6, 0 điểm xuyên.
+
+### Chưa chắc chắn / việc còn treo
+- Chưa đo FPS trên máy thật (headless SwiftShader chỉ ~1–3 FPS); GLB nặng cần theo dõi trên điện thoại.
+- Cỡ tượng và vị trí chỉnh bằng mắt trên ảnh headless.
+- Gapdump `vuonThap` vẫn `remaining=40` (có từ trước).
+- Chưa deploy.
+- Tin tức: thêm entry "Tượng Phật vàng ở Vườn Tháp", `LATEST_NEWS_ID` 8 → 9.

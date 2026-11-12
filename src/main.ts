@@ -158,7 +158,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
-const world = createWorld();
+const world = createWorld(renderer);
 const post = createPost(renderer, world.scene, camera, isTouch);
 const resize = () => {
   renderer.setSize(innerWidth, innerHeight, false);
