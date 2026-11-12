@@ -698,6 +698,11 @@ Số mesh/tri thực tế từng nhà: chưa đo (không có quyền chạy dev 
 - Chưa deploy.
 - Tin tức: thêm entry "Nội thất trong 7 nhà", `LATEST_NEWS_ID` 12 → 13.
 
+### Sửa lỗi sau A2.3 (fix, thêm tin 15)
+- Xóa đèn dầu (đế gạch + chóp vàng) khỏi cả 7 nhà và Điện Mẫu — vật phi lý trong thiền đường, xóa hẳn chứ không thay bằng đèn khác.
+- Sửa collider nội thất: chia lại chuỗi collider tường vỏ và thu nhỏ/dời tâm collider đồ nội thất để các vòng loại trừ (r + 0,4) không còn chồng nhau; mô phỏng kiểm tra cho `inside = 0` ở 6/7 nhà, riêng Am Cổ còn 54 điểm kẹt do cột rào VIEN (ngoài phạm vi sửa — không phải do nội thất nhà).
+- Tin tức: thêm entry "Sửa lỗi kẹt trong nhà", `LATEST_NEWS_ID` 14 → 15.
+
 ## Quan Âm chibi v4 — vẽ lại tượng Quan Âm (mặt 3D, bình ngọc, liễu lá tròn)
 
 ### Đối chiếu code (khác spec cũ)

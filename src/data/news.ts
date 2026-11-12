@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 14;
+export const LATEST_NEWS_ID = 15;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa lỗi kẹt trong nhà',
+    date: '2026-11-12',
+    items: [
+      'Đã sửa lỗi nhân vật bị kẹt khi đi lại trong các nhà: vật cản trong nhà và tường nhà không còn chồng lên nhau.',
+      'Đèn dầu (đế gạch với chóp vàng) đã được dỡ khỏi các nhà vì đặt không hợp lý, nhất là trong thiền đường.',
+    ],
+  },
   {
     title: 'Tượng Quan Âm chibi mới',
     date: '2026-11-12',
