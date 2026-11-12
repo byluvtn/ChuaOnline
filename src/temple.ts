@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { COUPLETS } from './couplets';
 import { buildHall } from './hall';
+import { buildTamThe } from './tamthe';
 import {
   NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
@@ -395,6 +396,9 @@ export function buildTemple(c: TempleCtx) {
     colliders.push({ x: BAO_THAP.x + lx, z: BAO_THAP.z + lz, r: 0.45 });
   }
   zones.push({ x: BAO_THAP.x, z: BAO_THAP.z, r: 8, id: 'baoThap' });
+
+  const tamThe = buildTamThe(c);
+  seats.push(...tamThe.seats); zones.push(...tamThe.zones);
 
   type BoxAdd = (w: number, h: number, dp: number, x: number, y: number, z: number, mat?: THREE.Material) => unknown;
   /** Tường có một ô cửa sổ chấn song: tường chạy dọc trục `axis` tại toạ độ `fixed`, dài `len`, dày `thick`, từ y0 đến y1. */
@@ -1197,7 +1201,7 @@ export function buildTemple(c: TempleCtx) {
   let ring = 0, drumHit = 0;
   const ringBell = () => { ring = 1; };
   const ringDrum = () => { drumHit = 1; };
-  const halos = [...hall.halos, bigB.getObjectByName('halo')!, quanAm.getObjectByName('halo')!].filter(Boolean);
+  const halos = [...hall.halos, ...tamThe.halos, bigB.getObjectByName('halo')!, quanAm.getObjectByName('halo')!].filter(Boolean);
   const update = (t: number, dt: number) => {
     ring = Math.max(0, ring - dt * 0.25);
     bellPivot.rotation.z = Math.sin(t * 2.6) * 0.5 * ring * ring + Math.sin(t * 0.5) * 0.015;

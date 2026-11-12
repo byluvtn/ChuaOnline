@@ -179,6 +179,7 @@ let meditation: MeditationInfo = { sitting: 0, minutes: 0, goal: 500, bonus: fal
 const keys = new Set<string>();
 let camYaw = 0, camPitch = isTouch ? 0.55 : 0.45, camDist = isTouch ? 12 : 9;
 let freeCam = false;
+let camInside = 0;
 const freePos = new THREE.Vector3();
 const camMaxDist = () => (profile?.admin ? 160 : 18);
 const camMaxPitch = () => (profile?.admin ? 1.55 : 1.3);
@@ -866,9 +867,13 @@ function loop() {
       socket.volatile.emit('move', { x: root.position.x, z: root.position.z, ry: me.ry, anim: me.anim });
     }
 
-    const cx = root.position.x + Math.sin(camYaw) * Math.cos(camPitch) * camDist;
-    const cy = 1.4 + Math.sin(camPitch) * camDist;
-    const cz = root.position.z + Math.cos(camYaw) * Math.cos(camPitch) * camDist;
+    const inTamThe = world.zoneAt(root.position.x, root.position.z) === 'tamThe';
+    camInside += ((inTamThe ? 1 : 0) - camInside) * Math.min(1, dt * 3);
+    const effDist = camDist + camInside * 3.5;
+    const effPitch = camPitch + camInside * 0.18;
+    const cx = root.position.x + Math.sin(camYaw) * Math.cos(effPitch) * effDist;
+    const cy = root.position.y + 1.4 + Math.sin(effPitch) * effDist;
+    const cz = root.position.z + Math.cos(camYaw) * Math.cos(effPitch) * effDist;
     if (freeCam && profile?.admin) {
       const fs = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 40 : 14) * dt;
       const fx = -Math.sin(camYaw) * Math.cos(camPitch), fy = -Math.sin(camPitch), fz = -Math.cos(camYaw) * Math.cos(camPitch);
@@ -884,7 +889,7 @@ function loop() {
       camera.lookAt(freePos.x + fx * 10, freePos.y + fy * 10, freePos.z + fz * 10);
     } else if (!(import.meta.env.DEV && (window as any).__co?.freeze)) {
       camera.position.lerp(tmp.set(cx, cy, cz), 1 - Math.pow(0.001, dt));
-      camera.lookAt(root.position.x, 1.3, root.position.z);
+      camera.lookAt(root.position.x, root.position.y + 1.3, root.position.z);
     }
   }
 

@@ -21,6 +21,15 @@ export const PAGODA = { x: 34, z: -15 };
 export const TAM_THE = { x: 0, z: -54 };
 export const BAO_THAP = { x: -17, z: -52 };
 /**
+ * Nền Điện Tam Thế: mặt nền đi được cao 3.0 (hx/hz theo trục thế giới), sườn dốc thoải 1.2 quanh nền;
+ * thang lớn giữa trục (|x| <= stairW) dốc đều từ y 0 ở zStart lên y 3.0 ở mép Nam nền điện.
+ */
+export const TAM_THE_PLAT = {
+  x: TAM_THE.x, z: TAM_THE.z,
+  hx: 20, hz: 12, y: 3.0, ramp: 1.2,
+  stairW: 4.2, zStart: -40.2,
+};
+/**
  * Nền + bậc thềm Bảo Tháp: mặt nền đi được cao 0.9, bậc thềm thấp dần về phía Nam
  * (cửa của tháp quay về hướng Nam) để khách hành hương đi tới được cửa.
  */
@@ -93,6 +102,17 @@ export function groundY(x: number, z: number) {
     if (dz > bp.step1.z0 && dz <= bp.step1.z1) y = Math.max(y, bp.step1.y);
     else if (dz > bp.step2.z0 && dz <= bp.step2.z1) y = Math.max(y, bp.step2.y);
   }
+  const tp = TAM_THE_PLAT;
+  const tdx = Math.max(Math.abs(x - tp.x) - tp.hx, 0), tdz = Math.max(Math.abs(z - tp.z) - tp.hz, 0);
+  const td = Math.hypot(tdx, tdz);
+  if (td < tp.ramp) {
+    const onAxis = Math.abs(x - tp.x) <= tp.stairW && z > tp.z + tp.hz;
+    if (!onAxis) y = Math.max(y, tp.y * (1 - td / tp.ramp));
+  }
+  if (Math.abs(x - tp.x) <= tp.stairW && z > tp.z + tp.hz - 0.01 && z < tp.zStart) {
+    const u = (tp.zStart - z) / (tp.zStart - (tp.z + tp.hz));
+    y = Math.max(y, tp.y * Math.max(0, Math.min(1, u)));
+  }
   const ap = AM_CO_PLAT;
   const adx = Math.max(Math.abs(x - ap.x) - ap.hx, 0), adz = Math.max(Math.abs(z - ap.z) - ap.hz, 0);
   const ad = Math.hypot(adx, adz);
@@ -142,6 +162,7 @@ export function blocked(x: number, z: number) {
   if (Math.abs(x - PAGODA.x) < 2.5 && z > PAGODA.z - 3 && z < PATH_Z + 2.5) return true;
   if (ax < 24 && z < HALL.z - HALL.hz - 2 && z > WALL.zN + 6) return true;
   if (Math.hypot(x - BAO_THAP.x, z - BAO_THAP.z) < 9) return true;
+  if (Math.abs(x - TAM_THE.x) < TAM_THE_PLAT.hx + 4 && Math.abs(z - TAM_THE.z) < TAM_THE_PLAT.hz + 4) return true;
   if (Math.hypot(x - AM_CO.x, z - AM_CO.z) < 8) return true;
   if (Math.abs(x - NHA_TO.x) < 8 && Math.abs(z - NHA_TO.z) < 6.5) return true;
   if (Math.abs(x - TANG_XA.x) < 8 && Math.abs(z - TANG_XA.z) < 6.5) return true;

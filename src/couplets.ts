@@ -37,6 +37,11 @@ export const COUPLETS: Record<string, Couplet> = {
     am: ['Xá lợi cung tàng, bảo tháp thập trùng quang chiếu thế', 'Giác hoa thường thịnh, từ bi nhất niệm phổ lưu phương'],
     nghia: 'Xá lợi được tôn thờ trong tháp báu nhiều tầng, ánh sáng soi khắp cõi đời; hoa giác ngộ mãi nở, một niệm từ bi lan tỏa muôn nơi.',
   },
+  tamThe: {
+    id: 'tamThe', where: 'Điện Tam Thế — thờ ba đời chư Phật',
+    am: ['Quá khứ hiện tại vị lai, ba đời chư Phật cùng một ánh từ quang', 'Một niệm tỉnh thức sáng soi, mười phương muôn cõi về nương cửa thiền'],
+    nghia: 'Chư Phật ba đời quá khứ, hiện tại, vị lai cùng chiếu một ánh từ quang; một niệm tỉnh thức soi sáng, muôn cõi mười phương cùng về nương nơi cửa thiền.',
+  },
   nhaTo: {
     id: 'nhaTo', where: 'Nhà Tổ — thờ chư vị tổ sư',
     am: ['Tổ đức lưu phương, đèn tuệ soi đường muôn kiếp', 'Thiền phong truyền thế, nguồn từ thấm đượm ngàn đời'],

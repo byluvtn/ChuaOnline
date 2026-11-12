@@ -1,4 +1,4 @@
-import { AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, WALL } from '../layout';
+import { TAM_THE, TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 
@@ -12,6 +12,7 @@ const PLACES: Place[] = [
   { name: 'Tháp Quan Âm', x: QUAN.x, z: QUAN.z, r: 4 },
   { name: 'Đại Phật', x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 5 },
   { name: 'Bảo tháp', x: BAO_THAP.x, z: BAO_THAP.z, r: 4 },
+  { name: 'Điện Tam Thế', x: TAM_THE.x, z: TAM_THE.z + 6, r: 8 },
   { name: 'Tháp cảnh', x: PAGODA.x, z: PAGODA.z, r: 4 },
   { name: 'Nhà Tổ', x: 36, z: -62.5, r: 4 },
   { name: 'Tăng xá', x: -41, z: -65.5, r: 4 },
@@ -94,6 +95,7 @@ export function openMap(ctx: MenuCtx) {
       plat({ x: NHA_KHACH.x, z: NHA_KHACH.z, hx: 6.0, hz: 4.25 });
       plat(PHONG_CD_PLAT);
       plat({ x: THIEN_DUONG.x, z: THIEN_DUONG.z, hx: 6.5, hz: 4.5 });
+      plat(TAM_THE_PLAT, '#b5542f', '#6e2a14');
       plat(AM_CO_PLAT, '#9a7a4a', '#4a2e18');
       plat(VUON_THAP_PLAT, '#cfc4ae', '#8a8270');
       plat({ x: DIEN_MAU.x, z: DIEN_MAU.z, hx: 4, hz: 3.5 });
@@ -101,7 +103,8 @@ export function openMap(ctx: MenuCtx) {
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 4.5, 4.5, '#e8d9a0', '#c9a96a');
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 1.4, 1.4, '#e8b64a', '#8a5a2b');
       label('Chánh điện', HALL.x, HALL.z, '#fff3dc');
-      for (const p of PLACES.slice(1)) label(p.name, p.x, p.z + (p.name === 'Hồ cá koi' ? 0 : p.name === 'Cầu cong' ? -7 : p.r > 4 ? 0 : 4));
+      const LABEL_DZ: Record<string, number> = { 'Hồ cá koi': 0, 'Cầu cong': -7, 'Điện Tam Thế': -7, 'Bảo tháp': 4.5, 'Vườn Tháp': -3.5, 'Nhà Tổ': 4, 'Sân thiền trái': -2.5, 'Sân thiền phải': -2.5 };
+      for (const p of PLACES.slice(1)) label(p.name, p.x, p.z + (p.name in LABEL_DZ ? LABEL_DZ[p.name] : p.r > 4 ? 0 : 4));
       label('Bắc', 0, WALL.zN - 2.5); label('Nam', 0, WALL.zS + 3.6);
     };
     const draw = () => {

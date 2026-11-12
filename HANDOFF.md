@@ -522,3 +522,23 @@ Baseline: `ba8b0c1`. Commit: `3cc7dbd` (map.ts), `5eb81d5` (news.ts, `LATEST_NEW
 - Cửa Điện Mẫu (39,10) nằm trong nhà; hàng cột Bắc ở z 7.8, mặt hở phía Nam (z ≈ 12.2): điểm kiểm dùng (39,13), vào từ phía Đông–Nam. `PLACES` vẫn giữ (39,10) theo spec; `goTo` dùng `planPath` nên tự vòng được.
 - Chrome headless (SwiftShader) chỉ đạt ~1–1.7 FPS nên đi bộ kiểm qua `goTo` thật bị chậm; đã chuyển sang mô phỏng trong trang với đúng logic collider của game.
 - Ngưỡng kiểm "không xuyên tường Nam từ phố vào" là z > 45.4 (collider cột tường r 0.55 + bán kính người 0.4 giữ ở z ≈ 45.8).
+
+## A2.4 — Điện Tam Thế + chỉnh nhãn bản đồ + camera trong điện
+Baseline: `0ba70ff`. Thay đổi tập trung ở `src/tamthe.ts` (mới), `src/temple.ts`, `src/layout.ts`, `src/couplets.ts`, `src/features/map.ts`, `src/main.ts`.
+
+### Đã làm
+- **Điện Tam Thế** tại `TAM_THE` (0,−54), dựng trong `src/tamthe.ts` và gắn vào `temple.ts` (zone `tamThe`, câu đối trong `couplets.ts`). Nền cao ~3.0, đi được từ tam quan lên qua các bậc (độ cao 0 → 1.35 → 3.0), bộ ba tượng A Di Đà – Thích Ca – Di Lặc.
+- **`src/features/map.ts`:** thêm bảng `LABEL_DZ` để dời nhãn riêng từng địa điểm, hết chồng nhãn: Điện Tam Thế (−7), Bảo tháp (4.5), Vườn Tháp (−3.5), Nhà Tổ (4), Sân thiền trái/phải (−2.5); Hồ cá koi và Cầu cong giữ như cũ.
+- **`src/main.ts`:** camera bù khi vào zone `tamThe`: biến `camInside` (mượt, hệ số `dt * 3`) cộng thêm 3.5 vào khoảng cách và 0.18 vào góc nâng; vị trí và điểm nhìn camera cộng thêm `root.position.y` để bám độ cao nền điện.
+
+### Kiểm chứng
+- `npm run typecheck` sạch.
+- `tools/steps-tamthe.mjs` (`STEPS=./steps-tamthe.mjs`, chạy bằng `shot.mjs`): nhân vật đi từ tam quan lên nền điện (y = 3), zone `tamThe`, câu đối hiện. Ảnh nghiệm thu `shots/tamthe4-tamthe-map-after.png` (nhãn bản đồ đọc rõ) và `shots/tamthe4-tamthe-inside.png` (thấy đủ ba tượng, không bị che). Các ảnh `tamthe-*`, `tamthe2-*`, `tamthe3-*` là các lần chụp trung gian.
+- Gapdump `vuonThap` còn `remaining=40` và `pagoda` còn `remaining=5` (đã có từ trước, không thuộc phạm vi lần này).
+
+### Chưa chắc chắn / việc còn treo
+- Mức bù camera (3.5 / 0.18) chỉnh bằng mắt trên ảnh headless, chưa thử trên máy thật hay điện thoại.
+- `LABEL_DZ` dời nhãn theo từng tên cụ thể; thêm địa điểm mới có thể cần bổ sung ở đây.
+- Chưa chạy lại đi bộ kiểm toàn khuôn viên sau thay đổi camera (không đụng collider).
+- Chưa deploy.
+- Tin tức: thêm entry "Điện Tam Thế", `LATEST_NEWS_ID` 6 → 7.

@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 6;
+export const LATEST_NEWS_ID = 7;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Điện Tam Thế',
+    date: '2026-11-12',
+    items: [
+      'Phía sau chánh điện có thêm Điện Tam Thế thờ ba vị Phật quá khứ, hiện tại và vị lai; đi từ tam quan lên qua các bậc thềm là tới nơi.',
+      'Bản đồ chùa được chỉnh lại, nhãn các địa điểm không còn chồng lên nhau.',
+      'Vào bên trong điện, góc nhìn tự lùi ra một chút để thấy đủ ba pho tượng.',
+    ],
+  },
   {
     title: 'Mở rộng khuôn viên chùa',
     date: '2026-11-11',
