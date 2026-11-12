@@ -160,6 +160,20 @@ renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
 const world = createWorld(renderer);
 const post = createPost(renderer, world.scene, camera, isTouch);
+const prewarm = () => {
+  const seen = new Set<THREE.Texture>();
+  world.scene.traverse((o) => {
+    const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+    if (!m) return;
+    for (const mat of Array.isArray(m) ? m : [m]) {
+      for (const v of Object.values(mat as unknown as Record<string, unknown>)) {
+        const t = v as THREE.Texture;
+        if (t && t.isTexture && !seen.has(t)) { seen.add(t); renderer.initTexture(t); }
+      }
+    }
+  });
+  renderer.compile(world.scene, camera);
+};
 const resize = () => {
   renderer.setSize(innerWidth, innerHeight, false);
   post.resize(innerWidth, innerHeight);
@@ -954,6 +968,7 @@ function loop() {
   post.render();
   if (!loadedHidden) {
     loadedHidden = true;
+    prewarm();
     const l = $('loading');
     l.classList.add('done');
     setTimeout(() => l.remove(), 700);

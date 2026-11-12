@@ -582,9 +582,29 @@ Chỉ đụng `src/statue-scan.ts` (mới), `src/world.ts`, `src/main.ts`, `src/
 - Gapdump `vuonThap` vẫn `remaining=40` (có từ trước).
 - Chưa deploy.
 - Tin tức: thêm entry "Tượng Phật vàng ở Vườn Tháp", `LATEST_NEWS_ID` 8 → 9.
+## A2.7 — Sửa biên đi lại phía Bắc (vào được Am Cổ)
+Chỉ đụng `shared/types.ts`, `src/main.ts`, `server/index.ts`, `src/data/news.ts`, `tools/steps-a22-*.mjs`.
+
+### Nguyên nhân
+- `MAP_HALF = 68` kẹp `z` về `[-68, 68]` ở client (`src/main.ts`) và server (`server/index.ts`), trong khi tường Bắc ở `WALL.zN = -82`. Vùng z ∈ [-82, -68] không đi vào được nên Am Cổ (z = -75) bị cắt; nhân vật bị ép về đúng z = -68 trên mọi x.
+
+### Đã làm
+- `shared/types.ts`: thêm `MAP_Z_MIN = -82`, giữ nguyên `MAP_HALF` (còn dùng để rải cây/hoa trong `src/world.ts`).
+- `src/main.ts` và `server/index.ts`: kẹp `z` bằng `[MAP_Z_MIN, MAP_HALF]`.
+
+### Kiểm chứng
+- `npm run typecheck` sạch.
+- `tools/steps-a22-verify.mjs`: dịch chuyển tới z = -70/-75/-80 giữ nguyên vị trí, z = -85 kẹp về -81.06 (`clampToCompound`); `walkTo(48,-75)` tới (48.26, -74.53) sát cửa Đông Am Cổ rồi dừng ở collider tường bên. Ảnh `shots/a22-amco-amco-inside.png` hiện popup Am Cổ.
+- Đã đo đi bộ tại ghế (`woodBench`), tường Nhà Khách, Tăng Xá, Nhà Tổ, hàng La Hán: không xuyên collider.
+
+### Chưa chắc chắn / việc còn treo
+- Headless chỉ ~2 FPS nên các ca đo đi bộ dài dừng sớm do thiếu thời gian, không phải do collider; chưa thử trên máy thật.
+- `npm run dev` (concurrently -k) tự tắt khi `dev:server` thoát; đã chạy `dev:server` và `dev:client` riêng để đo.
+- Chưa chạy `npm run build`. Chưa deploy.
+- Tin tức: thêm entry "Đi được tới Am Cổ", `LATEST_NEWS_ID` 9 → 10.
 
 ## A2.8 — 4 tượng scan vàng thay 12 La Hán hành lang
-Chỉ đụng `src/statue-corridor.ts` (mới), `src/temple.ts` (đoạn La Hán), `public/models/*.glb` + `README.md`, `src/data/news.ts`, `tools/steps-corridor*.mjs`. (Lưu ý: số tin đã đánh lại theo HEAD khi tách commit khỏi A2.2 chưa commit; khi A2.2 commit sau cần rebase LATEST_NEWS_ID.)
+Chỉ đụng `src/statue-corridor.ts` (mới), `src/temple.ts` (đoạn La Hán), `public/models/*.glb` + `README.md`, `src/data/news.ts`, `tools/steps-corridor*.mjs`.
 
 ### 4 tượng (đã đối chiếu SHA-256 với file user gửi; riêng arhat-binh là bản decimate)
 | Tên file | Tượng / nguồn | Giấy phép | Byte | Mặt | SHA-256 |
@@ -617,3 +637,20 @@ Chỉ đụng `src/statue-corridor.ts` (mới), `src/temple.ts` (đoạn La Hán
 ### Việc người dùng
 - Các GLB đã nằm trong `public/models/`; thư mục trung gian `statues-hanh-lang/` và các file scan gốc khác (`figure_of_seated_arhat_with_a_vase.glb`, `10th_c_bce_chinese_monk.glb`, thư mục `12th_c_ce_water-moon_guanyin*`) KHÔNG commit.
 - Tin tức: thêm entry "Hành lang tượng vàng", `LATEST_NEWS_ID` 9 → 10.
+
+## A2.2 — Gộp mesh nhà, sửa chuông, collider ghế, pre-warm
+Đụng `src/temple.ts`, `src/compound.ts`, `src/main.ts` (hàm `prewarm`), `src/data/news.ts`, `tools/steps-cost.mjs`, `tools/steps-fps.mjs`.
+
+### Đã làm
+- `mergeStaticByMaterial` chuyển lên trước Am Cổ và gọi sau `sealArchitectureJoints` cho Am Cổ, Nhà Tổ, Tăng Xá, các nhà phụ (Điện Mẫu, Nhà Khách, Trai Đường, Phòng Công Đức) và Thiền Đường.
+- Chuông: đảo profile Lathe (miệng chuông nằm dưới, quai trên).
+- `woodBench` thêm 3 collider r 0,5 dọc ghế.
+- `prewarm()` trong `src/main.ts`: `renderer.initTexture` mọi texture và `renderer.compile` scene một lần khi ẩn màn loading.
+
+### Đo (headless, `tools/steps-cost.mjs`)
+- Scene: 4.503 mesh, 2.487.476 tris.
+- Mesh/tris sau gộp: nha-to 8/978, tang-xa 8/654, dien-mau 8/978, nha-khach 8/978, thien-duong 8/978, trai-duong 8/978, phong-cong-duc 6/974, am-co 9/1042.
+- `npm run typecheck` và `npm run build` sạch (chỉ cảnh báo chunk > 500 kB có từ trước).
+- FPS headless chỉ ~0,6–2,0, không phản ánh máy thật; FPS máy thật: chờ số đo. Chưa so bảng trước-sau.
+- Chưa deploy.
+- Tin tức: thêm entry "Tải mượt hơn, chuông đúng dáng", `LATEST_NEWS_ID` 10 → 11.

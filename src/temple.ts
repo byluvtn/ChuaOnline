@@ -275,7 +275,7 @@ export function buildTemple(c: TempleCtx) {
   };
   const bt = tower(BELL.x, BELL.z, Math.PI / 2, 'THÁP CHUÔNG', 'chuong');
   const bronze = lamb(0xa8741f, { metalness: 0.7, roughness: 0.38, side: THREE.DoubleSide });
-  const prof = [[0.2, 0], [0.5, 0.05], [0.62, 0.5], [0.7, 1.05], [0.9, 1.45], [0.95, 1.55], [0.78, 1.52]].map(([x, y]) => new THREE.Vector2(x, y));
+  const prof = [[0.78, 0.03], [0.95, 0], [0.9, 0.1], [0.7, 0.5], [0.62, 1.05], [0.5, 1.5], [0.2, 1.55]].map(([x, y]) => new THREE.Vector2(x, y));
   const bellPivot = new THREE.Group(); bellPivot.position.set(0, bt.by + 3.55, 0);
   const bell = new THREE.Mesh(new THREE.LatheGeometry(prof, 24), bronze); bell.position.y = -1.6; bell.scale.setScalar(1.05); bell.castShadow = true; bellPivot.add(bell);
   const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.55, 6), bronze); chain.position.y = 0.1; bellPivot.add(chain);
@@ -439,6 +439,34 @@ export function buildTemple(c: TempleCtx) {
     }
   };
 
+  /** Gộp các mesh tĩnh dùng chung một vật liệu thành một mesh (giảm draw call). Chạy SAU khi seal xong. */
+  const mergeStaticByMaterial = (root: THREE.Group) => {
+    root.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    const buckets = new Map<THREE.Material, THREE.Mesh[]>();
+    root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh || Array.isArray(m.material) || m.userData.inscription) return;
+      const list = buckets.get(m.material) ?? [];
+      list.push(m); buckets.set(m.material, list);
+    });
+    for (const [mat, list] of buckets) {
+      if (list.length < 2) continue;
+      const geos = list.map((m) => {
+        const gg = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone());
+        gg.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+        for (const k of Object.keys(gg.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') gg.deleteAttribute(k);
+        return gg;
+      });
+      const merged = mergeGeometries(geos);
+      if (!merged) continue;
+      for (const m of list) m.removeFromParent();
+      const mm = new THREE.Mesh(merged, mat);
+      mm.castShadow = list.some((m) => m.castShadow); mm.receiveShadow = list.some((m) => m.receiveShadow);
+      root.add(mm);
+    }
+  };
+
   // ---- Am Cổ (góc Tây–Bắc): am nhỏ mái ngói rêu phong, mở mặt Đông (lối vào từ vườn Thiền), tường hậu + hai tường bên có cửa sổ ----
   const amCo = new THREE.Group();
   amCo.name = 'am-co';
@@ -480,6 +508,7 @@ export function buildTemple(c: TempleCtx) {
   amCo.position.set(AM_CO.x, 0, AM_CO.z); scene.add(amCo);
   const acSeal = sealArchitectureJoints(amCo, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump amCo: filled=${acSeal.filled} remaining=${acSeal.remaining.length}`);
+  mergeStaticByMaterial(amCo);
   for (const [px, pz] of [[-acHx, -acHz], [acHx, -acHz], [-acHx, acHz], [acHx, acHz]] as [number, number][]) colliders.push({ x: AM_CO.x + px, z: AM_CO.z + pz, r: 0.3 });
   for (const lz of [-1.2, 0, 1.2]) colliders.push({ x: AM_CO.x - acHx, z: AM_CO.z + lz, r: 0.7 });
   for (const sz of [-acHz, acHz]) colliders.push({ x: AM_CO.x, z: AM_CO.z + sz, r: 1.4 }, { x: AM_CO.x + 1.4, z: AM_CO.z + sz, r: 1.0 }, { x: AM_CO.x - 1.4, z: AM_CO.z + sz, r: 1.0 });
@@ -580,6 +609,7 @@ export function buildTemple(c: TempleCtx) {
   nt.g.position.set(NHA_TO.x, 0, NHA_TO.z); scene.add(nt.g);
   const ntSeal = sealArchitectureJoints(nt.g, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump nhaTo: filled=${ntSeal.filled} remaining=${ntSeal.remaining.length}`);
+  mergeStaticByMaterial(nt.g);
   for (const [px, pz] of nt.corners) colliders.push({ x: NHA_TO.x + px, z: NHA_TO.z + pz, r: 0.32 });
   for (let lx = -nt.hx + 1.2; lx <= nt.hx - 1.2 + 0.01; lx += 1.6) colliders.push({ x: NHA_TO.x + lx, z: NHA_TO.z - nt.hz, r: 0.9 });
   for (const lz of [-1.6, 0, 1.6]) colliders.push({ x: NHA_TO.x - nt.hx, z: NHA_TO.z + lz, r: 0.9 }, { x: NHA_TO.x + nt.hx, z: NHA_TO.z + lz, r: 0.9 });
@@ -590,6 +620,7 @@ export function buildTemple(c: TempleCtx) {
   tx.g.position.set(TANG_XA.x, 0, TANG_XA.z); scene.add(tx.g);
   const txSeal = sealArchitectureJoints(tx.g, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump tangXa: filled=${txSeal.filled} remaining=${txSeal.remaining.length}`);
+  mergeStaticByMaterial(tx.g);
   for (const [px, pz] of tx.corners) colliders.push({ x: TANG_XA.x + px, z: TANG_XA.z + pz, r: 0.32 });
   for (let lx = -tx.hx + 1.2; lx <= tx.hx - 1.2 + 0.01; lx += 1.6) colliders.push({ x: TANG_XA.x + lx, z: TANG_XA.z - tx.hz, r: 0.9 });
   for (const lz of [-1.2, 1.2]) colliders.push({ x: TANG_XA.x - tx.hx, z: TANG_XA.z + lz, r: 0.9 }, { x: TANG_XA.x + tx.hx, z: TANG_XA.z + lz, r: 0.9 });
@@ -600,6 +631,7 @@ export function buildTemple(c: TempleCtx) {
     h.g.position.set(at.x, 0, at.z); scene.add(h.g);
     const sl = sealArchitectureJoints(h.g, { maxGap: 0.5 });
     if (import.meta.env.DEV) console.warn(`gapdump ${name}: filled=${sl.filled} remaining=${sl.remaining.length}`);
+    mergeStaticByMaterial(h.g);
     for (const [px, pz] of h.corners) colliders.push({ x: at.x + px, z: at.z + pz, r: 0.32 });
     for (let lx = -wide + 1.2; lx <= wide - 1.2 + 0.01; lx += 1.6) colliders.push({ x: at.x + lx, z: at.z - h.hz, r: 0.9 });
     for (const lz of [-1.2, 1.2]) colliders.push({ x: at.x - h.hx, z: at.z + lz, r: 0.9 }, { x: at.x + h.hx, z: at.z + lz, r: 0.9 });
@@ -616,6 +648,7 @@ export function buildTemple(c: TempleCtx) {
   tdH.g.position.set(THIEN_DUONG.x, 0, THIEN_DUONG.z); scene.add(tdH.g);
   const tdSealH = sealArchitectureJoints(tdH.g, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump thien-duong: filled=${tdSealH.filled} remaining=${tdSealH.remaining.length}`);
+  mergeStaticByMaterial(tdH.g);
   {
     const tw = (lx: number, lz: number) => ({ x: THIEN_DUONG.x + lz, z: THIEN_DUONG.z - lx });
     for (const [px, pz] of tdH.corners) colliders.push({ ...tw(px, pz), r: 0.32 });
@@ -629,34 +662,6 @@ export function buildTemple(c: TempleCtx) {
   for (let i = 0; i < 2; i++) labelBoard(trd.g, COUPLETS.traiDuong.am[i].split(',')[0], 0.42, 2.2, i ? trd.hx : -trd.hx, TRAI_DUONG_PLAT.y + 1.7, trd.hz + 0.22);
   const pcd = extraHouse('phong-cong-duc', PHONG_CD, PHONG_CD_PLAT, 'PHÒNG GHI CÔNG ĐỨC', 'phongCongDuc', 5.1, 3.5, true);
   void pcd;
-
-  /** Gộp các mesh tĩnh dùng chung một vật liệu thành một mesh (giảm draw call). Chạy SAU khi seal xong. */
-  const mergeStaticByMaterial = (root: THREE.Group) => {
-    root.updateMatrixWorld(true);
-    const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
-    const buckets = new Map<THREE.Material, THREE.Mesh[]>();
-    root.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (!m.isMesh || Array.isArray(m.material) || m.userData.inscription) return;
-      const list = buckets.get(m.material) ?? [];
-      list.push(m); buckets.set(m.material, list);
-    });
-    for (const [mat, list] of buckets) {
-      if (list.length < 2) continue;
-      const geos = list.map((m) => {
-        const gg = (m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone());
-        gg.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
-        for (const k of Object.keys(gg.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') gg.deleteAttribute(k);
-        return gg;
-      });
-      const merged = mergeGeometries(geos);
-      if (!merged) continue;
-      for (const m of list) m.removeFromParent();
-      const mm = new THREE.Mesh(merged, mat);
-      mm.castShadow = list.some((m) => m.castShadow); mm.receiveShadow = list.some((m) => m.receiveShadow);
-      root.add(mm);
-    }
-  };
 
   // ---- koi lake + arched bridge (hồ nằm giữa khuôn viên, cầu bắc dọc Bắc–Nam) ----
   const pond = new THREE.Group();            // toàn bộ hồ trong một nhóm → dễ dời tâm

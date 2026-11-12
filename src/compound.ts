@@ -334,6 +334,8 @@ function woodBench(g: GardenCtx, parent: THREE.Object3D, x: number, z: number, r
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5), g.lamb(0x4a2e18)); leg.position.set(sx * (len / 2 - 0.2), 0.25, 0); b.add(leg);
   }
   b.position.set(x, GY, z); b.rotation.y = ry; parent.add(b);
+  const hl = len / 2 - 0.35, sx = Math.cos(ry), sz = -Math.sin(ry);
+  g.colliders.push({ x: x - sx * hl, z: z - sz * hl, r: 0.5 }, { x, z, r: 0.5 }, { x: x + sx * hl, z: z + sz * hl, r: 0.5 });
 }
 
 /** Khu 1 — Vườn Thiền: vòng cát, tre, bonsai, ghế đá, đèn đá, hàng rào cây. */

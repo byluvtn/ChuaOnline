@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 10;
+export const LATEST_NEWS_ID = 11;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tải mượt hơn, chuông đúng dáng',
+    date: '2026-11-12',
+    items: [
+      'Gộp mesh các nhà (Nhà Tổ, Tăng Xá, Điện Mẫu, Nhà Khách, Thiền Đường, Trai Đường, Phòng Công Đức, Am Cổ) để giảm tải đồ họa.',
+      'Chuông ở Tháp Chuông đã quay đúng chiều: miệng chuông hướng xuống.',
+      'Ghế gỗ trong vườn giờ là vật cản.',
+    ],
+  },
   {
     title: 'Hành lang tượng vàng',
     date: '2026-11-12',
