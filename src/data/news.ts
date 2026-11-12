@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 17;
+export const LATEST_NEWS_ID = 18;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Vườn sống động',
+    date: '2026-11-13',
+    items: [
+      'Sân chùa có thêm cây anh đào hồng, phong đỏ, tre xanh, đèn đá, tháp nhỏ và vườn cát Thiền — nhìn sống động hơn hẳn cây đá xám cũ.',
+      'Cây anh đào nở hồng ở mép quảng trường; phong đỏ và tre ở Vườn Thiền; tháp nhỏ và đèn đá ở Vườn Tháp.',
+      'Vườn cát Thiền nằm giữa Vườn Thiền, hai bên có đèn đá.',
+    ],
+  },
   {
     title: 'Sửa lỗi đơ máy và kẹt sau chùa',
     date: '2026-11-12',

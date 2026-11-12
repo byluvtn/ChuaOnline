@@ -827,3 +827,25 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 
 ### Chưa chắc chắn / việc còn treo (làm cùng user, máy thật)
 - Chụp lại ảnh điện thoại sau sửa (8 tuyến đi bộ, ngồi thiền, bảng nhà); đo FPS thực trên máy thật; kiểm tra cá koi trong ao PS trên điện thoại; kiểm tra hàng rào trượt dọc mượt.
+
+## Vườn sống động — cây + đèn + tháp nhỏ (news 18)
+
+- Module mới `src/garden.ts` (109 dòng): load 6 GLB low-poly bằng `loadModel`,
+  convert vật liệu sang MeshToonMaterial bằng `toon()` (giữ `map` nếu có), fit
+  chiều cao bằng `fitModel`, đặt theo tọa độ tuyệt đối, ry cố định. Collider
+  đẩy đồng bộ vào `colliders` ngay khi `buildGarden` chạy (trước khi GLB load
+  xong) để pathfinder trong `main.ts` thấy đủ.
+- 6 model (tổng 752 tris cho 1 cái mỗi loại, ~12 instance): cherry_tree (10.424 B,
+  80 tris, cao 4,7 m, 3 cây mép quảng trường), maple_tree (8.380 B, 60 tris,
+  cao 4,5 m, 2 cây Vườn Thiền), bamboo_cluster (26.924 B, 288 tris, cao 4,4 m,
+  2 cụm: bắc Vườn Thiền + gần ao PS), stone_lantern (8.568 B, 82 tris, cao
+  2,15 m, 2 cái hai bên vườn cát + 1 cái Vườn Tháp), pagoda (12.424 B, 118 tris,
+  cao 5,1 m, 1 tháp Vườn Tháp), zen_sand_garden (13.684 B, 124 tris, scale 1,5,
+  giữa Vườn Thiền, không collider).
+- Nguồn: LowPolyShrinePack (free) — cherry/maple/bamboo/lantern/pagoda/sand_garden.
+  User chọn đúng 6 model này trên WhatsApp 2026-11-13 00:06 sau khi xem preview;
+  loại tree_palm (tán lưa thưa rách), tree_oak (khối xanh đậm đơn điệu, đúng kiểu
+  "chán"), flower_redA (đỏ tối, thô), Tree_02_Art (xoáy tím ảo giác),
+  tree_pineTallB (xanh đậm như oak, để đợt sau).
+- Collider: cây/tre r0,4, đèn r0,3, tháp r0,6; vườn cát không collider. Sim kiểm
+  tra không collider nào trong 0,5 m của node/cạnh đường (`shared/roads.ts`).
