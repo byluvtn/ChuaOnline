@@ -675,3 +675,46 @@ Chỉ đụng `shared/types.ts`, `src/main.ts`, `server/index.ts`, `src/data/new
 - `npm run dev` (concurrently -k) tự tắt khi `dev:server` thoát; đã chạy `dev:server` và `dev:client` riêng để đo.
 - Chưa chạy `npm run build`. Chưa deploy.
 - Tin tức: thêm entry "Đi được tới Am Cổ", `LATEST_NEWS_ID` 11 → 12.
+
+## A2.3 — Nội thất 7 nhà
+Chỉ đụng `src/temple.ts`, `src/data/news.ts`, `HANDOFF.md`.
+
+### Đối chiếu code (khác spec cũ)
+- Có **7 nhà**, không phải 6 (nhà tổ, tăng xá, am cổ, nhà khách, thiền đường, trai đường, phòng công đức). Điện Mẫu không có nội thất.
+- **Không có bếp** ở trai đường trong code, nên không xây bếp.
+- **Không có model mõ 3D** có sẵn (chỉ có âm thanh và minigame), mõ được dựng mới bằng primitives.
+- `server/npcs.ts` không có logic nghỉ/giường NPC; gói này chỉ đặt giường và ghi tọa độ bên dưới, không nối NPC, không đăng ký giường làm `seats`.
+
+### Đã làm
+- Mục `// ---- A2.3 interiors ----` trong `src/temple.ts` (sau `void pcd;`): 5 group `<tên-nhà>-in` (nha-khach-in, tang-xa-in, trai-duong-in, nha-to-in, thien-duong-in) và phong-cong-duc-in; mỗi group gọi `mergeStaticByMaterial` rồi `scene.add`, dùng chung `woodM`/`matM`/`cushM`/`c.goldM` và một `lamb` cho mỗi màu giấy/mực.
+- Am Cổ: props thêm thẳng vào group `amCo` trước `mergeStaticByMaterial(amCo)`.
+- Thiền đường: 10 bồ đoàn đăng ký vào `seats` (tọa độ world qua `twd()`, `ry = 3π/2`, không `rest`).
+- Collider chỉ cho vật lớn (bàn trà, giường, bàn dài, ban thờ tổ, kệ, mõ); lối vào giữa và lối đi giữa thiền đường thông.
+
+### Mesh/tri trước/sau từng nhà
+| Nhà | Trước | Sau |
+| --- | --- | --- |
+| Nhà Tổ | chưa đo | chưa đo |
+| Tăng Xá | chưa đo | chưa đo |
+| Am Cổ | chưa đo | chưa đo |
+| Nhà Khách | chưa đo | chưa đo |
+| Thiền Đường | chưa đo | chưa đo |
+| Trai Đường | chưa đo | chưa đo |
+| Phòng Ghi Công Đức | chưa đo | chưa đo |
+
+Số mesh/tri thực tế từng nhà: chưa đo (không có quyền chạy dev server trong lượt viết patch này). Cần đo bằng `renderer.info` trước/sau trên máy thật hoặc headless rồi điền bảng.
+
+### Tọa độ giường Tăng Xá (chưa nối NPC)
+- 2 giường Tăng Xá, tâm world: **(-44, -73.05)** và **(-38, -73.05)**, mặt giường (mặt chiếu) y = 0.6, đầu giường hướng Bắc (đầu giường ở z = -73.4).
+- Ghế trực Phòng Ghi Công Đức, tâm world **(-42, 32.6)** (local (0, -2.4) từ `PHONG_CD = {x: -42, z: 35}`).
+- Giường Am Cổ: local `(-acHx + 0.9, acBase + 0.325, 0)` → world **(51.7, -75)**, mặt giường (mặt chiếu) y = 0.7 (acBase = 0.35).
+
+### Kiểm chứng
+- Chưa chạy `npm run typecheck`, `npm run build`, chưa chụp ảnh (không có công cụ). Cần chạy lại và kiểm tra bằng mắt từng nhà trước khi merge.
+- Cần kiểm tra: bồ đoàn Thiền Đường ngồi được và hướng ngồi đúng (nhìn về phía tường hậu), props không đè lên bàn thờ có sẵn ở tường hậu, lối vào giữa mỗi nhà vẫn thông.
+
+### Chưa chắc chắn / việc còn treo
+- Tọa độ `seats` của Thiền Đường suy ra từ `twd()` với `ry = 3π/2`; chưa xác nhận bằng cách ngồi thử.
+- Collider là ước lượng bằng tay, chưa đo đi bộ.
+- Chưa deploy.
+- Tin tức: thêm entry "Nội thất trong 7 nhà", `LATEST_NEWS_ID` 12 → 13.

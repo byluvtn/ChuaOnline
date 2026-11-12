@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 12;
+export const LATEST_NEWS_ID = 13;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Nội thất trong 7 nhà',
+    date: '2026-11-12',
+    items: [
+      'Nhà Khách có bộ bàn trà và băng ghế dài; Tăng Xá có hai giường gỗ cùng bàn đèn dầu nhỏ.',
+      'Trai Đường có bàn ăn dài, Nhà Tổ có ban thờ tổ với bài vị, lư hương và đôi bình hoa.',
+      'Thiền Đường lát sàn gỗ, xếp hai dãy bồ đoàn ngồi thiền được thật cùng chiếc mõ gỗ; Phòng Ghi Công Đức có bàn dài, ghế trực và kệ sổ; Am Cổ có giường nhỏ, bồ đoàn và bàn trà.',
+    ],
+  },
   {
     title: 'Đi được tới Am Cổ',
     date: '2026-11-12',

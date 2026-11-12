@@ -12,4 +12,8 @@ export default async ({ ev, sleep }) => {
   for (const n of ['nha-to', 'tang-xa', 'dien-mau', 'nha-khach', 'thien-duong', 'trai-duong', 'phong-cong-duc', 'am-co']) {
     console.log(n, await cost([n]));
   }
+  // Nội thất am cổ đã gộp vào group 'am-co' (không có group 'am-co-in'); chỉ đo 6 group -in có thật.
+  for (const n of ['nha-to', 'tang-xa', 'nha-khach', 'thien-duong', 'trai-duong', 'phong-cong-duc']) {
+    console.log(n + '-in', await cost([n + '-in']));
+  }
 };

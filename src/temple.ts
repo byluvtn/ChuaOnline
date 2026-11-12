@@ -508,6 +508,26 @@ export function buildTemple(c: TempleCtx) {
   amCo.position.set(AM_CO.x, 0, AM_CO.z); scene.add(amCo);
   const acSeal = sealArchitectureJoints(amCo, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump amCo: filled=${acSeal.filled} remaining=${acSeal.remaining.length}`);
+  {
+    // nội thất am cổ: giường nhỏ, bồ đoàn, bàn trà mini (dùng chung vật liệu để merge gộp được)
+    const acB = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+      m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; amCo.add(m); return m;
+    };
+    const acPaper = lamb(0xf4efe2, { roughness: 0.95 });
+    const bedX = -acHx + 0.9;
+    acB(0.8, 0.3, 1.7, bedX, acBase + 0.15, 0, woodM);
+    acB(0.72, 0.05, 1.6, bedX, acBase + 0.325, 0, matM);
+    acB(0.3, 0.12, 0.5, bedX, acBase + 0.41, -0.6, acPaper);
+    acB(0.9, 0.04, 0.9, -1.2, acBase + 0.02, 0.3, matM);
+    const acCu = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.1, 18), cushM);
+    acCu.position.set(-1.2, acBase + 0.09, 0.3); acCu.castShadow = true; amCo.add(acCu);
+    acB(0.7, 0.05, 0.5, 0.8, acBase + 0.5, 0.6, woodM);
+    for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]] as [number, number][]) acB(0.06, 0.5, 0.06, 0.8 + lx, acBase + 0.25, 0.6 + lz, woodM);
+    const acPot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), c.goldM);
+    acPot.scale.set(1, 0.85, 1); acPot.position.set(0.8, acBase + 0.63, 0.6); acPot.castShadow = true; amCo.add(acPot);
+    colliders.push({ x: AM_CO.x + bedX, z: AM_CO.z, r: 0.8 }, { x: AM_CO.x + 0.8, z: AM_CO.z + 0.6, r: 0.4 });
+  }
   mergeStaticByMaterial(amCo);
   for (const [px, pz] of [[-acHx, -acHz], [acHx, -acHz], [-acHx, acHz], [acHx, acHz]] as [number, number][]) colliders.push({ x: AM_CO.x + px, z: AM_CO.z + pz, r: 0.3 });
   for (const lz of [-1.2, 0, 1.2]) colliders.push({ x: AM_CO.x - acHx, z: AM_CO.z + lz, r: 0.7 });
@@ -662,6 +682,127 @@ export function buildTemple(c: TempleCtx) {
   for (let i = 0; i < 2; i++) labelBoard(trd.g, COUPLETS.traiDuong.am[i].split(',')[0], 0.42, 2.2, i ? trd.hx : -trd.hx, TRAI_DUONG_PLAT.y + 1.7, trd.hz + 0.22);
   const pcd = extraHouse('phong-cong-duc', PHONG_CD, PHONG_CD_PLAT, 'PHÒNG GHI CÔNG ĐỨC', 'phongCongDuc', 5.1, 3.5, true);
   void pcd;
+
+  // ---- A2.3 interiors ----
+  {
+    const twd = (lx: number, lz: number) => ({ x: THIEN_DUONG.x + lz, z: THIEN_DUONG.z - lx });
+    const mk = (root: THREE.Group) => (
+      w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material,
+    ) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+      m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; root.add(m); return m;
+    };
+    const cyl = (root: THREE.Group, rt: number, rb: number, h: number, x: number, y: number, z: number, mat: THREE.Material, seg = 12) => {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+      m.position.set(x, y, z); m.castShadow = true; root.add(m); return m;
+    };
+    const paperM = lamb(0xf4efe2, { roughness: 0.95 });
+    const inkM = lamb(0x1a1612, { roughness: 0.6 });
+    const mkIn = (name: string, at: { x: number; z: number }) => {
+      const g = new THREE.Group(); g.name = name; g.position.set(at.x, 0, at.z); return g;
+    };
+
+    // --- Nhà khách: bàn trà + 4 đôn + băng ghế dài ---
+    {
+      const g = mkIn('nha-khach-in', NHA_KHACH), b = mk(g), y0 = NHA_KHACH_PLAT.y, hz = nk.hz;
+      b(1.6, 0.06, 0.9, 0, y0 + 0.72, 0, woodM);
+      for (const [lx, lz] of [[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]] as [number, number][]) b(0.08, 0.72, 0.08, lx, y0 + 0.36, lz, woodM);
+      cyl(g, 0.09, 0.09, 0.12, 0, y0 + 0.81, 0, c.goldM, 12);
+      b(0.14, 0.04, 0.04, 0.13, y0 + 0.83, 0, c.goldM);
+      for (const [lx, lz] of [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]] as [number, number][]) cyl(g, 0.04, 0.04, 0.05, lx, y0 + 0.78, lz, paperM, 10);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.45, 0.4, 0.45, sx * 1.1, y0 + 0.2, sz * 0.7, woodM);
+      b(2.4, 0.06, 0.45, 0, y0 + 0.42, hz - 0.7, woodM);
+      for (const lx of [-1.0, 1.0]) b(0.1, 0.4, 0.38, lx, y0 + 0.2, hz - 0.7, woodM);
+      mergeStaticByMaterial(g); scene.add(g);
+      colliders.push({ x: NHA_KHACH.x, z: NHA_KHACH.z, r: 0.9 });
+    }
+
+    // --- Tăng xá: 2 giường + bàn nhỏ + đèn dầu ---
+    {
+      const g = mkIn('tang-xa-in', TANG_XA), b = mk(g), y0 = TANG_XA_PLAT.y, bz = -tx.hz + 0.95;
+      for (const bx of [-3.0, 3.0]) {
+        b(2.0, 0.3, 0.9, bx, y0 + 0.15, bz, woodM);
+        b(1.9, 0.05, 0.8, bx, y0 + 0.325, bz, matM);
+        b(0.5, 0.12, 0.3, bx, y0 + 0.41, -tx.hz + 0.6, paperM);
+      }
+      b(0.5, 0.5, 0.5, 0, y0 + 0.25, bz, woodM);
+      cyl(g, 0.06, 0.07, 0.1, 0, y0 + 0.55, bz, c.goldM, 10);
+      mergeStaticByMaterial(g); scene.add(g);
+      for (const bx of [-3.0, 3.0]) for (const dx of [-0.7, 0.7]) colliders.push({ x: TANG_XA.x + bx + dx, z: TANG_XA.z + bz, r: 0.8 });
+      colliders.push({ x: TANG_XA.x, z: TANG_XA.z + bz, r: 0.4 });
+    }
+
+    // --- Trai đường: bàn ăn dài + 2 băng ghế (không bếp) ---
+    {
+      const g = mkIn('trai-duong-in', TRAI_DUONG), b = mk(g), y0 = TRAI_DUONG_PLAT.y;
+      b(3.6, 0.06, 1.1, 0, y0 + 0.72, 0, woodM);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.1, 0.72, 0.1, sx * 1.7, y0 + 0.36, sz * 0.5, woodM);
+      for (const lx of [-1.0, 1.0]) cyl(g, 0.25, 0.25, 0.03, lx, y0 + 0.77, 0, c.goldM, 16);
+      for (const [lx, lz] of [[-1.5, -0.3], [-0.5, 0.3], [0.5, -0.3], [1.5, 0.3]] as [number, number][]) cyl(g, 0.07, 0.07, 0.05, lx, y0 + 0.78, lz, paperM, 10);
+      for (const sz of [-1.15, 1.15]) {
+        b(3.2, 0.06, 0.4, 0, y0 + 0.42, sz, woodM);
+        for (const lx of [-1.4, 1.4]) b(0.1, 0.4, 0.34, lx, y0 + 0.2, sz, woodM);
+      }
+      mergeStaticByMaterial(g); scene.add(g);
+      for (const lx of [-1.2, 1.2]) colliders.push({ x: TRAI_DUONG.x + lx, z: TRAI_DUONG.z, r: 0.9 });
+      for (const sz of [-1.15, 1.15]) for (const lx of [-1.0, 1.0]) colliders.push({ x: TRAI_DUONG.x + lx, z: TRAI_DUONG.z + sz, r: 0.6 });
+    }
+
+    // --- Nhà tổ: ban thờ tổ trước bàn thờ có sẵn ---
+    {
+      const g = mkIn('nha-to-in', NHA_TO), b = mk(g), y0 = NHA_TO_PLAT.y, az = -nt.hz + 1.4;
+      b(3.0, 0.9, 0.8, 0, y0 + 0.45, az, lamb(0x6d2a16, { roughness: 0.55 }));
+      b(3.1, 0.05, 0.9, 0, y0 + 0.925, az, c.goldM);
+      labelBoard(g, 'BÀI VỊ TỔ SƯ', 0.5, 0.9, 0, y0 + 1.4, az, 0);
+      cyl(g, 0.28, 0.28, 0.1, 0, y0 + 0.98, az + 0.2, c.goldM, 14);
+      for (const lx of [-1.2, 1.2]) cyl(g, 0.12, 0.12, 0.35, lx, y0 + 1.12, az, c.goldM, 12);
+      for (const sx of [-1, 1]) b(0.5, 0.45, 0.5, sx * 2.8, y0 + 0.225, 0.6, woodM);
+      mergeStaticByMaterial(g); scene.add(g);
+      for (const lx of [-1.2, 1.2]) colliders.push({ x: NHA_TO.x + lx, z: NHA_TO.z + az, r: 0.9 });
+      colliders.push({ x: NHA_TO.x, z: NHA_TO.z + az, r: 0.9 });
+    }
+
+    // --- Thiền đường: sàn gỗ nâng + 2 dãy 5 bồ đoàn, mõ gỗ ---
+    {
+      const g = mkIn('thien-duong-in', THIEN_DUONG); g.rotation.y = Math.PI / 2;
+      const b = mk(g), y0 = THIEN_DUONG_PLAT.y, hxL = tdH.hx, hzL = tdH.hz;
+      b(hxL * 2, 0.08, (hzL - 0.8) - (-hzL + 0.1), 0, y0 + 0.04, ((hzL - 0.8) + (-hzL + 0.1)) / 2, woodM);
+      const cushG = new THREE.CylinderGeometry(0.44, 0.49, 0.12, 20);
+      for (const lx of [-1.2, 1.2]) for (const lz of [-3.4, -1.9, -0.4, 1.1, 2.6]) {
+        b(1.0, 0.04, 1.0, lx, y0 + 0.1, lz, matM);
+        const cu = new THREE.Mesh(cushG, cushM);
+        cu.position.set(lx, y0 + 0.18, lz); cu.castShadow = true; g.add(cu);
+        const w = twd(lx, lz);
+        seats.push({ x: w.x, z: w.z, ry: 3 * Math.PI / 2 });
+      }
+      const mohM = lamb(0x5a3a22, { roughness: 0.8 });
+      b(0.5, 0.12, 0.35, 0.95, y0 + 0.06, -hzL + 1.2, mohM);
+      const moh = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), mohM);
+      moh.scale.set(0.45, 0.3, 0.3); moh.position.set(0.95, y0 + 0.27, -hzL + 1.2); moh.castShadow = true; g.add(moh);
+      mergeStaticByMaterial(g); scene.add(g);
+      colliders.push({ ...twd(0.95, -hzL + 1.2), r: 0.4 });
+    }
+
+    // --- Phòng ghi công đức: bàn dài + ghế trực + kệ sổ ---
+    {
+      const g = mkIn('phong-cong-duc-in', PHONG_CD), b = mk(g), y0 = PHONG_CD_PLAT.y, hxp = pcd.hx;
+      b(3.0, 0.06, 1.0, 0, y0 + 0.72, -1.5, woodM);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.1, 0.72, 0.1, sx * 1.4, y0 + 0.36, -1.5 + sz * 0.4, woodM);
+      b(0.4, 0.05, 0.3, -0.6, y0 + 0.78, -1.5, paperM);
+      cyl(g, 0.08, 0.08, 0.04, 0.2, y0 + 0.77, -1.5, inkM, 12);
+      cyl(g, 0.07, 0.07, 0.18, 1.0, y0 + 0.84, -1.5, c.goldM, 10);
+      b(0.5, 0.45, 0.5, 0, y0 + 0.225, -2.4, woodM);
+      const kx = -hxp + 0.6;
+      b(0.5, 0.06, 1.8, kx, y0 + 0.5, 0, woodM);
+      b(0.5, 0.06, 1.8, kx, y0 + 1.1, 0, woodM);
+      for (const sz of [-0.85, 0.85]) b(0.5, 1.1, 0.06, kx, y0 + 0.55, sz, woodM);
+      for (let i = 0; i < 6; i++) b(0.2, 0.05, 0.28, kx, y0 + 0.55 + (i % 2) * 0.6 + 0.02, -0.7 + i * 0.28, paperM);
+      cyl(g, 0.06, 0.06, 0.12, kx, y0 + 1.19, 0.75, inkM, 10);
+      mergeStaticByMaterial(g); scene.add(g);
+      for (const lx of [-1.0, 1.0]) colliders.push({ x: PHONG_CD.x + lx, z: PHONG_CD.z - 1.5, r: 0.9 });
+      for (const lz of [-0.6, 0.6]) colliders.push({ x: PHONG_CD.x + kx, z: PHONG_CD.z + lz, r: 0.6 });
+    }
+  }
 
   // ---- koi lake + arched bridge (hồ nằm giữa khuôn viên, cầu bắc dọc Bắc–Nam) ----
   const pond = new THREE.Group();            // toàn bộ hồ trong một nhóm → dễ dời tâm
