@@ -736,6 +736,16 @@ function planPath(from: THREE.Vector3, to: THREE.Vector3): THREE.Vector3[] {
   return out.length ? out : [to.clone()];
 }
 
+const ACCEL_S = 0.25, DECEL_S = 0.25, WALK_SPEED = 3.8, RUN_SPEED = 7, ARRIVE_DIST = 1.5;
+const STRIDE_M = WALK_SPEED * 1.24;
+let curSpeed = 0, gaitPhase = 0;
+const moveDir = new THREE.Vector3(0, 0, 1);
+function rampSpeed(target: number, dt: number) {
+  const rate = (target > curSpeed ? RUN_SPEED / ACCEL_S : RUN_SPEED / DECEL_S) * dt;
+  curSpeed = target > curSpeed ? Math.min(target, curSpeed + rate) : Math.max(target, curSpeed - rate);
+  if (curSpeed < 0.02 && target === 0) curSpeed = 0;
+}
+
 const prevPos = { x: 0, z: 0 };
 function collide(pos: THREE.Vector3) {
   const onDeck = resolveBridge(pos, prevPos);
@@ -818,8 +828,9 @@ function loop() {
     }
     const mag = Math.min(1, Math.hypot(ix, iz));
     const running = keys.has('ShiftLeft') || keys.has('ShiftRight') || (joy.id !== -1 && mag > 0.85);
-    const speed = running ? 7 : 3.8;
+    const speed = running ? RUN_SPEED : WALK_SPEED;
     let moving = false;
+    let targetSpeed = 0;
 
     if (mag > 0) {
       clickTarget = null;
@@ -829,9 +840,9 @@ function loop() {
       const len = Math.hypot(ix, iz);
       const s = Math.sin(camYaw), c = Math.cos(camYaw);
       const dx = (ix * c + iz * s) / len, dz = (-ix * s + iz * c) / len;
-      const sp = speed * (joy.id !== -1 ? Math.max(0.5, mag) : 1);
-      root.position.x += dx * sp * dt;
-      root.position.z += dz * sp * dt;
+      targetSpeed = speed * (joy.id !== -1 ? Math.max(0.5, mag) : 1);
+      if (curSpeed > 0.5 && moveDir.x * dx + moveDir.z * dz < 0) targetSpeed = 0;
+      else moveDir.set(dx, 0, dz);
       me.ry = Math.atan2(dx, dz);
       moving = true;
     } else if (clickTarget) {
@@ -839,15 +850,28 @@ function loop() {
       const wp = pathQueue.length ? pathQueue[0] : clickTarget;
       tmp.copy(wp).sub(root.position);
       tmp.y = 0;
-      if (tmp.length() < 0.3 && pathQueue.length > 1) { pathQueue.shift(); }
-      else if (tmp.length() < 0.2) { clickTarget = null; pathTarget = null; pathQueue = []; }
+      const wpDist = tmp.length();
+      if (wpDist < 0.3 && pathQueue.length > 1) { pathQueue.shift(); }
+      else if (wpDist < 0.2 || (pathQueue.length <= 1 && wpDist < 0.9 && (curSpeed < 1.6 || tmp.x * moveDir.x + tmp.z * moveDir.z < 0))) { clickTarget = null; pathTarget = null; pathQueue = []; }
       else {
         tmp.normalize();
-        root.position.addScaledVector(tmp, speed * dt);
+        let remain = wpDist;
+        for (let i = 1; i < pathQueue.length; i++) remain += Math.hypot(pathQueue[i].x - pathQueue[i - 1].x, pathQueue[i].z - pathQueue[i - 1].z);
+        targetSpeed = speed * Math.min(1, Math.max(0.12, remain / ARRIVE_DIST));
+        if (curSpeed > 0.5 && moveDir.x * tmp.x + moveDir.z * tmp.z < 0) targetSpeed = 0;
+        else moveDir.copy(tmp);
         me.ry = Math.atan2(tmp.x, tmp.z);
         moving = true;
       }
     }
+    rampSpeed(targetSpeed, dt);
+    if (curSpeed > 0) {
+      root.position.x += moveDir.x * curSpeed * dt;
+      root.position.z += moveDir.z * curSpeed * dt;
+      gaitPhase += (curSpeed * dt) / STRIDE_M;
+      if (curSpeed > 0.05) moving = true;
+    }
+    me.char.gait = curSpeed > 0.05 ? gaitPhase : -1;
     // tới bồ đoàn đã chọn → ngồi xuống rồi lạy
     if (bowSeat && Math.hypot(bowSeat.x - root.position.x, bowSeat.z - root.position.z) < 0.5) {
       root.position.set(bowSeat.x, world.groundY(bowSeat.x, bowSeat.z), bowSeat.z);

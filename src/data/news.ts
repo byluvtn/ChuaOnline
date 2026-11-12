@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 7;
+export const LATEST_NEWS_ID = 8;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chuyển động mượt hơn',
+    date: '2026-11-12',
+    items: [
+      'Nhân vật tăng tốc và giảm tốc từ từ khi đi, chạy và dừng lại, không còn bật tắt đột ngột.',
+      'Bước chân khớp với tốc độ di chuyển nên chân không còn trượt trên mặt đất.',
+      'Khi bấm đi tới một điểm, nhân vật chậm dần khi đến gần; khi đổi hướng ngược lại sẽ giảm tốc rồi mới quay đầu.',
+    ],
+  },
   {
     title: 'Điện Tam Thế',
     date: '2026-11-12',

@@ -542,3 +542,23 @@ Baseline: `0ba70ff`. Thay đổi tập trung ở `src/tamthe.ts` (mới), `src/t
 - Chưa chạy lại đi bộ kiểm toàn khuôn viên sau thay đổi camera (không đụng collider).
 - Chưa deploy.
 - Tin tức: thêm entry "Điện Tam Thế", `LATEST_NEWS_ID` 6 → 7.
+
+## A2.5 — Làm mượt chuyển động nhân vật (accel/decel + bước chân khớp tốc độ)
+Chỉ đụng `src/main.ts` (vòng lặp `loop()`), `src/character.ts`, `src/data/news.ts`. Không đổi collider, layout hay mạng.
+
+### Đã làm
+- **`src/main.ts`:** thêm trạng thái `curSpeed`, `moveDir`, `gaitPhase` và hàm `rampSpeed(target, dt)`. Tăng/giảm tốc ~0.25 s (hằng `ACCEL_S`, `DECEL_S`, tốc độ trần `RUN_SPEED`), dùng chung cho phím, joystick và click-to-move. Thả phím vẫn trượt tiếp theo `moveDir` rồi dừng dần.
+- **Quay đầu >90°:** khi `curSpeed > 0.5` và hướng mới ngược `moveDir` thì `targetSpeed = 0`, giữ `moveDir` cũ cho tới khi gần dừng rồi mới nhận hướng mới.
+- **Tới đích click/planPath:** `targetSpeed` giảm theo quãng đường còn lại (`ARRIVE_DIST` = 1.5, sàn 0.12 tốc độ); dừng ở waypoint cuối khi `wpDist < 0.9` và (chậm hoặc hướng đã đảo ngược) để hết dao động quanh đích.
+- **`src/character.ts`:** thêm trường `gait` (pha bước theo quãng đường, `-1` khi không dùng). Với anim walk/run pha chân lấy từ `gait % 1` thay vì thời gian clip, nên bước chân khớp tốc độ và không reset khi đổi anim. `gaitPhase += curSpeed * dt / STRIDE_M` với `STRIDE_M = WALK_SPEED * 1.24`.
+
+### Kiểm chứng
+- `npm run typecheck` và `npm run build` sạch.
+- `tools/steps-smooth4.mjs` (`STEPS=./steps-smooth4.mjs`, chạy bằng `shot.mjs` với viewport 320x200): đo `curSpeed`/pha theo frame mô phỏng. Tăng tốc 0 → 3.8 đúng giới hạn accel*dt, giảm tốc về 0, phanh quay đầu 3.8 → 2.4 → 1 → 0 rồi tăng tốc lại hướng ngược, pha bước liên tục. Ảnh `shots/smooth4-turn-end.png`.
+
+### Chưa chắc chắn / việc còn treo
+- Headless chỉ ~3 FPS nên `dt` bị chặn 0.05 và vận tốc theo giờ thực không đo được; số liệu dựa trên bước mô phỏng, chưa thử cảm giác trên máy thật hay điện thoại.
+- Hằng số 0.25 s, `ARRIVE_DIST` và ngưỡng phanh quay đầu chỉnh theo số liệu, chưa tinh chỉnh bằng tay.
+- Animation khác (ngồi, lạy, NPC) không đổi; NPC/remote vẫn dùng pha theo thời gian vì `gait = -1`.
+- Chưa deploy.
+- Tin tức: thêm entry "Chuyển động mượt hơn", `LATEST_NEWS_ID` 7 → 8.

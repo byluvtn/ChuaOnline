@@ -42,6 +42,7 @@ export interface Character {
   lap: THREE.Mesh;
   curAnim: string;
   t0: number;
+  gait: number;
   label: THREE.Sprite;
   bubble: THREE.Sprite;
   bubbleUntil: number;
@@ -485,7 +486,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, lap, curAnim: 'idle', t0: 0, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
@@ -612,7 +613,8 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   const walk = anim === 'walk' || anim === 'run';
   const clip = CLIPS[anim];
   const amp = walk ? clip.amp : 0;
-  const cycle = Math.sin(TAU * (clip ? phaseOf(clip, t - c.t0) : 0)); // -1..1 over one gait cycle
+  const gaitPh = walk && c.gait >= 0 ? c.gait % 1 : clip ? phaseOf(clip, t - c.t0) : 0;
+  const cycle = Math.sin(TAU * gaitPh); // -1..1 over one gait cycle
   // prayer weight: 1 only while a ritual action (incense / chant / bow) is running, else hands hang free
   const ritual = RITUAL.test(anim) && !(anim === 'bow' && t - c.t0 > BOW_T - 0.4) && !(anim === 'palms' && t - c.t0 > PALMS_MS / 1000 - 0.3);
   c.prayW += ((ritual ? 1 : 0) - c.prayW) * Math.min(1, dt * 9);
