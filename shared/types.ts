@@ -37,5 +37,6 @@ export interface Profile {
 }
 
 export const MAP_HALF = 68;
+export const MAP_Z_MIN = -82;
 export const levelOf = (merit: number) => Math.floor(Math.sqrt(merit / 10)) + 1;
 export const meritForLevel = (lv: number) => (lv - 1) * (lv - 1) * 10;

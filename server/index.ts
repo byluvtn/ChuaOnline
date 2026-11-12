@@ -9,7 +9,7 @@ import {
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
 import {
-  MAP_HALF, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
+  MAP_HALF, MAP_Z_MIN, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
 } from '../shared/types.js';
 import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
@@ -256,7 +256,7 @@ io.on('connection', (socket) => {
     const s = me();
     if (!s || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
     s.state.x = Math.max(-MAP_HALF, Math.min(MAP_HALF, m.x));
-    s.state.z = Math.max(-MAP_HALF, Math.min(MAP_HALF, m.z));
+    s.state.z = Math.max(MAP_Z_MIN, Math.min(MAP_HALF, m.z));
     s.state.ry = Number.isFinite(m.ry) ? m.ry : 0;
     if (ANIMS.includes(m.anim)) s.state.anim = m.anim;
   });

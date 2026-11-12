@@ -654,3 +654,24 @@ Chỉ đụng `src/statue-corridor.ts` (mới), `src/temple.ts` (đoạn La Hán
 - FPS headless chỉ ~0,6–2,0, không phản ánh máy thật; FPS máy thật: chờ số đo. Chưa so bảng trước-sau.
 - Chưa deploy.
 - Tin tức: thêm entry "Tải mượt hơn, chuông đúng dáng", `LATEST_NEWS_ID` 10 → 11.
+
+## A2.7 — Sửa biên đi lại phía Bắc (vào được Am Cổ)
+Chỉ đụng `shared/types.ts`, `src/main.ts`, `server/index.ts`, `src/data/news.ts`, `tools/steps-a22-*.mjs`.
+
+### Nguyên nhân
+- `MAP_HALF = 68` kẹp `z` về `[-68, 68]` ở client (`src/main.ts`) và server (`server/index.ts`), trong khi tường Bắc ở `WALL.zN = -82`. Vùng z ∈ [-82, -68] không đi vào được nên Am Cổ (z = -75) bị cắt; nhân vật bị ép về đúng z = -68 trên mọi x.
+
+### Đã làm
+- `shared/types.ts`: thêm `MAP_Z_MIN = -82`, giữ nguyên `MAP_HALF` (còn dùng để rải cây/hoa trong `src/world.ts`).
+- `src/main.ts` và `server/index.ts`: kẹp `z` bằng `[MAP_Z_MIN, MAP_HALF]`.
+
+### Kiểm chứng
+- `npm run typecheck` sạch.
+- `tools/steps-a22-verify.mjs`: dịch chuyển tới z = -70/-75/-80 giữ nguyên vị trí, z = -85 kẹp về -81.06 (`clampToCompound`); `walkTo(48,-75)` tới (48.26, -74.53) sát cửa Đông Am Cổ rồi dừng ở collider tường bên. Ảnh `shots/a22-amco-amco-inside.png` hiện popup Am Cổ.
+- Đã đo đi bộ tại ghế (`woodBench`), tường Nhà Khách, Tăng Xá, Nhà Tổ, hàng La Hán: không xuyên collider.
+
+### Chưa chắc chắn / việc còn treo
+- Headless chỉ ~2 FPS nên các ca đo đi bộ dài dừng sớm do thiếu thời gian, không phải do collider; chưa thử trên máy thật.
+- `npm run dev` (concurrently -k) tự tắt khi `dev:server` thoát; đã chạy `dev:server` và `dev:client` riêng để đo.
+- Chưa chạy `npm run build`. Chưa deploy.
+- Tin tức: thêm entry "Đi được tới Am Cổ", `LATEST_NEWS_ID` 11 → 12.

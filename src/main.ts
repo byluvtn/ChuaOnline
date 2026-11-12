@@ -14,7 +14,7 @@ import { createWorld } from './world';
 import { buildBuddha, buildQuanAm } from './statues';
 import { ACTION_RULES, ROOMS, type MeditationInfo, type QuestState } from '../shared/game';
 import {
-  MAP_HALF, OUTFIT_COLOR, levelOf, meritForLevel,
+  MAP_HALF, MAP_Z_MIN, OUTFIT_COLOR, levelOf, meritForLevel,
   type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState, type Profile,
 } from '../shared/types';
 
@@ -771,7 +771,7 @@ function collide(pos: THREE.Vector3) {
   world.resolveWater(pos, onDeck);
   clampToCompound(pos);
   pos.x = Math.max(-MAP_HALF, Math.min(MAP_HALF, pos.x));
-  pos.z = Math.max(-MAP_HALF, Math.min(MAP_HALF, pos.z));
+  pos.z = Math.max(MAP_Z_MIN, Math.min(MAP_HALF, pos.z));
   prevPos.x = pos.x; prevPos.z = pos.z;
 }
 

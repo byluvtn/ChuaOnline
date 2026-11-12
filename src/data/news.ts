@@ -4,9 +4,16 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 11;
+export const LATEST_NEWS_ID = 12;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đi được tới Am Cổ',
+    date: '2026-11-12',
+    items: [
+      'Sửa lỗi nhân vật bị chặn vô hình ở phía Bắc khuôn viên, nay có thể đi tới Am Cổ và vùng sát tường rào phía Bắc.',
+    ],
+  },
   {
     title: 'Tải mượt hơn, chuông đúng dáng',
     date: '2026-11-12',
