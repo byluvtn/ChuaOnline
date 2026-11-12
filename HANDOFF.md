@@ -697,3 +697,23 @@ Số mesh/tri thực tế từng nhà: chưa đo (không có quyền chạy dev 
 - Collider là ước lượng bằng tay, chưa đo đi bộ.
 - Chưa deploy.
 - Tin tức: thêm entry "Nội thất trong 7 nhà", `LATEST_NEWS_ID` 12 → 13.
+
+## Quan Âm chibi v4 — vẽ lại tượng Quan Âm (mặt 3D, bình ngọc, liễu lá tròn)
+
+### Đối chiếu code (khác spec cũ)
+- Giữ dáng ĐỨNG theo ảnh thiết kế v4 (spec cũ nói "ngồi kiết già" là sai).
+- Mặt 2D CanvasTexture đổi thành mặt 3D bằng mesh (mắt nhắm cong, cười, má hồng to).
+- Bình vàng đổi thành ngọc xanh; liễu 5 lá dẹt đổi thành lá tròn to; lụa trắng đổi thành vàng kim.
+- Thêm cổ chữ V, tay chunky và bàn chân lộ dưới gấu áo.
+
+### Tỉ lệ đầu
+- Trước: 1.30 / ~3.6 ≈ 36%.
+- Sau: 1.76 / 3.63 ≈ 48% (đo bằng mô phỏng headless: headDia=1.76, totalH=3.63, ratio=0.484).
+
+### Nghiệm thu
+- Checklist bằng mắt: đầu to gần nửa chiều cao; mặt 3D mắt nhắm cười, má hồng to; bình ngọc xanh; cành liễu lá tròn to; tay cầm bình/liễu chắc và rõ; vương miện còn tượng Phật A Di Đà nhỏ; thấy bàn chân dưới gấu áo.
+- Ảnh sẽ chụp: `shots/quanam.png`, `shots/yard.png`.
+- **Chưa kiểm chứng runtime** (không chụp được trong lượt viết patch này).
+
+### Tin tức
+- Tin tức: thêm entry "Tượng Quan Âm chibi mới", `LATEST_NEWS_ID` 13 → 14.

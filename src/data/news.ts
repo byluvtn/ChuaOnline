@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 13;
+export const LATEST_NEWS_ID = 14;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tượng Quan Âm chibi mới',
+    date: '2026-11-12',
+    items: [
+      'Tượng Quan Âm sân tượng vẽ lại theo thiết kế chibi v4: đầu to gần nửa chiều cao, mặt 3D mắt nhắm cười, má hồng to.',
+      'Bình cam lộ đổi sang màu ngọc xanh, cành liễu lá tròn to, tay cầm chắc và rõ; vương miện vẫn có tượng Phật A Di Đà nhỏ.',
+    ],
+  },
   {
     title: 'Nội thất trong 7 nhà',
     date: '2026-11-12',
