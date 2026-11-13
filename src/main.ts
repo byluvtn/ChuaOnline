@@ -452,7 +452,7 @@ function startMenu() {
     socket: socket!, profile: () => profile, quests: () => quests, room: () => roomId, switchRoom, toast, logout,
     myPos: () => (me ? { x: me.char.root.position.x, z: me.char.root.position.z } : null),
     players: () => [...remotes.entries()].filter(([, r]) => !r.data.npc).map(([id, r]) => ({ id, name: r.data.name, x: r.char.root.position.x, z: r.char.root.position.z, level: levelOf(r.data.merit) })),
-    goTo: (x, z) => { clickTarget = new THREE.Vector3(x, 0, z); setSitting(false); },
+    goTo: (x, z) => { clickTarget = new THREE.Vector3(x, 0, z); bowSeat = null; setSitting(false); },
     changeLook, chatLog: () => chatLog,
     act: (kind) => doAction(kind),
   });
@@ -482,7 +482,7 @@ addEventListener('pointerup', (e) => {
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObject(world.ground)[0];
-    if (hit) { clickTarget = hit.point.clone(); setSitting(false); }
+    if (hit) { clickTarget = hit.point.clone(); bowSeat = null; setSitting(false); }
   }
   dragging = false;
 });
@@ -642,6 +642,7 @@ function startCooldown(kind: ActionKind) {
 }
 function doAction(kind: ActionKind, wish?: string, keepSeat = false) {
   if (!me || !socket) return;
+  if (kind !== 'bow') bowSeat = null;
   if (performance.now() < (cooling[kind] ?? 0)) return;
   audio.unlock();
   if (kind !== 'palms' && kind !== 'beads') audio.play(kind);
@@ -851,14 +852,22 @@ function loop() {
       if (curSpeed > 0.05) moving = true;
     }
     me.char.gait = curSpeed > 0.05 ? gaitPhase : -1;
-    // tới bồ đoàn đã chọn → ngồi xuống rồi lạy
-    if (bowSeat && Math.hypot(bowSeat.x - root.position.x, bowSeat.z - root.position.z) < 0.5) {
-      root.position.set(bowSeat.x, world.groundY(bowSeat.x, bowSeat.z), bowSeat.z);
-      bowSeat = null;
-      clickTarget = null;
-      moving = false;
-      setSitting(true);
-      doAction('bow', undefined, true);
+    if (bowSeat) {
+      const d = Math.hypot(bowSeat.x - root.position.x, bowSeat.z - root.position.z);
+      const stopped = !clickTarget; // đi bộ đã kết thúc
+      if (d < 0.5 || (stopped && d < 1.2)) {
+        root.position.set(bowSeat.x, world.groundY(bowSeat.x, bowSeat.z), bowSeat.z);
+        bowSeat = null;
+        clickTarget = null;
+        moving = false;
+        setSitting(true);
+        doAction('bow', undefined, true);
+      } else if (stopped) {
+        // dừng xa bồ đoàn (đường bị chặn): không để bowSeat treo, lạy tại chỗ
+        bowSeat = null;
+        clickTarget = null;
+        doAction('bow', undefined, true);
+      }
     }
     if (moving) myActionUntil = 0;
     collide(root.position);

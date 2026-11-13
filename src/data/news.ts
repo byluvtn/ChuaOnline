@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 24;
+export const LATEST_NEWS_ID = 25;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Lạy Phật không còn kẹt ở bồ đoàn',
+    date: '2026-11-13',
+    items: [
+      'Ấn Lạy Phật giờ luôn ngồi xuống bồ đoàn rồi lạy, không còn đứng treo ở cạnh bồ đoàn.',
+      'Sửa lỗi ngưỡng dừng đi bộ và ngưỡng lạy lệch nhau khiến nhân vật dừng cách bồ đoàn nửa mét mà không lạy.',
+    ],
+  },
   {
     title: 'Tượng hành lang to gấp đôi, cầu thang Tam Thế đổi gỗ sáng',
     date: '2026-11-13',
