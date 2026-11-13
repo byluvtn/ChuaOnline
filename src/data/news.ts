@@ -4,9 +4,20 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 32;
+export const LATEST_NEWS_ID = 33;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa vòng Lạy, thêm tượng Điện Mẫu, dời tượng hành lang và cây gần Bảo Tháp',
+    date: '2026-11-14',
+    items: [
+      'Nút Lạy giờ chọn đúng điện đang đứng hoặc điện gần nhất, rồi đi tới bồ đoàn thông đường nhất thay vì vòng quanh cả sân.',
+      'Khi đường vòng quá dài mà giữa đường chỉ có vài cây nhỏ, nhân vật đi thẳng tới bồ đoàn và trượt qua cây.',
+      'Điện Mẫu có tượng Quan Âm ngồi dát vàng trên bệ đá, đặt sau hai bồ đoàn và quay mặt ra cửa.',
+      'Tượng La Hán hai hành lang dời ra giữa các cột, còn 5 tượng mỗi bên, cách đều nhau và không còn dính cột.',
+      'Cây tre và cây phong phía tây bắc Bảo Tháp dời ra xa hơn để không che dáng tháp.',
+    ],
+  },
   {
     title: 'Am Cố và Phòng ghi công đức xoay đúng hướng',
     date: '2026-11-13',

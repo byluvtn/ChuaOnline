@@ -636,10 +636,113 @@ let lastSweepCheck = 0;
 let lastSwept: { qid: string; x: number; z: number } | null = null;
 /** Điểm bồ đoàn đang trên đường tới để lạy (null = không có hành trình). */
 let bowSeat: { x: number; z: number } | null = null;
+/** Đi thẳng tới đệm (bỏ road graph). Chỉ có nghĩa khi bowSeat != null; startBow luôn ghi lại giá trị này. */
+let bowDirect = false;
+
+type SeatT = (typeof world.seats)[number];
+type BowGroup = 'chinhDien' | 'tamThe' | 'thienDuong' | 'dienMau';
+const inBox = (x: number, z: number, x0: number, x1: number, z0: number, z1: number) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
+
+/** Nhóm điện của một đệm (bbox tường minh, không dùng world.zoneAt). Đệm sân thiền thuộc nhóm Chính Điện. */
+function seatGroup(x: number, z: number): BowGroup | null {
+  if (inBox(x, z, 35, 41, 8, 12)) return 'dienMau';
+  if (inBox(x, z, -20, 20, -78, -58)) return 'tamThe';
+  if (Math.hypot(x + 47, z + 27) <= 8) return 'thienDuong';
+  if (Math.abs(x) <= 17 && z >= -42 && z <= -6) return 'chinhDien';
+  return null;
+}
+
+/** Người chơi đang đứng trong bbox của điện nào (sân thiền ngoài trời không tính). */
+function insideHall(x: number, z: number): BowGroup | null {
+  if (inBox(x, z, 35, 41, 8, 12)) return 'dienMau';
+  if (inBox(x, z, -20, 20, -78, -58)) return 'tamThe';
+  if (Math.hypot(x + 47, z + 27) <= 8) return 'thienDuong';
+  if (inBox(x, z, -17, 17, -42, -22)) return 'chinhDien';
+  return null;
+}
+
+function seatTaken(st: { x: number; z: number }): boolean {
+  let taken = false;
+  remotes.forEach((r, id) => { if (id !== myId && !r.data.npc && Math.hypot(r.target.x - st.x, r.target.z - st.z) < 0.6) taken = true; });
+  return taken;
+}
+
+/** Độ dài route thật; Infinity nếu đường vòng không tới được đích (lastFallback). */
+function routeLength(ax: number, az: number, bx: number, bz: number): number {
+  const pts = pathfinder.findPath({ x: ax, z: az }, { x: bx, z: bz });
+  if (pathfinder.lastFallback) return Infinity;
+  let len = 0, px = ax, pz = az;
+  for (const p of pts) { len += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }
+  return len;
+}
+
+/** Collider nằm trên đoạn thẳng a->b (cùng ngưỡng với pathfinder: r + 0.55). */
+function segmentBlockers(ax: number, az: number, bx: number, bz: number): { x: number; z: number; r: number }[] {
+  const out: { x: number; z: number; r: number }[] = [];
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+  for (const c of world.colliders) {
+    const t = Math.max(0, Math.min(1, ((c.x - ax) * dx + (c.z - az) * dz) / l2));
+    if (Math.hypot(ax + t * dx - c.x, az + t * dz - c.z) < c.r + 0.55) out.push(c);
+  }
+  return out;
+}
+
+/** Đường vòng dài > 2 lần đường thẳng và đoạn thẳng chỉ bị chặn bởi <= 3 vật nhỏ (r <= 1.0): đi thẳng. */
+function shouldWalkDirect(ax: number, az: number, bx: number, bz: number): boolean {
+  const direct = Math.hypot(bx - ax, bz - az);
+  if (direct <= 0 || !(routeLength(ax, az, bx, bz) > 2 * direct)) return false;
+  const bl = segmentBlockers(ax, az, bx, bz);
+  return bl.length > 0 && bl.length <= 3 && bl.every((c) => c.r <= 1.0);
+}
+
+/**
+ * Chọn đệm Lạy: (1) nhóm điện: đang trong bbox điện nào thì chỉ điện đó; ngoài trời thì nhóm có tâm gần nhất,
+ * không xét Điện Mẫu. (2) trong nhóm: đệm gần nhất theo Euclid có segmentClear; nếu không có đệm nào thông thì
+ * đệm có route thật ngắn nhất trong 12 đệm gần nhất.
+ */
+function pickBowSeat(): SeatT | null {
+  if (!me) return null;
+  const px = me.char.root.position.x, pz = me.char.root.position.z;
+  const groups = new Map<BowGroup, SeatT[]>();
+  for (const st of world.seats) {
+    if (st.rest) continue;
+    const g = seatGroup(st.x, st.z);
+    if (!g) continue;
+    const arr = groups.get(g);
+    if (arr) arr.push(st); else groups.set(g, [st]);
+  }
+  const here = insideHall(px, pz);
+  let order: BowGroup[];
+  if (here) order = [here];
+  else {
+    const dist = (g: BowGroup) => {
+      const a = groups.get(g)!;
+      let sx = 0, sz = 0;
+      for (const s of a) { sx += s.x; sz += s.z; }
+      return Math.hypot(sx / a.length - px, sz / a.length - pz);
+    };
+    order = [...groups.keys()].filter((g) => g !== 'dienMau').sort((a, b) => dist(a) - dist(b));
+  }
+  for (const g of order) {
+    const cand = (groups.get(g) ?? []).filter((st) => !seatTaken(st));
+    if (!cand.length) continue;
+    const dEu = (st: SeatT) => Math.hypot(st.x - px, st.z - pz);
+    cand.sort((a, b) => dEu(a) - dEu(b));
+    for (const st of cand) if (pathfinder.segmentClear(px, pz, st.x, st.z)) return st;
+    let best = cand[0], bl = Infinity;
+    for (const st of cand.slice(0, 12)) {
+      const l = routeLength(px, pz, st.x, st.z);
+      if (l < bl) { bl = l; best = st; }
+    }
+    return best;
+  }
+  return null;
+}
 
 /** Chỗ ngồi trống gần nhất trên toàn sân (bỏ giới hạn 3.2m của setSitting). */
 function nearestFreeSeat(limit = Infinity): { x: number; z: number; ry: number } | null {
   if (!me) return null;
+  if (limit === Infinity) return pickBowSeat();
   const root = me.char.root;
   let best: { x: number; z: number; ry: number } | null = null, bd = limit;
   for (const st of world.seats) {
@@ -708,6 +811,7 @@ function startBow() {
     return;
   }
   bowSeat = { x: seat.x, z: seat.z };
+  bowDirect = shouldWalkDirect(root.position.x, root.position.z, seat.x, seat.z);
   clickTarget = new THREE.Vector3(seat.x, 0, seat.z);
   toast('Đang tới bồ đoàn gần nhất...');
 }
@@ -1284,7 +1388,7 @@ function loop() {
       me.ry = Math.atan2(dx, dz);
       moving = true;
     } else if (clickTarget) {
-      if (pathTarget !== clickTarget) { pathTarget = clickTarget; pathQueue = pathfinder.findPath({ x: root.position.x, z: root.position.z }, { x: clickTarget.x, z: clickTarget.z }).map((p) => new THREE.Vector3(p.x, 0, p.z)); }
+      if (pathTarget !== clickTarget) { pathTarget = clickTarget; pathQueue = (bowSeat && bowDirect) ? [new THREE.Vector3(clickTarget.x, 0, clickTarget.z)] : pathfinder.findPath({ x: root.position.x, z: root.position.z }, { x: clickTarget.x, z: clickTarget.z }).map((p) => new THREE.Vector3(p.x, 0, p.z)); }
       const wp = pathQueue.length ? pathQueue[0] : clickTarget;
       tmp.copy(wp).sub(root.position);
       tmp.y = 0;

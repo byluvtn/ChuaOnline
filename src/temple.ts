@@ -7,7 +7,7 @@ import {
   NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
-import { buildCorridorStatues } from './statue-corridor';
+import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
@@ -163,14 +163,14 @@ export function buildTemple(c: TempleCtx) {
   }
   sealArchitectureJoints(corridor, { maxGap: 0.4 });
 
-  // ---- tượng La Hán dọc hai hành lang: 6 tượng mỗi bên, cách nhau 3, xếp mép ngoài, quay mặt vào trục ----
+  // ---- tượng La Hán dọc hai hành lang: 5 tượng mỗi bên, cách nhau 3.6, đặt giữa các cột (bệ không chồng đế cột), quay mặt vào trục ----
   const arhatGroup = new THREE.Group(); arhatGroup.name = 'arhats'; scene.add(arhatGroup);
   const arhatModels = ([0, 1, 2] as const).map((v) => buildArhat(v));
   const arhatPedM = lamb(0x9a8f7a, { map: stoneTexture([170, 160, 140], [1, 1], 2) });
   const corridorSlots: { x: number; z: number; side: number; idx: number; fallback: THREE.Object3D }[] = [];
   for (const side of [-1, 1] as const) {
-    for (let k = 0; k < 6; k++) {
-      const z = -16.5 + 3 * k;
+    for (let k = 0; k < 5; k++) {
+      const z = -16.6 + 3.6 * k;
       const x = side * CORR.x + side * 1.85;
       const ped = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.5), arhatPedM);
       ped.position.set(x, CORR.y + 0.275, z); ped.castShadow = ped.receiveShadow = true; ped.userData.sealable = true; arhatGroup.add(ped);
@@ -181,7 +181,8 @@ export function buildTemple(c: TempleCtx) {
       colliders.push({ x, z, r: 0.85 });
     }
   }
-  buildCorridorStatues(c.renderer).then((models) => {
+  const corridorStatuesP = buildCorridorStatues(c.renderer);
+  corridorStatuesP.then((models) => {
     for (const s of corridorSlots) {
       const m = models[s.idx];
       if (!m) continue;
@@ -678,6 +679,25 @@ export function buildTemple(c: TempleCtx) {
       cu.position.set(lx, y0 + 0.18, lz); cu.castShadow = true; dm.g.add(cu);
       seats.push({ x: wx, z: wz, ry: Math.PI });
     }
+    // Tượng Quan Âm ngồi (GLB guanyin-ngoi, cùng pipeline tượng hành lang) trên bệ đá sau 2 bồ đoàn, mặt ra cửa (+z).
+    const gmZ = 8.65;
+    const gmLz = gmZ - DIEN_MAU.z;
+    const gmPed = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.5), arhatPedM);
+    gmPed.position.set(0, y0 + 0.275, gmLz); gmPed.castShadow = gmPed.receiveShadow = true; dm.g.add(gmPed);
+    const gmFallback = buildQuanAm();
+    gmFallback.position.set(0, y0 + 0.55, gmLz);
+    dm.g.add(gmFallback);
+    colliders.push({ x: DIEN_MAU.x, z: gmZ, r: 0.85 });
+    const gmIdx = CORRIDOR_STATUE_NAMES.indexOf('guanyin-ngoi');
+    corridorStatuesP.then((models) => {
+      const m = models[gmIdx];
+      if (!m) { console.warn('dien-mau: guanyin-ngoi không có, giữ tượng chibi buildQuanAm'); return; }
+      const inst = m.clone(true);
+      inst.position.set(0, y0 + 0.55, gmLz);
+      inst.rotation.y = 0;
+      dm.g.add(inst);
+      dm.g.remove(gmFallback);
+    }).catch((e) => { console.warn('dien-mau: lỗi dựng tượng, giữ tượng chibi', e); });
   }
   const nk = extraHouse('nha-khach', NHA_KHACH, NHA_KHACH_PLAT, 'NHÀ KHÁCH', 'nhaKhach', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nk.g, COUPLETS.nhaKhach.am[i].split(',')[0], 0.42, 2.2, i ? nk.hx : -nk.hx, NHA_KHACH_PLAT.y + 1.7, nk.hz + 0.22);
