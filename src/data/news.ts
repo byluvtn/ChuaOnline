@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 29;
+export const LATEST_NEWS_ID = 30;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hai sư thầy lớn giờ có râu trắng và lông mày trắng',
+    date: '2026-11-14',
+    items: [
+      'Sư Thầy Trụ trì và Sư Thầy Trực Ban giờ có râu trắng dài tới ngực và lông mày trắng rậm, nhìn già dặn và hiền hơn.',
+      'Râu gắn theo đầu nên khi cúi lạy hay ngồi tụng kinh vẫn tự nhiên, không trôi và không xuyên qua áo.',
+      'Các tiểu, sư ni và nhân vật người chơi không thay đổi.',
+    ],
+  },
   {
     title: 'NPC thắp hương xong ngồi tụng kinh rồi mới ra về',
     date: '2026-11-14',

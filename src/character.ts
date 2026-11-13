@@ -128,8 +128,8 @@ const HALF_T = HAND_R * HAND_SX; // half thickness: joined palms touch with zero
 const faceCache = new Map<string, THREE.CanvasTexture>();
 
 /** Face decal 512x512 drawn on a front-facing sphere patch: eyes, brows, cheeks, mouth. */
-function faceTexture(outfit: Outfit, closed = false): THREE.CanvasTexture {
-  const cacheKey = closed ? `${outfit}:closed` : outfit;
+function faceTexture(outfit: Outfit, closed = false, whiteBrows = false): THREE.CanvasTexture {
+  const cacheKey = (closed ? `${outfit}:closed` : outfit) + (whiteBrows ? ':white' : '');
   const hit = faceCache.get(cacheKey);
   if (hit) return hit;
   const cv = document.createElement('canvas');
@@ -148,13 +148,20 @@ function faceTexture(outfit: Outfit, closed = false): THREE.CanvasTexture {
     rg.addColorStop(0, `rgba(${col},${a})`); rg.addColorStop(0.7, `rgba(${col},${a * 0.75})`); rg.addColorStop(1, `rgba(${col},0)`);
     g.fillStyle = rg; g.beginPath(); g.arc(0, 0, 40, 0, 7); g.fill(); g.restore();
     // brows
-    g.strokeStyle = outfit === 'male' ? '#2b2a2e' : outfit === 'female' ? '#3b2a24' : '#7a5a46';
-    g.lineWidth = outfit === 'male' ? 9 : outfit === 'female' ? 4.5 : 3.5; g.lineCap = 'round';
-    const bl = outfit === 'male' ? 30 : 24, by = ey - 72 - (outfit === 'male' ? 2 : 0);
+    g.strokeStyle = whiteBrows ? '#fdfcf8' : outfit === 'male' ? '#2b2a2e' : outfit === 'female' ? '#3b2a24' : '#7a5a46';
+    g.lineWidth = whiteBrows ? 17 : outfit === 'male' ? 9 : outfit === 'female' ? 4.5 : 3.5; g.lineCap = 'round';
+    const bl = whiteBrows ? 32 : outfit === 'male' ? 30 : 24, by = ey - 72 - (outfit === 'male' ? 2 : 0);
     g.beginPath();
     g.moveTo(cx - s * bl * 0.9, by + (outfit === 'male' ? 6 : 4));
     g.quadraticCurveTo(cx, by - (outfit === 'male' ? 8 : 6), cx + s * bl, by + (outfit === 'male' ? 3 : 4));
+    if (whiteBrows) { g.save(); g.strokeStyle = 'rgba(150,140,125,.6)'; g.lineWidth = 21; g.stroke(); g.restore(); }
     g.stroke();
+    if (whiteBrows) { // second parallel stroke, offset upward, for a bushier brow
+      g.beginPath();
+      g.moveTo(cx - s * bl * 0.9, by - 3);
+      g.quadraticCurveTo(cx, by - 13, cx + s * bl, by - 3);
+      g.stroke();
+    }
     if (closed) { // closed lid: a single downward-bowed brown curve across the eye width
       g.strokeStyle = '#2e211a'; g.lineWidth = 6; g.lineCap = 'round';
       g.beginPath();
@@ -276,10 +283,10 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const head = outlined(mesh(geo('head2', () => new THREE.SphereGeometry(HR, 34, 28)), skin, body, 0, HEAD_Y, 0), 0.026);
   if (outfit === 'nun') head.scale.x = 1.04;
   const face = new THREE.Mesh(geo('faceCap', () => new THREE.SphereGeometry(HR * 1.004, 40, 30, Math.PI / 2 - 0.85, 1.7, 0.7, 1.7)),
-    new THREE.MeshToonMaterial({ map: faceTexture(outfit), emissive: 0x4a2c16, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+    new THREE.MeshToonMaterial({ map: faceTexture(outfit, false, opts?.role === 'abbot'), emissive: 0x4a2c16, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   face.renderOrder = 2; face.raycast = () => {};
   head.add(face);
-  const faceOpen = faceTexture(outfit), faceShut = faceTexture(outfit, true);
+  const faceOpen = faceTexture(outfit, false, opts?.role === 'abbot'), faceShut = faceTexture(outfit, true, opts?.role === 'abbot');
   // ears
   const earR = outfit === 'monk' ? 0.095 : outfit === 'nun' ? 0.065 : 0.055;
   for (const sd of [-1, 1]) {
@@ -295,6 +302,27 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     const m = mesh(geo('hairBlob', () => new THREE.SphereGeometry(1, 16, 12)), hairM, head, x, y, z, false);
     m.scale.set(rx, ry, rz); m.rotation.z = rotZ; if (outline) outlined(m, 0.03); return m;
   };
+
+  if (opts?.role === 'abbot') { // white moustache and long white beard, head-local (front = +Z)
+    const whiteM = tmat(0xffffff);
+    const blob = (x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
+      const m = mesh(geo('abbotBlob', () => new THREE.SphereGeometry(1, 16, 12)), whiteM, head, x, y, z, false);
+      m.scale.set(sx, sy, sz); return m;
+    };
+    const taper = (x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
+      const m = mesh(geo('abbotTaper', () => new THREE.ConeGeometry(1, 1, 16)), whiteM, head, x, y, z, false);
+      m.scale.set(sx, sy, sz); m.rotation.x = Math.PI; return m;
+    };
+    for (const sd of [-1, 1]) {
+      const mo = blob(sd * 0.08, -0.165, 0.5, 0.1, 0.035, 0.05);
+      mo.rotation.set(0, sd * 0.35, -sd * 0.3);
+      outlined(mo, 0.014);
+      blob(sd * 0.25, -0.45, 0.39, 0.09, 0.15, 0.09);
+      taper(sd * 0.25, -0.62, 0.39, 0.09, 0.2, 0.09);
+    }
+    blob(0, -0.5, 0.4, 0.23, 0.15, 0.085);
+    taper(0, -0.68, 0.4, 0.23, 0.36, 0.085);
+  }
 
   if (outfit === 'monk') { // five incense scars on the crown
     const dotM = tmat(0xb08968);
