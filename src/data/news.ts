@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 19;
+export const LATEST_NEWS_ID = 20;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Điện Tam Thế lùi ra sau, sân trước rộng hơn',
+    date: '2026-11-13',
+    items: [
+      'Điện Tam Thế lùi ra sau 6 m: khoảng trống phía trước điện tăng từ 2 m lên 8 m.',
+      'Sân trước thoáng hơn, nhìn trọn các bậc thang lên điện.',
+      'Đường đi và thang dời theo vị trí mới, đi lại vẫn thông suốt.',
+    ],
+  },
   {
     title: 'Đi lại nhanh hơn, hết kẹt cửa nhà',
     date: '2026-11-13',

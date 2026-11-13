@@ -877,3 +877,11 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - Tăng Xá đi từ quảng trường mất ~30,5 s (route 116 m), sát budget 30 s của test điện thoại. Lần test sau nên xuất phát gần hơn hoặc nới budget.
 - Công đức hiện "9" rồi về "0" (quan sát test #2): chưa đụng tới, chỉ ghi nhận.
 - Nội thất Điện Tam Thế tối: chưa đụng tới, chỉ ghi nhận.
+## Lùi Điện Tam Thế ra sau 6 m, sân trước rộng hơn (news 20)
+
+- Lùi toàn bộ cụm Tam Thế về phía Bắc 6 m: TAM_THE.z -62 → -68, zStart -44 → -50, nền -50..-74 → -56..-80, chân thang -44 → -50. Khoảng trống Chính Điện → chân thang: 2 m → 8 m; mép Bắc nền cách tường Bắc: 8 m → 2 m.
+- Đồ thị đường: dời 3 node stairApp (4,-55.8), stairTop (0,-56), tamThe (0,-58); cập nhật comment đầu shared/roads.ts (footprint z -80..-56, thang z -50 → -56).
+- blocked(): dải trục nới từ z > -51 thành z > -57 (khớp lối lát đá trục tới thang mới); giữ nguyên dải z -48..-43 (khớp lối lát đá ngang sau Chính Điện, không thuộc Tam Thế).
+- tools/steps-tamthe.mjs: arrivedAt p.z < -51 && p.z > -68.
+- Còn treo: chụp ảnh điện thoại thật từ sân Chính Điện để user xác nhận khoảng trống đã đủ.
+- Nghiệm thu: `npx tsc --noEmit` 0 lỗi, build sạch; walk sim tới cửa (0,-68) và trong điện (0,-66) dist 0,57–0,58 m, 0 kẹt; bench plaza→cửa route 88,2 m (trước 83,8 m, 1,05x), tỉ lệ 1,19x đường thẳng; groundY thang 0→3,0 đều; 0 chữ Hán.

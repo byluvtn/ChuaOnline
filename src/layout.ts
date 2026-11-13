@@ -18,7 +18,7 @@ export const PIER_FLOOR = { x: -6.7, z: 23, hx: 2.2, hz: 1.7, y: 0.77 };
 export const PATH_Z = 2;
 export const SIDE_X = 28;
 export const PAGODA = { x: 34, z: -15 };
-export const TAM_THE = { x: 0, z: -62 };
+export const TAM_THE = { x: 0, z: -68 };
 export const BAO_THAP = { x: -30, z: -38 };
 /**
  * Nền Điện Tam Thế: mặt nền đi được cao 3.0 (hx/hz theo trục thế giới), sườn dốc thoải 1.2 quanh nền;
@@ -27,7 +27,7 @@ export const BAO_THAP = { x: -30, z: -38 };
 export const TAM_THE_PLAT = {
   x: TAM_THE.x, z: TAM_THE.z,
   hx: 20, hz: 12, y: 3.0, ramp: 1.2,
-  stairW: 4.2, zStart: -44,
+  stairW: 4.2, zStart: -50,
 };
 /**
  * Nền + bậc thềm Bảo Tháp: mặt nền đi được cao 0.9, bậc thềm thấp dần về phía Nam
@@ -177,7 +177,7 @@ export function blocked(x: number, z: number) {
   if (Math.abs(x) < 63 && z > 44 && z < 59.5) return true;
   if (z > -48 && z < -43 && ax < 57) return true;
   if ((Math.abs(x - 59) < 2.2 && z > -79 && z < 42) || (ax < 59 && z > 39.5 && z < 42.5)) return true;
-  if (ax < 2.2 && z > -51 && z < -41) return true;
+  if (ax < 2.2 && z > -57 && z < -41) return true;
   for (const gx of [VIEN_KT.gateX, VIEN_TO.gateX]) if (Math.abs(x - gx) < 2.2 && z > -55 && z < -43) return true;
   if (x >= 19.8 && x <= 25.5 && z >= -32.5 && z <= -29.5) return true;
   if ((x >= 48.5 && x <= 50.5 && z >= -31.5 && z <= -23) || (x >= 32.5 && x <= 50.5 && z >= -25.1 && z <= -23.1)) return true;

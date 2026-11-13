@@ -2,7 +2,7 @@ export default async ({ ev, shot, sleep, send }) => {
   const pos = () => ev(`(()=>{ const p = window.__co.me().char.root.position; return JSON.stringify({ x: +p.x.toFixed(1), y: +p.y.toFixed(1), z: +p.z.toFixed(1) }); })()`);
   const metrics = (w, h) => send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
   const openMap = async () => { await ev(`document.querySelector('#menu [data-menu="map"]').click()`); await sleep(1200); };
-  const arrivedAt = (p) => p.y > 2.5 && Math.abs(p.x) < 14 && p.z < -45 && p.z > -62;
+  const arrivedAt = (p) => p.y > 2.5 && Math.abs(p.x) < 14 && p.z < -51 && p.z > -68;
 
   await sleep(1500);
   await ev(`document.getElementById('enter').click()`);

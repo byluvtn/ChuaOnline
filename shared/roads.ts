@@ -2,13 +2,13 @@
 // Road graph + Dijkstra. Pure data and pure functions (no imports, server + client safe).
 //
 // Platform note (Tam The, verified from layout.ts groundY + TAM_THE_PLAT):
-// footprint x -20..20, z -66..-42, top y = 3.0. The only walkable entry is the central
-// stair on the south face (|x| <= 4.2, z -40.2 -> -42). The other faces are a 3 m wall.
+// footprint x -20..20, z -80..-56, top y = 3.0. The only walkable entry is the central
+// stair on the south face (|x| <= 4.2, z -50 -> -56). The other faces are a 3 m wall.
 // z = -40 for |x| < 17 is ON the hall floor, so a z = -40 detour is wrong as well.
-// => There is NO straight rear road along z = -46 and NO z = -40 detour.
-// The rear road is split into a west segment and an east segment. The middle crossing
-// goes only via the hall east aisle and the stair approach (see below). Node rearMid
-// (0, -46) is deleted.
+// => The ground between the hall (north edge z = -42) and the stair foot (z = -50) is open.
+// The rear road stays split into a west segment and an east segment (z = -46); no rearMid
+// node was added. The middle crossing goes only via the hall east aisle and the stair
+// approach (see below).
 //
 // Corrected coordinates (kept from the old spokes): quanYard, buddhaYard, denTrinh, baoThap,
 // dienMau (39, 14.5) and thienDuong (-39.5, -27) are placed in front of their buildings.
@@ -56,9 +56,9 @@ export const ROAD_NODES: RoadNode[] = [
   // Stair approach (east aisle, around the altar)
   { id: 'hallAisleE', x: 14, z: -38 },
   { id: 'hallAisleN', x: 14, z: -41.8 },
-  { id: 'stairApp', x: 4, z: -49.8 },
-  { id: 'stairTop', x: 0, z: -50 },
-  { id: 'tamThe', x: 0, z: -52 },
+  { id: 'stairApp', x: 4, z: -55.8 },
+  { id: 'stairTop', x: 0, z: -56 },
+  { id: 'tamThe', x: 0, z: -58 },
   // Branch
   { id: 'bellTower', x: -34, z: -6 },
   { id: 'drumTower', x: 34, z: -6 },
@@ -72,7 +72,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'denE', x: 18, z: 37 },
   { id: 'dienMau', x: 39, z: 14.5 },
   // baoThap stops 2.2 m south of the thap's south steps (z -33..-31.2); the steps
-  // no longer sit inside the Tam The platform (platform z -74..-50).
+  // no longer sit inside the Tam The platform (platform z -80..-56).
   { id: 'baoThap', x: -30, z: -28 }, // was -29: pillar r0.5 at (-30.2,-29.8) left only 0.33 clearance at the node
   { id: 'phongCDDoor', x: -42, z: 39.5 },
   { id: 'psPier', x: 30, z: -31 },
