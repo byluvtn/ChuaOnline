@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 30;
+export const LATEST_NEWS_ID = 31;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Camera tự zoom gần khi vào trong nhà',
+    date: '2026-11-14',
+    items: [
+      'Vào trong nhà hoặc điện, camera giờ tự zoom lại gần để luôn thấy nhân vật trong phòng, không còn bị mái nhà che khuất.',
+      'Ra ngoài sân, camera trở lại khoảng cách cũ một cách mượt mà; lăn chuột hoặc chụm tay để zoom vẫn hoạt động như trước.',
+    ],
+  },
   {
     title: 'Hai sư thầy lớn giờ có râu trắng và lông mày trắng',
     date: '2026-11-14',

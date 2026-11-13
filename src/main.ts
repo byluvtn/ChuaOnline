@@ -197,10 +197,24 @@ let meditation: MeditationInfo = { sitting: 0, minutes: 0, goal: 500, bonus: fal
 const keys = new Set<string>();
 let camYaw = 0, camPitch = isTouch ? 0.55 : 0.45, camDist = isTouch ? 12 : 9;
 let freeCam = false;
-let camInside = 0;
+let pavF = 0;
+let houseF = 0;
+let savedOutDist: number | null = null;
+let savedBump: number | null = null;
 const freePos = new THREE.Vector3();
 const camMaxDist = () => (profile?.admin ? 160 : 18);
 const camMaxPitch = () => (profile?.admin ? 1.55 : 1.3);
+const PAVILION_ZONES = ['tamBao', 'tamThe'];
+const HOUSE_CAM: Record<string, { dist: number; bump: number }> = {
+  dienMau: { dist: 2.6, bump: -0.05 },
+  traiDuong: { dist: 3.0, bump: 0 },
+  amCo: { dist: 3.0, bump: 0 },
+  nhaTo: { dist: 3.4, bump: 0 },
+  nhaKhach: { dist: 3.4, bump: 0 },
+  tangXa: { dist: 3.4, bump: 0 },
+  thienDuong: { dist: 3.4, bump: 0 },
+  phongCongDuc: { dist: 3.4, bump: 0 },
+};
 let clickTarget: THREE.Vector3 | null = null;
 let guideQuestId: string | null = null;
 let guideTarget: Pt | null = null;
@@ -1326,10 +1340,22 @@ function loop() {
       socket.volatile.emit('move', { x: root.position.x, z: root.position.z, ry: me.ry, anim: me.anim });
     }
 
-    const inTamThe = world.zoneAt(root.position.x, root.position.z) === 'tamThe';
-    camInside += ((inTamThe ? 1 : 0) - camInside) * Math.min(1, dt * 3);
-    const effDist = camDist + camInside * 3.5;
-    const effPitch = camPitch + camInside * 0.18;
+    const camZone = world.zoneAt(root.position.x, root.position.z);
+    const inPavilion = camZone !== null && PAVILION_ZONES.indexOf(camZone) >= 0;
+    const houseCam = camZone !== null ? HOUSE_CAM[camZone] : undefined;
+    pavF += ((inPavilion ? 1 : 0) - pavF) * Math.min(1, dt * 3);
+    houseF += ((houseCam ? 1 : 0) - houseF) * Math.min(1, dt * 3);
+    if (houseF > 0.5 && savedOutDist === null && houseCam) {
+      savedOutDist = camDist;
+      savedBump = houseCam.bump;
+      if (camDist > houseCam.dist) camDist = houseCam.dist;
+    } else if (houseF < 0.5 && savedOutDist !== null) {
+      camDist = savedOutDist;
+      savedOutDist = null;
+      savedBump = null;
+    }
+    const effDist = camDist + pavF * 3.5;
+    const effPitch = camPitch + pavF * 0.18 + houseF * (savedBump ?? 0);
     const cx = root.position.x + Math.sin(camYaw) * Math.cos(effPitch) * effDist;
     const cy = root.position.y + 1.4 + Math.sin(effPitch) * effDist;
     const cz = root.position.z + Math.cos(camYaw) * Math.cos(effPitch) * effDist;
