@@ -13,7 +13,7 @@ import {
 } from '../shared/types.js';
 import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
-import { createNpcRoom, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
+import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const DIST = resolve('dist');
@@ -116,7 +116,29 @@ const roomOk = (id: string) => ROOMS.some((r) => r.id === id);
 function npcStates(room: string): PlayerState[] {
   const nr = npcRoom(room);
   resumeNpcs(nr);
-  return nr.npcs.map((n) => n.state);
+  return presentNpcStates(nr);
+}
+
+async function refreshQuestGuard(room: string): Promise<void> {
+  try {
+    const next = new Set<string>();
+    for (const s of roomSessions(room)) {
+      const rows = await db.questRows(s.pid);
+      const byId = new Map(rows.map((r) => [r.quest_id, r]));
+      for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS]) {
+        const req = (q as any).requires as string | undefined;
+        if (req && !byId.get(req)?.claimed) continue;
+        const giver = (q as any).giver as string | undefined;
+        const receiver = (q as any).receiver as string | undefined;
+        const row = byId.get(q.id);
+        if (!row) { if (giver) next.add(giver); }
+        else if (!row.claimed) { if (giver) next.add(giver); if (receiver) next.add(receiver); }
+      }
+    }
+    npcRoom(room).questGuard = next;
+  } catch (e) {
+    console.warn('refreshQuestGuard failed:', (e as Error)?.message ?? e);
+  }
 }
 
 function roomList(): RoomInfo[] {
@@ -474,6 +496,7 @@ io.on('connection', (socket) => {
     if (steps?.[0] === 'talk' || (!steps && q.event === 'talk')) await db.bumpQuest(s.pid, q.id, q.target, 1);
     reply({ ok: true });
     await pushQuests(s);
+    refreshQuestGuard(s.room).catch(() => {});
   });
 
   socket.on('quest:sweep', async (
@@ -556,6 +579,7 @@ io.on('connection', (socket) => {
       await db.addRewards(pid, q.merit, q.coins);
       await pushProfile(s);
       await pushQuests(s);
+      refreshQuestGuard(s.room).catch(() => {});
     }
   });
 
@@ -696,6 +720,8 @@ setInterval(() => {
     if (!list.length) { nr.sleeping = true; continue; }
     resumeNpcs(nr);
     const npcs = tickNpcs(nr, Date.now(), list.length);
+    for (const id of nr.left.splice(0)) io.to(r.id).emit('player:leave', id);
+    for (const st of nr.joined.splice(0)) io.to(r.id).emit('player:join', st);
     for (const c of nr.outbox.splice(0)) {
       const msg: ChatMessage = { id: seq++, sid: c.npcId, name: c.name, text: c.text, t: Date.now() };
       const arr = roomChat.get(r.id) ?? [];
@@ -710,6 +736,10 @@ setInterval(() => {
     });
   }
 }, 100);
+
+setInterval(() => {
+  for (const r of ROOMS) refreshQuestGuard(r.id).catch(() => {});
+}, 10_000);
 
 // meditation: every tick, seated players earn merit; group bonus doubles it
 setInterval(async () => {

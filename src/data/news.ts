@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 28;
+export const LATEST_NEWS_ID = 29;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'NPC thắp hương xong ngồi tụng kinh rồi mới ra về',
+    date: '2026-11-14',
+    items: [
+      'Khách viếng sau khi thắp hương xong sẽ đi tới bồ đoàn trống trong cùng điện, ngồi tụng kinh khoảng 30 giây rồi mới ra cổng về.',
+      'Khách mới sẽ tới thay để chùa luôn đông vui; NPC đang có nhiệm vụ cho người chơi thì không ra về.',
+      'Hết bồ đoàn trống thì khách đi thẳng ra về, không đứng kẹt.',
+    ],
+  },
   {
     title: 'Lạy Phật đi thẳng tới bồ đoàn khi đường vòng bị cụt',
     date: '2026-11-13',

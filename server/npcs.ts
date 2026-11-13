@@ -125,12 +125,16 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 interface Npc {
   def: NpcDef; state: PlayerState; phase: Phase; until: number; speed: number;
   route: Pt[]; roam: number; side: number;
-  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
-  stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch';
+  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
+  stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant';
   shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; homeSlot: Behavior;
+  gone: boolean; goneUntil: number;
 }
 export interface NpcChat { npcId: string; name: string; text: string }
-export interface NpcRoom { npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; beds: (string | null)[]; seats: Map<string, string> }
+export interface NpcRoom {
+  npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; beds: (string | null)[]; seats: Map<string, string>;
+  questGuard: Set<string>; left: string[]; joined: PlayerState[];
+}
 
 /** Ghế tụng: hàng đầu mỗi điện (đo từ code thật). S6 sẽ đặt đệm 3D đúng các tọa độ này. */
 export interface ChantSeat { hall: 'chinhDien' | 'tamThe' | 'thienDuong' | 'dienMau'; x: number; z: number; ry: number }
@@ -198,11 +202,11 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
     return {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
-      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, homeSlot: def.behavior,
+      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, homeSlot: def.behavior, gone: false, goneUntil: 0,
       state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? 0 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
-  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], beds: [null, null], seats: new Map() };
+  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
   for (const n of npcs) {
     if (n.def.behavior !== 'chant') continue;
     const homeHall = n.def.id === 'npc27' ? 'thienDuong' : 'dienMau';
@@ -308,18 +312,78 @@ function abbotDecide(n: Npc, now: number) {
 /** Visitor branch points after chant: pier, merit desk door, Tam The platform, north-east and north-west rear roads. */
 const VISITOR_BRANCH = ['psPier', 'phongCDDoor', 'tamThe', 'rearKT', 'rearTO'] as const;
 
-function visitorArrive(n: Npc, now: number) {
+/** Chinh Dien bounds (HALL x -17..17, z -42..-22): inside it a visitor walks straight to a cushion. */
+function inChinhDien(p: Pt): boolean {
+  return p.x >= -17 && p.x <= 17 && p.z >= -42 && p.z <= -22;
+}
+/** Cushion nearest to `from` among the free ones of one hall. */
+function nearestFreeSeat(room: NpcRoom, hall: ChantSeat['hall'], from: Pt): ChantSeat | undefined {
+  let best: ChantSeat | undefined;
+  let bestD = Infinity;
+  for (const s of CHANT_SEATS) {
+    if (s.hall !== hall || room.seats.has(seatKey(s))) continue;
+    const d = dist(from, s);
+    if (d < bestD) { best = s; bestD = d; }
+  }
+  return best;
+}
+function seatRoute(n: Npc, seat: ChantSeat): Pt[] {
+  const p = { x: seat.x, z: seat.z };
+  if (seat.hall === 'chinhDien' && inChinhDien(n.state)) return [p];
+  return [...routeFrom(n.state, seat.hall === 'chinhDien' ? 'hallIn' : 'tamThe'), p];
+}
+/** Leave through the Tam Quan gate; despawn happens on arrival (visitorArrive). */
+function leaveToGate(n: Npc) {
+  n.mode = 'toLeave'; n.stage = 'toGate';
+  startWalk(n, [...routeFrom(n.state, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def));
+}
+
+function visitorArrive(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   if (n.stage === 'toAltar') { n.stage = 'bow'; n.phase = 'act'; s.anim = 'bow'; n.until = now + 3200; s.ry = Math.PI; }
   else if (n.stage === 'toBranch') { n.stage = 'branch'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 10000); }
   else if (n.stage === 'toPlaza') { n.stage = 'plaza'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(4000, 8000); }
+  else if (n.stage === 'toSeat') {
+    n.stage = 'seatChant'; n.mode = 'seatChant'; n.phase = 'act'; s.anim = 'chant';
+    s.ry = n.chantSeat ? n.chantSeat.ry : Math.PI;
+    n.until = now + 30_000;
+  }
+  else if (n.stage === 'toGate' && n.mode === 'toLeave') {
+    if (room.questGuard.has(n.def.id)) {
+      // Got a quest while walking out: cancel leaving.
+      n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000);
+    } else {
+      releaseSeat(room, n.def.id); n.chantSeat = null;
+      n.gone = true; n.goneUntil = now + R(60_000, 120_000);
+      room.left.push(n.def.id);
+      n.phase = 'idle'; n.route = [];
+    }
+  }
   else { n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000); }
 }
-function visitorDecide(n: Npc, now: number) {
+function visitorDecide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   switch (n.stage) {
     case 'gate': case 'toAltar': n.stage = 'toAltar'; startWalk(n, [...routeFrom(s, 'hallIn'), visitorSpot(VISITOR_SPOT, n.def)], visitorSpeed(n.def)); break;
-    case 'bow': n.stage = 'chant'; n.phase = 'act'; s.anim = 'chant'; n.until = now + R(5000, 8000); break;
+    case 'bow': {
+      if (room.questGuard.has(n.def.id)) { n.stage = 'chant'; n.phase = 'act'; s.anim = 'chant'; n.until = now + R(5000, 8000); break; }
+      const seat = nearestFreeSeat(room, 'chinhDien', s) ?? nearestFreeSeat(room, 'tamThe', s);
+      if (seat && takeSeat(room, seat, n.def.id)) {
+        n.chantSeat = seat; n.mode = 'toSeatChant'; n.stage = 'toSeat';
+        startWalk(n, seatRoute(n, seat), visitorSpeed(n.def));
+      } else leaveToGate(n);
+      break;
+    }
+    case 'toSeat': {
+      // Walk to the cushion was aborted (blocked): give the cushion back and go home.
+      releaseSeat(room, n.def.id); n.chantSeat = null;
+      leaveToGate(n);
+      break;
+    }
+    case 'seatChant':
+      releaseSeat(room, n.def.id); n.chantSeat = null;
+      leaveToGate(n);
+      break;
     case 'chant': {
       if (Math.random() < 0.3) {
         const t = VISITOR_BRANCH[Math.floor(Math.random() * VISITOR_BRANCH.length)];
@@ -360,7 +424,7 @@ function wakeNpc(room: NpcRoom, n: Npc, now: number) {
   startWalk(n, workRoute(n, bedX), 1.2);
 }
 
-function arrive(n: Npc, now: number) {
+function arrive(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   if (n.mode === 'toRest') {
     // Da toi tam giuong: nam nghi 10 phut. Giuong tang xa dai 2.0 m theo truc X,
@@ -371,7 +435,7 @@ function arrive(n: Npc, now: number) {
     return;
   }
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
-  if (n.def.behavior === 'visitor') return visitorArrive(n, now);
+  if (n.def.behavior === 'visitor') return visitorArrive(room, n, now);
   if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = 0; n.until = now + 5000; return; }
   if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
   if (n.mode === 'toChant') {
@@ -387,7 +451,7 @@ function arrive(n: Npc, now: number) {
   n.phase = 'act'; s.anim = 'sweep'; n.until = now + R(6000, 12000);
 }
 
-function decide(n: Npc, now: number) {
+function decide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = 0; n.until = now + 5000; return; }
   if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
@@ -404,7 +468,7 @@ function decide(n: Npc, now: number) {
     startWalk(n, routeFrom(n.state, next), 1.2);
     return;
   }
-  if (n.def.behavior === 'visitor') return visitorDecide(n, now);
+  if (n.def.behavior === 'visitor') return visitorDecide(room, n, now);
   if (n.def.behavior === 'wander' && n.mode !== 'normal') return abbotDecide(n, now);
   const slow = n.def.behavior !== 'wander';
   if (n.phase === 'act' && !slow) { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(3000, 8000); return; }
@@ -490,11 +554,11 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
   }
 }
 
-function step(n: Npc, dt: number, now: number) {
+function step(room: NpcRoom, n: Npc, dt: number, now: number) {
   const s = n.state, to = n.route[0];
-  if (!to) { arrive(n, now); return; }
+  if (!to) { arrive(room, n, now); return; }
   const d = dist(s, to);
-  if (d < 0.12) { n.route.shift(); if (!n.route.length) arrive(n, now); return; }
+  if (d < 0.12) { n.route.shift(); if (!n.route.length) arrive(room, n, now); return; }
   const k = Math.min(1, (n.speed * dt) / d);
   const q = { x: s.x + (to.x - s.x) * k, z: s.z + (to.z - s.z) * k };
   const onDeck = Math.abs(q.x - BRIDGE.x) <= BRIDGE.hw && q.z >= BRIDGE.z0 && q.z <= BRIDGE.z1;
@@ -507,16 +571,31 @@ function step(n: Npc, dt: number, now: number) {
   s.x = q.x; s.z = q.z;
 }
 
+/** NPC states currently in the world (visitors that left are excluded). */
+export function presentNpcStates(room: NpcRoom): PlayerState[] {
+  return room.npcs.filter((n) => !n.gone).map((n) => n.state);
+}
+
 export function tickNpcs(room: NpcRoom, now = Date.now(), online = 0): PlayerState[] {
-  if (room.sleeping) return room.npcs.map((n) => n.state);
+  if (room.sleeping) return presentNpcStates(room);
   const dt = Math.min(0.5, (now - room.lastTick) / 1000);
   room.lastTick = now;
   for (const n of room.npcs) {
+    if (n.gone) {
+      if (now >= n.goneUntil) {
+        const p = visitorSpot(nodePt('gate'), n.def);
+        n.state.x = p.x; n.state.z = p.z; n.state.ry = Math.PI; n.state.anim = 'idle';
+        n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; n.until = now + R(1000, 3000);
+        n.gone = false; n.route = [];
+        room.joined.push({ ...n.state });
+      }
+      continue;
+    }
     runSchedule(room, n, now, online);
-    if (n.phase === 'walk') step(n, dt, now);
-    else if (now >= n.until) decide(n, now);
+    if (n.phase === 'walk') step(room, n, dt, now);
+    else if (now >= n.until) decide(room, n, now);
   }
-  return room.npcs.map((n) => n.state);
+  return presentNpcStates(room);
 }
 
 /** Phòng vừa có người quay lại sau lúc trống: bỏ thời gian dồn để NPC tiếp tục từ trạng thái đã đóng băng. */
@@ -525,5 +604,5 @@ export function resumeNpcs(room: NpcRoom, now = Date.now()) {
   room.sleeping = false;
   const gap = now - room.lastTick;
   room.lastTick = now;
-  for (const n of room.npcs) { n.until += gap; n.nextChat += gap; if (n.shiftEnd) n.shiftEnd += gap; if (n.restEnd) n.restEnd += gap; }
+  for (const n of room.npcs) { n.until += gap; n.nextChat += gap; if (n.shiftEnd) n.shiftEnd += gap; if (n.restEnd) n.restEnd += gap; if (n.goneUntil) n.goneUntil += gap; }
 }
