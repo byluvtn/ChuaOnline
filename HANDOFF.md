@@ -892,3 +892,10 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - FACE_OFFSET: guanyin-ngoi π/2 → 0, guanyin-go-minh π/2 → 0; arhat-binh và monk-go giữ 0. Chibi buildArhat mặt +z, rotation −side·π/2 đã đúng, không sửa.
 - Sau sửa: hành lang Tây (x=−22.5) mặt hướng +x, hành lang Đông (x=+22.5) mặt hướng −x; 12/12 tượng quay vào trung tâm.
 - Còn treo: chụp ảnh điện thoại thật 2 hành lang từ giữa sân để xác nhận bằng mắt.
+
+## Cầu thang Tam Thế: thành đúng chiều, bậc cùng màu sàn gỗ (news 22)
+
+- Thành cầu thang: `rail.rotation.x` từ `atan2(BASE, sz1 - sz0)` = `atan2(3, -6)` ≈ +153,4° (≡ −26,6°, dốc ngược) sang `atan2(BASE, sz0 - sz1)` = `atan2(3, 6)` ≈ +26,6° (khớp dốc thang `atan(3/6)`). Tâm, kích thước, vật liệu `stoneM` giữ nguyên.
+- Bậc thang: vật liệu `lamb(0xb9ae98)` be trơn sang `woodFloorM` = `lamb(0xffffff, { map: woodTexture([14, 7]), roughness: 0.7 })`, dùng chung với `floor`.
+- Nghiệm thu: `npx tsc --noEmit` 0 lỗi (VM + PC), build sạch; walk sim lên thang tới trong điện (0,−66) dist 0,15 m, cửa (0,−68) dist 0,06 m, 0 kẹt; groundY thang 0→1,5→3,0 không đổi; render trước/sau (headless Chrome, PC): thành dốc cùng chiều bậc, đầu cao phía nền điện; bậc gỗ có vân, cùng tông sàn điện. Vân gỗ repeat [14,7] trên hộp bậc nhỏ không bị kéo méo trong render.
+- Cần treo: ảnh điện thoại thật chụp cầu thang từ bên hông và từ chân thang để user xác nhận bằng mắt.

@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 21;
+export const LATEST_NEWS_ID = 22;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Cầu thang Tam Thế đúng chiều, bậc cùng màu sàn gỗ',
+    date: '2026-11-13',
+    items: [
+      'Thành cầu thang Tam Thế hết nghiêng ngược: dốc cùng chiều với bậc thang.',
+      'Bậc thang đổi sang sàn gỗ, cùng tông với sàn trong điện.',
+    ],
+  },
   {
     title: 'Tượng hành lang quay mặt vào trung tâm',
     date: '2026-11-13',

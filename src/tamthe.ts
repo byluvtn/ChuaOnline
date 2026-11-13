@@ -36,13 +36,14 @@ export function buildTamThe(c: TempleCtx) {
   box(PW, BASE * 0.34, PD, stoneM, 0, BASE * 0.17, 0);
   box(PW - 1.6, BASE * 0.34, PD - 1.6, stoneM, 0, BASE * 0.34 + BASE * 0.17, 0);
   box(PW - 3.2, BASE * 0.32, PD - 3.2, stoneM, 0, BASE * 0.68 + BASE * 0.16, 0);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W + 2, D + 2), lamb(0xffffff, { map: woodTexture([14, 7]), roughness: 0.7 }));
+  const woodFloorM = lamb(0xffffff, { map: woodTexture([14, 7]), roughness: 0.7 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W + 2, D + 2), woodFloorM);
   floor.rotation.x = -Math.PI / 2; floor.position.y = BASE + 0.01; floor.receiveShadow = true; add(floor);
 
   const sz0 = TAM_THE_PLAT.zStart - TAM_THE.z;
   const sz1 = TAM_THE_PLAT.hz;
   const nSteps = 20;
-  const stairM = lamb(0xb9ae98);
+  const stairM = woodFloorM;
   for (let i = 0; i < nSteps; i++) {
     const t0 = i / nSteps, t1 = (i + 1) / nSteps;
     const h = BASE * t1;
@@ -52,7 +53,7 @@ export function buildTamThe(c: TempleCtx) {
   for (const s of [-1, 1]) {
     const len = Math.hypot(sz1 - sz0, BASE);
     const rail = box(0.5, 0.9, len, stoneM, s * (TAM_THE_PLAT.stairW + 0.55), BASE * 0.5 + 0.45, (sz0 + sz1) / 2, false);
-    rail.rotation.x = Math.atan2(BASE, sz1 - sz0);
+    rail.rotation.x = Math.atan2(BASE, sz0 - sz1);
   }
 
   const colH = 9.4;
