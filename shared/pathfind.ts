@@ -90,7 +90,63 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
     return bestVis >= 0 ? bestVis : bestAny;
   }
 
-  function findPath(from: Pt, to: Pt): Pt[] {
+  // Collider that only overlaps the start point: first point on from->to outside every inflated collider containing `from`.
+  // Returns null if `from` is free, or the ray does not get out before reaching `to`.
+  function startExitPoint(from: Pt, to: Pt): Pt | null {
+    const dx = to.x - from.x, dz = to.z - from.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1e-6) return null;
+    const ux = dx / d, uz = dz / d;
+    const cell = grid.get(key(Math.floor(from.x / CELL), Math.floor(from.z / CELL)));
+    if (!cell) return null;
+    let tExit = 0;
+    for (const i of cell) {
+      const c = colliders[i];
+      const R = c.r + CLEARANCE;
+      const wx = from.x - c.x, wz = from.z - c.z;
+      const w2 = wx * wx + wz * wz;
+      if (w2 >= R * R) continue;
+      const b = wx * ux + wz * uz;
+      const t = -b + Math.sqrt(b * b - (w2 - R * R));
+      if (t > tExit) tExit = t;
+    }
+    if (tExit <= 0) return null;
+    tExit += 0.02;
+    if (tExit >= d) return null;
+    return { x: from.x + ux * tExit, z: from.z + uz * tExit };
+  }
+
+  // Collider that only overlaps the target: first point where from->to enters an inflated collider containing `to`.
+  // Returns null if no collider contains `to`, or `from` is already inside it.
+  function endEntryPoint(from: Pt, to: Pt): Pt | null {
+    const dx = to.x - from.x, dz = to.z - from.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 1e-6) return null;
+    const ux = dx / d, uz = dz / d;
+    const cell = grid.get(key(Math.floor(to.x / CELL), Math.floor(to.z / CELL)));
+    if (!cell) return null;
+    let tEntry = Infinity;
+    for (const i of cell) {
+      const c = colliders[i];
+      const R = c.r + CLEARANCE;
+      const tx = to.x - c.x, tz = to.z - c.z;
+      if (tx * tx + tz * tz >= R * R) continue;
+      const wx = from.x - c.x, wz = from.z - c.z;
+      const w2 = wx * wx + wz * wz;
+      if (w2 < R * R) continue;
+      const b = wx * ux + wz * uz;
+      const disc = b * b - (w2 - R * R);
+      if (disc < 0) continue;
+      const t = -b - Math.sqrt(disc);
+      if (t > 0 && t < tEntry) tEntry = t;
+    }
+    if (tEntry === Infinity) return null;
+    tEntry -= 0.02;
+    if (tEntry <= 0) return null;
+    return { x: from.x + ux * tEntry, z: from.z + uz * tEntry };
+  }
+
+  function planRoute(from: Pt, to: Pt): Pt[] {
     lastFallback = false;
     if (segmentClear(from.x, from.z, to.x, to.z)) return [{ x: to.x, z: to.z }];
     if (N === 0) {
@@ -170,6 +226,27 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
     const last = out[out.length - 1];
     lastFallback = !(last.x === to.x && last.z === to.z);
     return out;
+  }
+
+  // Obstacle only near the start: if the detour is >3x the straight distance and the rest of the
+  // straight line is clear, walk straight and let collide() slide the player out.
+  function findPath(from: Pt, to: Pt): Pt[] {
+    const route = planRoute(from, to);
+    const direct = Math.hypot(to.x - from.x, to.z - from.z);
+    let len = 0, px = from.x, pz = from.z;
+    for (const p of route) { len += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }
+    if (len <= 3 * direct) return route;
+    const exit = startExitPoint(from, to);
+    if (exit && segmentClear(exit.x, exit.z, to.x, to.z)) {
+      lastFallback = false;
+      return [{ x: to.x, z: to.z }];
+    }
+    const entry = endEntryPoint(from, to);
+    if (entry && segmentClear(from.x, from.z, entry.x, entry.z)) {
+      lastFallback = false;
+      return [{ x: to.x, z: to.z }];
+    }
+    return route;
   }
 
   return {

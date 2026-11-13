@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 27;
+export const LATEST_NEWS_ID = 28;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Lạy Phật đi thẳng tới bồ đoàn khi đường vòng bị cụt',
+    date: '2026-11-13',
+    items: [
+      'Khi đường tới bồ đoàn phải vòng xa vì đang đứng sát vật cản, nhân vật giờ đi thẳng ra khỏi chỗ vướng thay vì quay vòng.',
+      'Bấm Lạy Phật lúc nút còn đang nghỉ không còn bị bỏ qua: nhân vật vẫn tới bồ đoàn, ngồi và lạy ngay khi hết thời gian chờ.',
+    ],
+  },
   {
     title: 'Dẫn đường không còn kẹt ở cầu sen',
     date: '2026-11-13',

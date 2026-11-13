@@ -660,10 +660,10 @@ function startCooldown(kind: ActionKind) {
     setTimeout(() => b.classList.remove('cooling'), ms);
   });
 }
-function doAction(kind: ActionKind, wish?: string, keepSeat = false) {
-  if (!me || !socket) return;
+function doAction(kind: ActionKind, wish?: string, keepSeat = false): boolean {
+  if (!me || !socket) return false;
   if (kind !== 'bow') bowSeat = null;
-  if (performance.now() < (cooling[kind] ?? 0)) return;
+  if (performance.now() < (cooling[kind] ?? 0)) return false;
   audio.unlock();
   if (kind !== 'palms' && kind !== 'beads') audio.play(kind);
   startCooldown(kind);
@@ -674,6 +674,7 @@ function doAction(kind: ActionKind, wish?: string, keepSeat = false) {
   clickTarget = null;
   socket.emit('action', kind, wish);
   if (kind === 'incense') world.spawnIncense(me.char.root.position.x, me.char.root.position.z);
+  return true;
 }
 
 /**
@@ -1274,8 +1275,12 @@ function loop() {
       tmp.copy(wp).sub(root.position);
       tmp.y = 0;
       const wpDist = tmp.length();
+      const arrived = wpDist < 0.2 || (pathQueue.length <= 1 && wpDist < (guideQuestId ? 0.25 : 0.9) && (curSpeed < 1.6 || tmp.x * moveDir.x + tmp.z * moveDir.z < 0));
       if (wpDist < 0.3 && pathQueue.length > 1) { pathQueue.shift(); }
-      else if (wpDist < 0.2 || (pathQueue.length <= 1 && wpDist < (guideQuestId ? 0.25 : 0.9) && (curSpeed < 1.6 || tmp.x * moveDir.x + tmp.z * moveDir.z < 0))) { clickTarget = null; pathTarget = null; pathQueue = []; }
+      else if (arrived && bowSeat && pathfinder.lastFallback && (wp.x !== clickTarget.x || wp.z !== clickTarget.z) && Math.hypot(clickTarget.x - root.position.x, clickTarget.z - root.position.z) > 1.2) {
+        pathQueue = [clickTarget.clone()];   // đường vòng cụt: đi thẳng tới đệm, collide() trượt dọc tường
+      }
+      else if (arrived) { clickTarget = null; pathTarget = null; pathQueue = []; }
       else {
         tmp.normalize();
         let remain = wpDist;
@@ -1300,16 +1305,15 @@ function loop() {
       const stopped = !clickTarget; // đi bộ đã kết thúc
       if (d < 0.5 || (stopped && d < 1.2)) {
         root.position.set(bowSeat.x, world.groundY(bowSeat.x, bowSeat.z), bowSeat.z);
-        bowSeat = null;
         clickTarget = null;
         moving = false;
-        setSitting(true);
-        doAction('bow', undefined, true);
+        if (!sitting) setSitting(true);
+        if (doAction('bow', undefined, true)) bowSeat = null;   // bị cooldown: giữ bowSeat, thử lại frame sau
       } else if (stopped) {
         // dừng xa bồ đoàn (đường bị chặn): không để bowSeat treo, lạy tại chỗ
-        bowSeat = null;
         clickTarget = null;
-        doAction('bow', undefined, true);
+        moving = false;
+        if (doAction('bow', undefined, true)) bowSeat = null;
       }
     }
     if (moving) myActionUntil = 0;
