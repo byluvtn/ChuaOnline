@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 31;
+export const LATEST_NEWS_ID = 32;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Am Cố và Phòng ghi công đức xoay đúng hướng',
+    date: '2026-11-13',
+    items: [
+      'Am Cố xoay mặt tiền về hướng Nam, nhìn ra sân chùa thay vì quay vào tường bao phía Đông.',
+      'Phòng ghi công đức xoay mặt mở về hướng Bắc, nhìn ra sân chính; Sư Thầy Trực Ban vẫn ngồi ở bàn trực, quay mặt ra cửa.',
+      'Sửa tên "Nhân viên văn phòng" không còn dính ký tự lạ phía sau.',
+    ],
+  },
   {
     title: 'Camera tự zoom gần khi vào trong nhà',
     date: '2026-11-14',

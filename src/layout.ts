@@ -186,7 +186,8 @@ export function blocked(x: number, z: number) {
   if (Math.abs(x - BAO_THAP.x) < 2.2 && z > BAO_THAP.z + BAO_THAP_PLAT.step1.z0 - 1 && z < BAO_THAP.z + BAO_THAP_PLAT.step2.z1 + 1) return true;
   if (x < -27 && x > -41 && Math.abs(z + 27) < 2.2) return true;
   if (x > 27 && x < 36 && Math.abs(z - DIEN_MAU.z) < 2.2) return true;
-  if (Math.abs(x - PHONG_CD.x) < 2.2 && z > 38.5 && z < 43) return true;
+  // Lối tới cửa Phòng ghi công đức sau khi xoay 180 độ (cửa hướng Bắc).
+  if (Math.abs(x - PHONG_CD.x) < 2.2 && z > 27 && z < 31.5) return true;
   return false;
 }
 

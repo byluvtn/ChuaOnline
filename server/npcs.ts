@@ -193,7 +193,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       : def.behavior === 'visitor' ? visitorSpot(nodePt('gate'), def)
       : def.behavior === 'wander' ? nodePt('plaza')
       : def.behavior === 'bell' ? nodePt('bellTower')
-      : def.behavior === 'desk' ? { x: -42, z: 32.6 } // duty chair in Phong Ghi Cong Duc (chair box at local (0, -2.4) of PHONG_CD (-42, 35), verified in temple.ts)
+      : def.behavior === 'desk' ? { x: -42, z: 37.4 } // duty chair in Phong Ghi Cong Duc, after 180 deg rotation (chair box local (0, -2.4) -> world (0, +2.4) of PHONG_CD (-42, 35))
       : def.behavior === 'sweepZen' ? nodePt('zenGarden')
       : def.behavior === 'sweepRoad' ? nodePt('rearKT')
       : def.behavior === 'sweepBridge' ? { x: SOUTH_END.x - 1.5, z: SOUTH_END.z }
@@ -203,7 +203,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
       shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, homeSlot: def.behavior, gone: false, goneUntil: 0,
-      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? 0 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
+      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
   const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
@@ -436,7 +436,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   }
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
   if (n.def.behavior === 'visitor') return visitorArrive(room, n, now);
-  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = 0; n.until = now + 5000; return; }
+  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI; n.until = now + 5000; return; }
   if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
   if (n.mode === 'toChant') {
     const seat = n.chantSeat;
@@ -453,7 +453,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
 
 function decide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
-  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = 0; n.until = now + 5000; return; }
+  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI; n.until = now + 5000; return; }
   if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
   if (n.mode === 'chanting' || n.mode === 'toChant') return; // runSchedule owns chanting
   if (n.def.behavior === 'bell') {

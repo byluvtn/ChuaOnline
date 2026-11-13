@@ -89,7 +89,7 @@ function makeLabelSprite() {
 function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean) {
   const g = canvas.getContext('2d')!;
   g.clearRect(0, 0, 512, 96);
-  const text = name.length > 20 ? name.slice(0, 19) + 'â€¦' : name;
+  const text = name.length > 20 ? name.slice(0, 19) + '…' : name;
   g.font = '700 38px system-ui, "Segoe UI", sans-serif';
   const tw = g.measureText(text).width;
   const chip = level ? 58 : 0;
@@ -529,7 +529,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       }
       if (cur) lines.push(cur);
       const shown = lines.slice(0, 3);
-      if (lines.length > 3) shown[2] = shown[2].slice(0, -1) + 'â€¦';
+      if (lines.length > 3) shown[2] = shown[2].slice(0, -1) + '…';
       const lh = 38, h = shown.length * lh + 30;
       B.canvas.width = 420; B.canvas.height = h + 16;
       g.font = font;
@@ -771,7 +771,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   if (w > 0) {
     _tg.copy(CHEST);
     // Both targets live in body space, so the deep-bow palms simply glide from the chest to the
-    // lowered bow pose and follow the torso as it folds â€” no world-to-body conversion needed.
+    // lowered bow pose and follow the torso as it folds — no world-to-body conversion needed.
     if (lift > 0) _tg.lerp(BOW_HAND, lift);
     _tg.x = HALF_T;
     solveArm(c.armR, c.foreR, 1, _tg, w);

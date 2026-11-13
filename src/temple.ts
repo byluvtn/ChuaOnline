@@ -477,7 +477,9 @@ export function buildTemple(c: TempleCtx) {
   const acWood = lamb(0x5a3a22, { roughness: 0.85 });
   const acMoss = lamb(0x5f7a4a, { roughness: 1 });
   const AP = AM_CO_PLAT;
-  acStone(AP.hx * 2, AP.y, AP.hz * 2, 0, AP.y / 2, 0);
+  // Nhóm amCo xoay -90 độ, nên nền dựng hoán đổi hx/hz để mặt nền ngoài đời vẫn là
+  // 6.5 (x) x 5.5 (z), khớp groundY() dùng AM_CO_PLAT.
+  acStone(AP.hz * 2, AP.y, AP.hx * 2, 0, AP.y / 2, 0);
   const acBase = AP.y;
   const acH = 2.6, acHx = 2.2, acHz = 1.8;
   for (const [px, pz] of [[-acHx, -acHz], [acHx, -acHz], [-acHx, acHz], [acHx, acHz]] as [number, number][]) {
@@ -503,6 +505,8 @@ export function buildTemple(c: TempleCtx) {
   acSign.position.set(acHx + 0.2, acBeamY - 0.4, 0); acSign.rotation.y = Math.PI / 2; amCo.add(acSign);
   for (let i = 0; i < 2; i++) labelBoard(amCo, COUPLETS.amCo.am[i].split(',')[0], 0.4, 2.0, acHx + 0.22, acBase + 1.5, i ? acHz : -acHz, Math.PI / 2);
   amCo.position.set(AM_CO.x, 0, AM_CO.z); scene.add(amCo);
+  // R_y(-90 độ): local +x (mặt mở) -> world +z (Nam, sân chùa)
+  amCo.rotation.y = -Math.PI / 2;
   const acSeal = sealArchitectureJoints(amCo, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump amCo: filled=${acSeal.filled} remaining=${acSeal.remaining.length}`);
   {
@@ -523,11 +527,11 @@ export function buildTemple(c: TempleCtx) {
     for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]] as [number, number][]) acB(0.06, 0.5, 0.06, 0.8 + lx, acBase + 0.25, -0.9 + lz, woodM);
     const acPot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), c.goldM);
     acPot.scale.set(1, 0.85, 1); acPot.position.set(0.8, acBase + 0.63, -0.9); acPot.castShadow = true; amCo.add(acPot);
-    colliders.push({ x: AM_CO.x - 1.0, z: AM_CO.z - 0.5, r: 0.1 }, { x: AM_CO.x - 1.0, z: AM_CO.z + 0.5, r: 0.1 }, { x: AM_CO.x + 0.9, z: AM_CO.z - 0.9, r: 0.15 });
+    colliders.push({ x: AM_CO.x + 0.5, z: AM_CO.z - 1.0, r: 0.1 }, { x: AM_CO.x - 0.5, z: AM_CO.z - 1.0, r: 0.1 }, { x: AM_CO.x + 0.9, z: AM_CO.z + 0.9, r: 0.15 });
   }
   mergeStaticByMaterial(amCo);
-  colliders.push({ x: AM_CO.x - acHx, z: AM_CO.z, r: 0.3 });
-  for (const sz of [-acHz, acHz]) for (const sx of [-acHx, 0, acHx]) colliders.push({ x: AM_CO.x + sx, z: AM_CO.z + sz, r: 0.7 });
+  colliders.push({ x: AM_CO.x, z: AM_CO.z - acHx, r: 0.3 });
+  for (const sx of [-acHz, acHz]) for (const sz of [-acHx, 0, acHx]) colliders.push({ x: AM_CO.x + sx, z: AM_CO.z + sz, r: 0.7 });
   zones.push({ x: AM_CO.x, z: AM_CO.z, r: 7, id: 'amCo' });
 
   // ---- Vườn Tháp (góc Đông–Bắc): sân đá nhỏ với các tháp mộ chư tăng nhiều cỡ, lối vào từ phía Nam ----
@@ -698,7 +702,21 @@ export function buildTemple(c: TempleCtx) {
   void td;
   const trd = extraHouse('trai-duong', TRAI_DUONG, TRAI_DUONG_PLAT, 'TRAI ĐƯỜNG', 'traiDuong', 4.6, 2.75, true);
   for (let i = 0; i < 2; i++) labelBoard(trd.g, COUPLETS.traiDuong.am[i].split(',')[0], 0.42, 2.2, i ? trd.hx : -trd.hx, TRAI_DUONG_PLAT.y + 1.7, trd.hz + 0.22);
-  const pcd = extraHouse('phong-cong-duc', PHONG_CD, PHONG_CD_PLAT, 'PHÒNG GHI CÔNG ĐỨC', 'phongCongDuc', 5.1, 3.5, true);
+  const pcd = buildHouse('phong-cong-duc', PHONG_CD, PHONG_CD_PLAT, 'PHÒNG GHI CÔNG ĐỨC', 'phongCongDuc', 5.1, 3.5, true);
+  // Mặt mở xoay 180 độ về hướng Bắc (sân chính); nhà 10.2 x 7.0 vẫn vừa nền 13 x 9.
+  pcd.g.rotation.y = Math.PI;
+  pcd.g.position.set(PHONG_CD.x, 0, PHONG_CD.z); scene.add(pcd.g);
+  const pcdSeal = sealArchitectureJoints(pcd.g, { maxGap: 0.5 });
+  if (import.meta.env.DEV) console.warn(`gapdump phong-cong-duc: filled=${pcdSeal.filled} remaining=${pcdSeal.remaining.length}`);
+  mergeStaticByMaterial(pcd.g);
+  {
+    const tw = (lx: number, lz: number) => ({ x: PHONG_CD.x - lx, z: PHONG_CD.z - lz });
+    const n = Math.round(pcd.hx / 0.9), sn = (2 * pcd.hx) / n, rn = sn / 2 - 0.4;
+    const k = Math.max(1, Math.round((2 * pcd.hz - sn / 2) / 2.2 - 0.5)), sw = (2 * pcd.hz - sn / 2) / (k + 0.5), rw = sw / 2 - 0.4;
+    for (let i = 0; i <= n; i++) colliders.push({ ...tw(-pcd.hx + i * sn, -pcd.hz), r: rn });
+    for (let j = 0; j <= k; j++) { const lz = -pcd.hz + sn / 2 + sw / 2 + j * sw; colliders.push({ ...tw(-pcd.hx, lz), r: rw }, { ...tw(pcd.hx, lz), r: rw }); }
+  }
+  zones.push({ x: PHONG_CD.x, z: PHONG_CD.z, r: 7, id: 'phongCongDuc' });
   void pcd;
 
   // ---- A2.3 interiors ----
@@ -816,6 +834,7 @@ export function buildTemple(c: TempleCtx) {
     // --- Phòng ghi công đức: bàn dài + ghế trực + kệ sổ ---
     {
       const g = mkIn('phong-cong-duc-in', PHONG_CD), b = mk(g), y0 = PHONG_CD_PLAT.y, hxp = pcd.hx;
+      g.rotation.y = Math.PI;
       b(3.0, 0.06, 1.0, 0, y0 + 0.72, -1.5, woodM);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.1, 0.72, 0.1, sx * 1.4, y0 + 0.36, -1.5 + sz * 0.4, woodM);
       b(0.4, 0.05, 0.3, -0.6, y0 + 0.78, -1.5, paperM);
@@ -829,7 +848,7 @@ export function buildTemple(c: TempleCtx) {
       for (let i = 0; i < 6; i++) b(0.2, 0.05, 0.28, kx, y0 + 0.55 + (i % 2) * 0.6 + 0.02, -0.7 + i * 0.28, paperM);
       cyl(g, 0.06, 0.06, 0.12, kx, y0 + 1.19, 0.75, inkM, 10);
       mergeStaticByMaterial(g); scene.add(g);
-      for (const lx of [-1.5, -0.5, 0.5, 1.5]) for (const lz of [-2.0, -1.0]) colliders.push({ x: PHONG_CD.x + lx, z: PHONG_CD.z + lz, r: 0.1 });
+      for (const lx of [-1.5, -0.5, 0.5, 1.5]) for (const lz of [1.0, 2.0]) colliders.push({ x: PHONG_CD.x + lx, z: PHONG_CD.z + lz, r: 0.1 });
     }
   }
 
@@ -1229,7 +1248,7 @@ export function buildTemple(c: TempleCtx) {
   pathRect(-60.3, -78, -57.7, 41);
   pathRect(57.7, -78, 60.3, 41);
   pathRect(-58, 39.8, 58, 42.2);
-  pathRect(PHONG_CD.x - 1.2, 38.5, PHONG_CD.x + 1.2, 43);
+  pathRect(PHONG_CD.x - 1.2, 27, PHONG_CD.x + 1.2, 31.5);
   pathRect(19.8, -31, 22.2, -19);
   pathRect(19.8, -32.2, 25.5, -29.8);
   pathRect(48.8, -31, 50.2, -23.4);

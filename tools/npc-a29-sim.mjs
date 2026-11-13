@@ -36,9 +36,9 @@ function runScenario(key) {
   // t=0 checks
   const ids = room.npcs.map((n) => n.def.id);
   const names = room.npcs.map((n) => n.def.name);
-  const expectedIds = Array.from({ length: 12 }, (_, i) => `npc${i + 1}`);
+  const expectedIds = Array.from({ length: 28 }, (_, i) => `npc${i + 1}`);
   const rosterOk =
-    room.npcs.length === 12 &&
+    room.npcs.length === 28 &&
     expectedIds.every((id) => ids.includes(id)) &&
     new Set(names).size === names.length;
   const n2 = room.npcs.find((n) => n.def.id === 'npc2');
@@ -47,8 +47,8 @@ function runScenario(key) {
   const rosterPass = rosterOk && !!n2 && !!n3 && n2.def.name !== n3.def.name;
 
   const n6 = room.npcs.find((n) => n.def.id === 'npc6');
-  const n6d = n6 ? dist(n6.state.x, n6.state.z, -42, 32.6) : Infinity;
-  const n6Pass = !!n6 && n6d <= 0.2 && n6.state.ry === 0 && n6.state.anim === 'sit';
+  const n6d = n6 ? dist(n6.state.x, n6.state.z, -42, 37.4) : Infinity;
+  const n6Pass = !!n6 && n6d <= 0.2 && n6.state.ry === Math.PI && n6.state.anim === 'sit';
   const n6Detail = n6 ? `d=${n6d.toFixed(2)} ry=${n6.state.ry} anim=${n6.state.anim}` : 'missing';
 
   // Spawn positions serve as each NPC's home slot for the "returned home" check.
@@ -65,8 +65,8 @@ function runScenario(key) {
   let cancels = 0;
   const cancelLog = [];
   let abbotClosing = null;
-  const visitorBranch = {};
-  const visitorReturn = {};
+  const visitorSeat = {};
+  const visitorLeft = {};
 
   // bell
   const bellWinStart = base + 10 * 60_000;
@@ -177,8 +177,8 @@ function runScenario(key) {
 
       // visitors
       if (VISITORS.includes(id)) {
-        if (n.stage === 'branch') visitorBranch[id] = true;
-        else if (visitorBranch[id] && (n.stage === 'plaza' || n.stage === 'toGate')) visitorReturn[id] = true;
+        if (n.stage === 'seatChant') visitorSeat[id] = true;
+        if (visitorSeat[id] && (n.mode === 'toLeave' || n.gone === true)) visitorLeft[id] = true;
       }
     }
     if (resting > maxResting) maxResting = resting;
@@ -190,7 +190,7 @@ function runScenario(key) {
 
   // checks
   const checks = [];
-  checks.push(['roster 12 unique names', rosterPass, rosterDetail]);
+  checks.push(['roster 28 unique names', rosterPass, rosterDetail]);
   checks.push(['npc6 desk spawn', n6Pass, n6Detail]);
 
   if (key === 'b') {
@@ -231,12 +231,12 @@ function runScenario(key) {
     checks.push(['abbot closing line', true, 'n/a, scenario A only']);
   }
 
-  const branchIds = VISITORS.filter((id) => visitorBranch[id]);
-  const returnIds = VISITORS.filter((id) => visitorReturn[id]);
+  const seatIds = VISITORS.filter((id) => visitorSeat[id]);
+  const leftIds = VISITORS.filter((id) => visitorLeft[id]);
   checks.push([
-    'visitor branch',
-    returnIds.length > 0,
-    `reached branch=${branchIds.join(',') || 'none'} returned=${returnIds.join(',') || 'none'}`,
+    'visitor seat-chant + leave',
+    leftIds.length > 0,
+    `sat+chanted=${seatIds.join(',') || 'none'} left=${leftIds.join(',') || 'none'}`,
   ]);
 
   console.log(`--- ${checks.every((c) => c[1]) ? 'PASS' : 'FAIL'} (scenario ${key.toUpperCase()}) ---`);
