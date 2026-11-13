@@ -849,3 +849,31 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
   tree_pineTallB (xanh đậm như oak, để đợt sau).
 - Collider: cây/tre r0,4, đèn r0,3, tháp r0,6; vườn cát không collider. Sim kiểm
   tra không collider nào trong 0,5 m của node/cạnh đường (`shared/roads.ts`).
+## Fix sau test điện thoại #2 — route ngắn, hết kẹt nhà, bảng nhỏ (news 19)
+
+- R1: thêm fallback qua cửa trong `shared/pathfind.ts` (bảng `HOUSE_DOORS` 7 cửa trong `shared/roads.ts`). Mở lối hàng rào Đông vườn Thiền tại z=-26,6 trong `src/compound.ts` (bỏ 3 bụi rào, thêm node zenE1 (-18,-20), zenE2 (-18,-24), zenW (-26,-26,6)). Route từ trục (-10,48,-16,26) tới cửa Bảo Tháp (-30,-31): 3,29x → 1,00x (24,5 m, đi thẳng).
+- R1b: thêm 2 cạnh Đông `['plaza', 'eastMid']`, `['hallFront', 'eastMid']`. Spawn → bờ ao Phóng Sinh (41,-23,5): 2,10x → 1,34x. Spawn → cửa Am Cổ: 1,69x → 1,29x (sau R3 thành 1,37x vì đi qua node amCoEast mới).
+- R3: dời vật cản chắn cửa.
+  - Trai Đường: băng ghế Nam chẻ đôi, chừa lối 1,8 m giữa.
+  - Nhà Khách: bộ bàn trà dời 1,6 m về Bắc, băng ghế dài dời sát tường Tây.
+  - Am Cổ: bàn trà dời về Nam (53,9,-75,9), thêm node amCoEast (57,2,-75) và cạnh amCoE2→amCoEast. KHÔNG thu collider góc tường: cạnh clear với biên 0,07 m.
+  - Vườn Thiền: bonsai i=3 góc 315° → 250°.
+  - Hàng rào Viện Tổ và tường Am Cổ không đụng tới.
+- R4: `#couplet` trên mobile 190 px (trước 280 px = 73% màn hình), padding phải 48 px (cả base lẫn mobile), nút X giữ 44×44. Đo bằng Chrome thật trên PC với nội dung câu đối Nhà Tổ: mobile 190 px, mép chữ chạm mép trái nút X, không giao nhau (trước: chữ lấn 38 px dưới nút). Desktop 1280 px vẫn 280 px, chữ không đè nút X. `.panel` không đụng.
+- Route sau fix (bench findPath trên 993→990 collider thật, median 0,01–0,72 ms), cả 5 cặp ≤ 1,5x đường thẳng:
+  - trục → cửa Bảo Tháp 1,00x (trước 3,29x)
+  - spawn → cửa Tăng Xá 1,39x (trước 1,64x)
+  - spawn → Phong Công Đức 1,48x (giữ nguyên)
+  - spawn → bờ ao PS 1,34x (trước 2,10x)
+  - spawn → cửa Am Cổ 1,37x (trước 1,69x)
+- Vào nhà (walk sim tái tạo vòng lặp `main.ts`, từ quảng trường, budget 60 s): Trai Đường, Nhà Khách, Am Cổ, Tăng Xá, Thiền Đường, Nhà Tổ, Phong Công Đức, cửa Bảo Tháp đều dist 0,57–0,58 m, 0 kẹt. Trước fix: Trai Đường 3,23 m, Nhà Khách 4,51 m, Am Cổ 4,47 m (dừng đúng điểm kẹt test điện thoại (53,33,-70,55)). findPath tới đích trong 5 nhà: endDist 0,00 m, fallback=false (trước: fallback dừng ngoài tường).
+- Cá koi: đếm trong scene thật được 15 koi-body, gồm 9 ở hồ chính và 6 ở ao PS (41,-31). Không đổi code.
+- Nghiệm thu: `npx tsc --noEmit` 0 lỗi; bench 5 cặp route ≤ 1,5x và 5 đích trong nhà endDist 0,00 m; walk sim 9/9 leg PASS (dist 0,57–0,58 m, 0 kẹt); koi 15 mesh; 0 chữ Hán; file LF.
+
+### Việc còn treo (làm cùng user, máy thật)
+
+- Test điện thoại lần 3: quay lại 5 nhà, cửa Bảo Tháp và bờ ao (đi bộ thật, đo FPS, chụp ảnh).
+- Re-probe cá koi: sau khi tới bến (30,-31) phải xoay camera về phía ao (41,-31) rồi mới chụp. Lần trước camera quay về Bắc nên không thấy ao và cá dù mesh đủ 6 con.
+- Tăng Xá đi từ quảng trường mất ~30,5 s (route 116 m), sát budget 30 s của test điện thoại. Lần test sau nên xuất phát gần hơn hoặc nới budget.
+- Công đức hiện "9" rồi về "0" (quan sát test #2): chưa đụng tới, chỉ ghi nhận.
+- Nội thất Điện Tam Thế tối: chưa đụng tới, chỉ ghi nhận.

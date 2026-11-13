@@ -99,6 +99,21 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'amCoE1', x: 55, z: -58 },
   { id: 'amCoE2', x: 55, z: -68.5 },
   { id: 'amCoDoor', x: 53, z: -71 },
+  { id: 'amCoEast', x: 57.2, z: -75 },
+  // Zen garden east hedge gap (z = -26.6)
+  { id: 'zenE1', x: -18, z: -20 },
+  { id: 'zenE2', x: -18, z: -24 },
+  { id: 'zenW', x: -26, z: -26.6 },
+]
+
+export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
+  { id: 'traiDuong', x: -29, z: -58.25 },
+  { id: 'nhaKhach', x: -47, z: -56.55 },
+  { id: 'amCo', x: 56.25, z: -75 },
+  { id: 'tangXa', x: -41, z: -68 },
+  { id: 'thienDuong', x: -40.5, z: -27 },
+  { id: 'phongCongDuc', x: -42, z: 38.5 },
+  { id: 'nhaTo', x: 36, z: -64.75 },
 ]
 
 export const ROAD_EDGES: [string, string][] = [
@@ -106,7 +121,8 @@ export const ROAD_EDGES: [string, string][] = [
   ['gate', 'bridgeS'], ['bridgeS', 'bridgeN'], ['bridgeN', 'plaza'],
   ['plaza', 'axisMid'], ['axisMid', 'hallFront'], ['hallFront', 'hallIn'],
   // Axis to sides
-  ['plaza', 'pillars'],
+  ['plaza', 'pillars'], ['plaza', 'eastMid'],
+  ['hallFront', 'eastMid'],
   ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['hallFront', 'hallEastWp'], ['hallEastWp', 'drumTowerW'],
   // West
   ['corrW', 'westMid'], ['westMid', 'westNorth'], ['westNorth', 'rearKT'],
@@ -116,6 +132,7 @@ export const ROAD_EDGES: [string, string][] = [
   ['psPier', 'psW'], ['psW', 'eastMid'],
   // East garden (Am Co)
   ['rearTO', 'toGate'], ['toGate', 'toIn'], ['toIn', 'toYard'], ['toYard', 'toE'], ['toE', 'amCoE1'], ['amCoE1', 'amCoE2'], ['amCoE2', 'amCoDoor'],
+  ['amCoE2', 'amCoEast'],
   // Stair
   ['hallIn', 'hallAisleE'], ['hallAisleE', 'hallAisleN'], ['hallAisleN', 'stairApp'], ['stairApp', 'stairTop'], ['stairTop', 'tamThe'],
   // Branch
@@ -125,6 +142,9 @@ export const ROAD_EDGES: [string, string][] = [
   ['quanYard', 'restEast'], ['restEast', 'restSE'], ['restSE', 'restArea'], ['quanYard', 'dienMau'], ['buddhaYard', 'plaza'],
   ['buddhaYard', 'bridgeN'], ['denTrinh', 'gate'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'restArea'],
   ['phongCDDoor', 'gate'],
+  // Zen garden east hedge gap: hallFront -> east side -> gap -> baoThap / zenIn
+  ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
+  ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],
 ]
 
 const NODE_BY_ID = new Map<string, RoadNode>(ROAD_NODES.map((n) => [n.id, n]))

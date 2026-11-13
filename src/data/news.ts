@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 18;
+export const LATEST_NEWS_ID = 19;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đi lại nhanh hơn, hết kẹt cửa nhà',
+    date: '2026-11-13',
+    items: [
+      'Đường đi trong chùa ngắn lại: đi từ quảng trường tới Bảo Tháp, Am Cổ hay bờ ao Phóng Sinh giờ chỉ dài hơn đường thẳng một chút, không còn vòng xa gấp đôi gấp ba.',
+      'Đã vào được trong Trai Đường, Nhà Khách và Am Cổ: lối vào thông thoáng, không còn kẹt ở ngưỡng cửa hay tường nhà.',
+      'Chậu bonsai chắn cửa Bảo Tháp đã dời đi; bảng câu đối của các nhà nhỏ lại, chữ không còn bị nút tắt che mất.',
+    ],
+  },
   {
     title: 'Vườn sống động',
     date: '2026-11-13',

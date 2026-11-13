@@ -1,4 +1,4 @@
-import { ROAD_NODES, ROAD_EDGES, type Pt } from './roads';
+import { ROAD_NODES, ROAD_EDGES, HOUSE_DOORS, type Pt } from './roads';
 
 export type Collider = { x: number; z: number; r: number };
 export interface Pathfinder {
@@ -128,16 +128,44 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
       console.warn('planPath: target unreachable, stopping at node ' + ids[B]);
     }
 
-    const chain: number[] = [];
-    for (let i = B; i !== -1; i = prev[i]) chain.push(i);
-    chain.reverse();
-    const out: Pt[] = chain.map((i) => ({ x: pts[i].x, z: pts[i].z }));
+    const buildChain = (end: number): Pt[] => {
+      const chain: number[] = [];
+      for (let i = end; i !== -1; i = prev[i]) chain.push(i);
+      chain.reverse();
+      return chain.map((i) => ({ x: pts[i].x, z: pts[i].z }));
+    };
+    let out = buildChain(B);
 
     if (segmentClear(pts[B].x, pts[B].z, to.x, to.z)) {
       out.push({ x: to.x, z: to.z });
     } else {
-      lastFallback = true;
-      console.warn('planPath: target blocked (' + to.x + ', ' + to.z + '), stopping at node ' + ids[B]);
+      // Target inside a house: go through the nearest door (within 8 m) instead of stopping outside the wall.
+      let door: { id: string; x: number; z: number } | null = null;
+      let doorD = 8;
+      for (const d of HOUSE_DOORS) {
+        const dd = Math.hypot(d.x - to.x, d.z - to.z);
+        if (dd < doorD) { doorD = dd; door = d; }
+      }
+      let viaDoor = false;
+      if (door) {
+        let B2 = nearestNode(door);
+        if (dist[B2] === Infinity) {
+          let best = A, bestD = Infinity;
+          for (let i = 0; i < N; i++) {
+            if (dist[i] === Infinity) continue;
+            const d = Math.hypot(pts[i].x - pts[B2].x, pts[i].z - pts[B2].z);
+            if (d < bestD) { bestD = d; best = i; }
+          }
+          B2 = best;
+        }
+        if (segmentClear(pts[B2].x, pts[B2].z, door.x, door.z)) {
+          out = buildChain(B2);
+          out.push({ x: door.x, z: door.z });
+          if (segmentClear(door.x, door.z, to.x, to.z)) out.push({ x: to.x, z: to.z });
+          viaDoor = true;
+        }
+      }
+      if (!viaDoor) console.warn('planPath: target blocked (' + to.x + ', ' + to.z + '), stopping at node ' + ids[B]);
     }
     const last = out[out.length - 1];
     lastFallback = !(last.x === to.x && last.z === to.z);

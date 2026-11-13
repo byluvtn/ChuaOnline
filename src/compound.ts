@@ -390,7 +390,7 @@ export function buildZenGarden(g: GardenCtx) {
   // bonsai trên đôn đá (4 chậu quanh vòng cát)
   const trunkM = g.lamb(0x5a3d22), crownM = g.lamb(0x3f8a3e, { flatShading: true });
   for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI / 4, x = cx + Math.cos(a) * 5.4, z = cz + Math.sin(a) * 5.4;
+    const a = i === 3 ? (250 * Math.PI) / 180 : (i / 4) * Math.PI * 2 + Math.PI / 4, x = cx + Math.cos(a) * 5.4, z = cz + Math.sin(a) * 5.4;
     const b = new THREE.Group();
     const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.8, 12), g.stoneM); ped.position.y = 0.4; ped.castShadow = ped.receiveShadow = true; b.add(ped);
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.3, 0.3, 12), g.lamb(0x9a5a3a)); pot.position.y = 0.95; b.add(pot);
@@ -428,6 +428,7 @@ export function buildZenGarden(g: GardenCtx) {
   // hàng rào cây xanh thấp ở cạnh Nam (z=-17) và Đông (x=-24.5), chừa lối ~2.4 tại x=-28
   const hedgeM = g.lamb(0x3f8a3e, { flatShading: true });
   const hedge = (x: number, z: number) => {
+    if (x === -24.5 && Math.abs(z + 26.6) < 1.3) return; // lối ~2.4 m trên cạnh Đông, tại z=-26.6
     const h = new THREE.Mesh(new THREE.SphereGeometry(0.7, 10, 8), hedgeM); h.scale.y = 0.9; h.position.set(x, GY + 0.6, z); h.castShadow = h.receiveShadow = true; grp.add(h);
     g.colliders.push({ x, z, r: 0.7 });
   };

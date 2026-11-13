@@ -519,11 +519,11 @@ export function buildTemple(c: TempleCtx) {
     acB(0.9, 0.04, 0.9, -1.2, acBase + 0.02, 0.3, matM);
     const acCu = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.1, 18), cushM);
     acCu.position.set(-1.2, acBase + 0.09, 0.3); acCu.castShadow = true; amCo.add(acCu);
-    acB(0.7, 0.05, 0.5, 0.8, acBase + 0.5, 0.6, woodM);
-    for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]] as [number, number][]) acB(0.06, 0.5, 0.06, 0.8 + lx, acBase + 0.25, 0.6 + lz, woodM);
+    acB(0.7, 0.05, 0.5, 0.8, acBase + 0.5, -0.9, woodM);
+    for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]] as [number, number][]) acB(0.06, 0.5, 0.06, 0.8 + lx, acBase + 0.25, -0.9 + lz, woodM);
     const acPot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), c.goldM);
-    acPot.scale.set(1, 0.85, 1); acPot.position.set(0.8, acBase + 0.63, 0.6); acPot.castShadow = true; amCo.add(acPot);
-    colliders.push({ x: AM_CO.x - 1.0, z: AM_CO.z - 0.5, r: 0.1 }, { x: AM_CO.x - 1.0, z: AM_CO.z + 0.5, r: 0.1 }, { x: AM_CO.x + 0.9, z: AM_CO.z + 0.4, r: 0.15 });
+    acPot.scale.set(1, 0.85, 1); acPot.position.set(0.8, acBase + 0.63, -0.9); acPot.castShadow = true; amCo.add(acPot);
+    colliders.push({ x: AM_CO.x - 1.0, z: AM_CO.z - 0.5, r: 0.1 }, { x: AM_CO.x - 1.0, z: AM_CO.z + 0.5, r: 0.1 }, { x: AM_CO.x + 0.9, z: AM_CO.z - 0.9, r: 0.15 });
   }
   mergeStaticByMaterial(amCo);
   colliders.push({ x: AM_CO.x - acHx, z: AM_CO.z, r: 0.3 });
@@ -709,17 +709,18 @@ export function buildTemple(c: TempleCtx) {
 
     // --- Nhà khách: bàn trà + 4 đôn + băng ghế dài ---
     {
-      const g = mkIn('nha-khach-in', NHA_KHACH), b = mk(g), y0 = NHA_KHACH_PLAT.y, hz = nk.hz;
-      b(1.6, 0.06, 0.9, 0, y0 + 0.72, 0, woodM);
-      for (const [lx, lz] of [[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]] as [number, number][]) b(0.08, 0.72, 0.08, lx, y0 + 0.36, lz, woodM);
-      cyl(g, 0.09, 0.09, 0.12, 0, y0 + 0.81, 0, c.goldM, 12);
-      b(0.14, 0.04, 0.04, 0.13, y0 + 0.83, 0, c.goldM);
-      for (const [lx, lz] of [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]] as [number, number][]) cyl(g, 0.04, 0.04, 0.05, lx, y0 + 0.78, lz, paperM, 10);
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.45, 0.4, 0.45, sx * 1.1, y0 + 0.2, sz * 0.7, woodM);
-      b(2.4, 0.06, 0.45, 0, y0 + 0.42, hz - 0.7, woodM);
-      for (const lx of [-1.0, 1.0]) b(0.1, 0.4, 0.38, lx, y0 + 0.2, hz - 0.7, woodM);
+      const g = mkIn('nha-khach-in', NHA_KHACH), b = mk(g), y0 = NHA_KHACH_PLAT.y, hz = nk.hz, hx = nk.hx, tz = -1.6; // tz: dời bộ bàn trà về Bắc, chừa lối từ cửa tới tâm nhà
+      b(1.6, 0.06, 0.9, 0, y0 + 0.72, tz, woodM);
+      for (const [lx, lz] of [[-0.7, -0.35], [0.7, -0.35], [-0.7, 0.35], [0.7, 0.35]] as [number, number][]) b(0.08, 0.72, 0.08, lx, y0 + 0.36, tz + lz, woodM);
+      cyl(g, 0.09, 0.09, 0.12, 0, y0 + 0.81, tz, c.goldM, 12);
+      b(0.14, 0.04, 0.04, 0.13, y0 + 0.83, tz, c.goldM);
+      for (const [lx, lz] of [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]] as [number, number][]) cyl(g, 0.04, 0.04, 0.05, lx, y0 + 0.78, tz + lz, paperM, 10);
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.45, 0.4, 0.45, sx * 1.1, y0 + 0.2, tz + sz * 0.7, woodM);
+      const bx = -hx + 0.35; // băng ghế dài dời sát tường Tây, xoay dọc theo trục z
+      b(0.45, 0.06, 2.4, bx, y0 + 0.42, 0.6, woodM);
+      for (const lz of [-0.4, 1.6]) b(0.38, 0.4, 0.1, bx, y0 + 0.2, lz, woodM);
       mergeStaticByMaterial(g); scene.add(g);
-      colliders.push({ x: NHA_KHACH.x, z: NHA_KHACH.z, r: 0.9 });
+      colliders.push({ x: NHA_KHACH.x, z: NHA_KHACH.z + tz, r: 0.9 });
     }
 
     // --- Tăng xá: 2 giường + bàn nhỏ + đèn dầu ---
@@ -744,12 +745,15 @@ export function buildTemple(c: TempleCtx) {
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.1, 0.72, 0.1, sx * 1.7, y0 + 0.36, sz * 0.5, woodM);
       for (const lx of [-1.0, 1.0]) cyl(g, 0.25, 0.25, 0.03, lx, y0 + 0.77, 0, c.goldM, 16);
       for (const [lx, lz] of [[-1.5, -0.3], [-0.5, 0.3], [0.5, -0.3], [1.5, 0.3]] as [number, number][]) cyl(g, 0.07, 0.07, 0.05, lx, y0 + 0.78, lz, paperM, 10);
-      for (const sz of [-1.15, 1.15]) {
-        b(3.2, 0.06, 0.4, 0, y0 + 0.42, sz, woodM);
-        for (const lx of [-1.4, 1.4]) b(0.1, 0.4, 0.34, lx, y0 + 0.2, sz, woodM);
+      b(3.2, 0.06, 0.4, 0, y0 + 0.42, -1.15, woodM);
+      for (const lx of [-1.4, 1.4]) b(0.1, 0.4, 0.34, lx, y0 + 0.2, -1.15, woodM);
+      for (const sx of [-1, 1]) { // băng ghế Nam chẻ đôi, chừa lối rộng 1.8 m ở giữa
+        b(0.9, 0.06, 0.4, sx * 1.35, y0 + 0.42, 1.15, woodM);
+        for (const lx of [1.0, 1.7]) b(0.1, 0.4, 0.34, sx * lx, y0 + 0.2, 1.15, woodM);
       }
       mergeStaticByMaterial(g); scene.add(g);
-      for (const lx of [-1.8, -0.6, 0.6, 1.8]) for (const sz of [-1.2, 1.2]) colliders.push({ x: TRAI_DUONG.x + lx, z: TRAI_DUONG.z + sz, r: 0.2 });
+      for (const lx of [-1.8, -0.6, 0.6, 1.8]) colliders.push({ x: TRAI_DUONG.x + lx, z: TRAI_DUONG.z - 1.2, r: 0.2 });
+      for (const lx of [-1.6, -1.1, 1.1, 1.6]) colliders.push({ x: TRAI_DUONG.x + lx, z: TRAI_DUONG.z + 1.2, r: 0.2 });
       for (const lx of [-1.8, 1.8]) colliders.push({ x: TRAI_DUONG.x + lx, z: TRAI_DUONG.z, r: 0.2 });
     }
 
