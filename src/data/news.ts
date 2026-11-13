@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 26;
+export const LATEST_NEWS_ID = 27;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Dẫn đường không còn kẹt ở cầu sen',
+    date: '2026-11-13',
+    items: [
+      'Bấm "Dẫn đường" giờ đưa nhân vật tới tận điểm quét dưới cây anh đào, không còn đứng treo ở đầu cầu bắc.',
+      'Sửa lỗi đường đi: điểm quét nằm trong gốc cây nên máy tính nhầm là đã tới nơi, cứ cho đi rồi hủy liên tục.',
+      'Bấm vào khung chỉ đường cũng gỡ kẹt và tính lại đường; khung chỉ đường không còn mở tra từ điển khi chạm vào chữ.',
+      'Nút "Nói chuyện" giờ nhỏ bằng các nút khác, không còn tràn hai dòng.',
+    ],
+  },
   {
     title: 'Hệ thống nhiệm vụ: 21 việc cùng 28 vị trong chùa',
     date: '2026-11-13',

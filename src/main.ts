@@ -925,9 +925,21 @@ talkBtn.onclick = () => { const n = nearestTalkNpc(); if (n) openDialogue(n); };
 // quest tracker: styled once here (no CSS file change); display is driven by updateTracker().
 const questTrackerEl = $('questTracker');
 questTrackerEl.hidden = false;
-questTrackerEl.style.cssText = 'display:none;position:fixed;left:50%;top:12px;transform:translateX(-50%);align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,14,6,.72);color:#ffe9a8;font-weight:700;font-size:14px;cursor:pointer;z-index:30;backdrop-filter:blur(6px);border:1px solid rgba(255,214,90,.5);';
+let guideFeedX = 0, guideFeedZ = 0, guideFeedPX = 0, guideFeedPZ = 0, guideFeedN = 0;
+let guideRefreshT = 0, guideStillT = 0, guideStuckN = 0, guideMoveX = 0, guideMoveZ = 0;
+function guideGiveUp() {
+  if (guideWaypoints.length > 1) guideWaypoints.shift();
+  else { stopGuide(); toast('Không tới được, thử đi bộ tới gần hơn'); }
+  guideFeedN = 0;
+}
+questTrackerEl.style.cssText = 'display:none;position:fixed;left:50%;top:12px;transform:translateX(-50%);align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,14,6,.72);color:#ffe9a8;font-weight:700;font-size:14px;cursor:pointer;z-index:30;backdrop-filter:blur(6px);border:1px solid rgba(255,214,90,.5);user-select:none;-webkit-user-select:none;';
 (questTrackerEl.querySelector('.qt-arrow') as HTMLElement).style.display = 'inline-block';
 questTrackerEl.onclick = () => { if (guideQuestId) { updateGuideTarget(); updateGuidePath(); } };
+const trackerRefresh = questTrackerEl.onclick;
+questTrackerEl.onclick = (e) => {
+  if (guideQuestId) { clickTarget = null; pathTarget = null; pathQueue = []; guideFeedN = 0; guideStuckN = 0; }
+  trackerRefresh?.call(questTrackerEl, e);
+};
 function nearestTalkNpc(): string | null {
   if (!me) return null;
   let best: string | null = null; let bestD = 2; // design: approach within ~2 m
@@ -946,7 +958,7 @@ function updateTalkBtn() {
   }
   if (talkBtn.hidden) talkBtn.hidden = false;
   const lb = talkBtn.querySelector('.lb')!;
-  const label = `Nói chuyện với ${DIALOGUES[n].name}`;
+  const label = 'Nói chuyện';
   if (lb.textContent !== label) lb.textContent = label;
 }
 
@@ -979,6 +991,7 @@ function questTarget(q: QuestState): Pt | null {
 }
 function startGuide(qid: string): void {
   guideQuestId = qid;
+  clickTarget = null; pathTarget = null; pathQueue = []; guideFeedN = 0; guideStuckN = 0;
   updateGuideTarget();
   updateGuidePath();
   updateTracker();
@@ -1202,6 +1215,24 @@ function loop() {
     let moving = false;
     let targetSpeed = 0;
 
+    // guide watchdog: refresh a moving NPC target every 2 s; unstick a clickTarget that makes no progress
+    if (guideQuestId && guideTarget && me) {
+      const p = me.char.root.position;
+      guideRefreshT += dt;
+      if (guideRefreshT >= 2) {
+        guideRefreshT = 0;
+        const ox = guideTarget.x, oz = guideTarget.z;
+        updateGuideTarget();
+        if (guideTarget && Math.hypot(guideTarget.x - ox, guideTarget.z - oz) > 1) updateGuidePath();
+      }
+      if (!clickTarget || Math.hypot(p.x - guideMoveX, p.z - guideMoveZ) > 0.3) { guideMoveX = p.x; guideMoveZ = p.z; guideStillT = 0; if (clickTarget) guideStuckN = 0; }
+      else if ((guideStillT += dt) > 3) {
+        guideStillT = 0;
+        clickTarget = null; pathTarget = null; pathQueue = [];
+        if (++guideStuckN < 2) updateGuidePath();
+        else { guideStuckN = 0; guideGiveUp(); }
+      }
+    }
     // quest auto-walk: feed the next road waypoint as clickTarget
     if (guideQuestId && guideTarget && me && !clickTarget && !sitting) {
       const p = me.char.root.position;
@@ -1211,7 +1242,14 @@ function loop() {
         const wp = guideWaypoints.length ? guideWaypoints[0] : guideTarget;
         const wd = Math.hypot(wp.x - p.x, wp.z - p.z);
         if (wd < 1.2 && guideWaypoints.length > 1) guideWaypoints.shift();
-        else clickTarget = new THREE.Vector3(guideWaypoints.length ? guideWaypoints[0].x : guideTarget.x, 0, guideWaypoints.length ? guideWaypoints[0].z : guideTarget.z);
+        else {
+          let fx = wp.x, fz = wp.z;
+          if (guideWaypoints.length <= 1) { fx = guideTarget.x - (guideTarget.x - p.x) / d * 1.0; fz = guideTarget.z - (guideTarget.z - p.z) / d * 1.0; }
+          if (Math.hypot(fx - guideFeedX, fz - guideFeedZ) < 0.3 && Math.hypot(p.x - guideFeedPX, p.z - guideFeedPZ) < 0.3) guideFeedN++;
+          else { guideFeedX = fx; guideFeedZ = fz; guideFeedPX = p.x; guideFeedPZ = p.z; guideFeedN = 1; }
+          if (guideFeedN >= 3) guideGiveUp();
+          else clickTarget = new THREE.Vector3(fx, 0, fz);
+        }
       }
     }
 
@@ -1237,7 +1275,7 @@ function loop() {
       tmp.y = 0;
       const wpDist = tmp.length();
       if (wpDist < 0.3 && pathQueue.length > 1) { pathQueue.shift(); }
-      else if (wpDist < 0.2 || (pathQueue.length <= 1 && wpDist < 0.9 && (curSpeed < 1.6 || tmp.x * moveDir.x + tmp.z * moveDir.z < 0))) { clickTarget = null; pathTarget = null; pathQueue = []; }
+      else if (wpDist < 0.2 || (pathQueue.length <= 1 && wpDist < (guideQuestId ? 0.25 : 0.9) && (curSpeed < 1.6 || tmp.x * moveDir.x + tmp.z * moveDir.z < 0))) { clickTarget = null; pathTarget = null; pathQueue = []; }
       else {
         tmp.normalize();
         let remain = wpDist;
