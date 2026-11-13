@@ -9,8 +9,8 @@ const TARGET_HEIGHT = 0.8;
 const FACE_OFFSET: Record<(typeof CORRIDOR_STATUE_NAMES)[number], number> = {
   'arhat-binh': 0,
   'monk-go': 0,
-  'guanyin-ngoi': Math.PI / 2,
-  'guanyin-go-minh': Math.PI / 2,
+  'guanyin-ngoi': 0,
+  'guanyin-go-minh': 0,
 };
 
 const UPRIGHT_X: Partial<Record<(typeof CORRIDOR_STATUE_NAMES)[number], number>> = {

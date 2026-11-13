@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 20;
+export const LATEST_NEWS_ID = 21;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tượng hành lang quay mặt vào trung tâm',
+    date: '2026-11-13',
+    items: [
+      'Tượng hai hành lang giờ đều quay mặt vào sân chùa, không còn tượng quay dọc hành lang.',
+      'Hai tượng Quan Âm đã xoay lại cho đồng bộ với các tượng La Hán.',
+    ],
+  },
   {
     title: 'Điện Tam Thế lùi ra sau, sân trước rộng hơn',
     date: '2026-11-13',

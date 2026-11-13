@@ -885,3 +885,10 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - tools/steps-tamthe.mjs: arrivedAt p.z < -51 && p.z > -68.
 - Còn treo: chụp ảnh điện thoại thật từ sân Chính Điện để user xác nhận khoảng trống đã đủ.
 - Nghiệm thu: `npx tsc --noEmit` 0 lỗi, build sạch; walk sim tới cửa (0,-68) và trong điện (0,-66) dist 0,57–0,58 m, 0 kẹt; bench plaza→cửa route 88,2 m (trước 83,8 m, 1,05x), tỉ lệ 1,19x đường thẳng; groundY thang 0→3,0 đều; 0 chữ Hán.
+
+## Tượng hành lang quay mặt vào trung tâm (news 21)
+
+- Đo trục mặt trước 4 mẫu GLB bằng render 4 phía (headless Chrome + three.js): cả 4 đều +z (arhat-binh sau UPRIGHT_X, monk-go, guanyin-ngoi, guanyin-go-minh).
+- FACE_OFFSET: guanyin-ngoi π/2 → 0, guanyin-go-minh π/2 → 0; arhat-binh và monk-go giữ 0. Chibi buildArhat mặt +z, rotation −side·π/2 đã đúng, không sửa.
+- Sau sửa: hành lang Tây (x=−22.5) mặt hướng +x, hành lang Đông (x=+22.5) mặt hướng −x; 12/12 tượng quay vào trung tâm.
+- Còn treo: chụp ảnh điện thoại thật 2 hành lang từ giữa sân để xác nhận bằng mắt.
