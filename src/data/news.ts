@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 22;
+export const LATEST_NEWS_ID = 23;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Dời cây tre khỏi Bảo Tháp',
+    date: '2026-11-13',
+    items: [
+      'Bụi tre mọc sát Bảo Tháp đã dời ra phía Tây, thân và tán tre giờ cách thân tháp hơn 1,5 m.',
+      'Không còn cây nào chạm vào Bảo Tháp; các cây khác quanh tháp vẫn giữ nguyên vị trí.',
+    ],
+  },
   {
     title: 'Cầu thang Tam Thế đúng chiều, bậc cùng màu sàn gỗ',
     date: '2026-11-13',

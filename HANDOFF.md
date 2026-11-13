@@ -899,3 +899,11 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - Bậc thang: vật liệu `lamb(0xb9ae98)` be trơn sang `woodFloorM` = `lamb(0xffffff, { map: woodTexture([14, 7]), roughness: 0.7 })`, dùng chung với `floor`.
 - Nghiệm thu: `npx tsc --noEmit` 0 lỗi (VM + PC), build sạch; walk sim lên thang tới trong điện (0,−66) dist 0,15 m, cửa (0,−68) dist 0,06 m, 0 kẹt; groundY thang 0→1,5→3,0 không đổi; render trước/sau (headless Chrome, PC): thành dốc cùng chiều bậc, đầu cao phía nền điện; bậc gỗ có vân, cùng tông sàn điện. Vân gỗ repeat [14,7] trên hộp bậc nhỏ không bị kéo méo trong render.
 - Cần treo: ảnh điện thoại thật chụp cầu thang từ bên hông và từ chân thang để user xác nhận bằng mắt.
+
+## Dời cây tre chọc xuyên Bảo Tháp (news 23)
+
+- Cây lỗi: `bamboo_cluster` (-34,-33) → (-39,-36), dời 5,83 m, giữ ry 1,1 / height 4,4 / colliderR 0,4. Chỉ sửa 1 dòng trong `GARDEN_PLACEMENTS` (`src/garden.ts`); `GARDEN_COLLIDERS` suy ra từ `GARDEN_PLACEMENTS` nên collider tự đi theo.
+- Cách đo: vertex GLB thật (áp transform `buildInstance`) vs profile bán kính-theo-chiều-cao của tháp: 120/720 đỉnh nằm trong khối tháp, minClear −0,80 m (thân tre đâm xuyên nền đá r 6,8) → sau dời towerClear 2,00 m (đo bằng vertex, kỳ vọng ≥ 1,54 m theo bbox), cách tâm tháp 9,22 m, `blocked()` = false.
+- Đã minh oan: `maple_tree` (-38,-31) minClear 3,55 m; `stone_lantern` 4,80 m; `zen_sand_garden` 3,50 m; 90 cây rải rác gần nhất cách tâm tháp 27,2 m (luật `blocked()` cấm trong 9 m, không sửa).
+- Quét lan: không cây nào xuyên Tam Thế / Chính Điện / hành lang (cây vườn gần nhất 10,19 m; cây rải rác gần nhất 7,23 m tới tường hành lang), không cần sửa thêm.
+- Còn treo: chụp ảnh điện thoại thật từ phía Nam Bảo Tháp để user xác nhận bằng mắt.
