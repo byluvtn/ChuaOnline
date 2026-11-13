@@ -907,3 +907,12 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - Đã minh oan: `maple_tree` (-38,-31) minClear 3,55 m; `stone_lantern` 4,80 m; `zen_sand_garden` 3,50 m; 90 cây rải rác gần nhất cách tâm tháp 27,2 m (luật `blocked()` cấm trong 9 m, không sửa).
 - Quét lan: không cây nào xuyên Tam Thế / Chính Điện / hành lang (cây vườn gần nhất 10,19 m; cây rải rác gần nhất 7,23 m tới tường hành lang), không cần sửa thêm.
 - Còn treo: chụp ảnh điện thoại thật từ phía Nam Bảo Tháp để user xác nhận bằng mắt.
+
+## Tượng hành lang to gấp đôi, cầu thang Tam Thế gỗ sáng (news 24)
+
+- Tượng hành lang (GLB + chibi) phóng to gấp đôi: `TARGET_HEIGHT` 0.8 → 1.6; chibi `ARHAT_SCALE` 0.868 → 0.595 để chibi cao ~1.6 m bằng GLB (trước chibi cao 2.34 m, to hơn GLB 46%). Bệ 0.8×0.55×0.8 → 1.5×0.55×1.5, tâm dịch vào x = ±22.35 để không lấn tường hành lang (tường x = ±23.1); lối đi còn 3.7 m. Collider r 0.85 giữ nguyên.
+- Hết lơ lửng: `prepare()` đo bằng `vertexBox` (bbox từ POSITION từng đỉnh qua matrixWorld), bỏ `visibleBaseY` (phân vị diện tích — sai: monk-go 3202 cm, guanyin-ngoi −17 cm) và bỏ `Box3.setFromObject` để tính tỉ lệ (monk-go Box3 cao hơn đỉnh thật 36%). Đo thật: cả 4 GLB cao đúng 1.600 m, đáy 0. Hở trước (base): monk-go +18 cm (cao chỉ 0.59 m), guanyin-ngoi 0, guanyin-go-minh 0; chibi mép áo chạm bệ (hở 0, bbox min −7.8 cm là phần khuất trong bệ).
+- Cầu thang Tam Thế: 20 bậc ĐÃ là gỗ nâu từ news 22 (xác nhận bằng render game thật 6 góc — user chụp nhầm thềm đá). 3 bậc thềm đá của bệ (xám) đổi sang gỗ (`ledgeMats`, mặt trên repeat 10×6, mặt đứng 10×1) cho đồng bộ. Không đụng 3 bậc đá trước Chính Điện.
+- `FACE_OFFSET` giữ 0 (ảnh game thật: cả 2 GLB đều quay mặt vào giữa hành lang; hướng không phải lỗi — news 21 sửa một lỗi không tồn tại).
+- `models.ts`: không cache null, cho phép thử lại khi lỗi mạng thoáng qua.
+- Còn treo: ảnh điện thoại thật 2 hành lang từ giữa sân + cầu thang từ góc user để xác nhận bằng mắt (GLB hay tải lỗi trong headless nên chưa chụp được GLB sau sửa ở game thật — chỉ đo được bằng render mặt trước + chibi fallback).

@@ -171,14 +171,14 @@ export function buildTemple(c: TempleCtx) {
   for (const side of [-1, 1] as const) {
     for (let k = 0; k < 6; k++) {
       const z = -16.5 + 3 * k;
-      const x = side * CORR.x + side * 2.0;
-      const ped = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.55, 0.8), arhatPedM);
+      const x = side * CORR.x + side * 1.85;
+      const ped = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.5), arhatPedM);
       ped.position.set(x, CORR.y + 0.275, z); ped.castShadow = ped.receiveShadow = true; ped.userData.sealable = true; arhatGroup.add(ped);
       const a = arhatModels[(k + (side > 0 ? 1 : 0)) % 3].clone(true);
       a.position.set(x, CORR.y + 0.55, z); a.rotation.y = -side * Math.PI / 2;
       arhatGroup.add(a);
       corridorSlots.push({ x, z, side, idx: (k + (side > 0 ? 2 : 0)) % 4, fallback: a });
-      colliders.push({ x, z, r: 0.42 });
+      colliders.push({ x, z, r: 0.85 });
     }
   }
   buildCorridorStatues(c.renderer).then((models) => {

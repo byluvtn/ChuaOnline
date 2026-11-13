@@ -486,12 +486,14 @@ export function buildQuanAm(): THREE.Group {
 // =====================================================================
 //  LA HÁN CHIBI — ngồi xếp bằng, áo tràng trầm, 3 biến thể tay
 // =====================================================================
-const ARHAT_SCALE = 0.434;
+const ARHAT_SCALE = 0.595;
+// Viền áo (lathe) bắt đầu ở local y = 0.05 → hạ fig đúng mức đó để viền áo chạm mặt bệ (hở 0).
+const ARHAT_HEM_LOCAL_Y = 0.05;
 const ARHAT_ROBE = [0xc8963e, 0x6f8394, 0x8a5a3a];
 const ARHAT_SASH = [0x8a5a3a, 0xc9d3da, 0xd8b36a];
 
 /**
- * Tượng La Hán ngồi, cao ~1.15. Gốc y=0 (mặt ngồi), mặt hướng +z.
+ * Tượng La Hán ngồi, cao ~1.6. Gốc y=0 (mặt ngồi), mặt hướng +z.
  * variant 0: hai tay để trong lòng · 1: một tay nâng · 2: hai tay ôm bát.
  * Đầu trọc, mặt vẽ bằng texture (mắt cong nhắm, miệng cười), không tạc hốc mắt/sống mũi.
  */
@@ -500,6 +502,7 @@ export function buildArhat(variant: 0 | 1 | 2 = 0): THREE.Group {
   arhatGroup.name = 'arhatGroup';
   const fig = new THREE.Group();
   fig.scale.setScalar(ARHAT_SCALE);
+  fig.position.y = -ARHAT_HEM_LOCAL_Y * ARHAT_SCALE;
   arhatGroup.add(fig);
 
   const skin = std(COL.skinBody, 0.55);

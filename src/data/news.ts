@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 23;
+export const LATEST_NEWS_ID = 24;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tượng hành lang to gấp đôi, cầu thang Tam Thế đổi gỗ sáng',
+    date: '2026-11-13',
+    items: [
+      'Tượng dọc hai hành lang to gấp đôi, đặt trên bệ rộng hơn; đáy tượng chạm sát mặt bệ, không còn lơ lửng.',
+      'Thềm đá bệ Điện Tam Thế đổi sang gỗ, đồng bộ với 20 bậc thang.',
+    ],
+  },
   {
     title: 'Dời cây tre khỏi Bảo Tháp',
     date: '2026-11-13',

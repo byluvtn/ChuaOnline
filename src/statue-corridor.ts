@@ -4,7 +4,26 @@ import { loadModel } from './models';
 
 export const CORRIDOR_STATUE_NAMES = ['arhat-binh', 'monk-go', 'guanyin-ngoi', 'guanyin-go-minh'] as const;
 
-const TARGET_HEIGHT = 0.8;
+export const TARGET_HEIGHT = 1.6;
+
+// Bbox tính từ POSITION của mọi đỉnh qua matrixWorld (không dùng Box3.setFromObject vì nó
+// biến đổi bbox cục bộ của geometry nên có thể cao hơn thực tế khi node bị xoay/tịnh tiến).
+function vertexBox(root: THREE.Object3D): THREE.Box3 {
+  const box = new THREE.Box3();
+  const v = new THREE.Vector3();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const pos = (m.geometry as THREE.BufferGeometry).getAttribute('position');
+    if (!pos) return;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+      box.expandByPoint(v);
+    }
+  });
+  return box;
+}
 
 const FACE_OFFSET: Record<(typeof CORRIDOR_STATUE_NAMES)[number], number> = {
   'arhat-binh': 0,
@@ -36,15 +55,19 @@ function prepare(model: THREE.Group, gold: THREE.Material, offset: number, uprig
   });
   if (uprightX) inst.rotation.x = uprightX;
   inst.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(inst);
-  const size = box.getSize(new THREE.Vector3());
-  const k = size.y > 0 ? TARGET_HEIGHT / size.y : 1;
+  const box = vertexBox(inst);
+  const h = box.max.y - box.min.y;
+  const k = h > 0 && Number.isFinite(h) ? TARGET_HEIGHT / h : 1;
   inst.scale.multiplyScalar(k);
-  const b2 = new THREE.Box3().setFromObject(inst);
-  const center = b2.getCenter(new THREE.Vector3());
-  inst.position.x -= center.x;
-  inst.position.z -= center.z;
-  inst.position.y -= b2.min.y;
+  inst.updateMatrixWorld(true);
+  const box2 = vertexBox(inst);
+  if (!box2.isEmpty()) {
+    const center = box2.getCenter(new THREE.Vector3());
+    inst.position.x -= center.x;
+    inst.position.z -= center.z;
+    inst.position.y -= box2.min.y;
+  }
+  inst.updateMatrixWorld(true);
   const turn = new THREE.Group();
   turn.add(inst);
   turn.rotation.y = offset;

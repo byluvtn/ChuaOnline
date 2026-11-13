@@ -26,16 +26,21 @@ export function buildTamThe(c: TempleCtx) {
 
   const stoneM = lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [8, 1]) });
   const add = <T extends THREE.Object3D>(o: T, parent: THREE.Object3D = g) => { parent.add(o); return o; };
-  const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number, shadow = true, seal = false) => {
+  const box = (w: number, h: number, d: number, m: THREE.Material | THREE.Material[], x: number, y: number, z: number, shadow = true, seal = false) => {
     const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
     o.position.set(x, y, z); o.castShadow = shadow; o.receiveShadow = true;
     if (seal) o.userData.sealable = true;
     return add(o);
   };
 
-  box(PW, BASE * 0.34, PD, stoneM, 0, BASE * 0.17, 0);
-  box(PW - 1.6, BASE * 0.34, PD - 1.6, stoneM, 0, BASE * 0.34 + BASE * 0.17, 0);
-  box(PW - 3.2, BASE * 0.32, PD - 3.2, stoneM, 0, BASE * 0.68 + BASE * 0.16, 0);
+  // Thềm bệ bằng gỗ (đồng bộ bậc thang). Texture riêng để không đổi repeat của sàn/bậc.
+  const ledgeTopM = lamb(0xffffff, { map: woodTexture([10, 6]), roughness: 0.7 });
+  const ledgeSideM = lamb(0xffffff, { map: woodTexture([10, 1]), roughness: 0.7 });
+  // thứ tự mặt BoxGeometry: +x, -x, +y, -y, +z, -z
+  const ledgeMats = [ledgeSideM, ledgeSideM, ledgeTopM, ledgeTopM, ledgeSideM, ledgeSideM];
+  box(PW, BASE * 0.34, PD, ledgeMats, 0, BASE * 0.17, 0);
+  box(PW - 1.6, BASE * 0.34, PD - 1.6, ledgeMats, 0, BASE * 0.34 + BASE * 0.17, 0);
+  box(PW - 3.2, BASE * 0.32, PD - 3.2, ledgeMats, 0, BASE * 0.68 + BASE * 0.16, 0);
   const woodFloorM = lamb(0xffffff, { map: woodTexture([14, 7]), roughness: 0.7 });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(W + 2, D + 2), woodFloorM);
   floor.rotation.x = -Math.PI / 2; floor.position.y = BASE + 0.01; floor.receiveShadow = true; add(floor);
@@ -43,16 +48,41 @@ export function buildTamThe(c: TempleCtx) {
   const sz0 = TAM_THE_PLAT.zStart - TAM_THE.z;
   const sz1 = TAM_THE_PLAT.hz;
   const nSteps = 20;
-  const stairM = woodFloorM;
+  // Gỗ riêng cho bậc: cùng ảnh gỗ sàn điện nhưng repeat theo kích thước bậc (9 m ngang, ~0.3 m sâu)
+  // → mật độ vân ≈ sàn điện (~0.44 ô/m ngang), không bị nén thành sọc sẫm.
+  const stairTop = woodFloorM.clone();
+  stairTop.map = woodFloorM.map!.clone();
+  stairTop.map.repeat.set(4, 1);
+  stairTop.map.needsUpdate = true;
+  const stairRiser = woodFloorM.clone();
+  stairRiser.map = woodFloorM.map!.clone();
+  stairRiser.map.repeat.set(4, 1);
+  stairRiser.map.needsUpdate = true;
+  const stairSide = woodFloorM.clone();
+  stairSide.map = woodFloorM.map!.clone();
+  stairSide.map.repeat.set(1, 1);
+  stairSide.map.needsUpdate = true;
+  // Thứ tự mặt BoxGeometry: +x, -x, +y(bước), -y, +z(đứng, hướng lên bệ), -z
+  const stairMats = [stairSide, stairSide, stairTop, stairTop, stairRiser, stairRiser];
+  const stairW = TAM_THE_PLAT.stairW * 2 + 0.6;
+  const stairD = (sz1 - sz0) / nSteps + 0.02;
   for (let i = 0; i < nSteps; i++) {
     const t0 = i / nSteps, t1 = (i + 1) / nSteps;
     const h = BASE * t1;
     const zc = sz0 + (sz1 - sz0) * (t0 + t1) / 2;
-    box(TAM_THE_PLAT.stairW * 2 + 0.6, h, (sz1 - sz0) / nSteps + 0.02, stairM, 0, h / 2, zc, false);
+    const step = new THREE.Mesh(new THREE.BoxGeometry(stairW, h, stairD), stairMats);
+    step.position.set(0, h / 2, zc);
+    step.castShadow = false; step.receiveShadow = true;
+    add(step);
   }
+  // Tay vịn cùng tông gỗ sáng (repeat theo chiều dài thanh)
+  const railWoodM = woodFloorM.clone();
+  railWoodM.map = woodFloorM.map!.clone();
+  railWoodM.map.repeat.set(3, 1);
+  railWoodM.map.needsUpdate = true;
   for (const s of [-1, 1]) {
     const len = Math.hypot(sz1 - sz0, BASE);
-    const rail = box(0.5, 0.9, len, stoneM, s * (TAM_THE_PLAT.stairW + 0.55), BASE * 0.5 + 0.45, (sz0 + sz1) / 2, false);
+    const rail = box(0.5, 0.9, len, railWoodM, s * (TAM_THE_PLAT.stairW + 0.55), BASE * 0.5 + 0.45, (sz0 + sz1) / 2, false);
     rail.rotation.x = Math.atan2(BASE, sz0 - sz1);
   }
 

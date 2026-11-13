@@ -20,7 +20,11 @@ export function loadModel(name: string): Promise<THREE.Group | null> {
         });
         return g.scene;
       })
-      .catch(() => null);
+      .catch(() => null)
+      .then((g) => {
+        if (!g) cache.delete(name); // lỗi mạng thoáng qua: cho phép thử lại ở lần gọi sau
+        return g;
+      });
     cache.set(name, p);
   }
   return p;
