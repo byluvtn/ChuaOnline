@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 25;
+export const LATEST_NEWS_ID = 26;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hệ thống nhiệm vụ: 21 việc cùng 28 vị trong chùa',
+    date: '2026-11-13',
+    items: [
+      'Thêm 21 nhiệm vụ mỗi ngày: quét sân, dâng lễ, thắp hương, tụng kinh, mua đồ ở chợ rồi mang về cho người nhờ.',
+      'Chợ ngoài cổng Tam Quan có 4 quầy hoa quả, bánh, trà, hương hoa; mua đồ tốn 10 xu.',
+      'Gặp người trong chùa để nói chuyện, nhận việc và trả việc; nhiệm vụ có đường dẫn sáng trên mặt đất và mũi tên chỉ hướng.',
+      'Thêm 16 người mới: người bán hàng, học sinh, nhân viên văn phòng, cụ già, du khách và hai sư ni ngồi tụng kinh trong điện.',
+    ],
+  },
   {
     title: 'Lạy Phật không còn kẹt ở bồ đoàn',
     date: '2026-11-13',

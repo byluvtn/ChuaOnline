@@ -3,8 +3,8 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
-  ACTION_RULES, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
-  QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment,
+  ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
+  NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment,
   type BeadsAck, type BeadsState, type CheckinAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
@@ -122,13 +122,70 @@ function npcStates(room: string): PlayerState[] {
 function roomList(): RoomInfo[] {
   return ROOMS.map((r) => ({ id: r.id, name: r.name, online: roomSessions(r.id).length, capacity: ROOM_CAPACITY }));
 }
+type AnyQuestDef = (typeof QUESTS)[number] | (typeof NPC_QUESTS)[number] | (typeof CHAIN_QUESTS)[number];
+const NPC_QUEST_IDS = new Set<string>([...NPC_QUESTS, ...CHAIN_QUESTS].map((q) => q.id));
+const CHAIN_QUEST_IDS = new Set<string>(CHAIN_QUESTS.map((q) => q.id));
+function isNpcQuest(q: { id: string }): boolean {
+  return NPC_QUEST_IDS.has(q.id);
+}
+function findQuestDef(qid: string): AnyQuestDef | undefined {
+  return [...QUESTS, ...WEEKLY_QUESTS, ...NPC_QUESTS, ...CHAIN_QUESTS].find((x) => x.id === qid) as AnyQuestDef | undefined;
+}
+// Swept points per session, keyed by `${qid}:${x},${z}`. Lost on reconnect (new Session object).
+const sweptPoints = new WeakMap<Session, Set<string>>();
+const lastVisitCheck = new WeakMap<Session, number>();
+function inZone(zone: any, x: number, z: number): boolean {
+  if (!zone) return true;
+  if (typeof zone.r === 'number') {
+    const dx = x - zone.x;
+    const dz = z - zone.z;
+    return dx * dx + dz * dz <= zone.r * zone.r;
+  }
+  return x >= zone.x0 && x <= zone.x1 && z >= zone.z0 && z <= zone.z1;
+}
+function npcPos(s: Session, npcId: string): { x: number; z: number } | undefined {
+  const n = (npcStates(s.room) as any[]).find((e) => e.id === npcId);
+  return n ? { x: n.x, z: n.z } : undefined;
+}
+function distTo(s: Session, x: number, z: number): number {
+  return Math.hypot(s.state.x - x, s.state.z - z);
+}
 async function questList(pid: number): Promise<QuestState[]> {
   const rows = new Map((await db.questRows(pid)).map((r) => [r.quest_id, r]));
-  const map = (q: (typeof QUESTS)[number]) => ({
+  const map = (q: AnyQuestDef) => ({
     id: q.id, label: q.label, target: q.target, coins: q.coins, merit: q.merit,
     progress: rows.get(q.id)?.progress ?? 0, claimed: !!rows.get(q.id)?.claimed,
+    accepted: rows.has(q.id),
+    giver: (q as any).giver,
   });
-  return [...QUESTS, ...WEEKLY_QUESTS].map(map);
+  const visibleChain = CHAIN_QUESTS.filter((q) => {
+    const req = (q as any).requires as string | undefined;
+    return !req || !!rows.get(req)?.claimed;
+  });
+  return [...QUESTS, ...WEEKLY_QUESTS, ...NPC_QUESTS, ...visibleChain].map(map);
+}
+// Single place for step / zone / accepted checks of NPC and chain quests.
+// Returns true if progress was advanced.
+async function advanceNpcQuest(
+  s: Session,
+  q: AnyQuestDef,
+  ev: QuestEvent,
+  by = 1,
+  rows?: Awaited<ReturnType<typeof db.questRows>>,
+): Promise<boolean> {
+  const row = (rows ?? (await db.questRows(s.pid))).find((r) => r.quest_id === q.id);
+  if (!row || row.claimed) return false; // not accepted or already claimed
+  const progress = row.progress ?? 0;
+  if (progress >= q.target) return false;
+  const steps = (q as any).steps as QuestEvent[] | undefined;
+  if (steps) {
+    if (steps[progress] !== ev) return false;
+  } else if (q.event !== ev) {
+    return false;
+  }
+  if (['bow', 'incense', 'chant', 'sutra', 'visit'].includes(ev) && !inZone((q as any).zone, s.state.x, s.state.z)) return false;
+  await db.bumpQuest(s.pid, q.id, q.target, by);
+  return true;
 }
 async function pushProfile(s: Session) {
   const p = await db.getProfile(s.pid);
@@ -140,6 +197,8 @@ async function pushProfile(s: Session) {
 async function pushQuests(s: Session) { s.socket.emit('quests', await questList(s.pid)); }
 async function questEvent(s: Session, ev: QuestEvent, by = 1) {
   for (const q of [...QUESTS, ...WEEKLY_QUESTS]) if (q.event === ev) await db.bumpQuest(s.pid, q.id, q.target, by);
+  const rows = await db.questRows(s.pid);
+  for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS]) await advanceNpcQuest(s, q as AnyQuestDef, ev, by, rows);
   await pushQuests(s);
 }
 /** Cộng thưởng + đếm quest 'merit' (nhiệm vụ tuần tích công đức). */
@@ -252,13 +311,24 @@ io.on('connection', (socket) => {
 
   const me = () => sessions.get(socket.id);
 
-  socket.on('move', (m: { x: number; z: number; ry: number; anim: Anim }) => {
+  socket.on('move', async (m: { x: number; z: number; ry: number; anim: Anim }) => {
     const s = me();
     if (!s || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
     s.state.x = Math.max(-MAP_HALF, Math.min(MAP_HALF, m.x));
     s.state.z = Math.max(MAP_Z_MIN, Math.min(MAP_HALF, m.z));
     s.state.ry = Number.isFinite(m.ry) ? m.ry : 0;
     if (ANIMS.includes(m.anim)) s.state.anim = m.anim;
+    const now = Date.now();
+    if (now - (lastVisitCheck.get(s) ?? 0) >= 1000) {
+      lastVisitCheck.set(s, now);
+      const rows = await db.questRows(s.pid);
+      for (const vq of [...NPC_QUESTS, ...CHAIN_QUESTS]) {
+        if (await advanceNpcQuest(s, vq as AnyQuestDef, 'visit', 1, rows)) {
+          await pushQuests(s);
+          break;
+        }
+      }
+    }
   });
 
   socket.on('chat', async (text: string) => {
@@ -389,10 +459,99 @@ io.on('connection', (socket) => {
     io.to(s.room).emit('player:look', { id: s.state.id, accessory: s.state.accessory });
   });
 
+  socket.on('quest:accept', async (qid: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
+    if (!s || !q || !isNpcQuest(q)) return reply({ ok: false, error: 'Nhiệm vụ không hợp lệ' });
+    const rows = await db.questRows(s.pid);
+    const byId = new Map(rows.map((r) => [r.quest_id, r]));
+    const req = (q as any).requires as string | undefined;
+    if (req && !byId.get(req)?.claimed) return reply({ ok: false, error: 'Chưa mở khóa nhiệm vụ này' });
+    if (byId.has(q.id)) return reply({ ok: false, error: 'Đã nhận hoặc đã hoàn thành nhiệm vụ này' });
+    await db.acceptQuest(s.pid, q.id);
+    const steps = (q as any).steps as QuestEvent[] | undefined;
+    if (steps?.[0] === 'talk' || (!steps && q.event === 'talk')) await db.bumpQuest(s.pid, q.id, q.target, 1);
+    reply({ ok: true });
+    await pushQuests(s);
+  });
+
+  socket.on('quest:sweep', async (
+    payload: { qid: string; point: { x: number; z: number } },
+    cb?: (r: { ok: boolean; error?: string }) => void,
+  ) => {
+    const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const q = payload && typeof payload.qid === 'string' ? findQuestDef(payload.qid) : undefined;
+    const pt = payload?.point;
+    if (!s || !q || !isNpcQuest(q) || !pt || typeof pt.x !== 'number' || typeof pt.z !== 'number') {
+      return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
+    }
+    const points = (q as any).points as { x: number; z: number }[] | undefined;
+    if (!points || !points.some((p) => p.x === pt.x && p.z === pt.z)) return reply({ ok: false, error: 'Điểm không hợp lệ' });
+    if (distTo(s, pt.x, pt.z) > 2.5) return reply({ ok: false, error: 'Bạn đứng quá xa' });
+    let set = sweptPoints.get(s);
+    if (!set) { set = new Set<string>(); sweptPoints.set(s, set); }
+    const key = `${q.id}:${pt.x},${pt.z}`;
+    if (set.has(key)) return reply({ ok: false, error: 'Điểm này đã quét rồi' });
+    const rows = await db.questRows(s.pid);
+    const ok = await advanceNpcQuest(s, q, 'sweep', 1, rows);
+    if (!ok) return reply({ ok: false, error: 'Chưa thể quét lúc này' });
+    set.add(key);
+    reply({ ok: true });
+    await pushQuests(s);
+  });
+
+  socket.on('quest:deliver', async (qid: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
+    if (!s || !q || !isNpcQuest(q)) return reply({ ok: false, error: 'Nhiệm vụ không hợp lệ' });
+    const receiver = (q as any).receiver as string | undefined;
+    const pos = receiver ? npcPos(s, receiver) : undefined;
+    if (!pos) return reply({ ok: false, error: 'Không tìm thấy người nhận' });
+    if (distTo(s, pos.x, pos.z) > 3) return reply({ ok: false, error: 'Bạn đứng quá xa người nhận' });
+    const rows = await db.questRows(s.pid);
+    const ok = await advanceNpcQuest(s, q, 'deliver', 1, rows);
+    if (!ok) return reply({ ok: false, error: 'Chưa thể giao lúc này' });
+    reply({ ok: true });
+    await pushQuests(s);
+  });
+
+  socket.on('market:buy', async (stallId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const stall = (MARKET_STALLS as any[]).find((m) => m.id === stallId);
+    if (!s || !stall) return reply({ ok: false, error: 'Gian hàng không hợp lệ' });
+    if (distTo(s, stall.x, stall.z) > 4) return reply({ ok: false, error: 'Bạn đứng quá xa gian hàng' });
+    const rows = await db.questRows(s.pid);
+    const byId = new Map(rows.map((r) => [r.quest_id, r]));
+    const match = [...NPC_QUESTS, ...CHAIN_QUESTS].find((q) => {
+      const row = byId.get(q.id);
+      if (!row || row.claimed) return false;
+      const steps = (q as any).steps as QuestEvent[] | undefined;
+      const cur = steps ? steps[row.progress ?? 0] : q.event;
+      return cur === 'marketbuy' && (q as any).stall === stallId;
+    });
+    if (!match) return reply({ ok: false, error: 'Chưa có nhiệm vụ cần mua món này' });
+    const profile: any = await db.getProfile(s.pid);
+    if (!profile || (profile.coins ?? 0) < 10) return reply({ ok: false, error: 'Không đủ xu' });
+    await db.addRewards(s.pid, 0, -10);
+    await advanceNpcQuest(s, match as AnyQuestDef, 'marketbuy', 1, rows);
+    reply({ ok: true });
+    await pushProfile(s);
+    await pushQuests(s);
+  });
+
   socket.on('quest:claim', async (qid: string) => {
     const s = me();
-    const q = [...QUESTS, ...WEEKLY_QUESTS].find((x) => x.id === qid);
+    const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
     if (!s || !q) return;
+    if (isNpcQuest(q)) {
+      const giver = (q as any).giver as string | undefined;
+      const pos = giver ? npcPos(s, giver) : undefined;
+      if (!pos || distTo(s, pos.x, pos.z) > 3) return;
+    }
     if (await db.claimQuest(pid, q.id, q.target)) {
       await db.addRewards(pid, q.merit, q.coins);
       await pushProfile(s);

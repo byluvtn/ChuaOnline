@@ -52,6 +52,7 @@ export interface MenuCtx {
   changeLook(name: string, outfit: Outfit, color: string): void;
   chatLog(): ChatMessage[];
   act(kind: ActionKind): void;
+  guideTo(qid: string): void;
 }
 
 const COLLAPSE_KEY = 'co:menuCollapsed';

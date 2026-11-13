@@ -3,11 +3,13 @@ import { ROAD_NODES, roadRoute, routeFrom } from '../shared/roads.js';
 import type { Anim, Outfit, PlayerState } from '../shared/types.js';
 import type { Pt } from '../shared/roads.js';
 
-type Behavior = 'wander' | 'sweepPlaza' | 'sweepBridge' | 'sweepZen' | 'sweepRoad' | 'bell' | 'visitor' | 'desk';
+type Behavior = 'wander' | 'sweepPlaza' | 'sweepBridge' | 'sweepZen' | 'sweepRoad' | 'bell' | 'visitor' | 'desk' | 'post' | 'chant';
 type Phase = 'idle' | 'walk' | 'act';
 
 export interface NpcDef {
   id: string; name: string; outfit: Outfit; color: string; scale: number; role: 'abbot' | 'novice' | 'lay'; behavior: Behavior;
+  post?: Pt;
+  accessory?: string | null;
 }
 
 export const NPC_DEFS: NpcDef[] = [
@@ -16,13 +18,29 @@ export const NPC_DEFS: NpcDef[] = [
   { id: 'npc3', name: 'Tiểu Quét Cầu', outfit: 'monk', color: '#8c8c90', scale: 0.9, role: 'novice', behavior: 'sweepBridge' },
   { id: 'npc4', name: 'Tiểu Đánh Chuông', outfit: 'monk', color: '#7a4a6a', scale: 0.9, role: 'novice', behavior: 'bell' },
   { id: 'npc5', name: 'Phật Tử Đi Lễ', outfit: 'female', color: '#bc7672', scale: 1.0, role: 'lay', behavior: 'visitor' },
-  { id: 'npc6', name: 'Sư Thầy Trực Bàn', outfit: 'monk', color: '#b98a2e', scale: 1.15, role: 'abbot', behavior: 'desk' },
+  { id: 'npc6', name: 'Sư Thầy Trực Ban', outfit: 'monk', color: '#b98a2e', scale: 1.15, role: 'abbot', behavior: 'desk' },
   { id: 'npc7', name: 'Tiểu Quét Vườn', outfit: 'monk', color: '#7a6a8a', scale: 0.9, role: 'novice', behavior: 'sweepZen' },
   { id: 'npc8', name: 'Tiểu Quét Đường', outfit: 'monk', color: '#5a7a5a', scale: 0.9, role: 'novice', behavior: 'sweepRoad' },
-  { id: 'npc9', name: 'Cụ Ông Đi Lễ', outfit: 'male', color: '#72818e', scale: 1.0, role: 'lay', behavior: 'visitor' },
-  { id: 'npc10', name: 'Cụ Bà Đi Lễ', outfit: 'female', color: '#a86a7a', scale: 1.0, role: 'lay', behavior: 'visitor' },
-  { id: 'npc11', name: 'Cô Gái Đi Lễ', outfit: 'female', color: '#d98a7a', scale: 1.0, role: 'lay', behavior: 'visitor' },
-  { id: 'npc12', name: 'Chàng Trai Đi Lễ', outfit: 'male', color: '#5a7a8a', scale: 1.0, role: 'lay', behavior: 'visitor' },
+  { id: 'npc9', name: 'Cô Đồng', outfit: 'female', color: '#72818e', scale: 1.0, role: 'lay', behavior: 'visitor' },
+  { id: 'npc10', name: 'Cô Ba Đi Lễ', outfit: 'female', color: '#a86a7a', scale: 1.0, role: 'lay', behavior: 'visitor' },
+  { id: 'npc11', name: 'Cô Gái Trẻ', outfit: 'female', color: '#d98a7a', scale: 1.0, role: 'lay', behavior: 'visitor' },
+  { id: 'npc12', name: 'Bác Nông Dân', outfit: 'male', color: '#5a7a8a', scale: 1.0, role: 'lay', behavior: 'visitor' },
+  { id: 'npc13', name: 'Sư Cô Trông Điện Mẫu', outfit: 'nun', color: '#9a7a8a', scale: 1.0, role: 'novice', behavior: 'post', post: { x: 39, z: 12.5 } },
+  { id: 'npc14', name: 'Tiểu Quản Trai Đường', outfit: 'monk', color: '#7a6a5a', scale: 1.0, role: 'novice', behavior: 'post', post: { x: -29, z: -60 } },
+  { id: 'npc15', name: 'Cô Bán Hoa Quả', outfit: 'female', color: '#d97a5a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: -11, z: 48 } },
+  { id: 'npc16', name: 'Bác Bán Bánh', outfit: 'male', color: '#8a6a3a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: 11, z: 48 } },
+  { id: 'npc17', name: 'Cô Bán Trà', outfit: 'female', color: '#5a8a7a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: -11, z: 53 } },
+  { id: 'npc18', name: 'Bác Bán Hương Hoa', outfit: 'male', color: '#a86a9a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: 11, z: 53 } },
+  { id: 'npc19', name: 'Học sinh nam', outfit: 'male', color: '#4a7ab8', scale: 0.85, role: 'lay', behavior: 'visitor', accessory: 'backpack' },
+  { id: 'npc20', name: 'Sinh viên nữ', outfit: 'female', color: '#d98ab8', scale: 1.0, role: 'lay', behavior: 'visitor' },
+  { id: 'npc21', name: 'Nhân viên văn phòng nam', outfit: 'male', color: '#3a5a7a', scale: 1.0, role: 'lay', behavior: 'visitor', accessory: 'briefcase' },
+  { id: 'npc22', name: 'Nhân viên văn phòng nữ', outfit: 'female', color: '#7a5a8a', scale: 1.0, role: 'lay', behavior: 'visitor', accessory: 'briefcase' },
+  { id: 'npc23', name: 'Bà cụ', outfit: 'female', color: '#8a7a5a', scale: 1.0, role: 'lay', behavior: 'visitor' },
+  { id: 'npc24', name: 'Ông cụ', outfit: 'male', color: '#5a5a5a', scale: 1.0, role: 'lay', behavior: 'visitor', accessory: 'cane' },
+  { id: 'npc25', name: 'Du khách nước ngoài', outfit: 'male', color: '#c9a13a', scale: 1.0, role: 'lay', behavior: 'visitor', accessory: 'camera' },
+  { id: 'npc26', name: 'Mẹ trẻ bồng con', outfit: 'female', color: '#e08a7a', scale: 1.0, role: 'lay', behavior: 'visitor', accessory: 'baby' },
+  { id: 'npc27', name: 'Sư Ni Diệu An', outfit: 'nun', color: '#778c96', scale: 1.0, role: 'novice', behavior: 'chant' },
+  { id: 'npc28', name: 'Sư Ni Diệu Tâm', outfit: 'nun', color: '#7a8a7a', scale: 1.0, role: 'novice', behavior: 'chant' },
 ];
 
 /*
@@ -83,6 +101,21 @@ const ABBOT_SEAT: Pt = { x: HALL.x + 1.8, z: TABLE_Z + 2.1 };
 const VISITOR_SPOT: Pt = { x: HALL.x - 1.8, z: TABLE_Z + 2.7 };
 const PLAZA_SPOT: Pt = { x: PLAZA.x - 2.5, z: PLAZA.z + 2 };
 
+/** Mỗi khách viếng có một chỗ đứng riêng quanh điểm chung (tránh chồng nhau). */
+function visitorSpot(base: Pt, def: { id: string }): Pt {
+  const vs = NPC_DEFS.filter((d) => d.behavior === 'visitor');
+  const k = Math.max(0, vs.findIndex((d) => d.id === def.id));
+  const a = (k / Math.max(1, vs.length)) * Math.PI * 2;
+  return { x: base.x + Math.cos(a) * 1.4, z: base.z + Math.sin(a) * 1.4 };
+}
+
+/** Tốc độ đi riêng của mỗi khách (tránh đi thành đoàn dính nhau trên cùng tuyến đường). */
+function visitorSpeed(def: { id: string }): number {
+  const vs = NPC_DEFS.filter((d) => d.behavior === 'visitor');
+  const k = Math.max(0, vs.findIndex((d) => d.id === def.id));
+  return 1.0 + k * 0.04; // 1.00–1.48 m/s cho 13 khách; hai khách kề nhau lệch 0.04 m/s → tách ~1.4 m sau 35 s đi bộ
+}
+
 const PLAZA_LAMPS: Pt[] = [{ x: -4, z: 12 }, { x: 4, z: 12 }, { x: -4, z: 5 }, { x: 4, z: 5 }];
 const SOUTH_END = { x: BRIDGE.x, z: BRIDGE.z0 - 1.2 }, NORTH_END = { x: BRIDGE.x, z: BRIDGE.z1 + 1.2 };
 
@@ -92,12 +125,43 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 interface Npc {
   def: NpcDef; state: PlayerState; phase: Phase; until: number; speed: number;
   route: Pt[]; roam: number; side: number;
-  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork'; nextChat: number; chatIdx: number; rungKey: string;
+  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
   stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch';
-  shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; homeSlot: Behavior;
+  shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; homeSlot: Behavior;
 }
 export interface NpcChat { npcId: string; name: string; text: string }
-export interface NpcRoom { npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; beds: (string | null)[] }
+export interface NpcRoom { npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; beds: (string | null)[]; seats: Map<string, string> }
+
+/** Ghế tụng: hàng đầu mỗi điện (đo từ code thật). S6 sẽ đặt đệm 3D đúng các tọa độ này. */
+export interface ChantSeat { hall: 'chinhDien' | 'tamThe' | 'thienDuong' | 'dienMau'; x: number; z: number; ry: number }
+export const CHANT_SEATS: ChantSeat[] = [
+  { hall: 'chinhDien', x: -4.9, z: -35.2, ry: Math.PI },
+  { hall: 'chinhDien', x: -3.4, z: -35.2, ry: Math.PI },
+  { hall: 'chinhDien', x: 3.4, z: -35.2, ry: Math.PI },
+  { hall: 'chinhDien', x: 4.9, z: -35.2, ry: Math.PI },
+  { hall: 'tamThe', x: -4.7, z: -68.4, ry: Math.PI },
+  { hall: 'tamThe', x: -3.2, z: -68.4, ry: Math.PI },
+  { hall: 'tamThe', x: 3.2, z: -68.4, ry: Math.PI },
+  { hall: 'tamThe', x: 4.7, z: -68.4, ry: Math.PI },
+  { hall: 'thienDuong', x: -45, z: -27, ry: Math.PI / 2 },
+  { hall: 'thienDuong', x: -43, z: -27, ry: Math.PI / 2 },
+  { hall: 'dienMau', x: 37, z: 10, ry: Math.PI },
+  { hall: 'dienMau', x: 39, z: 10, ry: Math.PI },
+];
+const seatKey = (s: ChantSeat) => `${s.hall}:${s.x},${s.z}`;
+function takeSeat(room: NpcRoom, seat: ChantSeat, npcId: string): boolean {
+  const k = seatKey(seat);
+  const holder = room.seats.get(k);
+  if (holder && holder !== npcId) return false;
+  room.seats.set(k, npcId);
+  return true;
+}
+function releaseSeat(room: NpcRoom, npcId: string) {
+  for (const [k, v] of room.seats) if (v === npcId) room.seats.delete(k);
+}
+function freeSeat(room: NpcRoom, hall: ChantSeat['hall']): ChantSeat | undefined {
+  return CHANT_SEATS.find((s) => s.hall === hall && !room.seats.has(seatKey(s)));
+}
 
 /** Road node coordinates by id (no bare coordinates for graph nodes in NPC code). */
 function nodePt(id: string): Pt {
@@ -120,7 +184,9 @@ const HOME_NODE: Partial<Record<Behavior, string>> = { sweepPlaza: 'plaza', swee
 
 export function createNpcRoom(now = Date.now()): NpcRoom {
   const npcs = NPC_DEFS.map((def, i): Npc => {
-    const start: Pt = def.behavior === 'visitor' ? nodePt('gate')
+    const start: Pt = def.behavior === 'chant' ? (def.id === 'npc27' ? { x: -45, z: -27 } : { x: 37, z: 10 })
+      : def.behavior === 'post' ? (def.post ?? (() => { throw new Error(`post NPC ${def.id} has no post`); })())
+      : def.behavior === 'visitor' ? visitorSpot(nodePt('gate'), def)
       : def.behavior === 'wander' ? nodePt('plaza')
       : def.behavior === 'bell' ? nodePt('bellTower')
       : def.behavior === 'desk' ? { x: -42, z: 32.6 } // duty chair in Phong Ghi Cong Duc (chair box at local (0, -2.4) of PHONG_CD (-42, 35), verified in temple.ts)
@@ -130,13 +196,20 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       : { x: PLAZA.x + 3, z: PLAZA.z - 2 };
     const inPool = REST_POOL.has(def.behavior);
     return {
-      def, phase: 'idle', until: now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
-      mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', stage: 'gate',
-      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, homeSlot: def.behavior,
-      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? 0 : Math.PI, anim: def.behavior === 'desk' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
+      def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
+      mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
+      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, homeSlot: def.behavior,
+      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? 0 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
-  return { npcs, lastTick: now, sleeping: false, outbox: [], beds: [null, null] };
+  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], beds: [null, null], seats: new Map() };
+  for (const n of npcs) {
+    if (n.def.behavior !== 'chant') continue;
+    const homeHall = n.def.id === 'npc27' ? 'thienDuong' : 'dienMau';
+    const seat = CHANT_SEATS.find((s) => s.hall === homeHall);
+    if (seat && takeSeat(room, seat, n.def.id)) n.chantSeat = seat;
+  }
+  return room;
 }
 
 /** Vị trí hợp lệ: ngoài hồ, trong tường, không dính cột đèn ở sân chùa. */
@@ -245,18 +318,18 @@ function visitorArrive(n: Npc, now: number) {
 function visitorDecide(n: Npc, now: number) {
   const s = n.state;
   switch (n.stage) {
-    case 'gate': case 'toAltar': n.stage = 'toAltar'; startWalk(n, [...routeFrom(s, 'hallIn'), VISITOR_SPOT], 1.2); break;
+    case 'gate': case 'toAltar': n.stage = 'toAltar'; startWalk(n, [...routeFrom(s, 'hallIn'), visitorSpot(VISITOR_SPOT, n.def)], visitorSpeed(n.def)); break;
     case 'bow': n.stage = 'chant'; n.phase = 'act'; s.anim = 'chant'; n.until = now + R(5000, 8000); break;
     case 'chant': {
       if (Math.random() < 0.3) {
         const t = VISITOR_BRANCH[Math.floor(Math.random() * VISITOR_BRANCH.length)];
         n.stage = 'toBranch'; startWalk(n, routeFrom(s, t), 1.2);
-      } else { n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), PLAZA_SPOT], 1.2); }
+      } else { n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); }
       break;
     }
-    case 'toPlaza': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), PLAZA_SPOT], 1.2); break;
-    case 'branch': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), PLAZA_SPOT], 1.2); break;
-    case 'plaza': case 'toGate': n.stage = 'toGate'; startWalk(n, routeFrom(s, 'gate'), 1.2); break;
+    case 'toPlaza': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
+    case 'branch': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
+    case 'plaza': case 'toGate': n.stage = 'toGate'; startWalk(n, [...routeFrom(s, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def)); break;
   }
 }
 
@@ -300,6 +373,14 @@ function arrive(n: Npc, now: number) {
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
   if (n.def.behavior === 'visitor') return visitorArrive(n, now);
   if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = 0; n.until = now + 5000; return; }
+  if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
+  if (n.mode === 'toChant') {
+    const seat = n.chantSeat;
+    n.mode = 'chanting'; n.phase = 'act'; s.anim = 'chant';
+    s.ry = seat ? seat.ry : Math.PI;
+    n.until = now + R(300_000, 600_000);
+    return;
+  }
   if (n.def.behavior === 'wander' && n.mode !== 'normal') return abbotArrive(n, now);
   if (n.def.behavior === 'wander') { n.phase = 'act'; s.anim = Math.random() < 0.5 ? 'chant' : 'bow'; n.until = now + (s.anim === 'bow' ? 3000 : 2500); return; }
   if (n.def.behavior === 'bell') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 15000); return; }
@@ -309,6 +390,8 @@ function arrive(n: Npc, now: number) {
 function decide(n: Npc, now: number) {
   const s = n.state;
   if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = 0; n.until = now + 5000; return; }
+  if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
+  if (n.mode === 'chanting' || n.mode === 'toChant') return; // runSchedule owns chanting
   if (n.def.behavior === 'bell') {
     if (activeBell(now)) return; // runSchedule is handling the bell window
     if (nextBellIn(now) < 2 * MIN) { // back to the tower 2 minutes before the bell
@@ -338,7 +421,53 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
     return;
   }
   if (n.mode === 'toRest' || n.mode === 'toWork') return;
+  // Tieu quet doi khi vao tung trong thoi khoa thay vi quet (25% moi phien, tung tieu).
+  const SWEEP_CHANT: Behavior[] = ['sweepPlaza', 'sweepBridge', 'sweepZen', 'sweepRoad'];
+  if (SWEEP_CHANT.includes(n.def.behavior) && (n.mode === 'chanting' || n.mode === 'toChant')) {
+    const ses = activeSession(now);
+    if (n.mode === 'chanting' && !ses && now >= n.until) {
+      const seat = n.chantSeat;
+      releaseSeat(room, n.def.id); n.chantSeat = null;
+      n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle';
+      startWalk(n, routeFrom(seat ? { x: seat.x, z: seat.z } : n.state, HOME_NODE[n.homeSlot] ?? 'plaza'), 1.0);
+      n.until = now + 1000;
+    }
+    return;
+  }
+  const sesNow = activeSession(now);
+  if (sesNow && SWEEP_CHANT.includes(n.def.behavior) && n.mode === 'normal' && n.chantKey !== sesNow.key) {
+    n.chantKey = sesNow.key;
+    if (Math.random() < 0.25) {
+      const seat = freeSeat(room, 'chinhDien') ?? freeSeat(room, 'tamThe');
+      if (seat && takeSeat(room, seat, n.def.id)) {
+        n.chantSeat = seat; n.mode = 'toChant';
+        const node = seat.hall === 'chinhDien' ? 'hallIn' : 'tamThe';
+        startWalk(n, [...routeFrom(n.state, node), { x: seat.x, z: seat.z }], 1.0);
+        return;
+      }
+    }
+  }
   if (REST_POOL.has(n.def.behavior) && now >= n.shiftEnd) { tryRest(room, n, now); return; }
+  if (n.def.behavior === 'chant') {
+    const ses = activeSession(now);
+    if (n.mode === 'chanting') {
+      if (!ses && now >= n.until) {
+        releaseSeat(room, n.def.id); n.chantSeat = null;
+        n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(120_000, 300_000);
+      }
+      return;
+    }
+    if (n.mode === 'toChant') return;
+    if (ses || now >= n.until) {
+      const hall = n.def.id === 'npc27' ? 'thienDuong' : 'dienMau';
+      const seat = freeSeat(room, hall) ?? CHANT_SEATS.find((x) => x.hall === hall);
+      if (!seat) { n.until = now + 60_000; return; }
+      if (!takeSeat(room, seat, n.def.id)) { n.until = now + 60_000; return; }
+      n.chantSeat = seat; n.mode = 'toChant';
+      startWalk(n, [{ x: seat.x, z: seat.z }], 1.0);
+    }
+    return;
+  }
   if (n.def.behavior === 'bell') {
     const bell = activeBell(now);
     if (bell && n.rungKey !== bell.key) { n.rungKey = bell.key; n.phase = 'act'; s.anim = 'ring'; n.until = bell.endsAt; }

@@ -80,8 +80,20 @@ export const ITEMS: ShopItem[] = [
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
-export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit';
-export interface QuestDef { id: string; label: string; event: QuestEvent; target: number; coins: number; merit: number }
+export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy';
+export type QuestZone =
+  | { x: number; z: number; r: number }
+  | { x0: number; x1: number; z0: number; z1: number };
+export interface QuestDef {
+  id: string; label: string; event: QuestEvent; target: number; coins: number; merit: number;
+  giver?: string;
+  receiver?: string;
+  zone?: QuestZone;
+  points?: { x: number; z: number }[];
+  stall?: string;
+  steps?: QuestEvent[];
+  requires?: string;
+}
 
 export const QUESTS: QuestDef[] = [
   { id: 'q_bow', label: 'Lạy Phật 5 lần', event: 'bow', target: 5, coins: 10, merit: 5 },
@@ -189,7 +201,76 @@ export const SUTRAS: Sutra[] = [
   },
 ];
 
-export interface QuestState { id: string; label: string; progress: number; target: number; coins: number; merit: number; claimed: boolean }
+export const MARKET_STALLS: { id: string; x: number; z: number }[] = [
+  { id: 'stall_fruit', x: -8.5, z: 48 },
+  { id: 'stall_cake', x: 8.5, z: 48 },
+  { id: 'stall_tea', x: -8.5, z: 53 },
+  { id: 'stall_incense', x: 8.5, z: 53 },
+];
+
+// Zones (shared by several quests)
+const Z_CHINH_DIEN: QuestZone = { x0: -17, x1: 17, z0: -42, z1: -22 };
+const Z_TAM_THE: QuestZone = { x0: -20, x1: 20, z0: -80, z1: -56 };
+const Z_THIEN_DUONG: QuestZone = { x: -47, z: -27, r: 7 };
+const Z_BAO_THAP: QuestZone = { x: -30, z: -38, r: 6 };
+const Z_CAU_SEN: QuestZone = { x0: -1.5, x1: 1.5, z0: 14.2, z1: 29.8 };
+
+// NPC quests (daily reset, ids start with nq_)
+export const NPC_QUESTS: QuestDef[] = [
+  { id: 'nq_sweep_plaza', label: 'Quét sân chùa', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc2',
+    points: [{ x: -8.5, z: 12 }, { x: 8.5, z: 12 }, { x: -7.5, z: -1 }] },
+  { id: 'nq_sweep_bridge', label: 'Quét cầu sen', event: 'sweep', target: 2, coins: 15, merit: 10, giver: 'npc3',
+    points: [{ x: -8.5, z: 12 }, { x: 8.5, z: 12 }] },
+  { id: 'nq_sweep_zen', label: 'Quét vườn Thiền', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc7',
+    points: [{ x: -40, z: -22 }, { x: -38, z: -31 }, { x: -39, z: -36 }] },
+  { id: 'nq_sweep_road', label: 'Quét đường chùa', event: 'sweep', target: 3, coins: 15, merit: 10, giver: 'npc8',
+    points: [{ x: -10.3, z: 39.4 }, { x: 18.2, z: 5.9 }, { x: -19.6, z: 17.7 }] },
+  { id: 'nq_deliver_incense', label: 'Mang hương tới Điện Mẫu', event: 'talk', target: 2, coins: 25, merit: 10,
+    giver: 'npc6', receiver: 'npc13', steps: ['talk', 'deliver'] },
+  { id: 'nq_deliver_water', label: 'Mang nước tới Trai Đường', event: 'talk', target: 2, coins: 25, merit: 10,
+    giver: 'npc6', receiver: 'npc14', steps: ['talk', 'deliver'] },
+  { id: 'nq_incense_ba', label: 'Thắp hương hộ bà Ba', event: 'incense', target: 1, coins: 15, merit: 8,
+    giver: 'npc10', zone: Z_CHINH_DIEN },
+  { id: 'nq_bow_tamthe', label: 'Đảnh lễ Tam Thế', event: 'bow', target: 3, coins: 20, merit: 12,
+    giver: 'npc1', zone: Z_TAM_THE },
+  { id: 'nq_chant_thienduong', label: 'Tụng kinh ở Thiền Đường', event: 'sutra', target: 1, coins: 25, merit: 12,
+    giver: 'npc1', zone: Z_THIEN_DUONG },
+  { id: 'nq_bell', label: 'Thỉnh chuông', event: 'talk', target: 1, coins: 15, merit: 8, giver: 'npc4' },
+  { id: 'nq_buy_cake', label: 'Mua bánh cho thầy', event: 'marketbuy', target: 2, coins: 25, merit: 12,
+    giver: 'npc1', receiver: 'npc1', stall: 'stall_cake', steps: ['marketbuy', 'deliver'] },
+  { id: 'nq_buy_tea', label: 'Mua trà cho thầy', event: 'marketbuy', target: 2, coins: 25, merit: 12,
+    giver: 'npc6', receiver: 'npc6', stall: 'stall_tea', steps: ['marketbuy', 'deliver'] },
+  { id: 'nq_buy_flower', label: 'Mua hoa dâng Phật', event: 'marketbuy', target: 2, coins: 20, merit: 10,
+    giver: 'npc10', stall: 'stall_incense', zone: Z_CHINH_DIEN, steps: ['marketbuy', 'visit'] },
+  { id: 'nq_buy_fruit', label: 'Mua trái cây cúng rằm', event: 'marketbuy', target: 2, coins: 25, merit: 12,
+    giver: 'npc1', receiver: 'npc1', stall: 'stall_fruit', steps: ['marketbuy', 'deliver'] },
+  { id: 'nq_incense_baothap', label: 'Thắp hương hộ ở Bảo Tháp', event: 'incense', target: 1, coins: 15, merit: 8,
+    giver: 'npc5', zone: Z_BAO_THAP },
+  { id: 'nq_buy_flower_help', label: 'Mua hoa huệ hộ', event: 'marketbuy', target: 2, coins: 20, merit: 10,
+    giver: 'npc9', receiver: 'npc9', stall: 'stall_incense', steps: ['marketbuy', 'deliver'] },
+  { id: 'nq_photo_bridge', label: 'Chụp ảnh hộ ở cầu sen', event: 'visit', target: 2, coins: 15, merit: 8,
+    giver: 'npc11', receiver: 'npc11', zone: Z_CAU_SEN, steps: ['visit', 'deliver'] },
+  { id: 'nq_deliver_rice', label: 'Mang bao gạo hộ', event: 'talk', target: 2, coins: 25, merit: 10,
+    giver: 'npc12', receiver: 'npc14', steps: ['talk', 'deliver'] },
+  { id: 'nq_photo_baothap', label: 'Chụp ảnh hộ ở Bảo Tháp', event: 'visit', target: 2, coins: 15, merit: 8,
+    giver: 'npc19', receiver: 'npc19', zone: Z_BAO_THAP, steps: ['visit', 'deliver'] },
+  { id: 'nq_buy_water', label: 'Mua nước hộ', event: 'marketbuy', target: 2, coins: 20, merit: 10,
+    giver: 'npc20', receiver: 'npc20', stall: 'stall_tea', steps: ['marketbuy', 'deliver'] },
+  { id: 'nq_incense_chinhdien', label: 'Thắp hương hộ ở Chính Điện', event: 'incense', target: 1, coins: 15, merit: 8,
+    giver: 'npc23', zone: Z_CHINH_DIEN },
+];
+
+// Chain quests (one-time, ids start with c_)
+export const CHAIN_QUESTS: QuestDef[] = [
+  { id: 'c_intro', label: 'Vào chùa tập sự', event: 'talk', target: 2, coins: 10, merit: 5,
+    giver: 'npc1', steps: ['talk', 'bow'], zone: Z_CHINH_DIEN },
+  { id: 'c_broom', label: 'Tay quen chổi', event: 'sweep', target: 2, coins: 15, merit: 10,
+    giver: 'npc2', points: [{ x: -8.5, z: 12 }, { x: 8.5, z: 12 }], requires: 'c_intro' },
+  { id: 'c_first_bow', label: 'Lễ Phật đầu tiên', event: 'talk', target: 3, coins: 50, merit: 30,
+    giver: 'npc1', receiver: 'npc13', steps: ['talk', 'deliver', 'bow'], zone: Z_TAM_THE, requires: 'c_broom' },
+];
+
+export interface QuestState { id: string; label: string; progress: number; target: number; coins: number; merit: number; claimed: boolean; accepted?: boolean; giver?: string }
 
 export interface RoomInfo { id: string; name: string; online: number; capacity: number }
 export const ROOMS = [

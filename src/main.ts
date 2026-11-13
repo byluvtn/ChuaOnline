@@ -8,12 +8,14 @@ import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
 import { clampToCompound, resolveBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
-import { closePanel, openPanel, panelOpen, refreshPanel } from './panels';
+import { closePanel, h, openCustomPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { createPost } from './post';
 import { createWorld } from './world';
 import { buildBuddha, buildQuanAm } from './statues';
-import { ACTION_RULES, ROOMS, type MeditationInfo, type QuestState } from '../shared/game';
+import { ACTION_RULES, CHAIN_QUESTS, MARKET_STALLS, NPC_QUESTS, ROOMS, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
+import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
+import { nearestNode, routeFrom, type Pt } from '../shared/roads';
 import {
   MAP_HALF, MAP_Z_MIN, OUTFIT_COLOR, levelOf, meritForLevel,
   type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState, type Profile,
@@ -200,6 +202,12 @@ const freePos = new THREE.Vector3();
 const camMaxDist = () => (profile?.admin ? 160 : 18);
 const camMaxPitch = () => (profile?.admin ? 1.55 : 1.3);
 let clickTarget: THREE.Vector3 | null = null;
+let guideQuestId: string | null = null;
+let guideTarget: Pt | null = null;
+let guideWaypoints: Pt[] = [];
+const guideGroup = new THREE.Group();
+guideGroup.visible = false;
+world.scene.add(guideGroup);
 let dragging = false, dragMoved = 0;
 let sitting = false;
 const joy = { x: 0, y: 0, id: -1 };
@@ -372,12 +380,19 @@ function connect() {
   s.on('level:bonus', ({ level, coins, merit }: { level: number; coins: number; merit: number }) => {
     toast(`Lên cấp ${level}! Thưởng +${coins} xu, +${merit} công đức`);
   });
-  s.on('quests', (q: QuestState[]) => { quests = q; updateQuestDot(); refreshPanel(); });
+  s.on('quests', (q: QuestState[]) => {
+    quests = q; updateQuestDot(); refreshPanel();
+    updateNpcMarkers();
+    updateGuideTarget(); updateGuidePath();
+    if (dialogueNpc) { if (panelOpen()) openDialogue(dialogueNpc); else dialogueNpc = null; }
+  });
   s.on('meditation', (m: MeditationInfo) => { meditation = m; updateMeditationHud(); });
   s.on('player:join', addPlayer);
   s.on('player:leave', (id: string) => {
     const r = remotes.get(id);
     if (r) { world.scene.remove(r.char.root); r.char.dispose(); }
+    const ms = markerSprites.get(id);
+    if (ms) { world.scene.remove(ms); markerSprites.delete(id); }
     remotes.delete(id);
   });
   s.on('player:look', ({ id, accessory }: { id: string; accessory: string | null }) => remotes.get(id)?.char.setAccessory(accessory));
@@ -433,6 +448,7 @@ function switchRoom(id: string) {
 // ---------- Panels / menu ----------
 const panelCtx = () => ({
   socket: socket!, profile: () => profile, quests: () => quests, room: () => roomId, switchRoom, toast,
+  guideTo: (qid: string) => { startGuide(qid); },
 });
 $('panelClose').onclick = closePanel;
 $('panel').addEventListener('pointerdown', (e) => { if (e.target === $('panel')) closePanel(); });
@@ -455,6 +471,7 @@ function startMenu() {
     goTo: (x, z) => { clickTarget = new THREE.Vector3(x, 0, z); bowSeat = null; setSitting(false); },
     changeLook, chatLog: () => chatLog,
     act: (kind) => doAction(kind),
+    guideTo: (qid: string) => { startGuide(qid); },
   });
 }
 // ---------- Input ----------
@@ -482,7 +499,7 @@ addEventListener('pointerup', (e) => {
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObject(world.ground)[0];
-    if (hit) { clickTarget = hit.point.clone(); bowSeat = null; setSitting(false); }
+    if (hit) { if (guideQuestId) stopGuide(); sweepState = null; clickTarget = hit.point.clone(); bowSeat = null; setSitting(false); }
   }
   dragging = false;
 });
@@ -600,6 +617,9 @@ $<HTMLFormElement>('chatForm').onsubmit = (e) => {
 };
 
 let myActionUntil = 0;
+let sweepState: { qid: string; point: Pt; until: number } | null = null;
+let lastSweepCheck = 0;
+let lastSwept: { qid: string; x: number; z: number } | null = null;
 /** Điểm bồ đoàn đang trên đường tới để lạy (null = không có hành trình). */
 let bowSeat: { x: number; z: number } | null = null;
 
@@ -749,6 +769,376 @@ function updateTeacherBtn() {
   if (teacherBtn.hidden === near) teacherBtn.hidden = !near;
 }
 
+const ALL_NPC_QUESTS = [...NPC_QUESTS, ...CHAIN_QUESTS];
+const VENDOR_STALL: Record<string, string> = { npc15: 'stall_fruit', npc16: 'stall_cake', npc17: 'stall_tea', npc18: 'stall_incense' };
+const VENDOR_GOODS: Record<string, string> = { npc15: 'hoa quả', npc16: 'bánh', npc17: 'trà', npc18: 'hoa' };
+
+type TimeSlot = 'morning' | 'noon' | 'afternoon' | 'evening' | 'any';
+function timeSlot(): TimeSlot {
+  const hr = new Date().getHours();
+  if (hr >= 5 && hr <= 10) return 'morning';
+  if (hr >= 11 && hr <= 13) return 'noon';
+  if (hr >= 14 && hr <= 17) return 'afternoon';
+  if (hr >= 18 && hr <= 20) return 'evening';
+  return 'any';
+}
+function dayOfYear(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  return Math.floor((now.getTime() - start.getTime()) / 86400000);
+}
+function pickLine(lines: { time: TimeSlot; text: string }[]): string {
+  if (!lines || !lines.length) return '';
+  const slot = timeSlot();
+  let cand = lines.filter((l) => l.time === slot);
+  if (!cand.length) cand = lines.filter((l) => l.time === 'any');
+  if (!cand.length) cand = lines;
+  return cand[dayOfYear() % cand.length].text;
+}
+function pickRot(list: string[]): string {
+  if (!list || !list.length) return '';
+  return list[dayOfYear() % list.length];
+}
+function questLinesFor(npcId: string, qid: string): { offer: string; reminder: string; done: string } {
+  const dlg = DIALOGUES[npcId];
+  const ql = dlg?.questLines?.[qid];
+  if (ql) return ql;
+  return { offer: dlg?.questOffer ?? '', reminder: dlg?.questReminder ?? '', done: dlg?.questDone ?? '' };
+}
+function npcQuests(npcId: string): QuestState[] {
+  return quests.filter((q) => q.giver === npcId);
+}
+function questDef(qid: string) {
+  return ALL_NPC_QUESTS.find((d) => d.id === qid);
+}
+function currentStep(q: QuestState): string | null {
+  const def = questDef(q.id);
+  const steps = def?.steps;
+  if (!steps || !steps.length) return null;
+  if (q.progress >= q.target) return null;
+  return steps[Math.min(q.progress, steps.length - 1)] ?? null;
+}
+
+let dialogueNpc: string | null = null;
+function openDialogue(npcId: string): void {
+  const dlg = DIALOGUES[npcId];
+  if (!dlg) return;
+  const sock = socket;
+  if (!sock) return;
+  dialogueNpc = npcId;
+  const failToast = (r: { ok: boolean; error?: string }) => { if (!r.ok) toast(r.error ?? 'Lỗi'); };
+  openCustomPanel(dlg.name, (body: HTMLElement) => {
+    body.appendChild(h('p', { class: 'hint' }, dlg.role));
+    const greet = pickLine(dlg.greetings);
+    if (greet) body.appendChild(h('p', {}, greet));
+
+    const farewell = () => {
+      const f = pickRot(dlg.farewell);
+      if (f) body.appendChild(h('p', { class: 'hint' }, f));
+    };
+
+    // Chanting: short talk only, no quest / vendor blocks.
+    if (remotes.get(npcId)?.data.anim === 'chant') {
+      body.appendChild(h('p', {}, dlg.chanting ?? ''));
+      farewell();
+      return;
+    }
+
+    // Quest block: single most relevant quest.
+    const qs = npcQuests(npcId);
+    if (qs.length) {
+      let pick: QuestState | undefined;
+      let kind: 'claim' | 'deliver' | 'remind' | 'offer' | null = null;
+      pick = qs.find((q) => q.progress >= q.target && !q.claimed);
+      if (pick) kind = 'claim';
+      if (!pick) {
+        pick = qs.find((q) => q.accepted && !q.claimed && currentStep(q) === 'deliver' && questDef(q.id)?.receiver === npcId);
+        if (pick) kind = 'deliver';
+      }
+      if (!pick) {
+        pick = qs.find((q) => q.accepted && !q.claimed && q.progress < q.target);
+        if (pick) kind = 'remind';
+      }
+      if (!pick) {
+        pick = qs.find((q) => !q.accepted);
+        if (pick) kind = 'offer';
+      }
+      if (pick && kind) {
+        const lines = questLinesFor(npcId, pick.id);
+        const q = pick;
+        if (kind === 'claim') {
+          const def = questDef(q.id);
+          body.appendChild(h('p', {}, lines.done));
+          body.appendChild(h('div', { class: 'qrow' },
+            h('button', {
+              onclick: () => { sock.emit('quest:claim', q.id); },
+            }, `Nhận thưởng +${def?.coins ?? 0} xu · +${def?.merit ?? 0} công đức`)));
+        } else if (kind === 'deliver') {
+          body.appendChild(h('p', {}, lines.done));
+          body.appendChild(h('div', { class: 'qrow' },
+            h('button', {
+              onclick: () => { sock.emit('quest:deliver', q.id, failToast); },
+            }, 'Đưa đồ')));
+        } else if (kind === 'remind') {
+          body.appendChild(h('p', {}, lines.reminder));
+        } else {
+          body.appendChild(h('p', {}, lines.offer));
+          body.appendChild(h('div', { class: 'qrow' },
+            h('button', {
+              onclick: () => { sock.emit('quest:accept', q.id, failToast); },
+            }, 'Nhận việc')));
+        }
+        if (qs.length > 1) {
+          body.appendChild(h('small', { class: 'hint' }, 'Người này còn việc khác — làm xong việc này rồi quay lại nhé.'));
+        }
+      }
+    }
+
+    // Vendor block.
+    const stall = VENDOR_STALL[npcId];
+    if (stall) {
+      body.appendChild(h('p', {}, dlg.shopGreeting ?? ''));
+      body.appendChild(h('div', { class: 'qrow' },
+        h('button', {
+          onclick: () => {
+            sock.emit('market:buy', stall, (r: { ok: boolean; error?: string }) => {
+              if (!r.ok) toast(r.error ?? 'Lỗi'); else toast('Đã mua');
+            });
+          },
+        }, `Mua ${VENDOR_GOODS[npcId]} · 10 xu`)));
+    }
+
+    const st = pickRot(dlg.smallTalk);
+    if (st) body.appendChild(h('p', {}, st));
+    farewell();
+
+    if (npcId === 'npc1') {
+      body.appendChild(h('div', { class: 'qrow' }, h('button', {
+        onclick: () => { dialogueNpc = null; openPanel('teacher', panelCtx()); },
+      }, '📖 Về chùa Online')));
+    }
+  });
+}
+
+const talkBtn = $('talkBtn');
+talkBtn.onclick = () => { const n = nearestTalkNpc(); if (n) openDialogue(n); };
+// quest tracker: styled once here (no CSS file change); display is driven by updateTracker().
+const questTrackerEl = $('questTracker');
+questTrackerEl.hidden = false;
+questTrackerEl.style.cssText = 'display:none;position:fixed;left:50%;top:12px;transform:translateX(-50%);align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(20,14,6,.72);color:#ffe9a8;font-weight:700;font-size:14px;cursor:pointer;z-index:30;backdrop-filter:blur(6px);border:1px solid rgba(255,214,90,.5);';
+(questTrackerEl.querySelector('.qt-arrow') as HTMLElement).style.display = 'inline-block';
+questTrackerEl.onclick = () => { if (guideQuestId) { updateGuideTarget(); updateGuidePath(); } };
+function nearestTalkNpc(): string | null {
+  if (!me) return null;
+  let best: string | null = null; let bestD = 2; // design: approach within ~2 m
+  for (const [id, r] of remotes) {
+    if (!r.data.npc || !r.char.root.visible || !DIALOGUES[id]) continue;
+    const d = Math.hypot(r.char.root.position.x - me.char.root.position.x, r.char.root.position.z - me.char.root.position.z);
+    if (d < bestD) { bestD = d; best = id; }
+  }
+  return best;
+}
+function updateTalkBtn() {
+  const n = nearestTalkNpc();
+  if (!n) {
+    if (!talkBtn.hidden) talkBtn.hidden = true;
+    return;
+  }
+  if (talkBtn.hidden) talkBtn.hidden = false;
+  const lb = talkBtn.querySelector('.lb')!;
+  const label = `Nói chuyện với ${DIALOGUES[n].name}`;
+  if (lb.textContent !== label) lb.textContent = label;
+}
+
+function npcPos(id: string | undefined): Pt | null {
+  const r = id ? remotes.get(id) : undefined;
+  return r ? { x: r.char.root.position.x, z: r.char.root.position.z } : null;
+}
+function zoneCenter(zone: QuestZone | undefined): Pt | null {
+  if (!zone) return null;
+  if ('r' in zone) return { x: zone.x, z: zone.z };
+  return { x: (zone.x0 + zone.x1) / 2, z: (zone.z0 + zone.z1) / 2 };
+}
+function questTarget(q: QuestState): Pt | null {
+  const def = questDef(q.id);
+  if (!def) return null;
+  // Finished and unclaimed: return to the giver to claim.
+  if (q.progress >= q.target && !q.claimed) return npcPos(q.giver);
+  // Sweep: next un-swept point (progress counts swept points).
+  if (def.event === 'sweep') return def.points?.[q.progress] ?? zoneCenter(def.zone);
+  if (def.steps) {
+    const step = currentStep(q);
+    if (step === 'talk') return npcPos(q.giver);
+    if (step === 'deliver') return npcPos(def.receiver);
+    if (step === 'marketbuy') { const s = MARKET_STALLS.find((x) => x.id === def.stall); return s ? { x: s.x, z: s.z } : null; }
+    if (step === 'visit') return zoneCenter(def.zone);
+    return zoneCenter(def.zone);
+  }
+  if (def.event === 'talk') return npcPos(q.giver); // Q10 bell
+  return zoneCenter(def.zone); // Q7/Q8/Q9/Q15/Q21 worship at a zone
+}
+function startGuide(qid: string): void {
+  guideQuestId = qid;
+  updateGuideTarget();
+  updateGuidePath();
+  updateTracker();
+}
+function stopGuide(): void {
+  guideQuestId = null;
+  guideTarget = null;
+  guideWaypoints = [];
+  guideGroup.visible = false;
+  clickTarget = null;
+  pathTarget = null;
+  pathQueue = [];
+  const qt = document.getElementById('questTracker') as HTMLElement | null;
+  if (qt) qt.style.display = 'none';
+}
+function updateGuideTarget(): void {
+  if (!guideQuestId) return;
+  const q = quests.find((x) => x.id === guideQuestId);
+  if (!q || q.claimed) { stopGuide(); return; }
+  const t = questTarget(q);
+  if (!t) { stopGuide(); return; }
+  guideTarget = t;
+}
+function updateGuidePath(): void {
+  if (!guideTarget || !me) { guideGroup.visible = false; return; }
+  const p = me.char.root.position;
+  const from = { x: p.x, z: p.z };
+  let pts = routeFrom(from, nearestNode(guideTarget));
+  if (!pts.length) pts = [from, guideTarget];
+  else pts = [...pts, guideTarget];
+  // Cap the discs at 40: if the route is longer, take every Nth waypoint.
+  const step = Math.max(1, Math.ceil(pts.length / 40));
+  const sampled = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+  guideGroup.clear();
+  const linePts = sampled.map((w) => new THREE.Vector3(w.x, world.groundY(w.x, w.z) + 0.08, w.z));
+  const lineGeo = new THREE.BufferGeometry().setFromPoints(linePts);
+  const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0xffd65a, transparent: true, opacity: 0.9 }));
+  guideGroup.add(line);
+  const discGeo = new THREE.CircleGeometry(0.35, 12);
+  const discMat = new THREE.MeshBasicMaterial({ color: 0xffd65a, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false });
+  for (const w of sampled) {
+    const d = new THREE.Mesh(discGeo, discMat);
+    d.rotation.x = -Math.PI / 2;
+    d.position.set(w.x, world.groundY(w.x, w.z) + 0.06, w.z);
+    guideGroup.add(d);
+  }
+  guideWaypoints = sampled;
+  guideGroup.visible = true;
+}
+function updateTracker(): void {
+  const qt = document.getElementById('questTracker') as HTMLElement | null;
+  if (!qt) return;
+  if (!guideTarget || !me || !guideQuestId) { qt.style.display = 'none'; return; }
+  const q = quests.find((x) => x.id === guideQuestId);
+  if (!q) { qt.style.display = 'none'; return; }
+  const p = me.char.root.position;
+  const dx = guideTarget.x - p.x, dz = guideTarget.z - p.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1.5) { stopGuide(); return; }
+  qt.style.display = 'flex';
+  const label = qt.querySelector('.qt-label');
+  const dist = qt.querySelector('.qt-dist');
+  const arrow = qt.querySelector('.qt-arrow') as HTMLElement | null;
+  if (label) label.textContent = q.label;
+  if (dist) dist.textContent = `${Math.round(d)} m`;
+  if (arrow) {
+    // Camera looks along (-sin(camYaw), -cos(camYaw)); screen-right is
+    // (cos(camYaw), -sin(camYaw)). Arrow points up at rotate(0).
+    const rot = Math.atan2(dx * Math.cos(camYaw) - dz * Math.sin(camYaw), -dx * Math.sin(camYaw) - dz * Math.cos(camYaw));
+    arrow.style.transform = `rotate(${rot}rad)`;
+  }
+}
+
+function updateSweep(now: number): void {
+  if (!me || !socket) return;
+  // Finish a sweep in progress: report the swept point to the server.
+  if (sweepState) {
+    if (now >= sweepState.until) {
+      const s = sweepState;
+      sweepState = null;
+      lastSwept = { qid: s.qid, x: s.point.x, z: s.point.z };
+      socket.emit('quest:sweep', { qid: s.qid, point: s.point }, (r: { ok: boolean; error?: string }) => {
+        if (!r.ok) { lastSwept = null; toast(r.error ?? 'Lỗi'); }
+      });
+    }
+    return;
+  }
+  // Throttle the arrival check to twice a second.
+  if (now - lastSweepCheck < 500) return;
+  lastSweepCheck = now;
+  if (sitting || clickTarget) return;
+  const p = me.char.root.position;
+  for (const q of quests) {
+    if (!q.accepted || q.claimed || q.progress >= q.target) continue;
+    const def = questDef(q.id);
+    if (!def || def.event !== 'sweep' || !def.points?.length) continue;
+    const pt = def.points[q.progress];
+    if (!pt) continue;
+    if (lastSwept && q.id === lastSwept.qid && pt.x === lastSwept.x && pt.z === lastSwept.z) continue;
+    if (Math.hypot(pt.x - p.x, pt.z - p.z) < 1.5) {
+      clickTarget = null;
+      me.anim = 'sweep';
+      myActionUntil = now + 3000;
+      sweepState = { qid: q.id, point: pt, until: now + 3000 };
+      toast('Đang quét...');
+      return;
+    }
+  }
+}
+
+function makeMarkerTex(ch: '!' | '?', color: string): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const g = c.getContext('2d')!;
+  g.font = 'bold 44px sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.lineWidth = 6;
+  g.strokeStyle = '#2a1f10';
+  g.strokeText(ch, 32, 34);
+  g.fillStyle = color;
+  g.fillText(ch, 32, 34);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const markerTex: Record<'!' | '?', THREE.CanvasTexture> = {
+  '!': makeMarkerTex('!', '#ffd65a'),
+  '?': makeMarkerTex('?', '#7dd87d'),
+};
+const markerSprites = new Map<string, THREE.Sprite>();
+function markerFor(npcId: string): '!' | '?' | null {
+  const r = remotes.get(npcId);
+  if (!r || !r.data.npc || r.data.anim === 'chant') return null; // NO '!' while chanting
+  const qs = npcQuests(npcId);
+  if (qs.some((q) => q.progress >= q.target && !q.claimed)) return '?';
+  if (qs.some((q) => { const d = questDef(q.id); return q.accepted && !q.claimed && currentStep(q) === 'deliver' && d?.receiver === npcId; })) return '?';
+  if (qs.some((q) => !q.accepted)) return '!';
+  return null;
+}
+function updateNpcMarkers() {
+  for (const [id, r] of remotes) {
+    if (!r.data.npc) continue;
+    const m = markerFor(id);
+    const spr = markerSprites.get(id);
+    if (!m) { if (spr) spr.visible = false; continue; }
+    let s = spr;
+    if (!s) {
+      s = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerTex[m], transparent: true, depthTest: false }));
+      s.scale.set(0.55, 0.55, 1);
+      world.scene.add(s);
+      markerSprites.set(id, s);
+    }
+    const mat = s.material as THREE.SpriteMaterial;
+    if (mat.map !== markerTex[m]) { mat.map = markerTex[m]; mat.needsUpdate = true; }
+    s.visible = r.char.root.visible;
+    s.position.set(r.char.root.position.x, r.char.root.position.y + 2.6, r.char.root.position.z);
+  }
+}
+
 const zoneBtn = $('zoneBtn');
 const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
   chuong: { label: 'Đánh chuông', run: () => { world.ringBell(); audio.play('bow'); } },
@@ -812,11 +1202,26 @@ function loop() {
     let moving = false;
     let targetSpeed = 0;
 
+    // quest auto-walk: feed the next road waypoint as clickTarget
+    if (guideQuestId && guideTarget && me && !clickTarget && !sitting) {
+      const p = me.char.root.position;
+      const d = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
+      if (d < 1.5) { stopGuide(); }
+      else {
+        const wp = guideWaypoints.length ? guideWaypoints[0] : guideTarget;
+        const wd = Math.hypot(wp.x - p.x, wp.z - p.z);
+        if (wd < 1.2 && guideWaypoints.length > 1) guideWaypoints.shift();
+        else clickTarget = new THREE.Vector3(guideWaypoints.length ? guideWaypoints[0].x : guideTarget.x, 0, guideWaypoints.length ? guideWaypoints[0].z : guideTarget.z);
+      }
+    }
+
     if (mag > 0) {
+      if (guideQuestId) stopGuide();
       clickTarget = null;
       bowSeat = null;                       // người chơi tự di chuyển → huỷ hành trình lạy
       setSitting(false);
       myActionUntil = 0;
+      sweepState = null;
       const len = Math.hypot(ix, iz);
       const s = Math.sin(camYaw), c = Math.cos(camYaw);
       const dx = (ix * c + iz * s) / len, dz = (-ix * s + iz * c) / len;
@@ -936,6 +1341,10 @@ function loop() {
 
   if (t - lastDrum > 45) { lastDrum = t; if (me) { world.ringDrum(); audio.play('bow'); } }
   updateTeacherBtn();
+  updateTalkBtn();
+  updateNpcMarkers();
+  updateTracker();
+  updateSweep(now);
   updateZoneBtn();
   updateCouplet();
   world.update(t, me ? me.char.root.position : focusIdle);

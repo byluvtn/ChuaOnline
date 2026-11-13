@@ -3,6 +3,7 @@ import { ITEMS, ITEM_BY_ID, SHOP_CATEGORIES, SUTRAS, type QuestState, type RankR
 import { levelOf, meritForLevel, type Profile } from '../shared/types';
 import { iconSvg } from './icons';
 import { audio } from './audio';
+import { DIALOGUES } from './data/dialogues';
 
 export interface PanelCtx {
   socket: Socket;
@@ -11,6 +12,7 @@ export interface PanelCtx {
   room: () => string;
   switchRoom: (id: string) => void;
   toast: (t: string) => void;
+  guideTo: (qid: string) => void;
 }
 export type PanelKind = 'shop' | 'bag' | 'quests' | 'rank' | 'rooms' | 'chant' | 'teacher';
 type Cur = PanelKind | 'custom';
@@ -152,10 +154,18 @@ function renderBag(body: HTMLElement, ctx: PanelCtx) {
 function questRows(list: QuestState[], ctx: PanelCtx) {
   return list.map((q) => {
     const done = q.progress >= q.target;
-    return h('div', { class: 'qrow' },
-      h('div', { class: 'qi' }, h('b', {}, q.label), h('div', {}, `${q.progress}/${q.target} · +${q.coins} xu · +${q.merit} công đức`),
-        h('progress', { max: q.target, value: q.progress })),
+    const isNpc = q.id.startsWith('nq_') || q.id.startsWith('c_');
+    const giverName = isNpc && q.giver ? (DIALOGUES[q.giver]?.name ?? '') : '';
+    const info = h('div', { class: 'qi' }, h('b', {}, q.label),
+      h('div', {}, `${q.progress}/${q.target} · +${q.coins} xu · +${q.merit} công đức`),
+      h('progress', { max: q.target, value: q.progress }));
+    if (isNpc && giverName) info.append(h('div', { class: 'hint', style: 'margin:0' }, `Người giao: ${giverName}`));
+    const row = h('div', { class: 'qrow' }, info,
       h('button', { disabled: !done || q.claimed || undefined, onclick: () => ctx.socket.emit('quest:claim', q.id) }, q.claimed ? 'Đã nhận' : 'Nhận'));
+    if (isNpc && !q.claimed) {
+      row.append(h('button', { class: 'ghost', onclick: () => { closePanel(); ctx.guideTo(q.id); } }, 'Dẫn đường'));
+    }
+    return row;
   });
 }
 

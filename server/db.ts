@@ -230,9 +230,9 @@ export async function setAccessory(id: number, item: string | null) {
 
 // ---- quests ----
 /** Khoá phiên nhiệm vụ: nhiệm vụ ngày dùng day_key, nhiệm vụ tuần (id `w_…`) dùng week_key. */
-export const questKey = (questId: string, d = new Date()) => (questId.startsWith('w_') ? weekKey(d) : dayKey(d));
+export const questKey = (questId: string, d = new Date()) => (questId.startsWith('c_') ? 'once' : (questId.startsWith('w_') ? weekKey(d) : dayKey(d)));
 export async function questRows(id: number) {
-  const rows = (await db.execute({ sql: 'SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?)', args: [id, dayKey(), weekKey()] })).rows as unknown as { quest_id: string; progress: number; claimed: number }[];
+  const rows = (await db.execute({ sql: "SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?, 'once')", args: [id, dayKey(), weekKey()] })).rows as unknown as { quest_id: string; progress: number; claimed: number }[];
   return rows.map((r) => ({ quest_id: r.quest_id, progress: Number(r.progress), claimed: Number(r.claimed) }));
 }
 export async function bumpQuest(id: number, questId: string, target: number, by = 1) {
@@ -240,6 +240,13 @@ export async function bumpQuest(id: number, questId: string, target: number, by 
     sql: `INSERT INTO quest_progress (player_id, day_key, quest_id, progress) VALUES (?,?,?,MIN(?,?))
     ON CONFLICT(player_id, day_key, quest_id) DO UPDATE SET progress = MIN(progress + ?, ?) WHERE claimed = 0`,
     args: [id, questKey(questId), questId, by, target, by, target],
+  });
+}
+export async function acceptQuest(id: number, questId: string): Promise<void> {
+  await db.execute({
+    sql: `INSERT INTO quest_progress (player_id, day_key, quest_id, progress, claimed) VALUES (?,?,?,0,0)
+    ON CONFLICT(player_id, day_key, quest_id) DO NOTHING`,
+    args: [id, questKey(questId), questId],
   });
 }
 /** Returns true if the claim was valid (done and not claimed yet). */

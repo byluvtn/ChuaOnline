@@ -104,6 +104,12 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'zenE1', x: -18, z: -20 },
   { id: 'zenE2', x: -18, z: -24 },
   { id: 'zenW', x: -26, z: -26.6 },
+  // Market outside the south gate (quest v1): stalls at z 47-56, road down the middle.
+  { id: 'marketW1', x: -8.5, z: 47 },
+  { id: 'marketE1', x: 8.5, z: 47 },
+  { id: 'marketW2', x: -8.5, z: 54 },
+  { id: 'marketE2', x: 8.5, z: 54 },
+  { id: 'marketS', x: 0, z: 56 },
 ]
 
 export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
@@ -145,6 +151,10 @@ export const ROAD_EDGES: [string, string][] = [
   // Zen garden east hedge gap: hallFront -> east side -> gap -> baoThap / zenIn
   ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
   ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],
+  // Market: gate gap (|x| < 4.4 at z = 45) to both rows, then south to marketS.
+  ['gate', 'marketW1'], ['gate', 'marketE1'],
+  ['marketW1', 'marketW2'], ['marketE1', 'marketE2'],
+  ['marketW2', 'marketS'], ['marketE2', 'marketS'],
 ]
 
 const NODE_BY_ID = new Map<string, RoadNode>(ROAD_NODES.map((n) => [n.id, n]))

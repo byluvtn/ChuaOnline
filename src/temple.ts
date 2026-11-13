@@ -662,6 +662,19 @@ export function buildTemple(c: TempleCtx) {
   };
   const dm = extraHouse('dien-mau', DIEN_MAU, DIEN_MAU_PLAT, 'ĐIỆN MẪU', 'dienMau', 2.6, 2.2, true);
   for (let i = 0; i < 2; i++) labelBoard(dm.g, COUPLETS.dienMau.am[i].split(',')[0], 0.42, 2.2, i ? dm.hx : -dm.hx, DIEN_MAU_PLAT.y + 1.7, dm.hz + 0.22);
+  // 2 bồ đoàn tụng kinh ở CHANT_SEATS Điện Mẫu (quest v1) — Điện Mẫu trước đây không có bồ đoàn
+  {
+    const y0 = DIEN_MAU_PLAT.y;
+    const cushG2 = new THREE.CylinderGeometry(0.44, 0.49, 0.12, 20);
+    for (const [wx, wz] of [[37, 10], [39, 10]] as const) {
+      const lx = wx - DIEN_MAU.x, lz = wz - DIEN_MAU.z;
+      const mat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 1.0), matM);
+      mat.position.set(lx, y0 + 0.1, lz); mat.receiveShadow = true; dm.g.add(mat);
+      const cu = new THREE.Mesh(cushG2, cushM);
+      cu.position.set(lx, y0 + 0.18, lz); cu.castShadow = true; dm.g.add(cu);
+      seats.push({ x: wx, z: wz, ry: Math.PI });
+    }
+  }
   const nk = extraHouse('nha-khach', NHA_KHACH, NHA_KHACH_PLAT, 'NHÀ KHÁCH', 'nhaKhach', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nk.g, COUPLETS.nhaKhach.am[i].split(',')[0], 0.42, 2.2, i ? nk.hx : -nk.hx, NHA_KHACH_PLAT.y + 1.7, nk.hz + 0.22);
   const tdH = buildHouse('thien-duong', THIEN_DUONG, { hx: THIEN_DUONG_PLAT.hz, hz: THIEN_DUONG_PLAT.hx, y: THIEN_DUONG_PLAT.y }, 'THIỀN ĐƯỜNG', 'thienDuong', 3.1, 5.1, true);
@@ -783,6 +796,14 @@ export function buildTemple(c: TempleCtx) {
         cu.position.set(lx, y0 + 0.18, lz); cu.castShadow = true; g.add(cu);
         const w = twd(lx, lz);
         seats.push({ x: w.x, z: w.z, ry: 3 * Math.PI / 2 });
+      }
+      // 2 bồ đoàn tụng kinh ở CHANT_SEATS (quest v1) — không trùng 10 bồ đoàn có sẵn
+      for (const [lx, lz] of [[0, 2], [0, 4]] as const) {
+        b(1.0, 0.04, 1.0, lx, y0 + 0.1, lz, matM);
+        const cu2 = new THREE.Mesh(cushG, cushM);
+        cu2.position.set(lx, y0 + 0.18, lz); cu2.castShadow = true; g.add(cu2);
+        const w2 = twd(lx, lz);
+        seats.push({ x: w2.x, z: w2.z, ry: Math.PI / 2 });
       }
       const mohM = lamb(0x5a3a22, { roughness: 0.8 });
       b(0.5, 0.12, 0.35, 0.95, y0 + 0.06, -hzL + 1.2, mohM);
