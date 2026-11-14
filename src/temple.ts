@@ -62,7 +62,7 @@ export function buildTemple(c: TempleCtx) {
   const hall = buildHall(c);
   seats.push(...hall.seats); zones.push(...hall.zones);
 
-  // ---- meditation decks: bồ đoàn rộng hơn 30%, xếp thưa, viền cánh sen ----
+  // ---- meditation decks: bồ đoàn cùng cỡ điện chính, xếp thưa, viền cánh sen ----
   const woodM = lamb(0xffffff, { map: woodTexture([5, 3]) });
   const matM = lamb(0xe8b83a, { roughness: 0.95 });
   // bước hàng 1.5 → 1.9, bước cột 1.3 → 1.7 → 7×7 chỗ mỗi dãy (98 chỗ cả hai dãy)
@@ -109,7 +109,7 @@ export function buildTemple(c: TempleCtx) {
   petalMesh.instanceMatrix.needsUpdate = true;
   if (petalMesh.instanceColor) petalMesh.instanceColor.needsUpdate = true;
   scene.add(mats, petalMesh);
-  const deckZafu = buildZafuParts(0.49, 0.12, DECK.y + 0.16, deckZafuPos);
+  const deckZafu = buildZafuParts(0.38, 0.10, DECK.y + 0.16, deckZafuPos);
   for (const zm of [deckZafu.body, deckZafu.ring, deckZafu.button]) { zm.castShadow = true; scene.add(zm); }
 
   // ---- covered corridors (hành lang) ----
@@ -687,7 +687,7 @@ export function buildTemple(c: TempleCtx) {
       dmZafuPos.push({ x: lx, z: lz });
       seats.push({ x: wx, z: wz, ry: Math.PI });
     }
-    const dmZafu = buildZafuParts(0.49, 0.12, y0 + 0.24, dmZafuPos);
+    const dmZafu = buildZafuParts(0.38, 0.10, y0 + 0.24, dmZafuPos);
     for (const zm of [dmZafu.body, dmZafu.ring, dmZafu.button]) { zm.castShadow = true; dm.g.add(zm); }
     // Tượng Quan Âm ngồi (GLB guanyin-ngoi, cùng pipeline tượng hành lang) trên bệ đá sau 2 bồ đoàn, mặt ra cửa (+z).
     const gmZ = 8.65;
@@ -863,7 +863,7 @@ export function buildTemple(c: TempleCtx) {
       const moh = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), mohM);
       moh.scale.set(0.45, 0.3, 0.3); moh.position.set(0.95, y0 + 0.27, -hzL + 1.2); moh.castShadow = true; g.add(moh);
       mergeStaticByMaterial(g); scene.add(g);
-      const tdZ = buildZafuParts(0.49, 0.12, y0 + 0.24, tdZPos);
+      const tdZ = buildZafuParts(0.38, 0.10, y0 + 0.24, tdZPos);
       for (const zm of [tdZ.body, tdZ.ring, tdZ.button]) { zm.castShadow = true; g.add(zm); }
       colliders.push({ ...twd(1.0, -hzL + 1.6), r: 0.15 });
     }

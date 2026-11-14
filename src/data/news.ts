@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 43;
+export const LATEST_NEWS_ID = 44;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bồ đoàn ngoài sân và các điện giống điện chính',
+    date: '2026-11-14',
+    items: [
+      'Bồ đoàn ở sân thiền, Điện Mẫu và Thiền Đường giờ cùng kích thước với bồ đoàn trong Chính Điện, chùa nhìn nhất quán hơn.',
+      'Vị trí ngồi, chiều cao mặt đệm và chiếu giữ nguyên nên ngồi tụng và lạy Phật hoạt động như trước.',
+    ],
+  },
   {
     title: 'Bồ đoàn mới kiểu zafu',
     date: '2026-11-14',
