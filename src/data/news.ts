@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 45;
+export const LATEST_NEWS_ID = 46;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đàn chim thành chim cổ đỏ cỡ chim sẻ, mèo Mướp to gấp đôi',
+    date: '2026-11-14',
+    items: [
+      'Đàn chim mặt đất giờ là chim cổ đỏ (robin) cỡ chim sẻ, có clip nhảy, mổ đất và đứng yên, thay cho gà con và vẹt to trước đây.',
+      'Mèo Mướp to gấp đôi nên dễ thấy hơn; cho chim ăn, cho chó mèo ăn và các nhiệm vụ liên quan không đổi.',
+    ],
+  },
   {
     title: 'Dẫn đường tới chợ không còn đứng yên',
     date: '2026-11-14',

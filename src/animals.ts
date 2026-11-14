@@ -15,23 +15,26 @@ interface Ent {
   curName: string;
   placed: boolean;
   label: THREE.Sprite | null;
+  clipMap?: Record<string, string>;
 }
 
-interface Spec { id: string; kind: Kind; file: string; name?: string; dark?: boolean }
+interface Spec { id: string; kind: Kind; file: string; name?: string; dark?: boolean; scale?: number; labelY?: number; clipMap?: Record<string, string> }
+
+const ROBIN_CLIPS: Record<string, string> = { walk: 'A_Hop_01', eat: 'A_PeckGround_01', idle: 'A_Idle_01' };
 
 const SPECS: Spec[] = [
   { id: 'vang', kind: 'dog', file: 'animal-dog', name: 'Vàng' },
   { id: 'den', kind: 'dog', file: 'animal-dog', name: 'Đen', dark: true },
-  { id: 'muop', kind: 'cat', file: 'animal-cat', name: 'Mướp' },
+  { id: 'muop', kind: 'cat', file: 'animal-cat', name: 'Mướp', scale: 2, labelY: 1.6 },
   { id: 'owl1', kind: 'owl', file: 'animal-owl' },
   { id: 'owl2', kind: 'owl', file: 'animal-owl' },
   { id: 'owl3', kind: 'owl', file: 'animal-owl' },
-  { id: 'parrot', kind: 'parrot', file: 'animal-parrot' },
-  { id: 'chick', kind: 'chick', file: 'animal-chick' },
-  { id: 'parrot2', kind: 'parrot', file: 'animal-parrot' },
-  { id: 'parrot3', kind: 'parrot', file: 'animal-parrot' },
-  { id: 'chick2', kind: 'chick', file: 'animal-chick' },
-  { id: 'chick3', kind: 'chick', file: 'animal-chick' },
+  { id: 'parrot', kind: 'parrot', file: 'american-robin', clipMap: ROBIN_CLIPS },
+  { id: 'chick', kind: 'chick', file: 'american-robin', clipMap: ROBIN_CLIPS },
+  { id: 'parrot2', kind: 'parrot', file: 'american-robin', clipMap: ROBIN_CLIPS },
+  { id: 'parrot3', kind: 'parrot', file: 'american-robin', clipMap: ROBIN_CLIPS },
+  { id: 'chick2', kind: 'chick', file: 'american-robin', clipMap: ROBIN_CLIPS },
+  { id: 'chick3', kind: 'chick', file: 'american-robin', clipMap: ROBIN_CLIPS },
 ];
 
 const LABEL_Y = 1.0;
@@ -41,7 +44,7 @@ const ents = new Map<string, Ent>();
 let snap = new Map<string, AnimalState>();
 let namesOn: () => boolean = () => true;
 
-function makeLabel(text: string): THREE.Sprite {
+function makeLabel(text: string, y = LABEL_Y): THREE.Sprite {
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 64;
@@ -61,7 +64,7 @@ function makeLabel(text: string): THREE.Sprite {
   tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
   sp.scale.set(0.9, 0.225, 1);
-  sp.position.y = LABEL_Y;
+  sp.position.y = y;
   return sp;
 }
 
@@ -89,7 +92,8 @@ function candidates(kind: Kind, anim: AnimalAnim): string[] {
 }
 
 function play(e: Ent, anim: AnimalAnim): void {
-  const name = candidates(e.kind, anim).find((n) => e.clips.has(n)) ?? (e.clips.has('idle') ? 'idle' : null);
+  const map = e.clipMap;
+  const name = candidates(e.kind, anim).map((n) => map?.[n] ?? n).find((n) => e.clips.has(n)) ?? [map?.idle, 'idle'].find((n) => n !== undefined && e.clips.has(n)) ?? null;
   if (!name || name === e.curName) return;
   const next = e.mixer.clipAction(e.clips.get(name) as THREE.AnimationClip);
   next.reset().fadeIn(0.2).play();
@@ -109,17 +113,18 @@ export function initAnimals(scene: THREE.Scene, showNames?: () => boolean): void
       const root = new THREE.Group();
       const model = SkeletonUtils.clone(gltf.scene);
       if (sp.dark) darken(model);
+      if (sp.scale) model.scale.setScalar(sp.scale);
       root.add(model);
       root.visible = false;
       const clips = new Map<string, THREE.AnimationClip>();
       for (const c of gltf.animations) clips.set(c.name, c);
       let label: THREE.Sprite | null = null;
       if (sp.name) {
-        label = makeLabel(sp.name);
+        label = makeLabel(sp.name, sp.labelY);
         root.add(label);
       }
       scene.add(root);
-      ents.set(sp.id, { id: sp.id, kind: sp.kind, root, mixer: new THREE.AnimationMixer(model), clips, cur: null, curName: '', placed: false, label });
+      ents.set(sp.id, { id: sp.id, kind: sp.kind, root, mixer: new THREE.AnimationMixer(model), clips, cur: null, curName: '', placed: false, label, clipMap: sp.clipMap });
     }
   });
 }
