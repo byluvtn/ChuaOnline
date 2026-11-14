@@ -10,6 +10,7 @@ import { clampToCompound, resolveBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
+import { openFestivals } from './features/festivals';
 import { createPost } from './post';
 import { createWorld } from './world';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
@@ -1208,6 +1209,8 @@ const talkBtn = $('talkBtn');
 talkBtn.onclick = () => { const n = nearestTalkNpc(); if (n) openDialogue(n); };
 const donorBtn = $('donorBtn');
 donorBtn.onclick = () => openDonorsPanel(panelCtx());
+const noticeBtn = $('noticeBtn');
+noticeBtn.onclick = () => openFestivals();
 // quest tracker: styled once here (no CSS file change); display is driven by updateTracker().
 const questTrackerEl = $('questTracker');
 questTrackerEl.hidden = false;
@@ -1227,6 +1230,7 @@ questTrackerEl.onclick = (e) => {
   trackerRefresh?.call(questTrackerEl, e);
 };
 const DONOR_BOARD = { x: -5, z: 32 };
+const NOTICE_BOARD = { x: 5, z: 32 };
 function nearestTalkNpc(): string | null {
   if (!me) return null;
   let best: string | null = null; let bestD = 2; // design: approach within ~2 m
@@ -1305,6 +1309,15 @@ function updateDonorBtn() {
   if (donorBtn.hidden) donorBtn.hidden = false;
   const lb = donorBtn.querySelector('.lb')!;
   if (lb.textContent !== 'Vinh danh') lb.textContent = 'Vinh danh';
+}
+
+function updateNoticeBtn() {
+  if (!me) { if (!noticeBtn.hidden) noticeBtn.hidden = true; return; }
+  const d = Math.hypot(NOTICE_BOARD.x - me.char.root.position.x, NOTICE_BOARD.z - me.char.root.position.z);
+  if (d > 3.5) { if (!noticeBtn.hidden) noticeBtn.hidden = true; return; }
+  if (noticeBtn.hidden) noticeBtn.hidden = false;
+  const lb = noticeBtn.querySelector('.lb')!;
+  if (lb.textContent !== 'Ngày lễ') lb.textContent = 'Ngày lễ';
 }
 
 function npcPos(id: string | undefined): Pt | null {
@@ -1872,6 +1885,7 @@ function loop(now: number = performance.now()) {
   updateTeacherBtn();
   updateTalkBtn();
   updateDonorBtn();
+  updateNoticeBtn();
   updateAnimalBtn();
   updateNpcMarkers();
   updateTracker();

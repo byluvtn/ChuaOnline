@@ -1123,6 +1123,25 @@ export function buildTemple(c: TempleCtx) {
     scene.add(board);
     colliders.push({ x: -5, z: 32, r: 1.0 });
   }
+  // ---- notice board (festival days) facing the honor board across the path ----
+  {
+    const noticeBoard = new THREE.Group();
+    const nPostM = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 });
+    for (const px of [-1.2, 1.2]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.0, 0.14), nPostM);
+      p.position.set(px, 1.0, 0); p.castShadow = true; noticeBoard.add(p);
+    }
+    const nPanel = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x9a6a35, roughness: 0.8 }));
+    nPanel.position.set(0, 1.15, 0); nPanel.castShadow = true; noticeBoard.add(nPanel);
+    const nTitle = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture('BẢNG THÔNG BÁO') }));
+    nTitle.position.set(0, 1.7, 0.09); noticeBoard.add(nTitle);
+    const nNote = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('CÁC NGÀY LỄ LỚN') }));
+    nNote.position.set(0, 0.55, 0.09); noticeBoard.add(nNote);
+    noticeBoard.position.set(5, 0, 32);
+    noticeBoard.rotation.y = -Math.PI / 2;
+    scene.add(noticeBoard);
+    colliders.push({ x: 5, z: 32, r: 1.0 });
+  }
   const gateSeal = sealArchitectureJoints(gate, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump gate: filled=${gateSeal.filled} remaining=${gateSeal.remaining.length} ` + JSON.stringify(gateSeal.remaining));
   zones.push({ x: 0, z: WALL.zS, r: 6, id: 'tamQuan' });

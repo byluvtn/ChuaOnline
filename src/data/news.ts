@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 75;
+export const LATEST_NEWS_ID = 76;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bảng thông báo ngày lễ lớn trong năm',
+    date: '2026-11-15',
+    items: [
+      'Bảng thông báo mới đặt đối diện bảng vinh danh qua lối lên hồ cá koi (phía Đông lối đi), mặt quay về phía bảng vinh danh.',
+      'Lại gần trong 3,5 m, bấm nút "Ngày lễ" để xem 13 ngày lễ lớn trong năm theo âm lịch: Di Lặc 1/1, Thượng Nguyên 15/1, Phật xuất gia 8/2, Niết-bàn 15/2, Quan Âm đản sinh 19/2, Phật Đản 15/4, Quan Âm thành đạo 19/6, Vu Lan 15/7, Địa Tạng 30/7, Quan Âm xuất gia 19/9, Hạ Nguyên 15/10, A Di Đà 17/11, Phật thành đạo 8/12.',
+      'Danh sách xếp theo lễ sắp tới gần nhất, mỗi lễ ghi "còn bao nhiêu ngày"; lễ nào đúng hôm nay thì ghi "Hôm nay".',
+    ],
+  },
   {
     title: 'Sư Thầy Trực Ban đi lại trong nhà ghi công đức',
     date: '2026-11-15',
