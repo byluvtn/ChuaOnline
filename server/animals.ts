@@ -78,7 +78,7 @@ function mkOwl(id: string, R: number, H: number, ang: number): A {
 
 export function createAnimals(room: string): A[] {
   const list = [
-    mk('vang', 'dog', 'Vàng', 0, 6, 1.2), mk('den', 'dog', 'Đen', 4, 8, 1.2), mk('muop', 'cat', 'Mướp', -4, 4, 1.0),
+    mk('vang', 'dog', 'Vàng', 0, 6, 1.2), mk('den', 'dog', 'Đen', 4, 8, 1.2), mk('lab', 'dog', 'Labrador', -8, 10, 1.2), mk('muop', 'cat', 'Mướp', -4, 4, 1.0),
     mkOwl('owl1', 30, 18, 0), mkOwl('owl2', 40, 22, 2.1), mkOwl('owl3', 50, 26, 4.2),
     mk('parrot', 'parrot', 'Vẹt', -47, -27, 1.2, { x: -47, z: -27 }),
     mk('chick', 'chick', 'Gà con', 30, -31, 1.2, { x: 30, z: -31 }),

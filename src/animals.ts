@@ -21,11 +21,13 @@ interface Ent {
 interface Spec { id: string; kind: Kind; file: string; name?: string; dark?: boolean; scale?: number; labelY?: number; clipMap?: Record<string, string> }
 
 const ROBIN_CLIPS: Record<string, string> = { walk: 'A_Hop_01', eat: 'A_PeckGround_01', idle: 'A_Idle_01' };
+const LABRADOR_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Sit', idle: 'Idle' };
 
 const SPECS: Spec[] = [
   { id: 'vang', kind: 'dog', file: 'animal-dog', name: 'Vàng' },
   { id: 'den', kind: 'dog', file: 'animal-dog', name: 'Đen', dark: true },
   { id: 'muop', kind: 'cat', file: 'animal-cat', name: 'Mướp', scale: 2, labelY: 1.6 },
+  { id: 'lab', kind: 'dog', file: 'labrador-lite', name: 'Labrador', scale: 0.45, clipMap: LABRADOR_CLIPS },
   { id: 'owl1', kind: 'owl', file: 'animal-owl' },
   { id: 'owl2', kind: 'owl', file: 'animal-owl' },
   { id: 'owl3', kind: 'owl', file: 'animal-owl' },

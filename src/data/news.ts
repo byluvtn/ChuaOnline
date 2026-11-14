@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 49;
+export const LATEST_NEWS_ID = 50;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thêm chó Labrador làm chó thứ 3 trong chùa',
+    date: '2026-11-14',
+    items: [
+      'Chó Labrador (bản làm nhẹ từ 72 nghìn mặt xuống còn gần 6 nghìn mặt) gia nhập sân chùa làm chó thứ 3, cao khoảng 6 tấc, đi lại quanh sân và vườn như 2 chó còn lại.',
+      'Cho chó mèo ăn (Q23) và tìm chó mèo đi lạc (Q24) không đổi; Labrador cũng được cho ăn như 2 chó kia.',
+    ],
+  },
   {
     title: 'Bảng ước nguyện, đèn đá, vườn cát và hành lang cao hơn',
     date: '2026-11-14',
