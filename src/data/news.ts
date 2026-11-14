@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 69;
+export const LATEST_NEWS_ID = 70;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bảng vinh danh hiện top 10 công đức',
+    date: '2026-11-15',
+    items: [
+      'Bảng vinh danh bên đường lên hồ cá Koi giờ hiện thật 10 phật tử có công đức cao nhất: hạng, tên, số xu và số công đức.',
+      'Bảng tự cập nhật ngay sau khi bạn đóng góp, khi có người khác đóng góp từ 50 xu trở lên, và khi bạn vào chùa.',
+    ],
+  },
   {
     title: 'Vào lại game vẫn đứng yên chỗ cũ',
     date: '2026-11-15',

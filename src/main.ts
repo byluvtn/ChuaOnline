@@ -415,6 +415,22 @@ function sendJoin() {
   $('roomName').textContent = room.name;
   socket!.emit('join', { name: nameInput.value, outfit, color, room: roomId, resume: resumeToken });
 }
+// Bảng vinh danh: tải top 10 khi vào phòng; khi có donation thì tải lại, tối thiểu cách nhau HONOR_MIN_GAP ms.
+const HONOR_MIN_GAP = 3000;
+let honorLast = 0;
+let honorTimer: number | undefined;
+function loadHonor() {
+  honorLast = performance.now();
+  socket?.emit('donors:get', (rows: { name: string; coins?: number; merit?: number }[]) => {
+    if (!Array.isArray(rows)) return;
+    world.setHonorBoard(rows.slice(0, 10).map((r) => ({ name: String(r.name ?? ''), coins: Number(r.coins) || 0, merit: Number(r.merit) || 0 })));
+  });
+}
+function loadHonorThrottled() {
+  const wait = honorLast + HONOR_MIN_GAP - performance.now();
+  if (wait <= 0) loadHonor();
+  else if (honorTimer === undefined) honorTimer = window.setTimeout(() => { honorTimer = undefined; loadHonor(); }, wait);
+}
 function connect() {
   socket = io({ auth: { token: getToken() } });
   const s = socket;
@@ -442,6 +458,7 @@ function connect() {
     meditation = w.meditation;
     updateMeditationHud();
     updateProfileHud();
+    loadHonor();
   });
   s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); });
   s.on('level:bonus', ({ level, coins, merit }: { level: number; coins: number; merit: number }) => {
@@ -489,7 +506,10 @@ function connect() {
   });
   s.on('chat', addChat);
   s.on('lantern', (l: Lantern) => addLanternFeed(l, true));
-  s.on('donation', (d: { name: string; amount: number; text: string }) => { enqueueDonate(d.text || `🙏 Cảm ơn phật tử ${d.name} đã đóng góp ${d.amount.toLocaleString('vi-VN')} xu giúp xây dựng chùa`); });
+  s.on('donation', (d: { name: string; amount: number; text: string }) => {
+    enqueueDonate(d.text || `🙏 Cảm ơn phật tử ${d.name} đã đóng góp ${d.amount.toLocaleString('vi-VN')} xu giúp xây dựng chùa`);
+    loadHonorThrottled();
+  });
   s.on('player:action', ({ id, kind }: { id: string; kind: ActionKind }) => {
     const r = remotes.get(id);
     if (!r || id === myId) return;
@@ -536,6 +556,7 @@ function switchRoom(id: string) {
 const panelCtx = () => ({
   socket: socket!, profile: () => profile, quests: () => quests, room: () => roomId, switchRoom, toast,
   guideTo: (qid: string) => { startGuide(qid); },
+  onDonated: () => loadHonor(),
 });
 $('panelClose').onclick = closePanel;
 $('panel').addEventListener('pointerdown', (e) => { if (e.target === $('panel')) closePanel(); });

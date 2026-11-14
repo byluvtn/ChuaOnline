@@ -108,6 +108,53 @@ export function signTexture(text: string) {
   return t;
 }
 
+export interface HonorRow { name: string; coins: number; merit: number }
+
+/** Mặt bảng vinh danh 1024x424. rows = null: đang tải; rows rỗng: chưa có ai. */
+export function honorBoardTexture(rows: HonorRow[] | null) {
+  const W = 1024, H = 424;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d')!;
+  const font = (px: number) => `700 ${px}px "Times New Roman", serif`;
+  g.fillStyle = '#3b1f12'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#e8b64a'; g.lineWidth = 4; g.strokeRect(6, 6, W - 12, H - 12);
+  g.textBaseline = 'middle';
+
+  if (!rows || rows.length === 0) {
+    g.fillStyle = '#f4d27a'; g.font = font(40); g.textAlign = 'center';
+    g.fillText(rows ? 'Chưa có phật tử nào đóng góp' : 'Đang tải…', W / 2, H / 2);
+  } else {
+    const RANK_X = 66, NAME_X = 84, XU_X = 750, MERIT_X = 985;
+    const top = 14, headH = 40, rowH = 36;
+    const headY = top + headH / 2;
+    g.fillStyle = '#c9a45a'; g.font = font(26);
+    g.textAlign = 'left'; g.fillText('Hạng · Phật tử', 30, headY);
+    g.textAlign = 'right';
+    g.fillText('Xu', XU_X, headY);
+    g.fillText('Công đức', MERIT_X, headY);
+    g.strokeStyle = 'rgba(232,182,74,.5)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(24, top + headH); g.lineTo(W - 24, top + headH); g.stroke();
+
+    const medal = ['#ffd45a', '#e6e6e6', '#e0a070'];
+    rows.slice(0, 10).forEach((r, i) => {
+      const y = top + headH + rowH * i + rowH / 2;
+      const chars = Array.from(r.name);
+      const name = chars.length > 14 ? chars.slice(0, 14).join('') + '…' : r.name;
+      g.fillStyle = medal[i] ?? '#f4d27a'; g.font = font(30);
+      g.textAlign = 'right'; g.fillText(`${i + 1}.`, RANK_X, y);
+      g.textAlign = 'left'; g.fillText(name, NAME_X, y, 456);
+      g.textAlign = 'right';
+      g.fillText(r.coins.toLocaleString('vi-VN'), XU_X, y, 190);
+      g.fillText(r.merit.toLocaleString('vi-VN'), MERIT_X, y, 215);
+    });
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
 /* ------------------------------------------------------------------ *
  * Khuôn mặt Chibi vẽ bằng CanvasTexture 2D
  * Trả về texture trong suốt, chỉ chứa nét (mắt cong, miệng, má hồng) để

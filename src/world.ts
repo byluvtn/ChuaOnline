@@ -39,6 +39,7 @@ export interface World {
   groundY(x: number, z: number): number;
   ringBell(): void;
   ringDrum(): void;
+  setHonorBoard(rows: { name: string; coins: number; merit: number }[]): void;
 }
 
 const lamb = (c: number, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) =>
@@ -472,5 +473,5 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     sun.position.set(focus.x - 26, 38, focus.z + 22);
   };
 
-  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum };
+  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard };
 }

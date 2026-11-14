@@ -13,6 +13,7 @@ export interface PanelCtx {
   switchRoom: (id: string) => void;
   toast: (t: string) => void;
   guideTo: (qid: string) => void;
+  onDonated?: () => void;
 }
 export type PanelKind = 'shop' | 'bag' | 'quests' | 'rank' | 'rooms' | 'chant' | 'teacher';
 type Cur = PanelKind | 'custom';
@@ -131,6 +132,7 @@ export function openDonatePanel(ctx: PanelCtx) {
         }
         ctx.toast(`Đã đóng góp ${n} xu · +${n} công đức${r.broadcast ? ' · Mọi người trong chùa đều thấy' : ''}`);
         closePanel();
+        ctx.onDonated?.();
       });
     };
     const laterBtn = h('button', { onclick: () => closePanel() }, 'Để sau');

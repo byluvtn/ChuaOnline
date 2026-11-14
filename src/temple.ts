@@ -12,7 +12,7 @@ import { loadModel, fitModel } from './models';
 import { makeGoldMaterial } from './statue-scan';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
-import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
+import { glowTexture, honorBoardTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture, type HonorRow } from './textures';
 import { buildZafuParts } from './zafu';
 
 export interface Seat { x: number; z: number; ry: number; rest?: boolean }
@@ -1098,7 +1098,8 @@ export function buildTemple(c: TempleCtx) {
     labelBoard(gate, COLUMN_LABELS.tamQuan[i], 0.5, 4.2, (i ? -1 : 1) * (WALL.gate - 0.9), 3.2, 0.64);
   }
   gate.position.set(0, 0, WALL.zS); scene.add(gate);
-  // ---- honor board (donation top 10) beside the path up to the Koi pond ----
+  // ---- honor board (top 10 công đức, cập nhật động) beside the path up to the Koi pond ----
+  let setHonorBoard: (rows: HonorRow[]) => void = () => {};
   {
     const board = new THREE.Group();
     const postM = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 });
@@ -1110,8 +1111,14 @@ export function buildTemple(c: TempleCtx) {
     panel.position.set(0, 1.15, 0); panel.castShadow = true; board.add(panel);
     const title = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture('BẢNG VINH DANH') }));
     title.position.set(0, 1.7, 0.09); board.add(title);
-    const note = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('TOP 10 CÔNG ĐỨC') }));
-    note.position.set(0, 0.55, 0.09); board.add(note);
+    const listMat = new THREE.MeshBasicMaterial({ map: honorBoardTexture(null) });
+    const list = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.05), listMat);
+    list.position.set(0, 0.82, 0.09); board.add(list);
+    setHonorBoard = (rows) => {
+      const old = listMat.map;
+      listMat.map = honorBoardTexture(rows);
+      old?.dispose();
+    };
     board.position.set(-5, 0, 32);
     scene.add(board);
     colliders.push({ x: -5, z: 32, r: 1.0 });
@@ -1506,5 +1513,5 @@ export function buildTemple(c: TempleCtx) {
   // bảng chữ Việt trên mọi cột đã gắn inscription (kể cả cột do hall.ts dựng)
   relabelColumns(scene);
 
-  return { seats, update, ringBell, ringDrum, zoneAt, inLake, pond: pondHandle };
+  return { seats, update, ringBell, ringDrum, zoneAt, inLake, pond: pondHandle, setHonorBoard };
 }
