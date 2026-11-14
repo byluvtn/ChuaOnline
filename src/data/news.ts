@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 63;
+export const LATEST_NEWS_ID = 64;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tên NPC không còn nhảy lên xuống',
+    date: '2026-11-14',
+    items: [
+      'Tên nhân vật và NPC giờ đứng cố định trên đầu — chỉ dời khi tên chồng nhau thật, và chỉ đổi sau khi chồng nhau một lúc (không đổi vì chồng thoáng qua); khi nhiều NPC tụ lại, tên xếp tầng gọn gàng, không còn trượt lên trượt xuống liên tục.',
+      'Dấu "!" nhiệm vụ và tên người chơi vẫn không bao giờ bị ẩn hay dời. Lúc nhiều NPC mới tụ lại, tên cần khoảng nửa giây để xếp xong rồi đứng yên.',
+    ],
+  },
   {
     title: 'Quầy chợ đều cỡ, trải đều, thêm người bán',
     date: '2026-11-14',

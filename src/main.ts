@@ -192,7 +192,7 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number; labelShiftY?: number }
+interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number; labelShiftY?: number; labelOrder?: number; labelDy?: number; labelWant?: number; labelWantN?: number }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
 let myId = '';
@@ -1634,6 +1634,8 @@ function setLabelShift(r: Remote, target: number, k: number): void {
   }
 }
 
+let labelSeq = 0;
+
 function updateLabelLayout(dt: number): void {
   const W = innerWidth;
   const H = innerHeight;
@@ -1645,6 +1647,7 @@ function updateLabelLayout(dt: number): void {
 
   const collect = (owner: Remote, rank: number): void => {
     const label = owner.char.label;
+    if (owner.labelOrder === undefined) owner.labelOrder = ++labelSeq;
     const shift = rank === 0 ? 0 : (owner.labelShiftY ?? 0);
     label.visible = settings.showNames;
     const frac: unknown = label.userData.chipFrac;
@@ -1659,7 +1662,12 @@ function updateLabelLayout(dt: number): void {
       ok = depth > 0.1;
     }
     if (!ok || typeof frac !== 'number') {
-      if (rank > 0) setLabelShift(owner, 0, k);
+      if (rank > 0) {
+        setLabelShift(owner, 0, k);
+        owner.labelDy = 0;
+        owner.labelWant = 0;
+        owner.labelWantN = 0;
+      }
       return;
     }
     const dist = cp.distanceTo(_lbPos);
@@ -1690,7 +1698,7 @@ function updateLabelLayout(dt: number): void {
     collect(r, m === '!' || m === '?' ? 1 : 2);
   });
 
-  entries.sort((a, b) => a.rank - b.rank || a.dist - b.dist);
+  entries.sort((a, b) => a.rank - b.rank || (a.owner.labelOrder ?? 0) - (b.owner.labelOrder ?? 0));
 
   const placed: LabelRect[] = [];
   const rectAt = (e: LabelEntry, dy: number): LabelRect => ({
@@ -1700,35 +1708,54 @@ function updateLabelLayout(dt: number): void {
     y1: e.cy + dy + e.yBot,
   });
   const hits = (r: LabelRect): boolean =>
-    placed.some((p) => r.x0 < p.x1 && r.x1 > p.x0 && r.y0 < p.y1 && r.y1 > p.y0);
+    placed.some((p) => r.x0 < p.x1 - 1 && r.x1 > p.x0 + 1 && r.y0 < p.y1 - 1 && r.y1 > p.y0 + 1);
 
   for (const e of entries) {
+    const o = e.owner;
     let dy = 0;
-    let rect = rectAt(e, 0);
     let fits = true;
-    if (e.rank > 0 && hits(rect)) {
-      fits = false;
+    if (e.rank > 0) {
       const step = e.h + 6; // +6px slot gap absorbs lerp/depth drift (live probe showed 1px slivers at +4)
-      for (let s = 1; s <= 5 && !fits; s++) {
-        const c = rectAt(e, -s * step);
-        if (c.y0 < 8) break;
-        if (!hits(c)) { dy = -s * step; rect = c; fits = true; }
+      const cur = o.labelDy ?? 0;
+      let want = cur;
+      if (hits(rectAt(e, cur))) {
+        // current slot overlaps: take the nearest free slot to cur
+        let found = false;
+        for (let d = 1; d <= 10 && !found; d++) {
+          for (const c of [cur - d * step, cur + d * step]) {
+            if (Math.abs(c) > 5 * step + 1) continue;
+            const r = rectAt(e, c);
+            if (r.y0 < 8 || r.y1 > H - 8) continue;
+            if (!hits(r)) { want = c; found = true; break; }
+          }
+        }
+        if (!found && e.rank === 2) fits = false;
+      } else {
+        // current slot is free: stay; only go home when dy=0 is free
+        want = hits(rectAt(e, 0)) ? cur : 0;
       }
-      for (let s = 1; s <= 5 && !fits; s++) {
-        const c = rectAt(e, s * step);
-        if (c.y1 > H - 8) break;
-        if (!hits(c)) { dy = s * step; rect = c; fits = true; }
+      if (Math.abs(want - cur) < 2) {
+        o.labelWant = cur;
+        o.labelWantN = 0;
+      } else {
+        if (o.labelWant === undefined || Math.abs(o.labelWant - want) >= 2) { o.labelWant = want; o.labelWantN = 0; }
+        o.labelWantN = (o.labelWantN ?? 0) + 1;
+        if (o.labelWantN >= 10) { o.labelDy = want; o.labelWantN = 0; }
       }
+      dy = o.labelDy ?? 0;
     }
     if (!fits) {
       e.label.visible = false;
-      setLabelShift(e.owner, 0, k);
+      setLabelShift(o, 0, k);
+      o.labelDy = 0;
+      o.labelWant = 0;
+      o.labelWantN = 0;
       continue;
     }
-    placed.push(rect);
+    placed.push(rectAt(e, dy));
     if (e.rank > 0) {
       const targetWorld = ((-dy / H) * 2 * e.depth * tanHalf);
-      setLabelShift(e.owner, targetWorld, k);
+      setLabelShift(o, targetWorld, k);
     }
   }
 }
