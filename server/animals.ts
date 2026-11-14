@@ -4,7 +4,7 @@ import { routeFrom, nearestNode, ROAD_NODES } from '../shared/roads';
 type P = { x: number; z: number };
 type Mode = 'orbit' | 'toPerch' | 'perch' | 'rise';
 interface A {
-  s: AnimalState; speed: number; cat: boolean; home?: P;
+  s: AnimalState; speed: number; cat: boolean; home?: P; feedTo?: P; feedEat?: number;
   path: P[]; wait: number; eatT: number;
   owl?: { R: number; H: number; ang: number; mode: Mode; target: P; perch: number };
 }
@@ -25,6 +25,14 @@ const pick = <T,>(l: T[]): T => l[Math.floor(Math.random() * l.length)];
 const jitter = (p: P, r: number): P => ({ x: p.x + rnd(-r, r), z: p.z + rnd(-r, r) });
 const nodePt = (id: string): P => { const n = ROAD_NODES.find((n) => n.id === id)!; return { x: n.x, z: n.z }; };
 const route = (from: P, toId: string): P[] => [...routeFrom(from, toId), jitter(nodePt(toId), 1.5)];
+const FLOCK_SPOTS = ['plaza', 'bridgeN', 'bridgeS', 'axisMid', 'hallFront'];
+let flockAnchor: P | null = null;
+let flockMoveAt = 0;
+
+function pickFlockAnchor(): P {
+  const pt = nodePt(pick(FLOCK_SPOTS));
+  return jitter(pt, 2.5);
+}
 const routeToPoint = (from: P, pt: P): P[] => [...routeFrom(from, nearestNode(pt)), pt];
 const set = (a: A, anim: string) => { a.s.anim = anim as AnimalAnim; };
 
@@ -44,10 +52,21 @@ export function createAnimals(room: string): A[] {
   const list = [
     mk('vang', 'dog', 'Vàng', 0, 6, 1.2), mk('den', 'dog', 'Đen', 4, 8, 1.2), mk('muop', 'cat', 'Mướp', -4, 4, 1.0),
     mkOwl('owl1', 30, 18, 0), mkOwl('owl2', 40, 22, 2.1), mkOwl('owl3', 50, 26, 4.2),
-    mk('parrot', 'parrot', 'Vẹt', -47, -27, 0.6, { x: -47, z: -27 }),
-    mk('chick', 'chick', 'Gà con', 30, -31, 0.6, { x: 30, z: -31 }),
+    mk('parrot', 'parrot', 'Vẹt', -47, -27, 1.2, { x: -47, z: -27 }),
+    mk('chick', 'chick', 'Gà con', 30, -31, 1.2, { x: 30, z: -31 }),
+    mk('parrot2', 'parrot', 'Vẹt', -47, -27, 1.2, { x: -47, z: -27 }),
+    mk('parrot3', 'parrot', 'Vẹt', -47, -27, 1.2, { x: -47, z: -27 }),
+    mk('chick2', 'chick', 'Gà con', 30, -31, 1.2, { x: 30, z: -31 }),
+    mk('chick3', 'chick', 'Gà con', 30, -31, 1.2, { x: 30, z: -31 }),
   ];
   rooms.set(room, list);
+  flockAnchor = pickFlockAnchor();
+  for (const a of list) {
+    if (a.s.kind === 'parrot' || a.s.kind === 'chick') {
+      a.home = jitter(flockAnchor, 2.5);
+      a.s.x = a.home.x; a.s.z = a.home.z;
+    }
+  }
   return list;
 }
 const get = (room: string) => rooms.get(room) ?? createAnimals(room);
@@ -92,6 +111,15 @@ function tickOwl(a: A, dt: number) {
 
 function tickWalker(a: A, dt: number) {
   const s = a.s;
+  if (a.feedTo) {
+    const d = step(a, a.feedTo.x, a.feedTo.z, a.speed * dt);
+    set(a, 'walk');
+    if (d < Math.max(0.3, a.speed * dt)) {
+      a.feedTo = undefined;
+      a.eatT = a.feedEat ?? 8;
+    }
+    return;
+  }
   if (a.eatT > 0) { a.eatT -= dt; set(a, 'eat'); return; }
   if (a.path.length) {
     step(a, a.path[0].x, a.path[0].z, a.speed * dt);
@@ -108,6 +136,13 @@ function tickWalker(a: A, dt: number) {
 }
 
 export function tickAnimals(room: string, dt: number) {
+  if (Date.now() > flockMoveAt) {
+    flockAnchor = pickFlockAnchor();
+    for (const a of get(room)) {
+      if (a.s.kind === 'parrot' || a.s.kind === 'chick') a.home = jitter(flockAnchor, 2.5);
+    }
+    flockMoveAt = Date.now() + 120_000 + Math.random() * 60_000;
+  }
   for (const a of get(room)) (a.owl ? tickOwl : tickWalker)(a, dt);
 }
 
@@ -119,6 +154,27 @@ export function setAnimalEating(room: string, id: string, seconds = 8) {
   const a = get(room).find(x => x.s.id === id);
   if (!a || (a.s.kind as string) !== 'dog' && (a.s.kind as string) !== 'cat') return;
   a.eatT = seconds; a.path = [];
+}
+
+export function feedFlock(room: string, x: number, z: number, seconds = 10): void {
+  flockAnchor = pickFlockAnchor();
+  for (const a of get(room)) {
+    if (a.s.kind !== 'parrot' && a.s.kind !== 'chick') continue;
+    a.feedTo = jitter({ x, z }, 1.5);
+    a.feedEat = seconds;
+    a.path = [];
+    a.home = jitter(flockAnchor, 2.5);
+  }
+  flockMoveAt = Date.now() + 150_000;
+}
+
+export function flockCenter(room: string): { x: number; z: number } | null {
+  let n = 0, sx = 0, sz = 0;
+  for (const a of get(room)) {
+    if (a.s.kind !== 'parrot' && a.s.kind !== 'chick') continue;
+    sx += a.s.x; sz += a.s.z; n++;
+  }
+  return n ? { x: sx / n, z: sz / n } : null;
 }
 
 export function triggerLost(room: string): string | null {

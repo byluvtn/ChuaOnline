@@ -28,6 +28,10 @@ const SPECS: Spec[] = [
   { id: 'owl3', kind: 'owl', file: 'animal-owl' },
   { id: 'parrot', kind: 'parrot', file: 'animal-parrot' },
   { id: 'chick', kind: 'chick', file: 'animal-chick' },
+  { id: 'parrot2', kind: 'parrot', file: 'animal-parrot' },
+  { id: 'parrot3', kind: 'parrot', file: 'animal-parrot' },
+  { id: 'chick2', kind: 'chick', file: 'animal-chick' },
+  { id: 'chick3', kind: 'chick', file: 'animal-chick' },
 ];
 
 const LABEL_Y = 1.0;
@@ -164,6 +168,15 @@ export function nearestFeedable(pos: { x: number; z: number }): { id: string; x:
     if (d < bd) { bd = d; best = { id: e.id, x, z }; }
   }
   return best;
+}
+
+export function flockPos(): { x: number; z: number } | null {
+  let n = 0, sx = 0, sz = 0;
+  for (const e of ents.values()) {
+    if ((e.kind !== 'parrot' && e.kind !== 'chick') || !e.root.visible) continue;
+    sx += e.root.position.x; sz += e.root.position.z; n++;
+  }
+  return n ? { x: sx / n, z: sz / n } : null;
 }
 
 export function lostAnimal(): { id: string; x: number; z: number } | null {

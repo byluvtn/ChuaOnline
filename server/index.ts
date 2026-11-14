@@ -15,7 +15,7 @@ import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 import { PHONG_CD } from '../src/layout.js';
-import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost } from './animals.js';
+import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost, flockCenter, feedFlock } from './animals.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const DIST = resolve('dist');
@@ -94,7 +94,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
@@ -462,7 +462,7 @@ io.on('connection', (socket) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const r = await buyItem(itemId, 1);
-    if (r.ok) { await questEvent(s, 'buy'); if (itemId === 'chim_phong_sinh') await questEvent(s, 'buyphongsinh', 1); await pushProfile(s); }
+    if (r.ok) { await questEvent(s, 'buy'); if (itemId === 'chim_phong_sinh') await questEvent(s, 'buyphongsinh', 1); if (itemId === 'thuc_an_chim') await questEvent(s, 'buyfood', 1); await pushProfile(s); }
     cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
   });
 
@@ -474,7 +474,7 @@ io.on('connection', (socket) => {
     if (!item) return cb?.({ ok: false, error: 'Vật phẩm không tồn tại' });
     if (item.kind !== 'consumable') return cb?.({ ok: false, error: 'Mua 5 chỉ áp dụng cho vật phẩm tiêu hao' });
     const r = await buyItem(itemId, 5);
-    if (r.ok) { await questEvent(s, 'buy', 1); if (itemId === 'chim_phong_sinh') await questEvent(s, 'buyphongsinh', 1); await pushProfile(s); }
+    if (r.ok) { await questEvent(s, 'buy', 1); if (itemId === 'chim_phong_sinh') await questEvent(s, 'buyphongsinh', 1); if (itemId === 'thuc_an_chim') await questEvent(s, 'buyfood', 1); await pushProfile(s); }
     cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
   });
 
@@ -552,6 +552,59 @@ io.on('connection', (socket) => {
     setAnimalEating(s.room, a.id, 3);
     reply({ ok: true });
     await pushQuests(s);
+  });
+
+  socket.on('animal:feed', async (payload: { kind: 'bird' | 'pet'; id?: string }, cb?: (r: { ok: boolean; rewarded?: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; rewarded?: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    const kind = payload && payload.kind;
+    if (kind !== 'bird' && kind !== 'pet') return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
+
+    const now = Date.now();
+    if (now - (s.last['animal:feed'] ?? 0) < 2000) {
+      return reply({ ok: false, error: 'Bạn thao tác hơi nhanh, hãy thong thả' });
+    }
+
+    let petId: string | undefined;
+    if (kind === 'bird') {
+      const c = flockCenter(s.room);
+      if (!c) return reply({ ok: false, error: 'Không tìm thấy đàn chim' });
+      if (distTo(s, c.x, c.z) > 3) return reply({ ok: false, error: 'Bạn đứng quá xa đàn chim' });
+    } else {
+      const id = typeof payload.id === 'string' ? payload.id : undefined;
+      const a = id ? getAnimalStates(s.room).find((x) => x.id === id) : undefined;
+      if (!a || (a.kind !== 'dog' && a.kind !== 'cat')) return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
+      if (distTo(s, a.x, a.z) > 3) return reply({ ok: false, error: 'Bạn đứng quá xa' });
+      petId = a.id;
+    }
+    s.last['animal:feed'] = now;
+
+    const foodId = kind === 'bird' ? 'thuc_an_chim' : 'thuc_an_cho_meo';
+    if ((await db.itemQty(s.pid, foodId)) < 1) {
+      return reply({
+        ok: false,
+        error: kind === 'bird'
+          ? 'Bạn chưa có Túi thức ăn cho chim — mua ở quầy Bác Bán Chim Cá'
+          : 'Bạn chưa có Túi thức ăn cho chó mèo — mua ở quầy Bác Bán Chim Cá',
+      });
+    }
+    await db.addItem(s.pid, foodId, -1);
+
+    const rewarded = await db.claimMinigame(s.pid, kind === 'bird' ? 'feed_bird' : 'feed_pet', 3);
+    if (rewarded) await grantRewards(s, 5, 0);
+
+    if (kind === 'bird') {
+      feedFlock(s.room, s.state.x, s.state.z, 10);
+      const q26 = findQuestDef('nq_feed_birds');
+      if (q26 && isNpcQuest(q26)) await advanceNpcQuest(s, q26, 'feed', 1);
+      await pushQuests(s);
+    } else if (petId) {
+      setAnimalEating(s.room, petId, 5);
+    }
+
+    reply({ ok: true, rewarded });
+    await pushProfile(s);
   });
 
   socket.on('quest:find', async (payload: { animalId: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {

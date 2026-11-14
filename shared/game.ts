@@ -80,10 +80,12 @@ export const ITEMS: ShopItem[] = [
   { id: 'vong_co_lan', name: 'Vòng cổ kỳ lân', desc: 'Vòng cổ cho linh thú.', price: 130, kind: 'accessory', icon: '💎', category: 'do_linh_thu', minLevel: 4 },
   { id: 'chim_phong_sinh', name: 'Chim phóng sinh', desc: 'Mua về rồi mang tới bến thả ở hồ phóng sinh để thả. Thả chim nhận 20 công đức.', price: 20, kind: 'consumable', icon: '🐦', category: 'phong_sinh' },
   { id: 'ca_phong_sinh', name: 'Cá phóng sinh', desc: 'Mua về rồi mang tới bến thả ở hồ phóng sinh để thả. Thả cá nhận 10 công đức.', price: 10, kind: 'consumable', icon: '🐟', category: 'phong_sinh' },
+  { id: 'thuc_an_chim', name: 'Túi thức ăn cho chim', desc: 'Cho đàn chim ăn nhận 5 công đức. Dùng 1 lần.', price: 5, kind: 'consumable', icon: '🌾', category: 'phong_sinh' },
+  { id: 'thuc_an_cho_meo', name: 'Túi thức ăn cho chó mèo', desc: 'Cho chó mèo ăn nhận 5 công đức. Dùng 1 lần.', price: 5, kind: 'consumable', icon: '🍖', category: 'phong_sinh' },
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
-export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy' | 'feed' | 'find' | 'release' | 'buyphongsinh';
+export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy' | 'feed' | 'find' | 'release' | 'buyphongsinh' | 'buyfood';
 export type QuestZone =
   | { x: number; z: number; r: number }
   | { x0: number; x1: number; z0: number; z1: number };
@@ -269,6 +271,8 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'nq_find_lost_pet', label: 'Tìm chó mèo đi lạc', event: 'find', target: 2, coins: 25, merit: 12, giver: 'npc2', steps: ['talk', 'find'] },
   { id: 'nq_phongsinh', label: 'Phóng sinh lần đầu', event: 'buy', target: 4, coins: 15, merit: 8,
     giver: 'npc30', receiver: 'npc30', stall: 'stall_phongsinh', zone: Z_PS_PIER, steps: ['talk', 'buyphongsinh', 'release', 'deliver'] },
+  { id: 'nq_feed_birds', label: 'Cho đàn chim ăn', event: 'talk', target: 4, coins: 25, merit: 12,
+    giver: 'npc30', receiver: 'npc30', stall: 'stall_phongsinh', steps: ['talk', 'buyfood', 'feed', 'deliver'] },
 ];
 
 // Chain quests (one-time, ids start with c_)

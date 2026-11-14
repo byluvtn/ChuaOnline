@@ -11,7 +11,7 @@ import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { createPost } from './post';
 import { createWorld } from './world';
-import { initAnimals, updateAnimals, nearestFeedable, lostAnimal } from './animals';
+import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
 import { ACTION_RULES, CHAIN_QUESTS, MARKET_STALLS, NPC_QUESTS, ROOMS, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
@@ -1088,7 +1088,21 @@ function openDialogue(npcId: string): void {
               if (!r.ok) toast(r.error ?? 'Lỗi'); else toast('Đã mua Cá phóng sinh');
             });
           },
-        }, 'Mua Cá phóng sinh · 10 xu')));
+        }, 'Mua Cá phóng sinh · 10 xu'),
+        h('button', {
+          onclick: () => {
+            sock.emit('shop:buy', 'thuc_an_chim', (r: { ok: boolean; error?: string }) => {
+              if (!r.ok) toast(r.error ?? 'Lỗi'); else toast('Đã mua Túi thức ăn cho chim');
+            });
+          },
+        }, 'Mua Túi thức ăn cho chim · 5 xu'),
+        h('button', {
+          onclick: () => {
+            sock.emit('shop:buy', 'thuc_an_cho_meo', (r: { ok: boolean; error?: string }) => {
+              if (!r.ok) toast(r.error ?? 'Lỗi'); else toast('Đã mua Túi thức ăn cho chó mèo');
+            });
+          },
+        }, 'Mua Túi thức ăn cho chó mèo · 5 xu')));
     }
 
     const st = pickRot(dlg.smallTalk);
@@ -1152,23 +1166,24 @@ function myPos(): Pt | null {
 }
 
 const animalBtn = $('animalBtn') as HTMLButtonElement;
-let animalAct: { event: 'feed' | 'find'; id: string } | null = null;
+type AnimalAct = { event: 'feed' | 'find' | 'feedBird' | 'feedPet'; id?: string };
+let animalAct: AnimalAct | null = null;
 animalBtn.addEventListener('click', () => {
   const a = animalAct;
   if (!a || !socket) return;
-  socket.emit(
-    a.event === 'feed' ? 'quest:feed' : 'quest:find',
-    { animalId: a.id },
-    (r: { ok: boolean; error?: string }) => { if (!r.ok) toast(r.error ?? 'Lỗi'); },
-  );
+  const cb = (r: { ok: boolean; error?: string }) => { if (!r.ok) toast(r.error ?? 'Lỗi'); };
+  if (a.event === 'feedBird') socket.emit('animal:feed', { kind: 'bird' }, cb);
+  else if (a.event === 'feedPet') socket.emit('animal:feed', { kind: 'pet', id: a.id }, cb);
+  else socket.emit(a.event === 'feed' ? 'quest:feed' : 'quest:find', { animalId: a.id }, cb);
 });
 
 function updateAnimalBtn() {
   const p = myPos();
-  let act: { event: 'feed' | 'find'; id: string } | null = null;
+  let act: AnimalAct | null = null;
   if (p) {
     for (const q of quests) {
       if (q.claimed || q.progress >= q.target) continue;
+      if (q.id === 'nq_feed_birds') continue; // Q26 step 'feed' đi qua chế độ lặp lại (animal:feed kind bird), không dùng quest:feed
       const step = currentStep(q);
       const a = step === 'feed' ? nearestFeedable(p) : step === 'find' ? lostAnimal() : null;
       if (a && Math.hypot(a.x - p.x, a.z - p.z) <= 2) {
@@ -1177,11 +1192,22 @@ function updateAnimalBtn() {
       }
     }
   }
+  if (!act && p) {
+    const fl = flockPos();
+    const hasBirdFood = (profile?.inventory?.['thuc_an_chim'] ?? 0) > 0;
+    if (fl && hasBirdFood && Math.hypot(fl.x - p.x, fl.z - p.z) <= 3) act = { event: 'feedBird' };
+  }
+  if (!act && p) {
+    const pa = nearestFeedable(p);
+    const hasPetFood = (profile?.inventory?.['thuc_an_cho_meo'] ?? 0) > 0;
+    if (pa && hasPetFood && Math.hypot(pa.x - p.x, pa.z - p.z) <= 3) act = { event: 'feedPet', id: pa.id };
+  }
   animalAct = act;
   if (!act) { if (!animalBtn.hidden) animalBtn.hidden = true; return; }
   if (animalBtn.hidden) animalBtn.hidden = false;
   const lb = animalBtn.querySelector('.lb')!;
-  const label = act.event === 'feed' ? 'Cho ăn' : 'Tìm thấy';
+  const label = act.event === 'feedBird' ? 'Cho chim ăn'
+    : act.event === 'find' ? 'Tìm thấy' : 'Cho ăn';
   if (lb.textContent !== label) lb.textContent = label;
 }
 
@@ -1218,7 +1244,10 @@ function questTarget(q: QuestState): Pt | null {
     if (step === 'visit') return zoneCenter(def.zone);
     if (step === 'buyphongsinh') { const s = MARKET_STALLS.find((x) => x.id === def.stall); return s ? { x: s.x, z: s.z } : null; }
     if (step === 'release') return zoneCenter(def.zone);
-    if (step === 'feed') { const p = myPos(); const a = p ? nearestFeedable(p) : null; return a ? { x: a.x, z: a.z } : null; }
+    if (step === 'feed') {
+      if (q.id === 'nq_feed_birds') return flockPos();
+      const p = myPos(); const a = p ? nearestFeedable(p) : null; return a ? { x: a.x, z: a.z } : null;
+    }
     if (step === 'find') { const a = lostAnimal(); return a ? { x: a.x, z: a.z } : null; }
     return zoneCenter(def.zone);
   }

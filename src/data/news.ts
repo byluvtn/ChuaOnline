@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 39;
+export const LATEST_NEWS_ID = 40;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Cho chim và chó mèo ăn',
+    date: '2026-11-14',
+    items: [
+      'Đàn chim 6 con (3 gà con, 3 vẹt) đậu quanh sân trước chùa, vị trí đổi theo thời gian.',
+      'Mua Túi thức ăn cho chim hoặc Túi thức ăn cho chó mèo ở quầy Bác Bán Chim Cá, mỗi túi 5 xu.',
+      'Lại gần đàn chim hoặc chó mèo rồi bấm Cho ăn: mỗi ngày nhận công đức tối đa 3 lần cho chim và 3 lần riêng cho chó mèo.',
+      'Nhiệm vụ mới: Cho đàn chim ăn — nhận ở Bác Bán Chim Cá.',
+    ],
+  },
   {
     title: 'Sư Phó về chùa và nhiệm vụ mới Q22',
     date: '2026-11-14',

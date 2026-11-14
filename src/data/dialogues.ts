@@ -768,7 +768,14 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questOffer: 'Thí chủ mua giúp bác một con chim phóng sinh rồi mang ra bến thả ở hồ phóng sinh thả nhé, thả xong quay lại đây bác cảm ơn.',
     questReminder: 'Chim thí chủ mua chưa? Mua rồi thì mang ra bến thả ở hồ phóng sinh, thả xong quay lại gặp bác nhé.',
     questDone: 'Thí chủ thả chim rồi à, bác cảm ơn nhiều lắm. Phóng sinh là việc thiện, công đức vô lượng.',
-    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, cá phóng sinh 10 xu một con. Mua về rồi mang ra bến thả ở hồ phóng sinh mà thả nhé.',
+    questLines: {
+      nq_feed_birds: {
+        offer: 'Đàn chim trong chùa hay đậu ở sân trước, thí chủ mua giúp bác một túi thức ăn cho chim rồi ra cho đàn ăn nhé, cho ăn xong quay lại đây bác cảm ơn.',
+        reminder: 'Thí chủ mua túi thức ăn cho chim chưa? Mua rồi thì ra sân trước tìm đàn chim mà cho ăn, xong quay lại gặp bác nhé.',
+        done: 'Đàn chim ăn no rồi, thí chủ có lòng lắm. Cảm ơn thí chủ đã giúp bác.',
+      },
+    },
+    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, cá phóng sinh 10 xu một con. Bác còn bán thức ăn cho chim 5 xu một túi và thức ăn cho chó mèo 5 xu một túi nữa, thí chủ mua về cho chúng ăn lấy phước nhé.',
     smallTalk: [
       'Chim bác nuôi đều khỏe mạnh, thả ra là bay vút lên trời ngay.',
       'Hồ phóng sinh ở phía đông Chính Điện, bến thả ngay mép ao, thí chủ cứ đi thẳng là tới.',
