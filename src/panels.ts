@@ -196,17 +196,24 @@ function shopTile(it: ShopItem, ctx: PanelCtx, p: Profile | null) {
   return tile;
 }
 
+// Luật 01:25: hàng đã bán ở quầy chợ thì shop trung tâm không bán nữa (chỉ ẩn UI, def vẫn giữ trong ITEMS).
+const MARKET_ONLY: ReadonlySet<string> = new Set([
+  'pho_chay', 'com_chay', 'tra_da', 'chim_phong_sinh', 'ca_phong_sinh', 'thuc_an_chim', 'thuc_an_cho_meo',
+]);
+
 function renderShop(body: HTMLElement, ctx: PanelCtx) {
   const p = ctx.profile();
   body.append(h('p', { class: 'hint' }, `Bạn có ${p?.coins ?? 0} xu · cấp ${levelOf(p?.merit ?? 0)}. Nhận xu khi hành lễ và hoàn thành nhiệm vụ.`));
   const tabs = h('div', { class: 'rtabs' });
   const grid = h('div', { class: 'grid' });
   const draw = () => {
-    tabs.replaceChildren(...SHOP_CATEGORIES.map((c) => h('button', {
+    const visible = SHOP_CATEGORIES.filter((c) => ITEMS.some((it) => it.category === c.id && !MARKET_ONLY.has(it.id)));
+    if (visible.length > 0 && !visible.some((c) => c.id === shopTab)) shopTab = visible[0].id;
+    tabs.replaceChildren(...visible.map((c) => h('button', {
       class: shopTab === c.id ? 'on' : '',
       onclick: () => { shopTab = c.id; draw(); },
     }, c.label)));
-    grid.replaceChildren(...ITEMS.filter((it) => it.category === shopTab).map((it) => shopTile(it, ctx, p)));
+    grid.replaceChildren(...ITEMS.filter((it) => it.category === shopTab && !MARKET_ONLY.has(it.id)).map((it) => shopTile(it, ctx, p)));
   };
   draw();
   body.append(tabs, grid);

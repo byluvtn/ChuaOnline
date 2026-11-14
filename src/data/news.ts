@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 80;
+export const LATEST_NEWS_ID = 81;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Shop trung tâm không bán trùng hàng chợ',
+    date: '2026-11-15',
+    items: [
+      '7 món đã bán ở quầy chợ (phở chay, cơm chay, trà đá, chim, cá, thức ăn chim, thức ăn chó mèo) giờ chỉ mua ở quầy, không còn trong mục Cửa hàng.',
+      'Hai mục Đồ ăn và Phóng sinh trong Cửa hàng được ẩn đi khi không còn món nào; mua hàng ở quầy và các nhiệm vụ liên quan vẫn hoạt động bình thường.',
+    ],
+  },
   {
     title: 'Sửa nhân vật chìm trong vườn cát thiền',
     date: '2026-11-15',
