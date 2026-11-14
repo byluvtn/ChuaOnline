@@ -138,7 +138,7 @@ export function openDonatePanel(ctx: PanelCtx) {
       h('p', { class: 'hint' }, `Bạn có ${have.toLocaleString('vi-VN')} xu.`),
       amountInput,
       quickRow,
-      h('p', { class: 'hint' }, '1 xu = 1 công đức · Đóng góp trên 50 xu sẽ được thông báo cho mọi người trong chùa'),
+      h('p', { class: 'hint' }, '1 xu = 1 công đức · Đóng góp từ 50 xu trở lên sẽ được thông báo cho mọi người trong chùa'),
       h('div', { class: 'qrow' }, submitBtn, laterBtn),
     );
   });

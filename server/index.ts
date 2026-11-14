@@ -689,7 +689,7 @@ io.on('connection', (socket) => {
       s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
     }
     await pushProfile(s);
-    const broadcast = n > 50;
+    const broadcast = n >= 50;
     reply({ ok: true, coins: r.coins, merit: r.merit, broadcast });
     // Broadcast SAU commit + pushProfile; fire-and-forget, loi emit khong rollback.
     if (broadcast) {

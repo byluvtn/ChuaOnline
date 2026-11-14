@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 54;
+export const LATEST_NEWS_ID = 55;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đóng góp từ 50 xu trở lên đã được thông báo cho cả chùa',
+    date: '2026-11-14',
+    items: [
+      'Đóng góp công đức từ 50 xu trở lên giờ hiện dải chữ chạy trên màn hình và tin nhắn cảm ơn trên chat chung cho mọi người đang trong chùa.',
+      'Đóng góp dưới 50 xu vẫn nhận đủ công đức (1 xu = 1 công đức) nhưng chỉ hiện thông báo riêng cho người đóng góp.',
+    ],
+  },
   {
     title: 'Sư Thầy Trực Ban và người bán hàng quay đúng hướng',
     date: '2026-11-14',
