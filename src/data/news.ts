@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 64;
+export const LATEST_NEWS_ID = 65;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bồ đoàn ngoài sân bỏ viền hoa sen',
+    date: '2026-11-14',
+    items: [
+      'Bồ đoàn trên 2 sân thiền ngoài trời giờ không còn vành cánh sen hồng/trắng quanh đệm — nhìn gọn như bồ đoàn trong điện, vẫn đủ 98 chỗ ngồi.',
+      'Bồ đoàn trong các điện (Chính Điện, Tam Thế, Thiền Đường, Điện Mẫu, Am Cố, Thủy Đình) giữ nguyên. Vị trí, chiều cao mặt đệm, ngồi/lạy/tụng không đổi.',
+    ],
+  },
   {
     title: 'Tên NPC không còn nhảy lên xuống',
     date: '2026-11-14',

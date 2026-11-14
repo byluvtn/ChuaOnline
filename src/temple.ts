@@ -64,24 +64,17 @@ export function buildTemple(c: TempleCtx) {
   const hall = buildHall(c);
   seats.push(...hall.seats); zones.push(...hall.zones);
 
-  // ---- meditation decks: bồ đoàn cùng cỡ điện chính, xếp thưa, viền cánh sen ----
+  // ---- meditation decks: bồ đoàn cùng cỡ điện chính, xếp thưa ----
   const woodM = lamb(0xffffff, { map: woodTexture([5, 3]) });
   const matM = lamb(0xe8b83a, { roughness: 0.95 });
   // bước hàng 1.5 → 1.9, bước cột 1.3 → 1.7 → 7×7 chỗ mỗi dãy (98 chỗ cả hai dãy)
   const rows = [-17.6, -15.7, -13.8, -11.9, -10.0, -8.1, -6.2];
   const cols = [5.7, 7.4, 9.1, 10.8, 12.5, 14.2, 15.9];
-  const PETALS = 8;
   const nSeats = rows.length * cols.length * 2;
   const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.43, 0.04, 1.36), matM, nSeats);
   const deckZafuPos: { x: number; z: number }[] = [];
-  // 8 cánh sen quanh mỗi bồ đoàn, màu hồng/trắng xen kẽ — 1 draw call cho toàn bộ
-  const petalM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0 });
-  const petalMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 10), petalM, nSeats * PETALS);
-  const petalCols = [new THREE.Color(0xf4978e), new THREE.Color(0xffe3e6)];
-  mats.receiveShadow = petalMesh.receiveShadow = true;
-  petalMesh.castShadow = true;
-  let k = 0, pk = 0;
-  const up = new THREE.Object3D();
+  mats.receiveShadow = true;
+  let k = 0;
   for (const side of [-1, 1]) {
     const w = DECK.x1 - DECK.x0, dz = DECK.z1 - DECK.z0;
     const deck = new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, dz), woodM);
@@ -92,25 +85,11 @@ export function buildTemple(c: TempleCtx) {
       const x = side * cx;
       d.position.set(x, DECK.y + 0.02, z); d.updateMatrix(); mats.setMatrixAt(k, d.matrix);
       deckZafuPos.push({ x, z });
-      // vành cánh sen ngửa nhẹ ra ngoài, hơi chồng nhau như đài sen thật
-      for (let p = 0; p < PETALS; p++) {
-        const a = (p / PETALS) * Math.PI * 2 + 0.2;
-        up.position.set(x + Math.cos(a) * 0.47, DECK.y + 0.14, z + Math.sin(a) * 0.47);
-        up.scale.set(0.15, 0.235, 0.075);
-        up.rotation.set(0, -a + Math.PI / 2, 0);
-        up.rotateX(0.55);                 // ngửa ra ngoài
-        up.updateMatrix();
-        petalMesh.setMatrixAt(pk, up.matrix);
-        petalMesh.setColorAt(pk, petalCols[p % 2]);
-        pk++;
-      }
       seats.push({ x, z, ry: Math.PI }); k++;
     }
   }
   mats.instanceMatrix.needsUpdate = true;
-  petalMesh.instanceMatrix.needsUpdate = true;
-  if (petalMesh.instanceColor) petalMesh.instanceColor.needsUpdate = true;
-  scene.add(mats, petalMesh);
+  scene.add(mats);
   const deckZafu = buildZafuParts(0.38, 0.10, DECK.y + 0.16, deckZafuPos);
   for (const zm of [deckZafu.body, deckZafu.ring, deckZafu.button]) { zm.castShadow = true; scene.add(zm); }
 
