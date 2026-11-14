@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 55;
+export const LATEST_NEWS_ID = 56;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Ba chó lớn ngang mèo Mướp',
+    date: '2026-11-14',
+    items: [
+      'Ba chó Collie, Munchkin và Labrador giờ cao khoảng 1,12 m, ngang với mèo Mướp, dễ thấy hơn khi đi quanh sân và vườn.',
+      'Cho chó mèo ăn (Q23) và tìm chó mèo đi lạc (Q24) không đổi; tốc độ đi và cách cho ăn giữ nguyên.',
+    ],
+  },
   {
     title: 'Đóng góp từ 50 xu trở lên đã được thông báo cho cả chùa',
     date: '2026-11-14',

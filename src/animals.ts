@@ -26,10 +26,10 @@ const MUNCHKIN_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Eat', idle:
 const LABRADOR_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Sit', idle: 'Idle' };
 
 const SPECS: Spec[] = [
-  { id: 'vang', kind: 'dog', file: 'polyfork-dog', name: 'Vàng', scale: 0.91, clipMap: COLLIE_CLIPS },
-  { id: 'den', kind: 'dog', file: 'munchkin-dog', name: 'Đen', scale: 0.62, clipMap: MUNCHKIN_CLIPS },
+  { id: 'vang', kind: 'dog', file: 'polyfork-dog', name: 'Vàng', scale: 1.43, labelY: 1.6, clipMap: COLLIE_CLIPS },
+  { id: 'den', kind: 'dog', file: 'munchkin-dog', name: 'Đen', scale: 1.39, labelY: 1.6, clipMap: MUNCHKIN_CLIPS },
   { id: 'muop', kind: 'cat', file: 'animal-cat', name: 'Mướp', scale: 2, labelY: 1.6 },
-  { id: 'lab', kind: 'dog', file: 'labrador-lite', name: 'Labrador', scale: 0.45, clipMap: LABRADOR_CLIPS },
+  { id: 'lab', kind: 'dog', file: 'labrador-lite', name: 'Labrador', scale: 0.88, labelY: 1.6, clipMap: LABRADOR_CLIPS },
   { id: 'owl1', kind: 'owl', file: 'animal-owl' },
   { id: 'owl2', kind: 'owl', file: 'animal-owl' },
   { id: 'owl3', kind: 'owl', file: 'animal-owl' },
