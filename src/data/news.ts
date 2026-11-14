@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 74;
+export const LATEST_NEWS_ID = 75;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sư Thầy Trực Ban đi lại trong nhà ghi công đức',
+    date: '2026-11-15',
+    items: [
+      'Sư Thầy Trực Ban giờ không còn ngồi lì ở bàn nữa: thầy đi lại quanh nhà ghi công đức, thi thoảng mới ngồi vào bàn làm việc — nói chuyện và quyên góp vẫn làm được cả lúc thầy đang đi.',
+      'Thầy chỉ đi lại trong nhà ghi công đức và hiên trước cửa, không đi ra sân; lúc ngồi luôn ngồi đúng ghế, mặt hướng ra cửa Đông.',
+    ],
+  },
   {
     title: 'Dẫn đường quét chùa đi hết các điểm',
     date: '2026-11-15',

@@ -132,7 +132,7 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 interface Npc {
   def: NpcDef; state: PlayerState; phase: Phase; until: number; speed: number;
   route: Pt[]; roam: number; side: number;
-  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave' | 'toIdleSeat' | 'idleSeat' | 'toIdleIncense' | 'idleIncense' | 'toIdleRest' | 'idleRest'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
+  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave' | 'toIdleSeat' | 'idleSeat' | 'toIdleIncense' | 'idleIncense' | 'toIdleRest' | 'idleRest' | 'toDesk'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
   stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant' | 'toStroll' | 'stroll';
   shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; homeSlot: Behavior;
   strollStops: string[]; strollIdx: number;
@@ -600,6 +600,61 @@ function incenseRoute(n: Npc, spot: IdleIncenseSpot): Pt[] {
   return [...routeFrom(n.state, spot.via), p];
 }
 
+const NPC6_SPOTS = {
+  ring: [
+    { x: -45.2, z: 31.0 }, { x: -41.0, z: 30.8 }, { x: -39.0, z: 31.2 }, { x: -39.0, z: 34.5 },
+    { x: -36.5, z: 35.0 }, { x: -41.5, z: 35.6 }, { x: -42.0, z: 38.6 }, { x: -45.2, z: 38.2 },
+  ], // 0 A, 1 B, 2 C, 3 D, 4 E porch, 5 F, 6 F2, 7 G
+  chair: { x: -44.4, z: 35 },
+  sitAt: [0, 1, 5, 6, 7],
+  // waypoints (ring indices) from a sit spot to the nearer of A/G, none cross the desk rect
+  via: { 0: [], 1: [0], 5: [6, 7], 6: [7], 7: [] } as Record<number, number[]>,
+  porchP: 0.2,
+};
+const npc6State = new WeakMap<Npc, { i: number; porchDone: boolean; seated: boolean; toChair: boolean; sitIn: number }>();
+function npc6St(n: Npc) {
+  let st = npc6State.get(n);
+  if (!st) { st = { i: -1, porchDone: false, seated: true, toChair: false, sitIn: R(6, 10) }; npc6State.set(n, st); } // spawns seated
+  return st;
+}
+function npc6Arrive(n: Npc, s: PlayerState, now: number) {
+  const st = npc6St(n);
+  n.phase = 'idle';
+  if (st.toChair) {
+    st.toChair = false; st.seated = true; n.mode = 'sitting';
+    s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + R(40000, 60000);
+    return;
+  }
+  n.mode = 'normal'; s.anim = 'idle'; n.until = now + R(5000, 10000);
+}
+function npc6Decide(n: Npc, s: PlayerState, now: number) {
+  const st = npc6St(n), P = NPC6_SPOTS, ring = P.ring;
+  if (st.seated) { // leave the chair via the nearer of A/G
+    st.seated = false;
+    st.i = dist(P.chair, ring[0]) < dist(P.chair, ring[7]) ? 0 : 7;
+    n.mode = 'normal';
+    startWalk(n, [ring[st.i]], 1.0);
+    return;
+  }
+  if (P.sitAt.includes(st.i)) {
+    st.sitIn--;
+    if (st.sitIn <= 0) {
+      st.sitIn = R(6, 10);
+      st.toChair = true; n.mode = 'toDesk';
+      startWalk(n, [...P.via[st.i].map(k => ring[k]), P.chair], 1.0);
+      return;
+    }
+  }
+  let next: number;
+  if (st.i === 3) {
+    if (!st.porchDone && Math.random() < P.porchP) { st.porchDone = true; next = 4; } else next = 5;
+  } else if (st.i === 4) next = 3;
+  else next = (st.i + 1) % 8;
+  if (next === 0) st.porchDone = false;
+  st.i = next; n.mode = 'normal';
+  startWalk(n, [ring[next]], 1.0);
+}
+
 function arrive(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   if (n.mode === 'toRest') {
@@ -612,7 +667,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   }
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
   if (n.def.behavior === 'visitor') return visitorArrive(room, n, now);
-  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + 5000; return; }
+  if (n.def.behavior === 'desk') { npc6Arrive(n, s, now); return; }
   if (n.def.behavior === 'post') { postIdleAct(n, now); return; }
   if (n.mode === 'toChant') {
     const seat = n.chantSeat;
@@ -684,7 +739,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
 
 function decide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
-  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + 5000; return; }
+  if (n.def.behavior === 'desk') { npc6Decide(n, s, now); return; }
   if (n.def.behavior === 'post') { postIdleAct(n, now); return; }
   if (n.mode === 'chanting' || n.mode === 'toChant') return; // runSchedule owns chanting
   if (n.def.behavior === 'bell') {
