@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS minigame_daily (
   count INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (player_id, day_key, game)
 );
+CREATE TABLE IF NOT EXISTS fortune_daily (
+  player_id INTEGER NOT NULL,
+  day_key TEXT NOT NULL,
+  n INTEGER NOT NULL,
+  PRIMARY KEY (player_id, day_key)
+);
 CREATE TABLE IF NOT EXISTS feedback (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
@@ -589,6 +595,20 @@ export const minigameCount = async (id: number, game: string): Promise<number> =
   const r = (await db.execute({ sql: 'SELECT count FROM minigame_daily WHERE player_id = ? AND day_key = ? AND game = ?', args: [id, dayKey(), game] })).rows[0] as unknown as { count: number } | undefined;
   return r ? Number(r.count) : 0;
 };
+
+// ---- xin xăm ----
+export const getFortuneToday = async (id: number): Promise<number | null> => {
+  const r = (await db.execute({ sql: 'SELECT n FROM fortune_daily WHERE player_id = ? AND day_key = ?', args: [id, dayKey()] })).rows[0] as unknown as { n: number } | undefined;
+  return r ? Number(r.n) : null;
+};
+/** Lưu quẻ của hôm nay; đua nhau cũng chỉ giữ 1 quẻ/ngày. Trả về n đang được lưu. */
+export async function saveFortune(id: number, n: number): Promise<number> {
+  await db.execute({
+    sql: 'INSERT INTO fortune_daily (player_id, day_key, n) VALUES (?,?,?) ON CONFLICT(player_id, day_key) DO NOTHING',
+    args: [id, dayKey(), n],
+  });
+  return (await getFortuneToday(id)) ?? n;
+}
 
 // ---- feedback ----
 export async function saveFeedback(id: number, text: string, contact: string): Promise<boolean> {

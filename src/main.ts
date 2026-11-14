@@ -9,6 +9,7 @@ import { COUPLETS } from './couplets';
 import { clampToCompound, resolveBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
+import { openFortune } from './features/fortune';
 import { createPost } from './post';
 import { createWorld } from './world';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
@@ -1456,6 +1457,7 @@ const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
   trong: { label: 'Đánh trống', run: () => { world.ringDrum(); audio.play('bow'); } },
   thuyDinh: { label: 'Thả đèn', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
   phongSinh: { label: 'Phóng sinh', run: () => releasePhongSinh() },
+  omikuji: { label: 'Xin xăm', run: () => openFortune(panelCtx()) },
 };
 let zoneBtnId = '';
 zoneBtn.onclick = () => ZONE_ACTIONS[zoneBtnId]?.run();

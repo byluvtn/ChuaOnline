@@ -15,6 +15,7 @@ import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 import { PHONG_CD } from '../src/layout.js';
+import { FORTUNES, type FortuneAck } from '../src/data/fortunes.js';
 import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost, flockCenter, feedFlock } from './animals.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -94,7 +95,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
@@ -888,6 +889,23 @@ io.on('connection', (socket) => {
     if (seg.item) await db.addItem(pid, seg.item, 1);
     await grantRewards(s, seg.merit, seg.coins);
     cb?.({ ok: true, segment: SPIN_SEGMENTS.indexOf(seg), merit: seg.merit, coins: seg.coins, item: seg.item, used: true });
+  });
+  socket.on('fortune:get', async (cb?: (r: FortuneAck) => void) => {
+    if (!me()) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    cb?.({ ok: true, n: await db.getFortuneToday(pid) });
+  });
+  socket.on('fortune:draw', async (cb?: (r: FortuneAck) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const saved = await db.getFortuneToday(pid);
+    if (saved !== null) return cb?.({ ok: true, n: saved, used: true });
+    const now = Date.now();
+    if (now - (s.last.fortune ?? 0) < 2000) return cb?.({ ok: false, error: 'Thao tác quá nhanh, chờ một chút' });
+    s.last.fortune = now;
+    if (distTo(s, 24, -24) > 3.5)
+      return cb?.({ ok: false, error: 'Hãy tới gần giá treo quẻ (gần Chính Điện) để xin xăm' });
+    const n = await db.saveFortune(pid, Math.floor(Math.random() * FORTUNES.length));
+    cb?.({ ok: true, n, used: true });
   });
 
   socket.on('feedback:send', async (p: { text?: string; contact?: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {

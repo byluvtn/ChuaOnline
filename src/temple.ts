@@ -301,6 +301,7 @@ export function buildTemple(c: TempleCtx) {
   glowSpr(0, bt.by + 2.2, 0, 3, 0xffb040, 0.45, bt.t);
   zones.push({ x: BELL.x, z: BELL.z, r: 7, id: 'chuong' });
   zones.push({ x: 30, z: -31, r: 3.5, id: 'phongSinh' });
+  zones.push({ id: 'omikuji', x: 24, z: -24, r: 3 });
 
   // ---- drum tower (đối xứng tháp chuông) ----
   const drumTower = tower(DRUM.x, DRUM.z, -Math.PI / 2, 'THÁP TRỐNG', 'trong');

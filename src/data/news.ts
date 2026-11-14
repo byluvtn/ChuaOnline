@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 59;
+export const LATEST_NEWS_ID = 60;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Xin xăm ở giá treo quẻ',
+    date: '2026-11-14',
+    items: [
+      'Giá treo quẻ gần Chính Điện giờ đã xin được xăm: tới gần giá, bấm "Xin xăm", lắc ống xăm để rút một quẻ trong ngày.',
+      'Bộ 33 quẻ viết riêng cho chùa (thơ 4 câu, lời giải công việc / tình cảm / sức khỏe / tài lộc); mỗi ngày được xin một quẻ miễn phí, do server rút và ghi nhận — mở lại trong ngày vẫn thấy đúng quẻ đã rút; quẻ chỉ để giải trí và suy ngẫm.',
+    ],
+  },
   {
     title: 'Danh hiệu hiển thị trên đầu nhân vật',
     date: '2026-11-14',

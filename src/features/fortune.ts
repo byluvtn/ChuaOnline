@@ -1,25 +1,18 @@
+import type { Socket } from 'socket.io-client';
 import { h, openCustomPanel } from '../panels';
-import { FORTUNES } from '../data/fortunes';
+import { FORTUNES, type FortuneAck } from '../data/fortunes';
 import { iconSvg } from '../icons';
-import type { MenuCtx } from '../menu';
 
-const KEY = 'co:fortune';
-const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
-function saved(): number | null {
-  try {
-    const r = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    if (r && r.day === today() && Number.isInteger(r.n) && r.n >= 0 && r.n < FORTUNES.length) return r.n;
-  } catch { /* ignore */ }
-  return null;
-}
+const validN = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < FORTUNES.length;
 const textOf = (n: number) => {
   const f = FORTUNES[n];
   return `Quẻ số ${n + 1} – ${f.grade}\n${f.poem.join('\n')}\nSự nghiệp: ${f.career}\nTình duyên: ${f.love}\nSức khỏe: ${f.health}\nTài lộc: ${f.wealth}\n(Chùa Online, chỉ để giải trí và suy ngẫm)`;
 };
 
-export function openFortune(ctx: MenuCtx) {
+export function openFortune(ctx: { socket: Socket; toast: (t: string) => void }) {
   openCustomPanel('Xin xăm', (body) => {
     const timers: number[] = [];
+    let closed = false;
     const show = (n: number) => {
       const f = FORTUNES[n];
       const row = (k: string, v: string) => h('div', { class: 'fq' }, h('b', {}, k), h('span', {}, v));
@@ -33,23 +26,33 @@ export function openFortune(ctx: MenuCtx) {
         } }, 'Sao chép / chia sẻ'),
         h('p', { class: 'hint' }, 'Quẻ xăm chỉ mang tính giải trí và gợi ý suy ngẫm, không thay thế lời khuyên chuyên môn. Mỗi ngày được xin một quẻ miễn phí; hãy sống hiền, làm lành.'));
     };
-    const n0 = saved();
-    if (n0 !== null) { show(n0); return; }
     const tube = h('div', { class: 'tube', 'aria-hidden': 'true' },
       ...[0, 1, 2, 3, 4].map((i) => h('i', { style: `--i:${i}` })), h('span', {}));
     const btn = h('button', { class: 'gold' }, 'Lắc ống xăm');
+    const ic = h('div', { class: 'ic' });
+    ic.innerHTML = iconSvg('fortune');
+    const loadSaved = () => {
+      ctx.socket.emit('fortune:get', (r?: FortuneAck) => {
+        if (closed) return;
+        if (r?.ok && validN(r.n)) show(r.n);
+      });
+    };
     btn.onclick = () => {
       btn.disabled = true;
       tube.classList.add('shake');
       timers.push(window.setTimeout(() => {
-        const n = Math.floor(Math.random() * FORTUNES.length);
-        localStorage.setItem(KEY, JSON.stringify({ day: today(), n }));
-        show(n);
+        ctx.socket.emit('fortune:draw', (r?: FortuneAck) => {
+          if (closed) return;
+          if (r?.ok && validN(r.n)) { show(r.n); return; }
+          tube.classList.remove('shake');
+          btn.disabled = false;
+          if (r?.used) { loadSaved(); return; }
+          ctx.toast(r?.error ?? 'Không xin được quẻ, thử lại nhé');
+        });
       }, 2200));
     };
-    const ic = h('div', { class: 'ic' });
-    ic.innerHTML = iconSvg('fortune');
     body.append(h('div', { class: 'tube-wrap' }, tube), h('p', { class: 'hint', style: 'text-align:center' }, 'Thành tâm nghĩ về điều bạn muốn hỏi, rồi lắc ống xăm.'), btn);
-    return () => timers.forEach(clearTimeout);
+    loadSaved();
+    return () => { closed = true; timers.forEach(clearTimeout); };
   });
 }
