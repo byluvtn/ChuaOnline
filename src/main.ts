@@ -256,6 +256,31 @@ function toast(text: string) {
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 2200);
 }
+
+const DONATE_MS = 10000;
+const donateQueue: string[] = [];
+let donateBusy = false;
+function showNextDonate() {
+  const next = donateQueue.shift();
+  if (next === undefined) { donateBusy = false; return; }
+  donateBusy = true;
+  const box = $('donateMarquee');
+  const span = box.firstElementChild as HTMLElement;
+  span.textContent = next;
+  box.hidden = false;
+  span.style.animation = 'none';
+  void span.offsetWidth;
+  span.style.animation = '';
+  box.classList.add('show');
+  setTimeout(() => {
+    box.classList.remove('show');
+    setTimeout(() => { box.hidden = true; showNextDonate(); }, 600);
+  }, DONATE_MS);
+}
+function enqueueDonate(text: string) {
+  donateQueue.push(text);
+  if (!donateBusy) showNextDonate();
+}
 let lastMerit = -1, lastCoins = -1, lastLevel = 0;
 function floatText(text: string, cls = '') {
   if (!me) return;
@@ -308,13 +333,18 @@ function addChat(m: ChatMessage) {
   if (chatLog.length > 100) chatLog.shift();
   const box = $('msgs');
   const p = document.createElement('p');
-  const b = document.createElement('b');
-  b.textContent = m.name + ': ';
-  p.append(b, document.createTextNode(m.text));
+  if (m.sys) {
+    p.className = 'sys';
+    p.textContent = m.text;
+  } else {
+    const b = document.createElement('b');
+    b.textContent = m.name + ': ';
+    p.append(b, document.createTextNode(m.text));
+  }
   box.appendChild(p);
   while (box.childElementCount > 80) box.firstElementChild!.remove();
   box.scrollTop = box.scrollHeight;
-  if (m.sid && settings.showBubbles) remotes.get(m.sid)?.char.say(m.text);
+  if (!m.sys && m.sid && settings.showBubbles) remotes.get(m.sid)?.char.say(m.text);
 }
 function addLanternFeed(l: Lantern, fresh: boolean) {
   const list = $('lanternList');
@@ -427,7 +457,7 @@ function connect() {
   });
   s.on('chat', addChat);
   s.on('lantern', (l: Lantern) => addLanternFeed(l, true));
-  s.on('donation', (d: { name: string; amount: number }) => { if (d.name === profile?.name) return; toast(`${d.name} vừa đóng góp ${d.amount.toLocaleString('vi-VN')} xu công đức!`); });
+  s.on('donation', (d: { name: string; amount: number; text: string }) => { enqueueDonate(d.text || `🙏 Cảm ơn phật tử ${d.name} đã đóng góp ${d.amount.toLocaleString('vi-VN')} xu giúp xây dựng chùa`); });
   s.on('player:action', ({ id, kind }: { id: string; kind: ActionKind }) => {
     const r = remotes.get(id);
     if (!r || id === myId) return;

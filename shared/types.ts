@@ -21,7 +21,7 @@ export interface PlayerState {
   role?: 'abbot' | 'novice' | 'lay';
 }
 
-export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number }
+export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }
 export interface Lantern { id: number; name: string; wish: string; t: number }
 
 export interface Profile {

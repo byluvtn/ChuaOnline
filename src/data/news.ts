@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 37;
+export const LATEST_NEWS_ID = 38;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thông báo đóng góp: chạy chữ và tin nhắn chung',
+    date: '2026-11-14',
+    items: [
+      'Đóng góp trên 50 xu giờ hiện dải chữ chạy trên màn hình cho mọi người đang trong chùa, kể cả người đóng góp.',
+      'Kênh chat chung cũng nhận 1 tin hệ thống ghi lại lần đóng góp, ai mở chat sau vẫn thấy.',
+      'Lời cảm ơn xoay ngẫu nhiên 5 mẫu cho đỡ trùng lặp.',
+    ],
+  },
   {
     title: 'Quầy chim cá phóng sinh ngoài cổng chùa',
     date: '2026-11-14',

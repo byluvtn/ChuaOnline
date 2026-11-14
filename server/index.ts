@@ -106,6 +106,14 @@ const roomLanterns = new Map<string, Lantern[]>();
 const roomMinutes = new Map<string, number>();
 let seq = 1;
 
+const DONATE_TEMPLATES: ((name: string, amt: string) => string)[] = [
+  (n, a) => `🙏 Cảm ơn phật tử ${n} đã đóng góp ${a} xu giúp xây dựng chùa`,
+  (n, a) => `🙏 Cảm ơn phật tử ${n} đã phát tâm ${a} xu, công đức vô lượng`,
+  (n, a) => `🙏 Phật tử ${n} vừa gieo duyên ${a} xu, nguyện cầu bình an cho gia đình`,
+  (n, a) => `🙏 Cảm ơn phật tử ${n} đã đóng góp ${a} xu, nhờ tấm lòng của bạn chùa thêm khang trang`,
+  (n, a) => `🙏 Phật tử ${n} vừa đóng góp ${a} xu xây chùa, chúc bạn thân tâm an lạc`,
+];
+
 const OUTFITS: Outfit[] = ['monk', 'nun', 'male', 'female'];
 const ANIMS: Anim[] = ['idle', 'walk', 'run', 'sit', 'sweep', 'ring', 'incense', 'bow', 'chant', 'lantern', 'palms', 'beads'];
 /** Mỗi phòng có bộ NPC riêng (cùng id npc1..npc5); NPC không phải phiên nên không tính vào số người online. */
@@ -631,7 +639,17 @@ io.on('connection', (socket) => {
     const broadcast = n > 50;
     reply({ ok: true, coins: r.coins, merit: r.merit, broadcast });
     // Broadcast SAU commit + pushProfile; fire-and-forget, loi emit khong rollback.
-    if (broadcast) io.to(s.room).emit('donation', { name: s.state.name, amount: n });
+    if (broadcast) {
+      const tpl = DONATE_TEMPLATES[Math.floor(Math.random() * DONATE_TEMPLATES.length)];
+      const text = tpl(s.state.name, n.toLocaleString('vi-VN'));
+      io.to(s.room).emit('donation', { name: s.state.name, amount: n, text });
+      const sysMsg: ChatMessage = { id: seq++, name: '', text: text + ' 🙏', t: Date.now(), sys: true };
+      const arr = roomChat.get(s.room) ?? [];
+      arr.push(sysMsg);
+      if (arr.length > 100) arr.shift();
+      roomChat.set(s.room, arr);
+      io.to(s.room).emit('chat', sysMsg);
+    }
   });
 
   socket.on('release:phongsinh', async (payload: { kind: 'bird' | 'fish' }, cb?: (r: { ok: boolean; error?: string; merit?: number }) => void) => {
