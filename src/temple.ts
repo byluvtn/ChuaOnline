@@ -11,6 +11,7 @@ import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
+import { buildZafuParts } from './zafu';
 
 export interface Seat { x: number; z: number; ry: number; rest?: boolean }
 export interface Zone { x: number; z: number; r: number; id: string }
@@ -63,20 +64,20 @@ export function buildTemple(c: TempleCtx) {
 
   // ---- meditation decks: bồ đoàn rộng hơn 30%, xếp thưa, viền cánh sen ----
   const woodM = lamb(0xffffff, { map: woodTexture([5, 3]) });
-  const matM = lamb(0xe8b83a, { roughness: 0.95 }), cushM = lamb(0xa0201a, { roughness: 0.8 });
+  const matM = lamb(0xe8b83a, { roughness: 0.95 });
   // bước hàng 1.5 → 1.9, bước cột 1.3 → 1.7 → 7×7 chỗ mỗi dãy (98 chỗ cả hai dãy)
   const rows = [-17.6, -15.7, -13.8, -11.9, -10.0, -8.1, -6.2];
   const cols = [5.7, 7.4, 9.1, 10.8, 12.5, 14.2, 15.9];
   const PETALS = 8;
   const nSeats = rows.length * cols.length * 2;
   const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.43, 0.04, 1.36), matM, nSeats);
-  const cush = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.44, 0.49, 0.12, 20), cushM, nSeats);
+  const deckZafuPos: { x: number; z: number }[] = [];
   // 8 cánh sen quanh mỗi bồ đoàn, màu hồng/trắng xen kẽ — 1 draw call cho toàn bộ
   const petalM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0 });
   const petalMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 10), petalM, nSeats * PETALS);
   const petalCols = [new THREE.Color(0xf4978e), new THREE.Color(0xffe3e6)];
-  mats.receiveShadow = cush.receiveShadow = petalMesh.receiveShadow = true;
-  cush.castShadow = petalMesh.castShadow = true;
+  mats.receiveShadow = petalMesh.receiveShadow = true;
+  petalMesh.castShadow = true;
   let k = 0, pk = 0;
   const up = new THREE.Object3D();
   for (const side of [-1, 1]) {
@@ -88,7 +89,7 @@ export function buildTemple(c: TempleCtx) {
     for (const z of rows) for (const cx of cols) {
       const x = side * cx;
       d.position.set(x, DECK.y + 0.02, z); d.updateMatrix(); mats.setMatrixAt(k, d.matrix);
-      d.position.set(x, DECK.y + 0.1, z); d.updateMatrix(); cush.setMatrixAt(k, d.matrix);
+      deckZafuPos.push({ x, z });
       // vành cánh sen ngửa nhẹ ra ngoài, hơi chồng nhau như đài sen thật
       for (let p = 0; p < PETALS; p++) {
         const a = (p / PETALS) * Math.PI * 2 + 0.2;
@@ -105,10 +106,11 @@ export function buildTemple(c: TempleCtx) {
     }
   }
   mats.instanceMatrix.needsUpdate = true;
-  cush.instanceMatrix.needsUpdate = true;
   petalMesh.instanceMatrix.needsUpdate = true;
   if (petalMesh.instanceColor) petalMesh.instanceColor.needsUpdate = true;
-  scene.add(mats, cush, petalMesh);
+  scene.add(mats, petalMesh);
+  const deckZafu = buildZafuParts(0.49, 0.12, DECK.y + 0.16, deckZafuPos);
+  for (const zm of [deckZafu.body, deckZafu.ring, deckZafu.button]) { zm.castShadow = true; scene.add(zm); }
 
   // ---- covered corridors (hành lang) ----
   const corridor = new THREE.Group(); corridor.name = 'corridors'; scene.add(corridor);
@@ -529,8 +531,6 @@ export function buildTemple(c: TempleCtx) {
     acB(0.72, 0.05, 1.6, bedX, acBase + 0.325, 0, matM);
     acB(0.3, 0.12, 0.5, bedX, acBase + 0.41, -0.6, acPaper);
     acB(0.9, 0.04, 0.9, -1.2, acBase + 0.02, 0.3, matM);
-    const acCu = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.1, 18), cushM);
-    acCu.position.set(-1.2, acBase + 0.09, 0.3); acCu.castShadow = true; amCo.add(acCu);
     acB(0.7, 0.05, 0.5, 0.8, acBase + 0.5, -0.9, woodM);
     for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]] as [number, number][]) acB(0.06, 0.5, 0.06, 0.8 + lx, acBase + 0.25, -0.9 + lz, woodM);
     const acPot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), c.goldM);
@@ -538,6 +538,8 @@ export function buildTemple(c: TempleCtx) {
     colliders.push({ x: AM_CO.x + 0.5, z: AM_CO.z - 1.0, r: 0.1 }, { x: AM_CO.x - 0.5, z: AM_CO.z - 1.0, r: 0.1 }, { x: AM_CO.x + 0.9, z: AM_CO.z + 0.9, r: 0.15 });
   }
   mergeStaticByMaterial(amCo);
+  const acZafu = buildZafuParts(0.38, 0.10, acBase + 0.14, [{ x: -1.2, z: 0.3 }]);
+  for (const zm of [acZafu.body, acZafu.ring, acZafu.button]) { zm.castShadow = true; amCo.add(zm); }
   colliders.push({ x: AM_CO.x, z: AM_CO.z - acHx, r: 0.3 });
   for (const sx of [-acHz, acHz]) for (const sz of [-acHx, 0, acHx]) colliders.push({ x: AM_CO.x + sx, z: AM_CO.z + sz, r: 0.7 });
   zones.push({ x: AM_CO.x, z: AM_CO.z, r: 7, id: 'amCo' });
@@ -677,15 +679,16 @@ export function buildTemple(c: TempleCtx) {
   // 2 bồ đoàn tụng kinh ở CHANT_SEATS Điện Mẫu (quest v1) — Điện Mẫu trước đây không có bồ đoàn
   {
     const y0 = DIEN_MAU_PLAT.y;
-    const cushG2 = new THREE.CylinderGeometry(0.44, 0.49, 0.12, 20);
+    const dmZafuPos: { x: number; z: number }[] = [];
     for (const [wx, wz] of [[37, 10], [39, 10]] as const) {
       const lx = wx - DIEN_MAU.x, lz = wz - DIEN_MAU.z;
       const mat = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 1.0), matM);
       mat.position.set(lx, y0 + 0.1, lz); mat.receiveShadow = true; dm.g.add(mat);
-      const cu = new THREE.Mesh(cushG2, cushM);
-      cu.position.set(lx, y0 + 0.18, lz); cu.castShadow = true; dm.g.add(cu);
+      dmZafuPos.push({ x: lx, z: lz });
       seats.push({ x: wx, z: wz, ry: Math.PI });
     }
+    const dmZafu = buildZafuParts(0.49, 0.12, y0 + 0.24, dmZafuPos);
+    for (const zm of [dmZafu.body, dmZafu.ring, dmZafu.button]) { zm.castShadow = true; dm.g.add(zm); }
     // Tượng Quan Âm ngồi (GLB guanyin-ngoi, cùng pipeline tượng hành lang) trên bệ đá sau 2 bồ đoàn, mặt ra cửa (+z).
     const gmZ = 8.65;
     const gmLz = gmZ - DIEN_MAU.z;
@@ -841,19 +844,17 @@ export function buildTemple(c: TempleCtx) {
       const g = mkIn('thien-duong-in', THIEN_DUONG); g.rotation.y = Math.PI / 2;
       const b = mk(g), y0 = THIEN_DUONG_PLAT.y, hxL = tdH.hx, hzL = tdH.hz;
       b(hxL * 2, 0.08, (hzL - 0.8) - (-hzL + 0.1), 0, y0 + 0.04, ((hzL - 0.8) + (-hzL + 0.1)) / 2, woodM);
-      const cushG = new THREE.CylinderGeometry(0.44, 0.49, 0.12, 20);
+      const tdZPos: { x: number; z: number }[] = [];
       for (const lx of [-1.2, 1.2]) for (const lz of [-3.4, -1.9, -0.4, 1.1, 2.6]) {
         b(1.0, 0.04, 1.0, lx, y0 + 0.1, lz, matM);
-        const cu = new THREE.Mesh(cushG, cushM);
-        cu.position.set(lx, y0 + 0.18, lz); cu.castShadow = true; g.add(cu);
+        tdZPos.push({ x: lx, z: lz });
         const w = twd(lx, lz);
         seats.push({ x: w.x, z: w.z, ry: 3 * Math.PI / 2 });
       }
       // 2 bồ đoàn tụng kinh ở CHANT_SEATS (quest v1) — không trùng 10 bồ đoàn có sẵn
       for (const [lx, lz] of [[0, 2], [0, 4]] as const) {
         b(1.0, 0.04, 1.0, lx, y0 + 0.1, lz, matM);
-        const cu2 = new THREE.Mesh(cushG, cushM);
-        cu2.position.set(lx, y0 + 0.18, lz); cu2.castShadow = true; g.add(cu2);
+        tdZPos.push({ x: lx, z: lz });
         const w2 = twd(lx, lz);
         seats.push({ x: w2.x, z: w2.z, ry: Math.PI / 2 });
       }
@@ -862,6 +863,8 @@ export function buildTemple(c: TempleCtx) {
       const moh = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), mohM);
       moh.scale.set(0.45, 0.3, 0.3); moh.position.set(0.95, y0 + 0.27, -hzL + 1.2); moh.castShadow = true; g.add(moh);
       mergeStaticByMaterial(g); scene.add(g);
+      const tdZ = buildZafuParts(0.49, 0.12, y0 + 0.24, tdZPos);
+      for (const zm of [tdZ.body, tdZ.ring, tdZ.button]) { zm.castShadow = true; g.add(zm); }
       colliders.push({ ...twd(1.0, -hzL + 1.6), r: 0.15 });
     }
 
@@ -1043,11 +1046,14 @@ export function buildTemple(c: TempleCtx) {
     { x: FL.x, z: FL.z - 0.8, ry: Math.PI, rest: true },
     { x: FL.x, z: FL.z + 0.8, ry: 0, rest: true },
   ];
+  const thZPos: { x: number; z: number }[] = [];
   for (const s of tdSeats) {
     const mat = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.9), matM); mat.position.set(s.x, flTop + 0.02, s.z); mat.receiveShadow = true; thuy.add(mat);
-    const cu = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.1, 18), cushM); cu.position.set(s.x, flTop + 0.09, s.z); cu.castShadow = true; thuy.add(cu);
+    thZPos.push({ x: s.x, z: s.z });
     seats.push(s);
   }
+  const thZ = buildZafuParts(0.38, 0.10, flTop + 0.14, thZPos);
+  for (const zm of [thZ.body, thZ.ring, thZ.button]) { zm.castShadow = true; thuy.add(zm); }
   const tdSeal2 = sealArchitectureJoints(thuy, { maxGap: 0.4 });
   if (import.meta.env.DEV) console.warn(`gapdump thuyDinh: filled=${tdSeal2.filled} remaining=${tdSeal2.remaining.length} ` + JSON.stringify(tdSeal2.remaining));
   zones.push({ x: FL.x, z: FL.z, r: 4.5, id: 'thuyDinh' });

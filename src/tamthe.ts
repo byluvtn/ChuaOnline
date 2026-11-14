@@ -3,6 +3,7 @@ import { TAM_THE, TAM_THE_PLAT } from './layout';
 import { buildBuddha } from './statues';
 import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
+import { buildZafuParts } from './zafu';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = TAM_THE_PLAT.y;
@@ -240,19 +241,21 @@ export function buildTamThe(c: TempleCtx) {
   }
   lanterns.count = li; add(lanterns);
 
-  const matM = lamb(0xe8b83a, { roughness: 0.95 }), cushM = lamb(0xa0201a, { roughness: 0.8 });
+  const matM = lamb(0xe8b83a, { roughness: 0.95 });
   const rows = [-0.4, 1.4, 3.2, 5.0], cols = [3.2, 4.7, 6.2, 7.7, 9.2, 10.7];
   const n = rows.length * cols.length * 2;
   const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.1, 0.04, 1.05), matM, n);
-  const cush = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.34, 0.38, 0.1, 16), cushM, n);
+  const zafuPos: { x: number; z: number }[] = [];
   let k2 = 0;
   for (const s of [-1, 1]) for (const z of rows) for (const x of cols) {
     d.scale.setScalar(1);
     d.position.set(s * x, BASE + 0.03, z); d.updateMatrix(); mats.setMatrixAt(k2, d.matrix);
-    d.position.set(s * x, BASE + 0.1, z); d.updateMatrix(); cush.setMatrixAt(k2, d.matrix);
+    zafuPos.push({ x: s * x, z });
     seats.push({ x: TAM_THE.x + s * x, z: TAM_THE.z + z, ry: Math.PI }); k2++;
   }
-  mats.receiveShadow = cush.receiveShadow = true; add(mats); add(cush);
+  mats.receiveShadow = true; add(mats);
+  const zafu = buildZafuParts(0.38, 0.10, BASE + 0.15, zafuPos);
+  for (const zm of [zafu.body, zafu.ring, zafu.button]) { zm.castShadow = false; add(zm); }
 
   scene.add(g);
   const seal = sealArchitectureJoints(g, { maxGap: 0.9, minOverlap: 0.05 });

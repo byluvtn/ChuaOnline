@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 42;
+export const LATEST_NEWS_ID = 43;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bồ đoàn mới kiểu zafu',
+    date: '2026-11-14',
+    items: [
+      'Bồ đoàn trong mọi điện giờ là đệm tròn kiểu zafu: thân cầu dẹt, vòng khâu vàng quanh mép và nút vàng giữa mặt trên, thay cho trụ dẹt cũ.',
+      'Vị trí ngồi, bồ đoàn và chiếu giữ nguyên nên ngồi tụng và lạy Phật hoạt động như trước.',
+    ],
+  },
   {
     title: 'Đàn chim không vào trong điện nữa',
     date: '2026-11-14',
