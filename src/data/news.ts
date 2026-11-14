@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 56;
+export const LATEST_NEWS_ID = 57;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Mèo Mướp hay quanh quẩn ở sân trước và ao hơn',
+    date: '2026-11-14',
+    items: [
+      'Mèo Mướp giờ hay đi lại ở sân trước, cầu và khu vực ao phía nam hơn, thay vì phần lớn thời gian ở vườn sau phía bắc; người chơi gặp mèo thường xuyên hơn khi đi dạo quanh sân và ao phóng sinh.',
+      'Mèo vẫn đi khắp chùa như cũ, vẫn ngồi/ngủ và vẫn tham gia cho ăn (Q23) và tìm mèo đi lạc (Q24) bình thường.',
+    ],
+  },
   {
     title: 'Ba chó lớn ngang mèo Mướp',
     date: '2026-11-14',

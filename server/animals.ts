@@ -16,6 +16,10 @@ interface A {
 
 const SAFE = ['plaza', 'bridgeN', 'bridgeS', 'axisMid', 'hallFront', 'westMid', 'eastMid', 'rearW', 'rearE',
   'rearKT', 'rearTO', 'westNorth', 'eastNorth', 'zenW', 'thienDuong', 'hallWestWp', 'hallEastWp'];
+// Cat-only wander pool: the 3 southern nodes (plaza/bridgeN/bridgeS, z>0) appear 5x each,
+// so the cat picks a southern destination ~52% of the time (was 3/17 ~ 18%) and spends
+// much more time in the yard/pond area where players actually play. Dogs keep SAFE.
+const CAT_SPOTS = [...SAFE, 'plaza', 'bridgeN', 'bridgeS', 'plaza', 'bridgeN', 'bridgeS', 'plaza', 'bridgeN', 'bridgeS', 'plaza', 'bridgeN', 'bridgeS'];
 const LOST_SPOTS: P[] = [{ x: -30, z: -38 }, { x: -47, z: -27 }, { x: 30, z: -31 }, { x: 39, z: 10 }, { x: -46, z: -46 }];
 const PERCH_SPOTS: P[] = [{ x: -47, z: -27 }, { x: 30, z: -31 }];
 const PLAZA: P = { x: 0, z: 6 };
@@ -159,7 +163,7 @@ function tickWalker(a: A, dt: number) {
   a.wait -= dt;
   if (a.wait > 0) return;
   if (a.cat && Math.random() < 0.4) { set(a, Math.random() < 0.5 ? 'sit' : 'sleep'); a.wait = rnd(10, 30); return; }
-  a.path = a.home ? [outdoorJitter(a.home, 3)] : route(s, pick(SAFE));
+  a.path = a.home ? [outdoorJitter(a.home, 3)] : route(s, pick(a.cat ? CAT_SPOTS : SAFE));
   a.wait = rnd(3, 8);
 }
 
