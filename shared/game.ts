@@ -263,6 +263,8 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc20', receiver: 'npc20', stall: 'stall_tea', steps: ['marketbuy', 'deliver'] },
   { id: 'nq_incense_chinhdien', label: 'Thắp hương hộ ở Chính Điện', event: 'incense', target: 1, coins: 15, merit: 8,
     giver: 'npc23', zone: Z_CHINH_DIEN },
+  { id: 'nq_incense_tamthe', label: 'Thắp hương hộ ở Điện Tam Thế', event: 'incense', target: 1, coins: 15, merit: 8,
+    giver: 'npc29', zone: Z_TAM_THE },
   { id: 'nq_feed_pets', label: 'Cho chó mèo ăn', event: 'feed', target: 2, coins: 20, merit: 10, giver: 'npc14', steps: ['talk', 'feed'] },
   { id: 'nq_find_lost_pet', label: 'Tìm chó mèo đi lạc', event: 'find', target: 2, coins: 25, merit: 12, giver: 'npc2', steps: ['talk', 'find'] },
   { id: 'nq_phongsinh', label: 'Phóng sinh lần đầu', event: 'buy', target: 4, coins: 15, merit: 8,

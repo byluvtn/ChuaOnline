@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 38;
+export const LATEST_NEWS_ID = 39;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sư Phó về chùa và nhiệm vụ mới Q22',
+    date: '2026-11-14',
+    items: [
+      'Thêm NPC Sư Phó, Phó trụ trì, đi dạo quanh chùa và cùng tham dự các buổi tụng kinh.',
+      'Nhiệm vụ hằng ngày mới Q22: thắp hương hộ Sư Phó ở Điện Tam Thế, rồi quay lại nhận thưởng từ Sư Phó.',
+      'Sư Phó là vị sư cao niên thứ hai trong chùa, sau Sư Thầy trụ trì.',
+    ],
+  },
   {
     title: 'Thông báo đóng góp: chạy chữ và tin nhắn chung',
     date: '2026-11-14',

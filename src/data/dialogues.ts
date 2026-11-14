@@ -779,4 +779,27 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
       'Mô Phật, chúc thí chủ an lành.',
     ],
   },
+
+  // npc29 — Sư Phó, Phó trụ trì. Giao Q22: thắp hương hộ ở Điện Tam Thế.
+  npc29: {
+    name: 'Sư Phó',
+    role: 'Phó trụ trì',
+    greetings: [
+      { time: 'morning', text: 'A Di Đà Phật. Sáng sớm đã thấy thí chủ ghé chùa, thật là có duyên.' },
+      { time: 'evening', text: 'A Di Đà Phật. Chiều muộn rồi, thí chủ còn đi lễ chùa sao?' },
+      { time: 'any', text: 'A Di Đà Phật. Lão tăng chào thí chủ.' },
+    ],
+    questOffer: 'Thí chủ ơi, chân lão tăng đã yếu, đi lên Điện Tam Thế không nổi. Thí chủ làm phước thắp giúp lão tăng một nén hương ở đó nhé. Lễ xong thì về đây báo lại cho lão tăng.',
+    questReminder: 'Thí chủ đã thắp hương ở Điện Tam Thế giúp lão tăng chưa? Khi nào xong thì quay lại đây nhé.',
+    questDone: 'A Di Đà Phật. Cảm ơn thí chủ đã thắp hương hộ lão tăng. Phước lành của thí chủ sẽ được ghi nhận.',
+    smallTalk: [
+      'Tu hành không cần đi đâu xa, giữ lòng thanh tịnh là đủ.',
+      'Lão tăng ở chùa này đã nhiều năm, mỗi sáng nghe tiếng chuông vẫn thấy lòng nhẹ nhàng.',
+    ],
+    farewell: [
+      'A Di Đà Phật. Thí chủ đi bình an.',
+      'Mong thí chủ thân tâm thường an lạc.',
+    ],
+    chanting: 'Nam mô A Di Đà Phật...',
+  },
 };

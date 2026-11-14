@@ -41,6 +41,7 @@ export const NPC_DEFS: NpcDef[] = [
   { id: 'npc26', name: 'Mẹ trẻ bồng con', outfit: 'female', color: '#e08a7a', scale: 1.0, role: 'lay', behavior: 'visitor', accessory: 'baby' },
   { id: 'npc27', name: 'Sư Ni Diệu An', outfit: 'nun', color: '#778c96', scale: 1.0, role: 'novice', behavior: 'chant' },
   { id: 'npc28', name: 'Sư Ni Diệu Tâm', outfit: 'nun', color: '#7a8a7a', scale: 1.0, role: 'novice', behavior: 'chant' },
+  { id: 'npc29', name: 'Sư Phó', outfit: 'monk', color: '#a86a2e', scale: 1.15, role: 'abbot', behavior: 'wander' },
   { id: 'npc30', name: 'Bác Bán Chim Cá', outfit: 'male', color: '#6a8a4a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: 0, z: 55.5 } },
 ];
 
@@ -541,6 +542,29 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
   }
   if (n.def.behavior !== 'wander') return;
   const ses = activeSession(now);
+  if (n.def.id === 'npc29') {
+    if (ses) {
+      if (n.mode === 'normal') {
+        const seat = freeSeat(room, 'chinhDien');
+        if (seat && takeSeat(room, seat, n.def.id)) {
+          n.chantSeat = seat; n.mode = 'toChant';
+          startWalk(n, [...routeFrom(n.state, 'hallIn'), { x: seat.x, z: seat.z }], 1.2);
+        }
+      } else if (n.mode === 'chanting') {
+        if (now >= n.until) {
+          releaseSeat(room, n.def.id); n.chantSeat = null;
+          n.route = []; n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000);
+        } else if (now >= n.nextChat) {
+          room.outbox.push({ npcId: n.def.id, name: n.def.name, text: OPENING_LINES[n.chatIdx++ % OPENING_LINES.length] });
+          n.nextChat = now + CHAT_EVERY_MS;
+        }
+      }
+    } else if (n.mode === 'chanting' || n.mode === 'toChant') {
+      releaseSeat(room, n.def.id); n.chantSeat = null;
+      n.route = []; n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000);
+    }
+    return;
+  }
   if (ses) {
     if (n.mode === 'normal') { n.mode = 'toAltar'; n.route = []; startWalk(n, abbotRouteIn(n), 1.2); }
     else if (n.mode === 'sitting' && now >= n.nextChat) {
