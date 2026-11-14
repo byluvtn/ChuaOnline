@@ -394,11 +394,26 @@ onSettings((st, key) => {
 });
 
 // ---------- Networking ----------
+const resumeToken: string = (() => {
+  try {
+    let t = sessionStorage.getItem('co:resume');
+    if (!t) {
+      t = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      sessionStorage.setItem('co:resume', t);
+    }
+    return t;
+  } catch {
+    return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+})();
+
 function sendJoin() {
   const room = ROOMS.find((r) => r.id === roomId) ?? ROOMS[0];
   world.setMood(room.id);
   $('roomName').textContent = room.name;
-  socket!.emit('join', { name: nameInput.value, outfit, color, room: roomId });
+  socket!.emit('join', { name: nameInput.value, outfit, color, room: roomId, resume: resumeToken });
 }
 function connect() {
   socket = io({ auth: { token: getToken() } });

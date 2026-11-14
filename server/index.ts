@@ -98,6 +98,8 @@ interface Session {
   last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
+  /** resume token cua tab (sessionStorage) de khoi phuc vi tri khi vao lai */
+  resume?: string;
   /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
   beadStart?: number;
 }
@@ -315,14 +317,22 @@ io.use((socket, next) => {
   }).catch(() => next(new Error('unauthorized')));
 });
 
+const RESUME_GRACE_MS = 10 * 60 * 1000;
+const lastPos = new Map<number, { x: number; z: number; ry: number; room: string; resume: string; at: number }>();
+
+function saveTombstone(s: Session): void {
+  if (!s.resume) return;
+  lastPos.set(s.pid, { x: s.state.x, z: s.state.z, ry: s.state.ry, room: s.room, resume: s.resume, at: Date.now() });
+}
+
 io.on('connection', (socket) => {
   const pid: number = socket.data.pid;
   // one live connection per account
   for (const [id, other] of sessions) {
-    if (other.pid === pid) { other.socket.emit('kicked'); other.socket.disconnect(true); sessions.delete(id); }
+    if (other.pid === pid) { saveTombstone(other); other.socket.emit('kicked'); other.socket.disconnect(true); sessions.delete(id); }
   }
 
-  socket.on('join', async (p: { name?: string; outfit?: Outfit; color?: string; room?: string }) => {
+  socket.on('join', async (p: { name?: string; outfit?: Outfit; color?: string; room?: string; resume?: string }) => {
     const prof = await db.getProfile(pid);
     if (!prof) return socket.disconnect(true);
     const old = sessions.get(socket.id);
@@ -339,14 +349,23 @@ io.on('connection', (socket) => {
     const color = cleanColor(p?.color ?? prof.color);
     await db.saveLook(pid, name, outfit, color);
 
+    const saved = lastPos.get(pid);
+    lastPos.delete(pid);
+    const resume = typeof p?.resume === 'string' && p.resume.length >= 8 && p.resume.length <= 64 ? p.resume : undefined;
+    const from = saved && resume !== undefined && resume === saved.resume
+      && Date.now() - saved.at < RESUME_GRACE_MS && room === saved.room ? saved : undefined;
+
     const state: PlayerState = {
       id: socket.id, name, outfit, color, accessory: prof.accessory,
-      x: (Math.random() - 0.5) * 6, z: 8 + Math.random() * 3, ry: Math.PI, anim: 'idle', merit: prof.merit,
+      x: from ? Math.max(-MAP_HALF, Math.min(MAP_HALF, from.x)) : (Math.random() - 0.5) * 6,
+      z: from ? Math.max(MAP_Z_MIN, Math.min(MAP_HALF, from.z)) : 8 + Math.random() * 3,
+      ry: from ? from.ry : Math.PI, anim: 'idle', merit: prof.merit,
       title: prof.title ?? defaultTitle(prof.titles),
     };
     const s: Session = old ?? { pid, state, room, socket, last: {} };
     s.state = state;
     s.room = room;
+    s.resume = resume;
     sessions.set(socket.id, s);
     socket.join(room);
 
@@ -928,6 +947,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const s = sessions.get(socket.id);
     if (!s) return;
+    saveTombstone(s);
     sessions.delete(socket.id);
     io.to(s.room).emit('player:leave', socket.id);
   });

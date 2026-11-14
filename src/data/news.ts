@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 68;
+export const LATEST_NEWS_ID = 69;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Vào lại game vẫn đứng yên chỗ cũ',
+    date: '2026-11-15',
+    items: [
+      'Ra ngoài vài phút rồi vào lại game (đổi tab, trả lời tin nhắn...) thì nhân vật vẫn đứng yên chỗ cũ thay vì bay về sân chùa.',
+      'Chỉ khôi phục trong 10 phút và cùng phòng: vắng mặt lâu hơn, đổi phòng khác, hoặc đóng hẳn tab mở lại thì vẫn xuất phát ở sân như cũ.',
+      'Xu, công đức và nhiệm vụ không đổi khi vào lại.',
+    ],
+  },
   {
     title: 'NPC rải khắp chùa mỗi lần vào game',
     date: '2026-11-15',
