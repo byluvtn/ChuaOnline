@@ -115,7 +115,7 @@ export function buildTemple(c: TempleCtx) {
 
   // ---- covered corridors (hành lang) ----
   const corridor = new THREE.Group(); corridor.name = 'corridors'; scene.add(corridor);
-  const pillarG = new THREE.CylinderGeometry(0.17, 0.2, 3.3, 10), baseG = new THREE.BoxGeometry(0.5, 0.22, 0.5);
+  const pillarG = new THREE.CylinderGeometry(0.17, 0.2, 3.95, 10), baseG = new THREE.BoxGeometry(0.5, 0.22, 0.5);
   const slabG = new THREE.BoxGeometry(3.4, 0.16, CORR.z1 - CORR.z0 + 1.2);
   const roofM = lamb(0xb4502c, { roughness: 0.6 }), stoneBase = lamb(0x6b6458);
   const floorT = stoneTexture([158, 150, 138], [2, 8]);
@@ -131,24 +131,24 @@ export function buildTemple(c: TempleCtx) {
     for (const off of [-2.4, 2.4]) {
       for (const z of zs) {
         // cột ăn sâu vào nền 0.22 để không hở chân cột, và chạm đáy xà phía trên
-        const p = new THREE.Mesh(pillarG, c.redM); p.position.set(cx + off, CORR.y + 1.55, z); p.castShadow = true;
+        const p = new THREE.Mesh(pillarG, c.redM); p.position.set(cx + off, CORR.y + 1.875, z); p.castShadow = true;
         p.userData.sealable = true; p.name = 'corridor-pillar'; corridor.add(p);
         const b = new THREE.Mesh(baseG, stoneBase); b.position.set(cx + off, CORR.y + 0.11, z);
         b.userData.sealable = true; corridor.add(b);
         colliders.push({ x: cx + off, z, r: 0.22 });
       }
       const rail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, len + 0.6), c.redM);
-      rail.position.set(cx + off, CORR.y + 3.24, zc); rail.castShadow = true; rail.userData.sealable = true; corridor.add(rail);
+      rail.position.set(cx + off, CORR.y + 3.89, zc); rail.castShadow = true; rail.userData.sealable = true; corridor.add(rail);
     }
     for (const s of [-1, 1]) {
       const slab = new THREE.Mesh(slabG, roofM);
-      slab.position.set(cx + s * 1.62, CORR.y + 3.86, zc); slab.rotation.z = -s * 0.45; slab.castShadow = true;
+      slab.position.set(cx + s * 1.62, CORR.y + 4.51, zc); slab.rotation.z = -s * 0.45; slab.castShadow = true;
       slab.userData.sealable = true; corridor.add(slab);
     }
     const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, len + 1.3), c.goldM);
-    ridge.position.set(cx, CORR.y + 4.54, zc); ridge.userData.sealable = true; corridor.add(ridge);
+    ridge.position.set(cx, CORR.y + 5.19, zc); ridge.userData.sealable = true; corridor.add(ridge);
     for (const z of zs) for (const off of [-1.65, 1.65]) {
-      d.position.set(cx + off, CORR.y + 2.75, z + spacing / 2); d.scale.set(1, 1.2, 1); d.updateMatrix(); lanterns.setMatrixAt(li++, d.matrix);
+      d.position.set(cx + off, CORR.y + 3.40, z + spacing / 2); d.scale.set(1, 1.2, 1); d.updateMatrix(); lanterns.setMatrixAt(li++, d.matrix);
     }
     for (let z = CORR.z0 + 2.4; z < CORR.z1 - 1; z += spacing * 2) {
       benchSpots.push({ x: cx - side * 1.7, z });
@@ -168,7 +168,7 @@ export function buildTemple(c: TempleCtx) {
   d.scale.setScalar(1); lanterns.count = li; scene.add(lanterns);
   // bảng chữ Việt treo trên hai cột đầu hành lang
   for (const side of [-1, 1]) {
-    labelBoard(corridor, COLUMN_LABELS.hanhLang[side > 0 ? 0 : 1], 0.5, 2.4, side * (CORR.x - 2.4), CORR.y + 1.9, CORR.z1 - 1.2, side > 0 ? 0 : Math.PI);
+    labelBoard(corridor, COLUMN_LABELS.hanhLang[side > 0 ? 0 : 1], 0.5, 2.4, side * (CORR.x - 2.4), CORR.y + 2.55, CORR.z1 - 1.2, side > 0 ? 0 : Math.PI);
   }
   sealArchitectureJoints(corridor, { maxGap: 0.4 });
 

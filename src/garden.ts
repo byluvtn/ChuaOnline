@@ -31,8 +31,14 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('stone_lantern', -37.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', -30.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', 45, -66, 0, 2.15, null, 0.3),
+  p('stone_lantern', 11, 17, 0, 2.15, null, 0.3),
+  p('stone_lantern', -11, 17, 0, 2.15, null, 0.3),
+  p('stone_lantern', -26, -18, 0, 2.15, null, 0.3),
+  p('stone_lantern', 26, -18, 0, 2.15, null, 0.3),
+  p('stone_lantern', -25, -32, 0, 2.15, null, 0.3),
+  p('stone_lantern', 28, -30, 0, 2.15, null, 0.3),
   p('pagoda', 53, -66, 0, 5.1, null, 0.6),
-  p('zen_sand_garden', -34, -26, 0.2, null, 1.5, null),
+  p('zen_sand_garden', -34, -26, 0.2, null, 2.0, null),
 ];
 
 export const GARDEN_COLLIDERS: { x: number; z: number; r: number }[] = GARDEN_PLACEMENTS

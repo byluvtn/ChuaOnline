@@ -266,6 +266,16 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     scene.add(inst);
   });
 
+  // ---- Bảng ước nguyện gần sân plaza (prop trang trí, chưa có mechanic) ----
+  colliders.push({ x: 12, z: 6, r: 1.2 });
+  loadModel('ema_rack').then((base) => {
+    if (!base) return;
+    const inst = base.clone(true);
+    inst.rotation.y = -Math.PI / 2;
+    inst.position.set(12, 0, 6);
+    scene.add(inst);
+  });
+
   // ---- Hanging red lanterns ----
   const redGeo = new THREE.SphereGeometry(0.34, 14, 12);
   const redBase = new THREE.MeshStandardMaterial({ color: 0xd8321c, emissive: 0xc02010, emissiveIntensity: 1.2, roughness: 0.5 });

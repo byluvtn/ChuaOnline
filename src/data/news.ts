@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 48;
+export const LATEST_NEWS_ID = 49;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bảng ước nguyện, đèn đá, vườn cát và hành lang cao hơn',
+    date: '2026-11-14',
+    items: [
+      'Thêm bảng ước nguyện mới gần sân trước chùa.',
+      'Thêm 6 đèn đá dọc lối đi và quanh vườn; vườn cát thiền phóng to thêm một phần ba (từ 4,5×3 m lên 6×4 m), đèn đá cũ quanh vườn vẫn giữ nguyên.',
+      'Hành lang hai bên cao thêm 0,65 m, cột và mái nâng đồng bộ, tượng La Hán và ghế giữ nguyên vị trí.',
+    ],
+  },
   {
     title: 'Hòm công đức, ghế hành lang, đèn lồng và tháp nhỏ đổi sang model 3D',
     date: '2026-11-14',
