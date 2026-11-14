@@ -2,8 +2,8 @@ import type { ActionKind } from './types';
 
 export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: number; boostItems?: string[] }> = {
   incense: { merit: 1, cooldownMs: 3000, boostItems: ['huong_tram'] },
-  bow: { merit: 1, cooldownMs: 2000, boostItems: ['hoa_sen', 'hoa_dang_phat'] },
-  chant: { merit: 2, cooldownMs: 10000, boostItems: ['nen_sap_ong', 'trang_hat'] },
+  bow: { merit: 1, cooldownMs: 2000, boostItems: ['hoa_sen', 'hoa_dang_phat', 'com_chay'] },
+  chant: { merit: 2, cooldownMs: 10000, boostItems: ['nen_sap_ong', 'pho_chay', 'tra_da', 'trang_hat'] },
   lantern: { merit: 5, cooldownMs: 5000, boostItems: ['den_hoa_dang'] },
   palms: { merit: 0, cooldownMs: 1500 },
   beads: { merit: 0, cooldownMs: 2400 },
@@ -11,7 +11,7 @@ export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: numbe
 
 export type ShopCategory =
   | 'le_vat' | 'cay_phat' | 'ao_trang' | 'trang_hat' | 'bo_doan'
-  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh';
+  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh' | 'do_an';
 
 export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
   { id: 'le_vat', label: 'Lễ vật' },
@@ -26,6 +26,7 @@ export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
   { id: 'dieu', label: 'Diều' },
   { id: 'do_linh_thu', label: 'Đồ linh thú' },
   { id: 'phong_sinh', label: 'Phóng sinh' },
+  { id: 'do_an', label: 'Đồ ăn' },
 ];
 
 export interface ShopItem {
@@ -49,6 +50,10 @@ export const ITEMS: ShopItem[] = [
   { id: 'den_hoa_dang', name: 'Đèn hoa đăng', desc: 'Thả đèn nhận 15 công đức. Dùng 1 lần.', price: 25, kind: 'consumable', icon: '🏮', category: 'le_vat', boostMerit: 15 },
   { id: 'nen_sap_ong', name: 'Nến sáp ong', desc: 'Tụng kinh nhận 7 công đức thay vì 2. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🕯', category: 'le_vat', boostMerit: 5 },
   { id: 'hoa_dang_phat', name: 'Hoa dâng Phật', desc: 'Lạy Phật nhận 8 công đức. Dùng 1 lần.', price: 20, kind: 'consumable', icon: '🌸', category: 'le_vat', boostMerit: 4 },
+  // ---- Đồ ăn
+  { id: 'pho_chay', name: 'Phở chay', desc: 'Ăn chay thanh tịnh, tụng kinh tiếp theo nhận 5 công đức thay vì 2. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🍜', category: 'do_an', boostMerit: 5 },
+  { id: 'com_chay', name: 'Cơm chay', desc: 'Ăn chay thanh tịnh, lạy Phật tiếp theo nhận 4 công đức thay vì 1. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🍚', category: 'do_an', boostMerit: 4 },
+  { id: 'tra_da', name: 'Trà đá', desc: 'Uống trà đá giải khát, tụng kinh tiếp theo nhận 3 công đức thay vì 2. Dùng 1 lần.', price: 5, kind: 'consumable', icon: '🥤', category: 'do_an', boostMerit: 3 },
   // ---- Cây Phật
   { id: 'cay_bo_de', name: 'Cây Bồ Đề', desc: 'Cây bồ đề mini đặt trong Túi đồ.', price: 60, kind: 'accessory', icon: '🌳', category: 'cay_phat', minLevel: 2 },
   { id: 'cay_truc', name: 'Khóm trúc', desc: 'Khóm trúc xanh trong Túi đồ.', price: 45, kind: 'accessory', icon: '🎋', category: 'cay_phat' },
@@ -208,10 +213,16 @@ export const SUTRAS: Sutra[] = [
 
 export const MARKET_STALLS: { id: string; x: number; z: number }[] = [
   { id: 'stall_fruit', x: 7, z: 54.5 },
-  { id: 'stall_cake', x: 10.5, z: 54.5 },
-  { id: 'stall_tea', x: 14, z: 54.5 },
-  { id: 'stall_incense', x: 26.5, z: 54.5 },
-  { id: 'stall_phongsinh', x: 30, z: 54.5 },
+  { id: 'stall_cake', x: 11.5, z: 54.5 },
+  { id: 'stall_tea', x: 16, z: 54.5 },
+  { id: 'stall_pho', x: 20.5, z: 54.5 },
+  { id: 'stall_trada', x: 25, z: 54.5 },
+  { id: 'stall_incense', x: 29.5, z: 54.5 },
+  { id: 'stall_phongsinh', x: 34, z: 54.5 },
+  { id: 'stall_com', x: 38.5, z: 54.5 },
+  { id: 'stall_chim', x: 43, z: 54.5 },
+  { id: 'stall_ca', x: 47.5, z: 54.5 },
+  { id: 'stall_trada2', x: 52, z: 54.5 },
 ];
 
 // Zones (shared by several quests)

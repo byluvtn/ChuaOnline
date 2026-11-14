@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 62;
+export const LATEST_NEWS_ID = 63;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Quầy chợ đều cỡ, trải đều, thêm người bán',
+    date: '2026-11-14',
+    items: [
+      '11 quầy chợ ngoài cổng nay cùng một cỡ, trải đều cách nhau 1,4 m — nhìn tách bạch từng quầy.',
+      '6 quầy PHỞ CHAY, TRÀ ĐÁ, CƠM CHAY, BÁN CHIM, BÁN CÁ nay có người bán.',
+      'Món mới: phở chay 10 xu, cơm chay 10 xu, trà đá 5 xu; chim phóng sinh 20 xu, cá phóng sinh 10 xu.',
+    ],
+  },
   {
     title: 'Ngồi thiền thấy rõ chân bắt chéo',
     date: '2026-11-14',

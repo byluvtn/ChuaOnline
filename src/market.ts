@@ -4,7 +4,7 @@ import { groundY } from './layout';
 import { signTexture } from './textures';
 import { geo, outlined, toon } from './toon';
 
-type Goods = 'fruit' | 'cake' | 'tea' | 'incense' | 'phongsinh';
+type Goods = 'fruit' | 'cake' | 'tea' | 'incense' | 'phongsinh' | 'pho' | 'tra' | 'com' | 'chim' | 'ca';
 
 const STALL_STYLE: Record<string, { name: string; awning: number; goods: Goods }> = {
   stall_fruit: { name: 'HOA QUẢ', awning: 0x4a9a4a, goods: 'fruit' },
@@ -12,6 +12,12 @@ const STALL_STYLE: Record<string, { name: string; awning: number; goods: Goods }
   stall_tea: { name: 'TRÀ', awning: 0x5a7ab8, goods: 'tea' },
   stall_incense: { name: 'HƯƠNG HOA', awning: 0xc95a7a, goods: 'incense' },
   stall_phongsinh: { name: 'CHIM CÁ', awning: 0x3a7a5a, goods: 'phongsinh' },
+  stall_pho: { name: 'PHỞ CHAY', awning: 0xb83a2a, goods: 'pho' },
+  stall_trada: { name: 'TRÀ ĐÁ', awning: 0x5a7ab8, goods: 'tra' },
+  stall_com: { name: 'CƠM CHAY', awning: 0x4a9a4a, goods: 'com' },
+  stall_chim: { name: 'BÁN CHIM PHÓNG SINH', awning: 0x3a7a5a, goods: 'chim' },
+  stall_ca: { name: 'BÁN CÁ PHÓNG SINH', awning: 0x4a90b8, goods: 'ca' },
+  stall_trada2: { name: 'TRÀ ĐÁ', awning: 0x5a7ab8, goods: 'tra' },
 };
 
 export const MARKET_COLLIDERS: { x: number; z: number; r: number }[] =
@@ -95,6 +101,30 @@ function addGoods(g: THREE.Group, kind: Goods): void {
     // chậu cá
     g.add(cyl(0.3, 0.2, 0x4a90b8, 0.8, topY + 0.1, 0.45));
     g.add(ball(0.08, 0xe87a2a, 0.8, topY + 0.2, 0.45));
+  } else if (kind === 'pho' || kind === 'com') {
+    g.add(cyl(0.3, 0.34, 0x3a3a3a, -0.8, topY + 0.17, 0.5));
+    if (kind === 'com') g.add(ball(0.2, 0xf4f0e6, -0.8, topY + 0.34, 0.5));
+    for (let i = 0; i < 3; i++) {
+      g.add(cyl(0.15, 0.2, kind === 'com' ? 0xf4f0e6 : 0xd9c9a3, 0.1 + i * 0.45, topY + 0.1, 0.55));
+    }
+  } else if (kind === 'tra') {
+    g.add(ball(0.22, 0x9a6a2a, -0.7, topY + 0.2, 0.5));
+    for (let i = 0; i < 4; i++) {
+      g.add(cyl(0.06, 0.12, 0xeeeeee, 0.0 + i * 0.3, topY + 0.06, 0.7));
+    }
+  } else if (kind === 'chim') {
+    for (let i = 0; i < 3; i++) {
+      const cx = -0.9 + i * 0.9;
+      g.add(cyl(0.2, 0.42, 0x8a6a3a, cx, topY + 0.21, 0.5));
+      g.add(ball(0.07, 0xe8c84a, cx, topY + 0.21, 0.5));
+    }
+  } else if (kind === 'ca') {
+    g.add(box(1.3, 0.3, 0.6, 0x8ac4dc, -0.3, topY + 0.15, 0.55));
+    g.add(box(1.2, 0.04, 0.5, 0x46a8c4, -0.3, topY + 0.31, 0.55));
+    for (let i = 0; i < 3; i++) {
+      g.add(ball(0.06, 0xff7a2a, -0.7 + i * 0.4, topY + 0.36, 0.5 + (i % 2) * 0.1));
+    }
+    g.add(cyl(0.25, 0.2, 0x4a90b8, 0.95, topY + 0.1, 0.5));
   } else {
     g.add(box(0.4, 0.1, 0.2, 0x8a5a2b, -0.7, topY + 0.05, 0.5));
     for (let i = 0; i < 6; i++) {

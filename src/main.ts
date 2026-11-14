@@ -949,6 +949,18 @@ function updateTeacherBtn() {
 const ALL_NPC_QUESTS = [...NPC_QUESTS, ...CHAIN_QUESTS];
 const VENDOR_STALL: Record<string, string> = { npc15: 'stall_fruit', npc16: 'stall_cake', npc17: 'stall_tea', npc18: 'stall_incense' };
 const VENDOR_GOODS: Record<string, string> = { npc15: 'hoa quả', npc16: 'bánh', npc17: 'trà', npc18: 'hoa' };
+// Vendors added in market part B: sell through shop:buy (no market:buy / quest requirement).
+const SHOP_VENDOR_GOODS: Record<string, { item: string; label: string; price: number }[]> = {
+  npc31: [{ item: 'pho_chay', label: 'Phở chay', price: 10 }],
+  npc32: [{ item: 'tra_da', label: 'Trà đá', price: 5 }],
+  npc33: [{ item: 'com_chay', label: 'Cơm chay', price: 10 }],
+  npc34: [
+    { item: 'chim_phong_sinh', label: 'Chim phóng sinh', price: 20 },
+    { item: 'thuc_an_chim', label: 'Túi thức ăn cho chim', price: 5 },
+  ],
+  npc35: [{ item: 'ca_phong_sinh', label: 'Cá phóng sinh', price: 10 }],
+  npc36: [{ item: 'tra_da', label: 'Trà đá', price: 5 }],
+};
 
 type TimeSlot = 'morning' | 'noon' | 'afternoon' | 'evening' | 'any';
 function timeSlot(): TimeSlot {
@@ -1120,6 +1132,18 @@ function openDialogue(npcId: string): void {
             });
           },
         }, 'Mua Túi thức ăn cho chó mèo · 5 xu')));
+    }
+    const shopGoods = SHOP_VENDOR_GOODS[npcId];
+    if (shopGoods) {
+      body.appendChild(h('p', {}, dlg.shopGreeting ?? ''));
+      body.appendChild(h('div', { class: 'qrow' },
+        ...shopGoods.map((g) => h('button', {
+          onclick: () => {
+            sock.emit('shop:buy', g.item, (r: { ok: boolean; error?: string }) => {
+              if (!r.ok) toast(r.error ?? 'Lỗi'); else toast(`Đã mua ${g.label}`);
+            });
+          },
+        }, `Mua ${g.label} · ${g.price} xu`))));
     }
 
     const st = pickRot(dlg.smallTalk);

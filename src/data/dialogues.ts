@@ -787,6 +787,150 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     ],
   },
 
+  // npc31 — Cô Bán Phở Chay. Chỉ bán hàng, không giao quest.
+  npc31: {
+    name: 'Cô Bán Phở Chay',
+    role: 'Người bán phở chay',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, phở chay nóng hổi buổi sáng đây, ăn một tô cho ấm bụng nhé.' },
+      { time: 'noon', text: 'Trưa rồi, thí chủ ghé ăn tô phở chay cho khỏe đi lễ nhé.' },
+      { time: 'afternoon', text: 'Chiều rồi mà nồi nước dùng vẫn thơm, thí chủ ăn một tô nhé.' },
+    ],
+    questOffer: '',
+    questReminder: '',
+    questDone: 'Cảm ơn thí chủ đã ủng hộ, ăn ngon miệng nhé.',
+    shopGreeting: 'Phở chay của cô 10 xu một tô, nước dùng nấu từ rau củ, thí chủ ăn thử nhé.',
+    smallTalk: [
+      'Nước dùng cô hầm từ nấm, cà rốt với củ cải, không dùng gì mặn đâu.',
+      'Khách đi lễ xong hay ghé ăn tô phở chay rồi mới về.',
+      'Rau thơm cô mua buổi sáng sớm, lúc nào cũng tươi.',
+    ],
+    farewell: [
+      'Thí chủ đi thong thả, lần sau ghé ăn tiếp nhé.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc32 — Bác Bán Trà Đá. Chỉ bán hàng, không giao quest.
+  npc32: {
+    name: 'Bác Bán Trà Đá',
+    role: 'Người bán trà đá',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng sớm uống ly trà đá cho tỉnh táo nhé.' },
+      { time: 'noon', text: 'Trưa nắng quá, thí chủ uống ly trà đá cho mát nhé.' },
+      { time: 'afternoon', text: 'Chiều nay oi lắm, trà đá của bác còn mát đây.' },
+    ],
+    questOffer: '',
+    questReminder: '',
+    questDone: 'Cảm ơn thí chủ, uống cho mát nhé.',
+    shopGreeting: 'Trà đá của bác 5 xu một ly, thí chủ uống cho đỡ khát nhé.',
+    smallTalk: [
+      'Trà bác pha đậm vừa, đá bỏ nhiều nên uống rất mát.',
+      'Đi bộ dưới nắng lâu thì nên ghé uống ly trà cho đỡ mệt.',
+      'Quầy bác ngồi ở đây mấy năm rồi, khách quen nhiều lắm.',
+    ],
+    farewell: [
+      'Thí chủ đi thong thả, nhớ ghé lại nhé.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc33 — Cô Bán Cơm Chay. Chỉ bán hàng, không giao quest.
+  npc33: {
+    name: 'Cô Bán Cơm Chay',
+    role: 'Người bán cơm chay',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng nay cô có xôi và cơm chay, thí chủ dùng một phần nhé.' },
+      { time: 'noon', text: 'Trưa rồi, thí chủ ăn phần cơm chay cho đủ sức nhé.' },
+      { time: 'afternoon', text: 'Chiều rồi, cô còn ít phần cơm chay, thí chủ dùng giúp cô nhé.' },
+    ],
+    questOffer: '',
+    questReminder: '',
+    questDone: 'Cảm ơn thí chủ, dùng cơm ngon miệng nhé.',
+    shopGreeting: 'Cơm chay của cô 10 xu một phần, có đậu hũ, rau xào và canh, thí chủ dùng thử nhé.',
+    smallTalk: [
+      'Đậu hũ cô tự chiên, rau thì mua mỗi sáng ở chợ.',
+      'Cơm chay ăn thanh đạm, đi lễ xong ăn vào nhẹ bụng lắm.',
+      'Món canh nấm hôm nay cô nấu hơi nhiều, thí chủ ăn thử nhé.',
+    ],
+    farewell: [
+      'Thí chủ đi thong thả, lần sau ghé ăn tiếp nhé.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc34 — Bác Bán Chim Phóng Sinh. Chỉ bán hàng, không giao quest.
+  npc34: {
+    name: 'Bác Bán Chim Phóng Sinh',
+    role: 'Người bán chim phóng sinh',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng nay chim hót hay lắm, mua một con về thả lấy phước nhé.' },
+      { time: 'noon', text: 'Trưa rồi, chim bác vẫn khỏe, thí chủ mua về thả ở hồ phóng sinh nhé.' },
+      { time: 'afternoon', text: 'Chiều nay bác còn ít chim, thí chủ mua giúp bác nhé.' },
+    ],
+    questOffer: '',
+    questReminder: '',
+    questDone: 'Cảm ơn thí chủ, thả chim xong nhớ niệm Phật nhé.',
+    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, thức ăn cho chim 5 xu một túi, thí chủ mua về thả và cho chim ăn nhé.',
+    smallTalk: [
+      'Chim bác nuôi khỏe mạnh, thả ra là bay vút lên trời ngay.',
+      'Hồ phóng sinh ở phía đông Chính Điện, bến thả ngay mép ao.',
+      'Thả một con chim là cứu một mạng sống, phước báu lắm đấy.',
+    ],
+    farewell: [
+      'Thí chủ đi thong thả, nhớ ghé lại nhé.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc35 — Cô Bán Cá Phóng Sinh. Chỉ bán hàng, không giao quest.
+  npc35: {
+    name: 'Cô Bán Cá Phóng Sinh',
+    role: 'Người bán cá phóng sinh',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, cá trong chậu sáng nay còn tươi khỏe, mua về thả nhé.' },
+      { time: 'noon', text: 'Trưa rồi, thí chủ mua con cá mang ra hồ phóng sinh thả nhé.' },
+      { time: 'afternoon', text: 'Chiều nay cô còn ít cá, thí chủ mua giúp cô nhé.' },
+    ],
+    questOffer: '',
+    questReminder: '',
+    questDone: 'Cảm ơn thí chủ, thả cá xong nhớ phát nguyện lành nhé.',
+    shopGreeting: 'Cá phóng sinh của cô 10 xu một con, thí chủ mua về thả ở hồ phóng sinh nhé.',
+    smallTalk: [
+      'Cá cô giữ nước sạch mỗi ngày nên con nào cũng khỏe.',
+      'Bến thả ở mép ao phía đông Chính Điện, thí chủ đi thẳng là tới.',
+      'Thả cá xuống nước là cho nó một đường sống, phước lắm thí chủ ơi.',
+    ],
+    farewell: [
+      'Thí chủ đi thong thả, nhớ ghé lại nhé.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc36 — Bà Bán Trà Đá. Chỉ bán hàng, không giao quest.
+  npc36: {
+    name: 'Bà Bán Trà Đá',
+    role: 'Người bán trà đá',
+    greetings: [
+      { time: 'morning', text: 'Chào con, sáng sớm uống ly trà đá cho tỉnh người nhé.' },
+      { time: 'noon', text: 'Trưa nắng thế này, con uống ly trà đá cho mát nhé.' },
+      { time: 'afternoon', text: 'Chiều rồi, con ghé uống ly trà đá cho đỡ mệt nhé.' },
+    ],
+    questOffer: '',
+    questReminder: '',
+    questDone: 'Cảm ơn con, uống cho mát nhé.',
+    shopGreeting: 'Trà đá của bà 5 xu một ly, con uống cho đỡ khát nhé.',
+    smallTalk: [
+      'Bà bán trà ở đây từ hồi chợ còn nhỏ xíu.',
+      'Trà bà nấu từ lá, thơm và mát, uống quen rồi là nhớ.',
+      'Đi lễ xa thì ghé quầy bà nghỉ chân một lát nhé.',
+    ],
+    farewell: [
+      'Con đi thong thả, lần sau ghé bà nhé.',
+      'Mô Phật, chúc con an lành.',
+    ],
+  },
+
   // npc29 — Sư Phó, Phó trụ trì. Giao Q22: thắp hương hộ ở Điện Tam Thế.
   npc29: {
     name: 'Sư Phó',
