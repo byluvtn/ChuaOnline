@@ -105,10 +105,12 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'zenE2', x: -18, z: -24 },
   { id: 'zenW', x: -26, z: -26.6 },
   // Market outside the south gate (quest v1): stalls at z 47-56, road down the middle.
-  { id: 'marketW1', x: -8.5, z: 47 },
-  { id: 'marketE1', x: 8.5, z: 47 },
-  { id: 'marketW2', x: -8.5, z: 54 },
-  { id: 'marketE2', x: 8.5, z: 54 },
+  // marketGate sits just south of the Tam Quan wall (gap |x| < 4.4 at z = 45), so the gate -> row edges stay short and straight.
+  { id: 'marketGate', x: 0, z: 46 },
+  { id: 'marketW1', x: -4.5, z: 47 },
+  { id: 'marketE1', x: 4.5, z: 47 },
+  { id: 'marketW2', x: -4.5, z: 54 },
+  { id: 'marketE2', x: 4.5, z: 54 },
   { id: 'marketS', x: 0, z: 56 },
 ]
 
@@ -152,7 +154,7 @@ export const ROAD_EDGES: [string, string][] = [
   ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
   ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],
   // Market: gate gap (|x| < 4.4 at z = 45) to both rows, then south to marketS.
-  ['gate', 'marketW1'], ['gate', 'marketE1'],
+  ['gate', 'marketGate'], ['marketGate', 'marketW1'], ['marketGate', 'marketE1'],
   ['marketW1', 'marketW2'], ['marketE1', 'marketE2'],
   ['marketW2', 'marketS'], ['marketE2', 'marketS'],
 ]

@@ -1217,7 +1217,7 @@ function updateDonorBtn() {
   if (d > 3.5) { if (!donorBtn.hidden) donorBtn.hidden = true; return; }
   if (donorBtn.hidden) donorBtn.hidden = false;
   const lb = donorBtn.querySelector('.lb')!;
-  if (lb.textContent !== 'Bảng vinh danh') lb.textContent = 'Bảng vinh danh';
+  if (lb.textContent !== 'Vinh danh') lb.textContent = 'Vinh danh';
 }
 
 function npcPos(id: string | undefined): Pt | null {
@@ -1438,7 +1438,7 @@ const zoneBtn = $('zoneBtn');
 const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
   chuong: { label: 'Đánh chuông', run: () => { world.ringBell(); audio.play('bow'); } },
   trong: { label: 'Đánh trống', run: () => { world.ringDrum(); audio.play('bow'); } },
-  thuyDinh: { label: 'Thả đèn nguyện', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
+  thuyDinh: { label: 'Thả đèn', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
   phongSinh: { label: 'Phóng sinh', run: () => releasePhongSinh() },
 };
 let zoneBtnId = '';
@@ -1605,8 +1605,13 @@ function loop() {
     if (guideQuestId && guideTarget && me && !clickTarget && !sitting && guideStep() !== 'find') {
       const p = me.char.root.position;
       const d = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
-      if (d < 1.5) { stopGuide(); }
-      else {
+      if (d < 1.5) {
+        const gq = quests.find((x) => x.id === guideQuestId);
+        if (gq && questDef(gq.id)?.event === 'sweep' && gq.progress < gq.target) {
+          // diem quet: giu guide song de updateSweep quet; event quests se doi target sang diem ke tiep
+          clickTarget = null; pathTarget = null; pathQueue.length = 0;
+        } else { stopGuide(); }
+      } else {
         const wp = guideWaypoints.length ? guideWaypoints[0] : guideTarget;
         const wd = Math.hypot(wp.x - p.x, wp.z - p.z);
         if (wd < 1.2 && guideWaypoints.length > 1) guideWaypoints.shift();
@@ -1646,6 +1651,9 @@ function loop() {
       if (wpDist < 0.3 && pathQueue.length > 1) { pathQueue.shift(); }
       else if (arrived && bowSeat && pathfinder.lastFallback && (wp.x !== clickTarget.x || wp.z !== clickTarget.z) && Math.hypot(clickTarget.x - root.position.x, clickTarget.z - root.position.z) > 1.2) {
         pathQueue = [clickTarget.clone()];   // đường vòng cụt: đi thẳng tới đệm, collide() trượt dọc tường
+      }
+      else if (arrived && pathfinder.lastFallback && pathQueue.length === 1 && wpDist < 0.3 && (wp.x !== clickTarget.x || wp.z !== clickTarget.z) && Math.hypot(clickTarget.x - root.position.x, clickTarget.z - root.position.z) > 3) {
+        pathQueue = [clickTarget.clone()];   // chuỗi suy biến tại chân nhân vật, đích còn xa: không coi là đã tới, đi thẳng tới đích
       }
       else if (arrived) { clickTarget = null; pathTarget = null; pathQueue = []; }
       else {

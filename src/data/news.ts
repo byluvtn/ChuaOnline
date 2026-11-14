@@ -4,9 +4,20 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 44;
+export const LATEST_NEWS_ID = 45;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Dẫn đường tới chợ không còn đứng yên',
+    date: '2026-11-14',
+    items: [
+      'Bấm "Dẫn đường" tới quầy chợ giờ đi xuyên cổng Tam Quan tới tận quầy, không còn đứng yên ở Đền Trình.',
+      'Sửa lỗi đường đi: hai đoạn đường qua cổng chợ bị đứt khỏi bản đồ đường nên máy tính nhầm là đã tới nơi.',
+      'Thêm lớp phòng thủ: đường tới đích bị chặn cũng không còn làm nhân vật đứng treo.',
+      'Nhiệm vụ Quét sân chùa: bấm Dẫn đường giờ đi hết cả 3 điểm quét, không còn dừng lại sau điểm đầu tiên.',
+      'Nút "Sư thầy" khi đứng gần sư thầy giờ cùng cỡ với các nút hành động khác.',
+    ],
+  },
   {
     title: 'Bồ đoàn ngoài sân và các điện giống điện chính',
     date: '2026-11-14',
