@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 65;
+export const LATEST_NEWS_ID = 66;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tên đứng yên trên đầu, kể cả khi chồng nhau',
+    date: '2026-11-14',
+    items: [
+      'Tên nhân vật và NPC giờ đứng cố định trên đầu, không bao giờ dời lên hay xuống nữa — kể cả khi nhiều NPC tụ lại và tên chồng lên nhau.',
+      'Dấu "!" nhiệm vụ vẫn luôn hiện trên đầu NPC có quest; tên và danh hiệu của người chơi không đổi.',
+    ],
+  },
   {
     title: 'Bồ đoàn ngoài sân bỏ viền hoa sen',
     date: '2026-11-14',

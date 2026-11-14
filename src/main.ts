@@ -192,7 +192,7 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number; labelShiftY?: number; labelOrder?: number; labelDy?: number; labelWant?: number; labelWantN?: number }
+interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
 let myId = '';
@@ -1460,7 +1460,7 @@ function updateNpcMarkers() {
     const mat = s.material as THREE.SpriteMaterial;
     if (mat.map !== markerTex[m]) { mat.map = markerTex[m]; mat.needsUpdate = true; }
     s.visible = r.char.root.visible;
-    s.position.set(r.char.root.position.x, r.char.root.position.y + 2.6 + (r.labelShiftY ?? 0), r.char.root.position.z);
+    s.position.set(r.char.root.position.x, r.char.root.position.y + 2.6, r.char.root.position.z);
   }
 }
 
@@ -1594,168 +1594,6 @@ function updateReleaseAnims(dt: number) {
         });
       }
       releaseAnims.splice(i, 1);
-    }
-  }
-}
-
-
-interface LabelEntry {
-  owner: Remote;
-  label: THREE.Sprite;
-  rank: number; // 0 player, 1 quest NPC, 2 other NPC
-  dist: number;
-  depth: number;
-  cx: number;
-  cy: number;
-  w: number;
-  h: number;
-  yTop: number; // px above the anchor (chip top / title line for tall labels)
-  yBot: number; // px below the anchor (chip bottom)
-}
-interface LabelRect { x0: number; x1: number; y0: number; y1: number }
-
-const _lbPos = new THREE.Vector3();
-const _lbFwd = new THREE.Vector3();
-const _lbScl = new THREE.Vector3();
-
-function setLabelShift(r: Remote, target: number, k: number): void {
-  const s = r.char.root.scale.x || 1;
-  const cur = r.labelShiftY ?? 0;
-  const prevLocal = cur / s;
-  const next = Math.abs(target - cur) < 1e-4 ? target : cur + (target - cur) * k;
-  r.labelShiftY = next;
-  const local = next / s;
-  r.char.label.position.y = 2.65 + local;
-  for (const c of r.char.root.children) {
-    if (c === r.char.label || !(c instanceof THREE.Sprite)) continue;
-    if (Math.abs(c.position.y - (2.9 + prevLocal)) < 0.01 || Math.abs(c.position.y - 2.9) < 0.01) {
-      c.position.y = 2.9 + local;
-    }
-  }
-}
-
-let labelSeq = 0;
-
-function updateLabelLayout(dt: number): void {
-  const W = innerWidth;
-  const H = innerHeight;
-  const k = Math.min(1, dt * 12);
-  const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2);
-  const cp = camera.position;
-  camera.getWorldDirection(_lbFwd);
-  const entries: LabelEntry[] = [];
-
-  const collect = (owner: Remote, rank: number): void => {
-    const label = owner.char.label;
-    if (owner.labelOrder === undefined) owner.labelOrder = ++labelSeq;
-    const shift = rank === 0 ? 0 : (owner.labelShiftY ?? 0);
-    label.visible = settings.showNames;
-    const frac: unknown = label.userData.chipFrac;
-    const topF: unknown = label.userData.chipTop;
-    const botF: unknown = label.userData.chipBot;
-    let ok = settings.showNames && owner.char.root.visible && typeof frac === 'number';
-    let depth = 0;
-    if (ok) {
-      label.getWorldPosition(_lbPos);
-      _lbPos.y -= shift; // unshifted anchor, avoids feedback
-      depth = (_lbPos.x - cp.x) * _lbFwd.x + (_lbPos.y - cp.y) * _lbFwd.y + (_lbPos.z - cp.z) * _lbFwd.z;
-      ok = depth > 0.1;
-    }
-    if (!ok || typeof frac !== 'number') {
-      if (rank > 0) {
-        setLabelShift(owner, 0, k);
-        owner.labelDy = 0;
-        owner.labelWant = 0;
-        owner.labelWantN = 0;
-      }
-      return;
-    }
-    const dist = cp.distanceTo(_lbPos);
-    _lbPos.project(camera);
-    label.getWorldScale(_lbScl);
-    const sprH = _lbScl.y * H;
-    const yTop = (typeof topF === 'number' ? topF : 29 / 96) * sprH;
-    const yBot = (typeof botF === 'number' ? botF : 29 / 96) * sprH;
-    entries.push({
-      owner,
-      label,
-      rank,
-      dist,
-      depth,
-      cx: ((_lbPos.x + 1) / 2) * W,
-      cy: ((1 - _lbPos.y) / 2) * H,
-      w: frac * _lbScl.x * H,
-      h: yTop + yBot,
-      yTop,
-      yBot,
-    });
-  };
-
-  if (me) collect(me, 0);
-  remotes.forEach((r, id) => {
-    if (r === me || !r.data.npc) return;
-    const m = markerFor(id);
-    collect(r, m === '!' || m === '?' ? 1 : 2);
-  });
-
-  entries.sort((a, b) => a.rank - b.rank || (a.owner.labelOrder ?? 0) - (b.owner.labelOrder ?? 0));
-
-  const placed: LabelRect[] = [];
-  const rectAt = (e: LabelEntry, dy: number): LabelRect => ({
-    x0: e.cx - e.w / 2,
-    x1: e.cx + e.w / 2,
-    y0: e.cy + dy - e.yTop,
-    y1: e.cy + dy + e.yBot,
-  });
-  const hits = (r: LabelRect): boolean =>
-    placed.some((p) => r.x0 < p.x1 - 1 && r.x1 > p.x0 + 1 && r.y0 < p.y1 - 1 && r.y1 > p.y0 + 1);
-
-  for (const e of entries) {
-    const o = e.owner;
-    let dy = 0;
-    let fits = true;
-    if (e.rank > 0) {
-      const step = e.h + 6; // +6px slot gap absorbs lerp/depth drift (live probe showed 1px slivers at +4)
-      const cur = o.labelDy ?? 0;
-      let want = cur;
-      if (hits(rectAt(e, cur))) {
-        // current slot overlaps: take the nearest free slot to cur
-        let found = false;
-        for (let d = 1; d <= 10 && !found; d++) {
-          for (const c of [cur - d * step, cur + d * step]) {
-            if (Math.abs(c) > 5 * step + 1) continue;
-            const r = rectAt(e, c);
-            if (r.y0 < 8 || r.y1 > H - 8) continue;
-            if (!hits(r)) { want = c; found = true; break; }
-          }
-        }
-        if (!found && e.rank === 2) fits = false;
-      } else {
-        // current slot is free: stay; only go home when dy=0 is free
-        want = hits(rectAt(e, 0)) ? cur : 0;
-      }
-      if (Math.abs(want - cur) < 2) {
-        o.labelWant = cur;
-        o.labelWantN = 0;
-      } else {
-        if (o.labelWant === undefined || Math.abs(o.labelWant - want) >= 2) { o.labelWant = want; o.labelWantN = 0; }
-        o.labelWantN = (o.labelWantN ?? 0) + 1;
-        if (o.labelWantN >= 10) { o.labelDy = want; o.labelWantN = 0; }
-      }
-      dy = o.labelDy ?? 0;
-    }
-    if (!fits) {
-      e.label.visible = false;
-      setLabelShift(o, 0, k);
-      o.labelDy = 0;
-      o.labelWant = 0;
-      o.labelWantN = 0;
-      continue;
-    }
-    placed.push(rectAt(e, dy));
-    if (e.rank > 0) {
-      const targetWorld = ((-dy / H) * 2 * e.depth * tanHalf);
-      setLabelShift(o, targetWorld, k);
     }
   }
 }
@@ -1978,7 +1816,6 @@ function loop() {
   updateDonorBtn();
   updateAnimalBtn();
   updateNpcMarkers();
-  updateLabelLayout(dt);
   updateTracker();
   updateAnimals(latestAnimals, dt);
   updateSweep(now);
