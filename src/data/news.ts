@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 33;
+export const LATEST_NEWS_ID = 34;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Cầu thang Điện Tam Thế: bậc gỗ đặc, liền khối',
+    date: '2026-11-14',
+    items: [
+      'Sửa hình học cầu thang Điện Tam Thế: 20 bậc gỗ giờ đặc và khít nhau, không còn khe hở hay khoảng rỗng bên dưới cầu thang.',
+      'Bậc dưới cùng chạm nền gạch, đi lên xuống bình thường.',
+    ],
+  },
   {
     title: 'Sửa vòng Lạy, thêm tượng Điện Mẫu, dời tượng hành lang và cây gần Bảo Tháp',
     date: '2026-11-14',

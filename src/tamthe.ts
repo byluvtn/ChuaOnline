@@ -65,7 +65,8 @@ export function buildTamThe(c: TempleCtx) {
   // Thứ tự mặt BoxGeometry: +x, -x, +y(bước), -y, +z(đứng, hướng lên bệ), -z
   const stairMats = [stairSide, stairSide, stairTop, stairTop, stairRiser, stairRiser];
   const stairW = TAM_THE_PLAT.stairW * 2 + 0.6;
-  const stairD = (sz1 - sz0) / nSteps + 0.02;
+  // sz1 < sz0 (stairs ascend northward, z decreases), so use Math.abs to keep depth positive (negative depth inverts winding and culls faces under FrontSide).
+  const stairD = Math.abs(sz1 - sz0) / nSteps + 0.02; // = 0.32
   for (let i = 0; i < nSteps; i++) {
     const t0 = i / nSteps, t1 = (i + 1) / nSteps;
     const h = BASE * t1;
