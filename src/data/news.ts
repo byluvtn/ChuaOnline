@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 73;
+export const LATEST_NEWS_ID = 74;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Dẫn đường quét chùa đi hết các điểm',
+    date: '2026-11-15',
+    items: [
+      'Bấm "Dẫn đường" cho nhiệm vụ quét chùa giờ đi hết tất cả các điểm quét, không còn dừng lại sau điểm đầu tiên.',
+      'Tới mỗi điểm quét nhân vật tự cầm chổi quét 3 giây rồi tự đi sang điểm tiếp theo, quét xong dẫn về gặp người giao nhiệm vụ để trả.',
+      'Sửa lỗi khung chỉ đường tự tắt khi vừa tới nơi khiến hành trình quét bị đứt đoạn.',
+    ],
+  },
   {
     title: 'Giảm nóng máy khi chơi trên điện thoại',
     date: '2026-11-15',

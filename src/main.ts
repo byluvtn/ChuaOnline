@@ -1399,6 +1399,15 @@ function updateGuidePath(): void {
   guideWaypoints = sampled;
   guideGroup.visible = true;
 }
+// Quest quet: giu guide song khi dang o diem quet (cho updateSweep quet + watchdog doi sang diem ke).
+// Quet xong het diem thi chi giu song cho toi khi guideTarget doi sang nguoi giao; toi noi (<1.5 m) thi cho dung.
+function sweepGuideKeepAlive(q: (typeof quests)[number], px: number, pz: number): boolean {
+  if (questDef(q.id)?.event !== 'sweep') return false;
+  if (q.progress < q.target) return true;
+  const t = questTarget(q);
+  return !!t && Math.hypot(t.x - px, t.z - pz) >= 1.5;
+}
+
 function updateTracker(): void {
   const qt = document.getElementById('questTracker') as HTMLElement | null;
   if (!qt) return;
@@ -1408,7 +1417,7 @@ function updateTracker(): void {
   const p = me.char.root.position;
   const dx = guideTarget.x - p.x, dz = guideTarget.z - p.z;
   const d = Math.hypot(dx, dz);
-  if (d < 1.5) { stopGuide(); return; }
+  if (d < 1.5 && !sweepGuideKeepAlive(q, p.x, p.z)) { stopGuide(); return; }
   qt.style.display = 'flex';
   const label = qt.querySelector('.qt-label');
   const dist = qt.querySelector('.qt-dist');
@@ -1698,7 +1707,7 @@ function loop(now: number = performance.now()) {
       const d = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
       if (d < 1.5) {
         const gq = quests.find((x) => x.id === guideQuestId);
-        if (gq && questDef(gq.id)?.event === 'sweep' && gq.progress < gq.target) {
+        if (gq && sweepGuideKeepAlive(gq, p.x, p.z)) {
           // diem quet: giu guide song de updateSweep quet; event quests se doi target sang diem ke tiep
           clickTarget = null; pathTarget = null; pathQueue.length = 0;
         } else { stopGuide(); }

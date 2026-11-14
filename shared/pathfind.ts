@@ -79,15 +79,31 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
 
   let lastFallback = false;
 
+  // Tuong compound. PHAI khop voi WALL o src/layout.ts: zS = 45, zN = -82, x = +/-62.
+  // Khong import src/ tu shared/ nen hardcode o day.
+  const WALL_ZS = 45, WALL_ZN = -82, WALL_X = 62;
+
+  // true neu a va b cung o trong (hoac cung o ngoai) moi tuong cua compound.
+  function sameSide(a: Pt, b: Pt): boolean {
+    return (a.z <= WALL_ZS) === (b.z <= WALL_ZS)
+        && (a.z >= WALL_ZN) === (b.z >= WALL_ZN)
+        && (Math.abs(a.x) <= WALL_X) === (Math.abs(b.x) <= WALL_X);
+  }
+
   // Nearest road node; prefers nodes with a clear straight segment to p.
+  // Neu khong co node nao co doan sach: uu tien node cung phia tuong voi p,
+  // chi khi khong co node cung phia moi lay gan nhat tong the (hanh vi cu).
   function nearestNode(p: Pt): number {
     let bestVis = -1, bestVisD = Infinity, bestAny = -1, bestAnyD = Infinity;
+    let bestSide = -1, bestSideD = Infinity;
     for (let i = 0; i < N; i++) {
       const d = Math.hypot(pts[i].x - p.x, pts[i].z - p.z);
       if (d < bestAnyD) { bestAnyD = d; bestAny = i; }
+      if (d < bestSideD && sameSide(p, pts[i])) { bestSideD = d; bestSide = i; }
       if (d < bestVisD && segmentClear(p.x, p.z, pts[i].x, pts[i].z)) { bestVisD = d; bestVis = i; }
     }
-    return bestVis >= 0 ? bestVis : bestAny;
+    if (bestVis >= 0) return bestVis;
+    return bestSide >= 0 ? bestSide : bestAny;
   }
 
   // Collider that only overlaps the start point: first point on from->to outside every inflated collider containing `from`.
