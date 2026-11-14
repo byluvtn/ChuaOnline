@@ -213,15 +213,14 @@ export const SUTRAS: Sutra[] = [
 
 export const MARKET_STALLS: { id: string; x: number; z: number }[] = [
   { id: 'stall_fruit', x: 7, z: 54.5 },
-  { id: 'stall_cake', x: 11.5, z: 54.5 },
-  { id: 'stall_tea', x: 16, z: 54.5 },
-  { id: 'stall_pho', x: 20.5, z: 54.5 },
-  { id: 'stall_trada', x: 25, z: 54.5 },
-  { id: 'stall_incense', x: 29.5, z: 54.5 },
-  { id: 'stall_phongsinh', x: 34, z: 54.5 },
-  { id: 'stall_com', x: 38.5, z: 54.5 },
-  { id: 'stall_chim', x: 43, z: 54.5 },
-  { id: 'stall_ca', x: 47.5, z: 54.5 },
+  { id: 'stall_cake', x: 12, z: 54.5 },
+  { id: 'stall_tea', x: 17, z: 54.5 },
+  { id: 'stall_pho', x: 22, z: 54.5 },
+  { id: 'stall_trada', x: 27, z: 54.5 },
+  { id: 'stall_incense', x: 32, z: 54.5 },
+  { id: 'stall_phongsinh', x: 37, z: 54.5 },
+  { id: 'stall_com', x: 42, z: 54.5 },
+  { id: 'stall_chim', x: 47, z: 54.5 },
   { id: 'stall_trada2', x: 52, z: 54.5 },
 ];
 

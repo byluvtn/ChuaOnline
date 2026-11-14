@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 66;
+export const LATEST_NEWS_ID = 67;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Gộp 2 quầy phóng sinh thành 1',
+    date: '2026-11-15',
+    items: [
+      'Hai quầy chim và cá phóng sinh giờ gộp thành 1 quầy PHÓNG SINH, bán cả chim 20 xu, cá 10 xu, túi thức ăn cho chim 5 xu — giá không đổi.',
+      'Chợ còn 10 quầy, trải đều bước 5 m, khe hở đều 1,9 m; các quầy khác và người bán không đổi.',
+    ],
+  },
   {
     title: 'Tên đứng yên trên đầu, kể cả khi chồng nhau',
     date: '2026-11-14',

@@ -15,8 +15,7 @@ const STALL_STYLE: Record<string, { name: string; awning: number; goods: Goods }
   stall_pho: { name: 'PHỞ CHAY', awning: 0xb83a2a, goods: 'pho' },
   stall_trada: { name: 'TRÀ ĐÁ', awning: 0x5a7ab8, goods: 'tra' },
   stall_com: { name: 'CƠM CHAY', awning: 0x4a9a4a, goods: 'com' },
-  stall_chim: { name: 'BÁN CHIM PHÓNG SINH', awning: 0x3a7a5a, goods: 'chim' },
-  stall_ca: { name: 'BÁN CÁ PHÓNG SINH', awning: 0x4a90b8, goods: 'ca' },
+  stall_chim: { name: 'QUẦY PHÓNG SINH', awning: 0x3a7a5a, goods: 'phongsinh' },
   stall_trada2: { name: 'TRÀ ĐÁ', awning: 0x5a7ab8, goods: 'tra' },
 };
 

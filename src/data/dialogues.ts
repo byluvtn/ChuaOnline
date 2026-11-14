@@ -859,47 +859,24 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     ],
   },
 
-  // npc34 — Bác Bán Chim Phóng Sinh. Chỉ bán hàng, không giao quest.
+  // npc34 — Bác Bán Phóng Sinh (quầy gộp chim + cá). Chỉ bán hàng, không giao quest.
   npc34: {
-    name: 'Bác Bán Chim Phóng Sinh',
-    role: 'Người bán chim phóng sinh',
+    name: 'Bác Bán Phóng Sinh',
+    role: 'Người bán phóng sinh',
     greetings: [
-      { time: 'morning', text: 'Chào thí chủ, sáng nay chim hót hay lắm, mua một con về thả lấy phước nhé.' },
-      { time: 'noon', text: 'Trưa rồi, chim bác vẫn khỏe, thí chủ mua về thả ở hồ phóng sinh nhé.' },
-      { time: 'afternoon', text: 'Chiều nay bác còn ít chim, thí chủ mua giúp bác nhé.' },
+      { time: 'morning', text: 'Chào thí chủ, sáng nay chim hót hay, cá cũng khỏe, mua một con về thả lấy phước nhé.' },
+      { time: 'noon', text: 'Trưa rồi, chim cá bác vẫn khỏe, thí chủ mua về thả ở hồ phóng sinh nhé.' },
+      { time: 'afternoon', text: 'Chiều nay bác còn ít chim cá, thí chủ mua giúp bác nhé.' },
     ],
     questOffer: '',
     questReminder: '',
-    questDone: 'Cảm ơn thí chủ, thả chim xong nhớ niệm Phật nhé.',
-    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, thức ăn cho chim 5 xu một túi, thí chủ mua về thả và cho chim ăn nhé.',
+    questDone: 'Cảm ơn thí chủ, thả chim thả cá xong nhớ niệm Phật nhé.',
+    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, cá phóng sinh 10 xu một con, thức ăn cho chim 5 xu một túi, thí chủ mua về thả và cho chim ăn nhé.',
     smallTalk: [
       'Chim bác nuôi khỏe mạnh, thả ra là bay vút lên trời ngay.',
+      'Cá bác giữ nước sạch mỗi ngày nên con nào cũng khỏe, thả xuống ao là bơi đi liền.',
       'Hồ phóng sinh ở phía đông Chính Điện, bến thả ngay mép ao.',
-      'Thả một con chim là cứu một mạng sống, phước báu lắm đấy.',
-    ],
-    farewell: [
-      'Thí chủ đi thong thả, nhớ ghé lại nhé.',
-      'Mô Phật, chúc thí chủ an lành.',
-    ],
-  },
-
-  // npc35 — Cô Bán Cá Phóng Sinh. Chỉ bán hàng, không giao quest.
-  npc35: {
-    name: 'Cô Bán Cá Phóng Sinh',
-    role: 'Người bán cá phóng sinh',
-    greetings: [
-      { time: 'morning', text: 'Chào thí chủ, cá trong chậu sáng nay còn tươi khỏe, mua về thả nhé.' },
-      { time: 'noon', text: 'Trưa rồi, thí chủ mua con cá mang ra hồ phóng sinh thả nhé.' },
-      { time: 'afternoon', text: 'Chiều nay cô còn ít cá, thí chủ mua giúp cô nhé.' },
-    ],
-    questOffer: '',
-    questReminder: '',
-    questDone: 'Cảm ơn thí chủ, thả cá xong nhớ phát nguyện lành nhé.',
-    shopGreeting: 'Cá phóng sinh của cô 10 xu một con, thí chủ mua về thả ở hồ phóng sinh nhé.',
-    smallTalk: [
-      'Cá cô giữ nước sạch mỗi ngày nên con nào cũng khỏe.',
-      'Bến thả ở mép ao phía đông Chính Điện, thí chủ đi thẳng là tới.',
-      'Thả cá xuống nước là cho nó một đường sống, phước lắm thí chủ ơi.',
+      'Thả một con chim hay một con cá là cứu một mạng sống, phước báu lắm đấy.',
     ],
     farewell: [
       'Thí chủ đi thong thả, nhớ ghé lại nhé.',

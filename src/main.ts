@@ -956,9 +956,9 @@ const SHOP_VENDOR_GOODS: Record<string, { item: string; label: string; price: nu
   npc33: [{ item: 'com_chay', label: 'Cơm chay', price: 10 }],
   npc34: [
     { item: 'chim_phong_sinh', label: 'Chim phóng sinh', price: 20 },
+    { item: 'ca_phong_sinh', label: 'Cá phóng sinh', price: 10 },
     { item: 'thuc_an_chim', label: 'Túi thức ăn cho chim', price: 5 },
   ],
-  npc35: [{ item: 'ca_phong_sinh', label: 'Cá phóng sinh', price: 10 }],
   npc36: [{ item: 'tra_da', label: 'Trà đá', price: 5 }],
 };
 
