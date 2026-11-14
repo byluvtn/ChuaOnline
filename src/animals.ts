@@ -21,11 +21,13 @@ interface Ent {
 interface Spec { id: string; kind: Kind; file: string; name?: string; dark?: boolean; scale?: number; labelY?: number; clipMap?: Record<string, string> }
 
 const ROBIN_CLIPS: Record<string, string> = { walk: 'A_Hop_01', eat: 'A_PeckGround_01', idle: 'A_Idle_01' };
+const COLLIE_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Idle', idle: 'Idle' };
+const MUNCHKIN_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Eat', idle: 'Idle' };
 const LABRADOR_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Sit', idle: 'Idle' };
 
 const SPECS: Spec[] = [
-  { id: 'vang', kind: 'dog', file: 'animal-dog', name: 'Vàng' },
-  { id: 'den', kind: 'dog', file: 'animal-dog', name: 'Đen', dark: true },
+  { id: 'vang', kind: 'dog', file: 'polyfork-dog', name: 'Vàng', scale: 0.91, clipMap: COLLIE_CLIPS },
+  { id: 'den', kind: 'dog', file: 'munchkin-dog', name: 'Đen', scale: 0.62, clipMap: MUNCHKIN_CLIPS },
   { id: 'muop', kind: 'cat', file: 'animal-cat', name: 'Mướp', scale: 2, labelY: 1.6 },
   { id: 'lab', kind: 'dog', file: 'labrador-lite', name: 'Labrador', scale: 0.45, clipMap: LABRADOR_CLIPS },
   { id: 'owl1', kind: 'owl', file: 'animal-owl' },

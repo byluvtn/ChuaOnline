@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 51;
+export const LATEST_NEWS_ID = 52;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hai chó mới: Collie và chó Munchkin thay chó khối vuông',
+    date: '2026-11-14',
+    items: [
+      'Hai chó Kenney khối vuông được thay bằng chó Collie (mõm dài, tai dựng) và chó Munchkin nâu (đầu to, tai cụp), nhìn giống chó thật hơn; cả hai cao khoảng nửa mét đến 7 tấc, đi lại bình thường.',
+      'Cho chó mèo ăn (Q23) và tìm chó mèo đi lạc (Q24) không đổi; chó vẫn đi quanh sân và vườn sau như cũ.',
+    ],
+  },
   {
     title: 'Quầy chợ xếp lại hai bên đường, thông lối đi giữa',
     date: '2026-11-14',
