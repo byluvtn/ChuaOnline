@@ -296,7 +296,7 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'gq_water', label: 'Tưới cây mỗi ngày', event: 'water', target: 3, coins: 15, merit: 8, giver: GARDEN_GIVER },
   { id: 'gq_grow', label: 'Chăm cây lớn', event: 'grow', target: 1, coins: 25, merit: 15, giver: GARDEN_GIVER },
   { id: 'gq_harvest', label: 'Thu hoạch đầu mùa', event: 'harvest', target: 1, coins: 25, merit: 12, giver: GARDEN_GIVER },
-  // Nhiệm vụ ngày của Sư Ông (npc37) — 3 nhóm, xoay theo ngày VN (dayKeyICT). Nhóm A: %3==0, B: %3==1, C: %3==2.
+  // Nhiệm vụ ngày của Sư Ông (npc37) — cửa sổ trượt 3 việc/ngày theo ngày VN (dayKeyICT), xem DQ_POOL/dqTodayIds.
   { id: 'dq_sweep', label: 'Quét sân chùa giúp Tiểu Quét Sân', event: 'sweep', target: 3, coins: 20, merit: 12, giver: 'npc37',
     points: [{ x: -8.5, z: 12 }, { x: 8.5, z: 12 }, { x: -7.5, z: -1 }] },
   { id: 'dq_bow', label: 'Đảnh lễ Tam Thế', event: 'bow', target: 3, coins: 20, merit: 12, giver: 'npc37', zone: Z_TAM_THE },
@@ -308,16 +308,21 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc37', receiver: 'npc37', stall: 'stall_phongsinh', zone: Z_PS_PIER, steps: ['talk', 'buyphongsinh', 'release', 'deliver'] },
   { id: 'dq_bell', label: 'Thỉnh chuông', event: 'talk', target: 2, coins: 15, merit: 8, giver: 'npc37', receiver: 'npc4', steps: ['talk', 'deliver'] },
   { id: 'dq_meditate', label: 'Thiền 2 phút', event: 'meditate', target: 12, coins: 30, merit: 15, giver: 'npc37', zone: Z_THIEN_DUONG },
+  { id: 'dq_water', label: 'Tưới 1 cây trong vườn', event: 'water', target: 1, coins: 20, merit: 10, giver: 'npc37' },
 ];
 
-/** Nhóm việc Sư Ông theo ngày VN: A = ngày % 3 == 0, B == 1, C == 2. */
-export const DQ_GROUPS: string[][] = [
-  ['dq_sweep', 'dq_bow', 'dq_sutra'],
-  ['dq_incense', 'dq_lantern', 'dq_feed'],
-  ['dq_release', 'dq_bell', 'dq_meditate'],
+/** Kho việc Sư Ông (10 việc): mỗi ngày VN hiện đúng 3 việc liên tiếp, cửa sổ trượt
+    start = (ictDayOfYear * 3) % 10 — cùng ngày mọi người chơi nhận cùng 3 việc, mỗi việc
+    xuất hiện 3/10 ngày. */
+export const DQ_POOL: string[] = [
+  'dq_sweep', 'dq_bow', 'dq_sutra',
+  'dq_incense', 'dq_lantern', 'dq_feed',
+  'dq_release', 'dq_bell', 'dq_meditate',
+  'dq_water',
 ];
 export function dqTodayIds(d = new Date()): string[] {
-  return DQ_GROUPS[ictDayOfYear(d) % 3];
+  const start = (ictDayOfYear(d) * 3) % DQ_POOL.length;
+  return [0, 1, 2].map((i) => DQ_POOL[(start + i) % DQ_POOL.length]);
 }
 
 export type GardenSpecies = 'soi' | 'thong' | 'anh_dao' | 'bo_de';

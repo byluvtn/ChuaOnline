@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 83;
+export const LATEST_NEWS_ID = 84;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sư Ông thêm việc tưới cây mỗi ngày',
+    date: '2026-11-15',
+    items: [
+      'Kho việc hàng ngày của Sư Ông tăng từ 9 lên 10 việc, mỗi ngày vẫn hiện đúng 3 việc.',
+      "Việc mới: 'Tưới 1 cây trong vườn' — ra Vườn Tây tưới một cây rồi quay lại gặp Sư Ông, được 20 xu và 10 công đức.",
+      'Ba việc mỗi ngày vẫn xoay đều theo ngày, ai vào chùa cùng ngày đều nhận cùng 3 việc.',
+    ],
+  },
   {
     title: 'Sư Ông giao việc mỗi ngày',
     date: '2026-11-15',

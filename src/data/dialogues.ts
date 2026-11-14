@@ -78,7 +78,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     chanting: 'Mô Phật, thí chủ cứ tự nhiên lễ Phật.',
   },
 
-  // npc37 — Sư Ông, trụ trì già cầm gậy. Giao 3 việc mỗi ngày, xoay 3 nhóm (dq_*), reset 00:00 VN.
+  // npc37 — Sư Ông, trụ trì già cầm gậy. Giao 3 việc mỗi ngày, xoay cửa sổ 3 việc/ngày (dq_*), reset 00:00 VN.
   npc37: {
     name: 'Sư Ông',
     role: 'Trụ trì già',
@@ -135,6 +135,11 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         offer: 'Con vào Thiền Đường ngồi thiền hai phút giúp thầy nhé, ngồi yên thì tâm mới lắng.',
         reminder: 'Hai phút thiền con ngồi xong chưa? Ngồi cho đủ rồi về gặp thầy nhé.',
         done: 'Thiền xong rồi, mặt con tươi hẳn ra. Tốt lắm, cứ giữ như vậy nhé.',
+      },
+      dq_water: {
+        offer: 'Con ra Vườn Tây tưới giúp thầy một cây nhé, cây khát nước rồi, tưới xong nó lại xanh tốt.',
+        reminder: 'Cây trong vườn con tưới chưa? Tưới một cây thôi, xong rồi về gặp thầy nhé.',
+        done: 'Cây được tưới rồi, lá lại xanh mơn mởn. Cảm ơn con nhé.',
       },
     },
     smallTalk: [
