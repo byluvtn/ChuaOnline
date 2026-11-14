@@ -49,7 +49,7 @@ export interface Character {
   label: THREE.Sprite;
   bubble: THREE.Sprite;
   bubbleUntil: number;
-  setLabel(name: string, level?: number, isMe?: boolean, title?: string): void;
+  setLabel(name: string, level?: number, isMe?: boolean, title?: string, status?: string): void;
   setAccessory(id: string | null): void;
   say(text: string): void;
   dispose(): void;
@@ -77,19 +77,19 @@ function mesh(g: THREE.BufferGeometry, m: THREE.Material, parent: THREE.Object3D
   return o;
 }
 
-function makeLabelSprite(tall?: boolean) {
+function makeLabelSprite(height: 96 | 144 | 192 = 96) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = tall ? 144 : 96;
+  canvas.width = 512; canvas.height = height;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, sizeAttenuation: false, toneMapped: false }));
-  sprite.scale.set(0.045 * (512 / 96), tall ? 0.0675 : 0.045, 1);
+  sprite.scale.set(0.045 * (512 / 96), 0.045 * (height / 96), 1);
   sprite.renderOrder = 20;
   return { sprite, canvas, tex };
 }
 
-function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean, title?: string): number {
+function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean, title?: string, status?: string): number {
   const g = canvas.getContext('2d')!;
   g.clearRect(0, 0, 512, canvas.height);
   const oy = canvas.height - 96; // nhãn cao: chip tên bám đáy canvas, dòng danh hiệu nằm phía trên
@@ -114,13 +114,23 @@ function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: st
   g.font = '700 38px system-ui, "Segoe UI", sans-serif';
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(text, x0 + chip / 2 + w / 2 + (level ? 6 : 0) - (level ? 0 : 0) - (level ? 6 : 0), 49 + oy);
-  if (title && oy > 0) {
+  if (oy > 0) {
+    // Hai dòng trên chip tên (chỉ có trên nhãn cao): dòng trạng thái nhỏ, xanh nhạt
+    // (y=34) và dòng danh hiệu vàng (y=34 trên nhãn 144, y=82 trên nhãn 192).
+    // NPC không có danh hiệu nên trạng thái không bao giờ đụng danh hiệu.
     g.save();
-    g.font = '700 28px system-ui, "Segoe UI", sans-serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.shadowColor = 'rgba(0,0,0,.75)'; g.shadowBlur = 6;
-    g.fillStyle = '#f4cd6e';
-    g.fillText(title.length > 24 ? title.slice(0, 23) + '…' : title, 256, 34);
+    if (title) {
+      g.font = '700 28px system-ui, "Segoe UI", sans-serif';
+      g.fillStyle = '#f4cd6e';
+      g.fillText(title.length > 24 ? title.slice(0, 23) + '…' : title, 256, 34 + (oy - 48));
+    }
+    if (status) {
+      g.font = '700 22px system-ui, "Segoe UI", sans-serif';
+      g.fillStyle = '#bfe3c8';
+      g.fillText(status.length > 24 ? status.slice(0, 23) + '…' : status, 256, 34);
+    }
     g.restore();
   }
   tex.needsUpdate = true;
@@ -518,17 +528,18 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   };
 
   // Name label + chat bubble (constant on-screen size)
-  const L = makeLabelSprite(!opts?.role); // người chơi: nhãn cao có dòng danh hiệu; NPC: nhãn thường
-  if (!opts?.role) L.sprite.center.set(0.5, 1 / 3); // neo tại điểm giữa của nhãn cũ (48/144 từ đáy) để chip tên không dịch chỗ
+  const L = makeLabelSprite(opts?.role ? 144 : 192); // NPC: nhãn cao 144 (chỗ cho dòng trạng thái); người chơi: 192 (trạng thái trên cả danh hiệu)
+  L.sprite.center.set(0.5, opts?.role ? 1 / 3 : 0.25); // neo 48px từ đáy canvas ở mọi chiều cao → chip tên không dịch chỗ
   L.sprite.position.y = 2.65;
   root.add(L.sprite);
-  const setLabel = (n: string, level?: number, isMe?: boolean, title?: string) => {
-    L.sprite.userData.chipFrac = drawLabel(L.canvas, L.tex, n, level, isMe, title) / 512;
-    // Rect dọc của nhãn, tính bằng phần của chiều cao sprite (dùng cho updateLabelLayout):
-    // nhãn thường (canvas 96): chip 18-76, neo ở giữa (48). Nhãn cao của người chơi
-    // (canvas 144): chip 66-124, dòng danh hiệu 20-48, neo ở 96 (1/3 từ đáy).
+  const setLabel = (n: string, level?: number, isMe?: boolean, title?: string, status?: string) => {
+    L.sprite.userData.chipFrac = drawLabel(L.canvas, L.tex, n, level, isMe, title, status) / 512;
+    // Rect dọc của nhãn (chỉ còn lưu dữ liệu, news 66 đã bỏ cơ chế dời nhãn):
+    // nhãn thường (canvas 96): chip 18-76, neo ở giữa (48). Nhãn cao NPC (144):
+    // chip 66-124, dòng trạng thái 23-45, neo ở 96 (1/3 từ đáy). Nhãn người chơi (192):
+    // chip 114-172, trạng thái 23-45, danh hiệu 68-96, neo ở 144 (0.25 từ đáy).
     const tall = L.canvas.height > 96;
-    const anchorY = tall ? 96 : 48;
+    const anchorY = L.canvas.height - 48;
     const topY = tall ? 20 : 18;
     const botY = 76 + (L.canvas.height - 96);
     L.sprite.userData.chipTop = (anchorY - topY) / L.canvas.height;
@@ -536,7 +547,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   };
   setLabel(name);
 
-  const B = makeLabelSprite();
+  const B = makeLabelSprite(96);
   B.sprite.center.set(0.5, 0);
   B.sprite.position.y = 2.9;
   B.sprite.visible = false;

@@ -22,7 +22,7 @@ import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, type Pt } from '../shared/roads';
 import {
   MAP_HALF, MAP_Z_MIN, OUTFIT_COLOR, levelOf, meritForLevel,
-  type ActionKind, type Anim, type AnimalState, type ChatMessage, type Lantern, type Outfit, type PlayerState, type Profile,
+  type ActionKind, type Anim, type AnimalState, type ChatMessage, type Lantern, type NpcAct, type Outfit, type PlayerState, type Profile,
 } from '../shared/types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -193,7 +193,7 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number }
+interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; act?: NpcAct | null; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
 let myId = '';
@@ -232,6 +232,26 @@ let dragging = false, dragMoved = 0;
 let sitting = false;
 const joy = { x: 0, y: 0, id: -1 };
 
+const STATUS_TEXT: Record<NpcAct, string> = {
+  chant: 'Đang tụng kinh…',
+  meditate: 'Đang thiền…',
+  sweep: 'Đang quét sân…',
+  ring: 'Đang rung chuông…',
+  rest: 'Đang nghỉ…',
+};
+const statusText = (a?: NpcAct | null) => (a ? STATUS_TEXT[a] : undefined);
+
+/** Vẽ lại nhãn tên (tên + level + danh hiệu + dòng trạng thái). Chỉ gọi khi có gì đổi,
+ * không gọi mỗi frame — nhãn chỉ đổi CHỮ, vị trí chip không bao giờ dời (news 66). */
+function refreshLabel(r: Remote) {
+  if (r.data.id === myId && profile) {
+    const curTitleId = profile.title ?? defaultTitle(profile.titles);
+    r.char.setLabel(profile.name, levelOf(profile.merit), true, curTitleId ? titleName(curTitleId) : undefined, statusText(r.act));
+  } else {
+    r.char.setLabel(r.data.name, r.data.npc ? undefined : levelOf(r.data.merit), r.data.id === myId, r.data.npc ? undefined : (r.data.title ? titleName(r.data.title) : undefined), statusText(r.act));
+  }
+}
+
 function addPlayer(p: PlayerState) {
   if (remotes.has(p.id)) return remotes.get(p.id)!;
   const char = p.npc ? buildCharacter(p.outfit, p.color, p.name, { scale: p.role === 'abbot' ? 1.15 : p.role === 'lay' ? 1 : 0.9, role: p.role }) : buildCharacter(p.outfit, p.color, p.name);
@@ -241,7 +261,7 @@ function addPlayer(p: PlayerState) {
   char.root.position.set(p.x, 0, p.z);
   if (p.npc) char.root.visible = settings.showNpcs;
   world.scene.add(char.root);
-  const r: Remote = { char, target: new THREE.Vector3(p.x, world.groundY(p.x, p.z), p.z), ry: p.ry, anim: p.anim, actionUntil: 0, data: p };
+  const r: Remote = { char, target: new THREE.Vector3(p.x, world.groundY(p.x, p.z), p.z), ry: p.ry, anim: p.anim, actionUntil: 0, data: p, act: null };
   remotes.set(p.id, r);
   return r;
 }
@@ -312,7 +332,7 @@ function updateProfileHud() {
   lastMerit = profile.merit; lastCoins = profile.coins; lastLevel = lv;
   const curTitleId = profile.title ?? defaultTitle(profile.titles);
   const curTitle = curTitleId ? titleName(curTitleId) : null;
-  if (me) me.char.setLabel(profile.name, lv, true, curTitle ?? undefined);
+  if (me) me.char.setLabel(profile.name, lv, true, curTitle ?? undefined, statusText(me.act));
   const lo = meritForLevel(lv), hi = meritForLevel(lv + 1);
   $('pname').textContent = profile.name;
   $('ptitle').textContent = curTitle ?? '';
@@ -481,8 +501,8 @@ function connect() {
     const r = remotes.get(id);
     if (!r || r.data.npc) return;
     r.data.title = title;
-    const lv = id === myId && profile ? levelOf(profile.merit) : levelOf(r.data.merit);
-    r.char.setLabel(r.data.name, lv, id === myId, title ? titleName(title) : undefined);
+    if (id === myId && profile) profile.title = title;
+    refreshLabel(r);
   });
   s.on('quests', (q: QuestState[]) => {
     quests = q; updateQuestDot(); refreshPanel();
@@ -500,7 +520,7 @@ function connect() {
     remotes.delete(id);
   });
   s.on('player:look', ({ id, accessory }: { id: string; accessory: string | null }) => remotes.get(id)?.char.setAccessory(accessory));
-  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'ry' | 'anim'>[]; animals?: AnimalState[] }) => {
+  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'ry' | 'anim' | 'act'>[]; animals?: AnimalState[] }) => {
     $('onlineN').textContent = String(st.online);
     latestAnimals = st.animals ?? [];
     for (const p of st.players) {
@@ -509,6 +529,7 @@ function connect() {
       r.target.set(p.x, world.groundY(p.x, p.z), p.z);
       r.ry = p.ry;
       if (performance.now() > r.actionUntil) r.anim = p.anim;
+      if (p.act !== r.act) { r.act = p.act ?? null; refreshLabel(r); }
     }
   });
   s.on('chat', addChat);
@@ -1808,6 +1829,9 @@ function loop(now: number = performance.now()) {
     collide(root.position);
     root.position.y += (world.groundY(root.position.x, root.position.z) - root.position.y) * Math.min(1, dt * 14);
     me.anim = now < myActionUntil ? me.anim : sitting ? 'sit' : moving ? (running ? 'run' : 'walk') : 'idle';
+    // Trạng thái của chính mình: tụng kinh → 'chant', ngồi thiền → 'meditate'; chỉ vẽ lại khi đổi.
+    const myAct: NpcAct | null = me.anim === 'chant' ? 'chant' : sitting ? 'meditate' : null;
+    if (myAct !== me.act) { me.act = myAct; refreshLabel(me); }
 
     if (now - lastSend > 60) {
       lastSend = now;

@@ -4,6 +4,8 @@ export const OUTFIT_COLOR: Record<Outfit, string> = { monk: '#d9a62b', nun: '#77
 export const OUTFIT_LABEL: Record<Outfit, string> = { monk: 'Tiểu tăng', nun: 'Tiểu ni', male: 'Phật tử nam', female: 'Phật tử nữ' };
 export type ActionKind = 'incense' | 'bow' | 'chant' | 'lantern' | 'palms' | 'beads';
 export type Anim = 'idle' | 'walk' | 'run' | 'sit' | 'lie' | 'sweep' | 'ring' | ActionKind;
+/** Hoạt động NPC/người chơi đang làm, máy chủ suy ra — chỉ để hiện dòng trạng thái trên tên. */
+export type NpcAct = 'chant' | 'meditate' | 'sweep' | 'ring' | 'rest';
 
 export interface PlayerState {
   id: string;
@@ -21,6 +23,8 @@ export interface PlayerState {
   role?: 'abbot' | 'novice' | 'lay';
   /** id danh hiệu đang đeo; chỉ người chơi có */
   title?: string | null;
+  /** hoạt động đang làm (máy chủ suy ra); chỉ để hiện dòng trạng thái */
+  act?: NpcAct | null;
 }
 
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }

@@ -1,6 +1,6 @@
 import { BRIDGE, HALL, PLAZA, clampToCompound, inLake } from '../src/layout.js';
 import { ROAD_NODES, roadRoute, routeFrom } from '../shared/roads.js';
-import type { ActionKind, Anim, Outfit, PlayerState } from '../shared/types.js';
+import type { ActionKind, Anim, NpcAct, Outfit, PlayerState } from '../shared/types.js';
 import type { Pt } from '../shared/roads.js';
 
 type Behavior = 'wander' | 'sweepPlaza' | 'sweepBridge' | 'sweepZen' | 'sweepRoad' | 'bell' | 'visitor' | 'desk' | 'post' | 'chant';
@@ -959,9 +959,30 @@ function step(room: NpcRoom, n: Npc, dt: number, now: number) {
   s.x = q.x; s.z = q.z;
 }
 
+/** Hoạt động đang làm của 1 NPC, suy ra từ anim + mode + behavior.
+ * 'sit' mơ hồ nên phải phân biệt: npc6 trực bàn (desk) → null, trụ trì dẫn thời khóa
+ * (mode 'sitting') → tụng kinh, còn lại (ngồi thiền tour...) → thiền. Lạy/thắp hương
+ * thoáng qua (3–7 s) cố ý không hiện để khỏi nhấp nháy. */
+function npcActivity(n: Npc): NpcAct | null {
+  const a = n.state.anim;
+  if (a === 'chant') return 'chant';
+  if (a === 'sweep') return 'sweep';
+  if (a === 'ring') return 'ring';
+  if (a === 'lie') return 'rest';
+  if (a === 'sit') {
+    if (n.def.behavior === 'desk') return null;
+    if (n.mode === 'idleRest' || n.mode === 'toIdleRest') return 'rest';
+    // Tour news 77: khách ngồi Nhà Khách là NGHỈ ('guest'), ngồi Thiền Đường mới là thiền ('zen').
+    if (n.stage === 'stroll' && n.tourStops[n.tourIdx]?.kind === 'guest') return 'rest';
+    if (n.mode === 'sitting') return 'chant';
+    return 'meditate';
+  }
+  return null;
+}
+
 /** NPC states currently in the world (visitors that left are excluded). */
 export function presentNpcStates(room: NpcRoom): PlayerState[] {
-  return room.npcs.filter((n) => !n.gone).map((n) => n.state);
+  return room.npcs.filter((n) => !n.gone).map((n) => { n.state.act = npcActivity(n); return n.state; });
 }
 
 export function tickNpcs(room: NpcRoom, now = Date.now(), online = 0): PlayerState[] {

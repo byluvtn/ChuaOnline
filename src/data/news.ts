@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 77;
+export const LATEST_NEWS_ID = 78;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'NPC đang làm gì thì tên hiện dòng trạng thái',
+    date: '2026-11-15',
+    items: [
+      'NPC đang tụng kinh, thiền, quét sân, rung chuông hay nghỉ ngơi đều hiện một dòng chữ nhỏ trên tên — hết việc thì dòng chữ tự biến mất.',
+      'Tên và danh hiệu không đổi chỗ; dòng trạng thái nhỏ hơn tên và không che dấu "!" nhiệm vụ.',
+    ],
+  },
   {
     title: 'Khách viếng tham quan chùa',
     date: '2026-11-15',

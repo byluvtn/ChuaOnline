@@ -978,7 +978,7 @@ setInterval(() => {
     }
     io.to(r.id).volatile.emit('state', {
       online: list.length,
-      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, anim: p.anim })),
+      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, anim: p.anim, act: p.npc ? (p.act ?? null) : (p.anim === 'chant' ? 'chant' : p.anim === 'sit' ? 'meditate' : null) })),
       animals: getAnimalStates(r.id),
     });
   }
