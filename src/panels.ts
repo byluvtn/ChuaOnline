@@ -222,7 +222,7 @@ function renderBag(body: HTMLElement, ctx: PanelCtx) {
     if (it.kind === 'accessory') {
       const worn = p?.accessory === id;
       tile.append(h('button', { onclick: () => ctx.socket.emit('inv:equip', worn ? null : id) }, worn ? 'Tháo ra' : 'Đeo'));
-    } else tile.append(h('small', {}, 'Tự dùng khi hành lễ'));
+    } else tile.append(h('small', {}, (it.id === 'chim_phong_sinh' || it.id === 'ca_phong_sinh') ? 'Mang tới bến thả ở hồ phóng sinh để thả' : 'Tự dùng khi hành lễ'));
     grid.append(tile);
   }
   body.append(grid);

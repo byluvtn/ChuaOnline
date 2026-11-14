@@ -4,13 +4,14 @@ import { groundY } from './layout';
 import { signTexture } from './textures';
 import { geo, outlined, toon } from './toon';
 
-type Goods = 'fruit' | 'cake' | 'tea' | 'incense';
+type Goods = 'fruit' | 'cake' | 'tea' | 'incense' | 'phongsinh';
 
 const STALL_STYLE: Record<string, { name: string; awning: number; goods: Goods }> = {
   stall_fruit: { name: 'HOA QUẢ', awning: 0x4a9a4a, goods: 'fruit' },
   stall_cake: { name: 'BÁNH', awning: 0xd9a62b, goods: 'cake' },
   stall_tea: { name: 'TRÀ', awning: 0x5a7ab8, goods: 'tea' },
   stall_incense: { name: 'HƯƠNG HOA', awning: 0xc95a7a, goods: 'incense' },
+  stall_phongsinh: { name: 'CHIM CÁ', awning: 0x3a7a5a, goods: 'phongsinh' },
 };
 
 export const MARKET_COLLIDERS: { x: number; z: number; r: number }[] =
@@ -84,6 +85,16 @@ function addGoods(g: THREE.Group, kind: Goods): void {
     for (let i = 0; i < 4; i++) {
       g.add(cyl(0.05, 0.06, 0xf4f4f4, -0.9 + i * 0.6, topY + 0.03, 0.8));
     }
+  } else if (kind === 'phongsinh') {
+    // 2 lồng chim
+    for (let i = 0; i < 2; i++) {
+      const cx = -0.6 + i * 0.7;
+      g.add(cyl(0.18, 0.4, 0x8a5a2b, cx, topY + 0.2, 0.4));
+      g.add(ball(0.07, 0xe8c84a, cx, topY + 0.2, 0.4));
+    }
+    // chậu cá
+    g.add(cyl(0.3, 0.2, 0x4a90b8, 0.8, topY + 0.1, 0.45));
+    g.add(ball(0.08, 0xe87a2a, 0.8, topY + 0.2, 0.45));
   } else {
     g.add(box(0.4, 0.1, 0.2, 0x8a5a2b, -0.7, topY + 0.05, 0.5));
     for (let i = 0; i < 6; i++) {
@@ -150,7 +161,7 @@ export function buildMarket(
     const stall = buildStall(s.id);
     stall.position.set(s.x, groundY(s.x, s.z), s.z);
     // front (+z local) faces the road at x = 0
-    stall.rotation.y = s.x < 0 ? Math.PI / 2 : -Math.PI / 2;
+    stall.rotation.y = s.x === 0 ? Math.PI : s.x < 0 ? Math.PI / 2 : -Math.PI / 2;
     scene.add(stall);
   }
 }

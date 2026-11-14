@@ -756,4 +756,27 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     ],
     chanting: 'Mô Phật, cô đang tụng kinh ở điện Mẫu, thí chủ lễ xong thì ngồi nghỉ một lát nhé.',
   },
+  // npc30 — Bác Bán Chim Cá. Bán chim cá phóng sinh ở quầy ngoài cổng chùa. Giao Q25.
+  npc30: {
+    name: 'Bác Bán Chim Cá',
+    role: 'Người bán chim cá phóng sinh',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng nay chim hót hay lắm, mua một con về thả lấy phước đi.' },
+      { time: 'noon', text: 'Trưa rồi, cá trong chậu vẫn khỏe, thí chủ mua về thả ở hồ phóng sinh nhé.' },
+      { time: 'afternoon', text: 'Chào thí chủ, chiều nay bác còn ít chim cá, mua giúp bác nhé.' },
+    ],
+    questOffer: 'Thí chủ mua giúp bác một con chim phóng sinh rồi mang ra bến thả ở hồ phóng sinh thả nhé, thả xong quay lại đây bác cảm ơn.',
+    questReminder: 'Chim thí chủ mua chưa? Mua rồi thì mang ra bến thả ở hồ phóng sinh, thả xong quay lại gặp bác nhé.',
+    questDone: 'Thí chủ thả chim rồi à, bác cảm ơn nhiều lắm. Phóng sinh là việc thiện, công đức vô lượng.',
+    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, cá phóng sinh 10 xu một con. Mua về rồi mang ra bến thả ở hồ phóng sinh mà thả nhé.',
+    smallTalk: [
+      'Chim bác nuôi đều khỏe mạnh, thả ra là bay vút lên trời ngay.',
+      'Hồ phóng sinh ở phía đông Chính Điện, bến thả ngay mép ao, thí chủ cứ đi thẳng là tới.',
+      'Mỗi con chim con cá thả đi là một mạng sống được cứu, phước báu lắm đấy.',
+    ],
+    farewell: [
+      'Thí chủ đi thong thả, nhớ ghé lại nhé.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
 };

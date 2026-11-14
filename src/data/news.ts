@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 36;
+export const LATEST_NEWS_ID = 37;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Quầy chim cá phóng sinh ngoài cổng chùa',
+    date: '2026-11-14',
+    items: [
+      'Chợ ngoài cổng Tam Quan có thêm quầy thứ 5 bán chim cá phóng sinh, do Bác Bán Chim Cá trông coi.',
+      'Mua chim 20 xu hoặc cá 10 xu rồi mang tới bến thả ở hồ phóng sinh để thả, nhận 20 hoặc 10 công đức.',
+      'Nhiệm vụ mới: Phóng sinh lần đầu — gặp Bác Bán Chim Cá để nhận việc.',
+    ],
+  },
   {
     title: 'Chó, mèo và chim về chùa, thêm hai nhiệm vụ mới',
     date: '2026-11-14',

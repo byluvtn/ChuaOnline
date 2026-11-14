@@ -12,6 +12,7 @@ import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openP
 import { createPost } from './post';
 import { createWorld } from './world';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal } from './animals';
+import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
 import { ACTION_RULES, CHAIN_QUESTS, MARKET_STALLS, NPC_QUESTS, ROOMS, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
 import { DIALOGUES } from './data/dialogues';
@@ -433,6 +434,11 @@ function connect() {
     r.anim = kind;
     r.actionUntil = performance.now() + actionMs(kind);
     if (kind === 'incense') world.spawnIncense(r.char.root.position.x, r.char.root.position.z);
+  });
+  s.on('player:release', ({ id, kind }: { id: string; kind: 'bird' | 'fish' }) => {
+    const root = id === myId ? me?.char.root : remotes.get(id)?.char.root;
+    if (!root) return;
+    startReleaseAnim(root.position.x, root.position.z, kind);
   });
 }
 
@@ -1036,6 +1042,24 @@ function openDialogue(npcId: string): void {
         onclick: () => { dialogueNpc = null; openDonatePanel(panelCtx()); },
       }, '🙏 Đóng góp công đức')));
     }
+    if (npcId === 'npc30') {
+      body.appendChild(h('p', {}, dlg.shopGreeting ?? ''));
+      body.appendChild(h('div', { class: 'qrow' },
+        h('button', {
+          onclick: () => {
+            sock.emit('shop:buy', 'chim_phong_sinh', (r: { ok: boolean; error?: string }) => {
+              if (!r.ok) toast(r.error ?? 'Lỗi'); else toast('Đã mua Chim phóng sinh');
+            });
+          },
+        }, 'Mua Chim phóng sinh · 20 xu'),
+        h('button', {
+          onclick: () => {
+            sock.emit('shop:buy', 'ca_phong_sinh', (r: { ok: boolean; error?: string }) => {
+              if (!r.ok) toast(r.error ?? 'Lỗi'); else toast('Đã mua Cá phóng sinh');
+            });
+          },
+        }, 'Mua Cá phóng sinh · 10 xu')));
+    }
 
     const st = pickRot(dlg.smallTalk);
     if (st) body.appendChild(h('p', {}, st));
@@ -1162,6 +1186,8 @@ function questTarget(q: QuestState): Pt | null {
     if (step === 'deliver') return npcPos(def.receiver);
     if (step === 'marketbuy') { const s = MARKET_STALLS.find((x) => x.id === def.stall); return s ? { x: s.x, z: s.z } : null; }
     if (step === 'visit') return zoneCenter(def.zone);
+    if (step === 'buyphongsinh') { const s = MARKET_STALLS.find((x) => x.id === def.stall); return s ? { x: s.x, z: s.z } : null; }
+    if (step === 'release') return zoneCenter(def.zone);
     if (step === 'feed') { const p = myPos(); const a = p ? nearestFeedable(p) : null; return a ? { x: a.x, z: a.z } : null; }
     if (step === 'find') { const a = lostAnimal(); return a ? { x: a.x, z: a.z } : null; }
     return zoneCenter(def.zone);
@@ -1338,17 +1364,30 @@ function updateNpcMarkers() {
   }
 }
 
+function releasePhongSinh(): void {
+  if (!socket) return;
+  const inv = profile?.inventory ?? {};
+  const kind = (inv['chim_phong_sinh'] ?? 0) > 0 ? 'bird' : (inv['ca_phong_sinh'] ?? 0) > 0 ? 'fish' : null;
+  if (!kind) { toast('Bạn chưa có chim hay cá phóng sinh'); return; }
+  socket.emit('release:phongsinh', { kind }, (r: { ok: boolean; error?: string; merit?: number }) => {
+    if (!r.ok) toast(r.error ?? 'Lỗi');
+    else { toast(`Đã phóng sinh, +${r.merit ?? 0} công đức`); audio.play('lantern'); }
+  });
+}
+
 const zoneBtn = $('zoneBtn');
 const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
   chuong: { label: 'Đánh chuông', run: () => { world.ringBell(); audio.play('bow'); } },
   trong: { label: 'Đánh trống', run: () => { world.ringDrum(); audio.play('bow'); } },
   thuyDinh: { label: 'Thả đèn nguyện', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
+  phongSinh: { label: 'Phóng sinh', run: () => releasePhongSinh() },
 };
 let zoneBtnId = '';
 zoneBtn.onclick = () => ZONE_ACTIONS[zoneBtnId]?.run();
 function updateZoneBtn() {
   const id = me ? world.zoneAt(me.char.root.position.x, me.char.root.position.z) : null;
-  const key = id && ZONE_ACTIONS[id] ? id : '';
+  let key = id && ZONE_ACTIONS[id] ? id : '';
+  if (key === 'phongSinh' && (profile?.inventory?.['chim_phong_sinh'] ?? 0) <= 0 && (profile?.inventory?.['ca_phong_sinh'] ?? 0) <= 0) key = '';
   if (key === zoneBtnId) return;
   zoneBtnId = key;
   zoneBtn.hidden = !key;
@@ -1372,6 +1411,90 @@ function updateCouplet() {
   close.onclick = () => { dismissed.add(c.id); hideCouplet(); };
   el.append(close, mk('small', '', c.where), mk('p', '', c.am.join(' / ')), mk('em', '', c.nghia));
   el.classList.add('show');
+}
+
+const releaseAnims: { g: THREE.Group; t: number; kind: 'bird' | 'fish'; x0: number; z0: number }[] = [];
+
+function startReleaseAnim(x: number, z: number, kind: 'bird' | 'fish') {
+  const g = new THREE.Group();
+  if (kind === 'bird') {
+    const body = new THREE.Mesh(
+      new THREE.SphereGeometry(0.12, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0xe8c84a }),
+    );
+    g.add(body);
+    for (const side of [-1, 1]) {
+      const pivot = new THREE.Group();
+      pivot.name = side < 0 ? 'wingL' : 'wingR';
+      const wing = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.3, 0.12),
+        new THREE.MeshBasicMaterial({ color: 0xf2dc78, side: THREE.DoubleSide }),
+      );
+      wing.rotation.x = -Math.PI / 2;
+      wing.position.x = side * 0.15;
+      pivot.add(wing);
+      g.add(pivot);
+    }
+    g.position.set(x, 1.2, z);
+  } else {
+    g.add(createKoi('kohaku', 0.8).root);
+    g.position.set(x, 0.3, z);
+  }
+  world.scene.add(g);
+  releaseAnims.push({ g, t: 0, kind, x0: x, z0: z });
+}
+
+function updateReleaseAnims(dt: number) {
+  for (let i = releaseAnims.length - 1; i >= 0; i--) {
+    const a = releaseAnims[i];
+    a.t += dt;
+    let done = false;
+    if (a.kind === 'bird') {
+      a.g.position.set(
+        a.x0 + Math.cos(a.t * 2) * a.t * 1.5,
+        1.2 + a.t * 2,
+        a.z0 + Math.sin(a.t * 2) * a.t * 1.5,
+      );
+      const flap = Math.sin(a.t * 18) * 0.7;
+      const wl = a.g.getObjectByName('wingL');
+      const wr = a.g.getObjectByName('wingR');
+      if (wl) wl.rotation.z = flap;
+      if (wr) wr.rotation.z = -flap;
+      if (a.t > 3.5) {
+        const opacity = Math.max(0, 1 - (a.t - 3.5));
+        a.g.traverse((o) => {
+          const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+          if (m) {
+            m.transparent = true;
+            m.opacity = opacity;
+          }
+        });
+        if (a.t >= 4.5) done = true;
+      }
+    } else {
+      const k = Math.min(a.t / 1.2, 1);
+      a.g.position.set(
+        a.x0 + (38 - a.x0) * k,
+        0.3 + Math.sin(Math.PI * k) * 2,
+        a.z0 + (-31 - a.z0) * k,
+      );
+      if (a.t >= 1.2) {
+        world.spawnBurst(38, -31, 0x6ab8d8);
+        done = true;
+      }
+    }
+    if (done) {
+      world.scene.remove(a.g);
+      if (a.kind === 'bird') {
+        a.g.traverse((o) => {
+          const m = o as THREE.Mesh;
+          m.geometry?.dispose();
+          (m.material as THREE.Material | undefined)?.dispose();
+        });
+      }
+      releaseAnims.splice(i, 1);
+    }
+  }
 }
 
 function loop() {
@@ -1588,6 +1711,7 @@ function loop() {
   updateAnimals(latestAnimals, dt);
   updateSweep(now);
   updateZoneBtn();
+  updateReleaseAnims(dt);
   updateCouplet();
   world.update(t, me ? me.char.root.position : focusIdle);
   post.render();

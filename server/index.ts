@@ -454,7 +454,7 @@ io.on('connection', (socket) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const r = await buyItem(itemId, 1);
-    if (r.ok) { await questEvent(s, 'buy'); await pushProfile(s); }
+    if (r.ok) { await questEvent(s, 'buy'); if (itemId === 'chim_phong_sinh') await questEvent(s, 'buyphongsinh', 1); await pushProfile(s); }
     cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
   });
 
@@ -466,7 +466,7 @@ io.on('connection', (socket) => {
     if (!item) return cb?.({ ok: false, error: 'Vật phẩm không tồn tại' });
     if (item.kind !== 'consumable') return cb?.({ ok: false, error: 'Mua 5 chỉ áp dụng cho vật phẩm tiêu hao' });
     const r = await buyItem(itemId, 5);
-    if (r.ok) { await questEvent(s, 'buy', 1); await pushProfile(s); }
+    if (r.ok) { await questEvent(s, 'buy', 1); if (itemId === 'chim_phong_sinh') await questEvent(s, 'buyphongsinh', 1); await pushProfile(s); }
     cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
   });
 
@@ -632,6 +632,23 @@ io.on('connection', (socket) => {
     reply({ ok: true, coins: r.coins, merit: r.merit, broadcast });
     // Broadcast SAU commit + pushProfile; fire-and-forget, loi emit khong rollback.
     if (broadcast) io.to(s.room).emit('donation', { name: s.state.name, amount: n });
+  });
+
+  socket.on('release:phongsinh', async (payload: { kind: 'bird' | 'fish' }, cb?: (r: { ok: boolean; error?: string; merit?: number }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const kind = payload?.kind;
+    if (kind !== 'bird' && kind !== 'fish') return cb?.({ ok: false, error: 'Loại không hợp lệ' });
+    const itemId = kind === 'bird' ? 'chim_phong_sinh' : 'ca_phong_sinh';
+    if (distTo(s, 30, -31) > 3.5) return cb?.({ ok: false, error: 'Bạn đứng quá xa bến thả' });
+    if ((await db.itemQty(pid, itemId)) < 1) return cb?.({ ok: false, error: 'Bạn không có chim/cá phóng sinh' });
+    await db.addItem(pid, itemId, -1);
+    const merit = kind === 'bird' ? 20 : 10;
+    await grantRewards(s, merit, 0);
+    await questEvent(s, 'release');
+    await pushProfile(s);
+    io.to(s.room).emit('player:release', { id: s.state.id, kind });
+    cb?.({ ok: true, merit });
   });
 
   socket.on('quest:claim', async (qid: string) => {

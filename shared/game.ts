@@ -11,7 +11,7 @@ export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: numbe
 
 export type ShopCategory =
   | 'le_vat' | 'cay_phat' | 'ao_trang' | 'trang_hat' | 'bo_doan'
-  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu';
+  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh';
 
 export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
   { id: 'le_vat', label: 'Lễ vật' },
@@ -25,6 +25,7 @@ export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
   { id: 'linh_thu', label: 'Linh thú' },
   { id: 'dieu', label: 'Diều' },
   { id: 'do_linh_thu', label: 'Đồ linh thú' },
+  { id: 'phong_sinh', label: 'Phóng sinh' },
 ];
 
 export interface ShopItem {
@@ -77,10 +78,12 @@ export const ITEMS: ShopItem[] = [
   { id: 'dieu_sen', name: 'Diều sen', desc: 'Diều hình hoa sen.', price: 75, kind: 'accessory', icon: '🪁', category: 'dieu' },
   // ---- Đồ linh thú
   { id: 'vong_co_lan', name: 'Vòng cổ kỳ lân', desc: 'Vòng cổ cho linh thú.', price: 130, kind: 'accessory', icon: '💎', category: 'do_linh_thu', minLevel: 4 },
+  { id: 'chim_phong_sinh', name: 'Chim phóng sinh', desc: 'Mua về rồi mang tới bến thả ở hồ phóng sinh để thả. Thả chim nhận 20 công đức.', price: 20, kind: 'consumable', icon: '🐦', category: 'phong_sinh' },
+  { id: 'ca_phong_sinh', name: 'Cá phóng sinh', desc: 'Mua về rồi mang tới bến thả ở hồ phóng sinh để thả. Thả cá nhận 10 công đức.', price: 10, kind: 'consumable', icon: '🐟', category: 'phong_sinh' },
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
-export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy' | 'feed' | 'find';
+export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy' | 'feed' | 'find' | 'release' | 'buyphongsinh';
 export type QuestZone =
   | { x: number; z: number; r: number }
   | { x0: number; x1: number; z0: number; z1: number };
@@ -206,6 +209,7 @@ export const MARKET_STALLS: { id: string; x: number; z: number }[] = [
   { id: 'stall_cake', x: 8.5, z: 48 },
   { id: 'stall_tea', x: -8.5, z: 53 },
   { id: 'stall_incense', x: 8.5, z: 53 },
+  { id: 'stall_phongsinh', x: 0, z: 53 },
 ];
 
 // Zones (shared by several quests)
@@ -214,6 +218,7 @@ const Z_TAM_THE: QuestZone = { x0: -20, x1: 20, z0: -80, z1: -56 };
 const Z_THIEN_DUONG: QuestZone = { x: -47, z: -27, r: 7 };
 const Z_BAO_THAP: QuestZone = { x: -30, z: -38, r: 6 };
 const Z_CAU_SEN: QuestZone = { x0: -1.5, x1: 1.5, z0: 14.2, z1: 29.8 };
+const Z_PS_PIER: QuestZone = { x: 30, z: -31, r: 3 };
 
 // NPC quests (daily reset, ids start with nq_)
 export const NPC_QUESTS: QuestDef[] = [
@@ -260,6 +265,8 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc23', zone: Z_CHINH_DIEN },
   { id: 'nq_feed_pets', label: 'Cho chó mèo ăn', event: 'feed', target: 2, coins: 20, merit: 10, giver: 'npc14', steps: ['talk', 'feed'] },
   { id: 'nq_find_lost_pet', label: 'Tìm chó mèo đi lạc', event: 'find', target: 2, coins: 25, merit: 12, giver: 'npc2', steps: ['talk', 'find'] },
+  { id: 'nq_phongsinh', label: 'Phóng sinh lần đầu', event: 'buy', target: 4, coins: 15, merit: 8,
+    giver: 'npc30', receiver: 'npc30', stall: 'stall_phongsinh', zone: Z_PS_PIER, steps: ['talk', 'buyphongsinh', 'release', 'deliver'] },
 ];
 
 // Chain quests (one-time, ids start with c_)
