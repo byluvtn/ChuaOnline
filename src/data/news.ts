@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 61;
+export const LATEST_NEWS_ID = 62;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Ngồi thiền thấy rõ chân bắt chéo',
+    date: '2026-11-14',
+    items: [
+      'Lúc ngồi thiền giờ thấy rõ 2 chân bắt chéo, đầu gối chìa ra 2 bên, giày/dép lộ ra, không còn như một cục tròn.',
+      'Áp dụng cho cả người chơi lẫn sư/NPC ngồi tụng. Tư thế đứng, đi, lạy không đổi.',
+    ],
+  },
   {
     title: 'Tên NPC không còn chồng lên nhau',
     date: '2026-11-14',

@@ -10,6 +10,7 @@ interface FadeFrom {
   fores: THREE.Quaternion[];
   legPos: THREE.Vector3[];
   legRot: THREE.Quaternion[];
+  shinRot?: THREE.Quaternion[];
   bodyPos: THREE.Vector3;
   bodyRot: THREE.Quaternion;
 }
@@ -21,6 +22,8 @@ export interface Character {
   armR: THREE.Group;
   legL: THREE.Mesh;
   legR: THREE.Mesh;
+  shinL: THREE.Group;
+  shinR: THREE.Group;
   foreL: THREE.Group;
   foreR: THREE.Group;
   hold: THREE.Group;
@@ -430,23 +433,27 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
 
   // legs + footwear (only the bottom shows under the robe)
   const mkLeg = (side: number) => {
-    const leg = mesh(geo('leg', () => new THREE.CapsuleGeometry(0.1, 0.12, 4, 8)), tmat(0xf1e6d2), body, side * 0.16, 0.18, 0, false);
+    // leg = thigh node at the old capsule centre; shin pivots at that same point (knee)
+    const leg = mesh(geo('thigh', () => new THREE.CapsuleGeometry(0.1, 0.06, 4, 8).translate(0, 0.03, 0)), tmat(0xf1e6d2), body, side * 0.16, 0.18, 0, false);
+    const shin = new THREE.Group();
+    leg.add(shin);
+    mesh(geo('shin', () => new THREE.CapsuleGeometry(0.1, 0.06, 4, 8).translate(0, -0.03, 0)), tmat(0xf1e6d2), shin, 0, 0, 0, false);
     if (outfit === 'nun') {
-      const sole = mesh(geo('sandal', () => new THREE.SphereGeometry(0.135, 12, 8)), tmat(0xb5895c), leg, 0, -0.14, 0.06, false);
+      const sole = mesh(geo('sandal', () => new THREE.SphereGeometry(0.135, 12, 8)), tmat(0xb5895c), shin, 0, -0.14, 0.06, false);
       sole.scale.set(1, 0.3, 1.45);
-      const strap = mesh(geo('strap', () => new THREE.TorusGeometry(0.095, 0.022, 6, 12)), tmat(0x6e3b26), leg, 0, -0.1, 0.07, false);
+      const strap = mesh(geo('strap', () => new THREE.TorusGeometry(0.095, 0.022, 6, 12)), tmat(0x6e3b26), shin, 0, -0.1, 0.07, false);
       strap.rotation.x = Math.PI / 2 - 0.3; strap.scale.set(1, 1.2, 1);
     } else {
-      mesh(geo('shoe2', () => new THREE.SphereGeometry(0.135, 12, 8)), tmat(0x6e3b26), leg, 0, -0.1, 0.06, false).scale.set(1, 0.62, 1.4);
+      mesh(geo('shoe2', () => new THREE.SphereGeometry(0.135, 12, 8)), tmat(0x6e3b26), shin, 0, -0.1, 0.06, false).scale.set(1, 0.62, 1.4);
     }
-    return leg;
+    return { leg, shin };
   };
-  const legL = mkLeg(-1);
-  const legR = mkLeg(1);
+  const { leg: legL, shin: shinL } = mkLeg(-1);
+  const { leg: legR, shin: shinR } = mkLeg(1);
 
   // lap of the robe, only visible when sitting cross-legged
-  const lap = mesh(geo('lap', () => new THREE.SphereGeometry(1, 20, 12)), robe, body, 0, 0.5, 0.22, false);
-  lap.scale.set(0.58, 0.17, 0.5);
+  const lap = mesh(geo('lap', () => new THREE.SphereGeometry(1, 20, 12)), robe, body, 0, 0.3, 0.22, false);
+  lap.scale.set(0.58, 0.05, 0.5);
   lap.visible = false;
 
   // ---- held items, only visible during ritual actions; sit between the two palms ----
@@ -537,7 +544,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, shinL, shinR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
@@ -644,6 +651,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
       fores: [c.foreL.quaternion.clone(), c.foreR.quaternion.clone()],
       legPos: [c.legL.position.clone(), c.legR.position.clone()],
       legRot: [c.legL.quaternion.clone(), c.legR.quaternion.clone()],
+      shinRot: [c.shinL.quaternion.clone(), c.shinR.quaternion.clone()],
       bodyPos: c.body.position.clone(),
       bodyRot: c.body.quaternion.clone(),
     };
@@ -687,6 +695,8 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   c.legR.position.set(0.16, 0.18, -cycle * amp * 0.25);
   c.legL.rotation.set(0, 0, 0);
   c.legR.rotation.set(0, 0, 0);
+  c.shinL.rotation.set(0, 0, 0);
+  c.shinR.rotation.set(0, 0, 0);
   c.legL.visible = c.legR.visible = true;
   c.lap.visible = false;
   c.body.position.set(0, walk ? Math.abs(cycle) * 0.09 : Math.sin(TAU * phaseOf(CLIPS.idle, t)) * 0.014, 0);
@@ -699,8 +709,14 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.body.position.y = -0.3 + br;
     c.body.rotation.x = -0.03;
     c.lap.visible = true;
-    c.lap.scale.set(0.6 + br, 0.17, 0.52);
-    c.legL.visible = c.legR.visible = false;
+    c.lap.scale.set(0.58 + br * 0.5, 0.05, 0.5);
+    c.legL.position.set(-0.08, 0.50, 0.34);
+    c.legR.position.set(0.08, 0.50, 0.34);
+    c.legL.rotation.set(-1.6581, 0, -0.8727);
+    c.legR.rotation.set(-1.6581, 0, 0.8727);
+    c.shinL.rotation.set(2.2449, 0, 1.2744);
+    c.shinR.rotation.set(2.2449, 0, -1.2744);
+    c.legL.visible = c.legR.visible = true;
     c.armL.rotation.set(-0.75, 0, 0.62);
     c.armR.rotation.set(-0.75, 0, -0.62);
     c.foreL.rotation.set(-0.95, 0, 0);
@@ -819,6 +835,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
       fadeV(c.legR.position, f.legPos[1], k);
       fadeQ(c.legL.quaternion, f.legRot[0], k);
       fadeQ(c.legR.quaternion, f.legRot[1], k);
+      if (f.shinRot) { fadeQ(c.shinL.quaternion, f.shinRot[0], k); fadeQ(c.shinR.quaternion, f.shinRot[1], k); }
       fadeV(c.body.position, f.bodyPos, k);
       fadeQ(c.body.quaternion, f.bodyRot, k);
     }
