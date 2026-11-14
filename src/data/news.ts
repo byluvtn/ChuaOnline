@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 71;
+export const LATEST_NEWS_ID = 72;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Nói chuyện với NPC chỉ hiện 1 câu',
+    date: '2026-11-15',
+    items: [
+      'Nói chuyện với NPC giờ chỉ hiện đúng 1 câu ngẫu nhiên mỗi lần mở panel — không còn hiện cả chào + tán gẫu + tạm biệt dồn trong một panel.',
+      'Câu thoại vẫn xoay theo ngày và giờ như trước; khách nước ngoài vẫn nói song ngữ Anh–Việt trong 1 câu; NPC giao quest vẫn hiện đủ nội dung quest.',
+    ],
+  },
   {
     title: 'NPC rảnh tự đi làm việc vặt trong chùa',
     date: '2026-11-15',

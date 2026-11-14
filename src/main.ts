@@ -481,7 +481,7 @@ function connect() {
     quests = q; updateQuestDot(); refreshPanel();
     updateNpcMarkers();
     updateGuideTarget(); updateGuidePath();
-    if (dialogueNpc) { if (panelOpen()) openDialogue(dialogueNpc); else dialogueNpc = null; }
+    if (dialogueNpc) { if (panelOpen()) openDialogue(dialogueNpc); else { dialogueNpc = null; dialogueSocialNpc = null; } }
   });
   s.on('meditation', (m: MeditationInfo) => { meditation = m; updateMeditationHud(); });
   s.on('player:join', addPlayer);
@@ -1024,6 +1024,17 @@ function pickRot(list: string[]): string {
   if (!list || !list.length) return '';
   return list[dayOfYear() % list.length];
 }
+
+let dialogueSocialNpc: string | null = null;
+let dialogueSocialLine = '';
+
+function pickSocialLine(dlg: (typeof DIALOGUES)[string]): string {
+  const cands = [pickLine(dlg.greetings), pickRot(dlg.smallTalk), pickRot(dlg.farewell)]
+    .filter((s) => !!s);
+  if (!cands.length) return '';
+  return cands[Math.floor(Math.random() * cands.length)];
+}
+
 function questLinesFor(npcId: string, qid: string): { offer: string; reminder: string; done: string } {
   const dlg = DIALOGUES[npcId];
   const ql = dlg?.questLines?.[qid];
@@ -1051,21 +1062,18 @@ function openDialogue(npcId: string): void {
   const sock = socket;
   if (!sock) return;
   dialogueNpc = npcId;
+  if (!panelOpen() || dialogueSocialNpc !== npcId) {
+    dialogueSocialNpc = npcId;
+    dialogueSocialLine = pickSocialLine(dlg);
+  }
   const failToast = (r: { ok: boolean; error?: string }) => { if (!r.ok) toast(r.error ?? 'Lỗi'); };
   openCustomPanel(dlg.name, (body: HTMLElement) => {
     body.appendChild(h('p', { class: 'hint' }, dlg.role));
-    const greet = pickLine(dlg.greetings);
-    if (greet) body.appendChild(h('p', {}, greet));
-
-    const farewell = () => {
-      const f = pickRot(dlg.farewell);
-      if (f) body.appendChild(h('p', { class: 'hint' }, f));
-    };
+    if (dialogueSocialLine) body.appendChild(h('p', {}, dialogueSocialLine));
 
     // Chanting: short talk only, no quest / vendor blocks.
     if (remotes.get(npcId)?.data.anim === 'chant') {
       body.appendChild(h('p', {}, dlg.chanting ?? ''));
-      farewell();
       return;
     }
 
@@ -1134,7 +1142,7 @@ function openDialogue(npcId: string): void {
     }
     if (npcId === 'npc6') {
       body.appendChild(h('div', { class: 'qrow' }, h('button', {
-        onclick: () => { dialogueNpc = null; openDonatePanel(panelCtx()); },
+        onclick: () => { dialogueNpc = null; dialogueSocialNpc = null; openDonatePanel(panelCtx()); },
       }, '🙏 Đóng góp công đức')));
     }
     if (npcId === 'npc30') {
@@ -1182,13 +1190,9 @@ function openDialogue(npcId: string): void {
         }, `Mua ${g.label} · ${g.price} xu`))));
     }
 
-    const st = pickRot(dlg.smallTalk);
-    if (st) body.appendChild(h('p', {}, st));
-    farewell();
-
     if (npcId === 'npc1') {
       body.appendChild(h('div', { class: 'qrow' }, h('button', {
-        onclick: () => { dialogueNpc = null; openPanel('teacher', panelCtx()); },
+        onclick: () => { dialogueNpc = null; dialogueSocialNpc = null; openPanel('teacher', panelCtx()); },
       }, '📖 Về chùa Online')));
     }
   });
