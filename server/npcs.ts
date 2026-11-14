@@ -1,6 +1,6 @@
 import { BRIDGE, HALL, PLAZA, clampToCompound, inLake } from '../src/layout.js';
 import { ROAD_NODES, roadRoute, routeFrom } from '../shared/roads.js';
-import type { Anim, Outfit, PlayerState } from '../shared/types.js';
+import type { ActionKind, Anim, Outfit, PlayerState } from '../shared/types.js';
 import type { Pt } from '../shared/roads.js';
 
 type Behavior = 'wander' | 'sweepPlaza' | 'sweepBridge' | 'sweepZen' | 'sweepRoad' | 'bell' | 'visitor' | 'desk' | 'post' | 'chant';
@@ -132,7 +132,7 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 interface Npc {
   def: NpcDef; state: PlayerState; phase: Phase; until: number; speed: number;
   route: Pt[]; roam: number; side: number;
-  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
+  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave' | 'toIdleSeat' | 'idleSeat' | 'toIdleIncense' | 'idleIncense' | 'toIdleRest' | 'idleRest'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
   stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant' | 'toStroll' | 'stroll';
   shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; homeSlot: Behavior;
   strollStops: string[]; strollIdx: number;
@@ -140,7 +140,7 @@ interface Npc {
 }
 export interface NpcChat { npcId: string; name: string; text: string }
 export interface NpcRoom {
-  npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; beds: (string | null)[]; seats: Map<string, string>;
+  npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; fx: { id: string; kind: ActionKind }[]; beds: (string | null)[]; seats: Map<string, string>;
   questGuard: Set<string>; left: string[]; joined: PlayerState[];
 }
 
@@ -215,7 +215,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
     };
   });
   spreadVisitors(npcs, now);
-  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
+  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], fx: [], beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
   for (const n of npcs) {
     if (n.def.behavior !== 'chant') continue;
     const homeHall = n.def.id === 'npc27' ? 'thienDuong' : 'dienMau';
@@ -573,6 +573,33 @@ function wakeNpc(room: NpcRoom, n: Npc, now: number) {
   startWalk(n, workRoute(n, bedX), 1.2);
 }
 
+/** In-place random action for a post NPC (vendor / hall keeper). Never walks away. */
+function postIdleAct(n: Npc, now: number) {
+  const s = n.state;
+  const r = Math.random();
+  if (r < 0.5) { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; }
+  else if (r < 0.7) { n.phase = 'act'; s.anim = 'bow'; n.until = now + 3000; }
+  else if (r < 0.9) { n.phase = 'act'; s.anim = 'chant'; n.until = now + R(5000, 8000); }
+  else { n.phase = 'idle'; s.anim = 'idle'; s.ry = R(0, Math.PI * 2); n.until = now + R(4000, 9000); }
+}
+
+/** Diem thap huong cho NPC ranh (via = road node di toi truoc, roi di thang). Nha To
+    chua co vi tri nay vi chua xac minh duoc duong vao trong nha. */
+interface IdleIncenseSpot { x: number; z: number; via: string }
+const IDLE_INCENSE: IdleIncenseSpot[] = [
+  { x: -1.8, z: -34, via: 'hallIn' },
+  { x: 0, z: -11.3, via: 'plaza' },
+  { x: 0, z: -71.3, via: 'tamThe' },
+  { x: 43.6, z: -58.6, via: 'toYard' },
+];
+/** Diem ngoi nghi mat dat phang (khong dung zenGarden: mat cat cao hon groundY). */
+const IDLE_REST_NODES = ['restArea', 'restEast', 'restSE', 'quanYard', 'buddhaYard'];
+function incenseRoute(n: Npc, spot: IdleIncenseSpot): Pt[] {
+  const p = { x: spot.x + (n.def.id === 'npc29' ? -1.4 : 1.4), z: spot.z };
+  if (spot.via === 'hallIn' && inChinhDien(n.state)) return [p];
+  return [...routeFrom(n.state, spot.via), p];
+}
+
 function arrive(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   if (n.mode === 'toRest') {
@@ -586,7 +613,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
   if (n.def.behavior === 'visitor') return visitorArrive(room, n, now);
   if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + 5000; return; }
-  if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
+  if (n.def.behavior === 'post') { postIdleAct(n, now); return; }
   if (n.mode === 'toChant') {
     const seat = n.chantSeat;
     n.mode = 'chanting'; n.phase = 'act'; s.anim = 'chant';
@@ -594,16 +621,71 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
     n.until = now + R(300_000, 600_000);
     return;
   }
+  if (n.def.behavior === 'wander' && n.mode === 'toIdleSeat') {
+    const seat = n.chantSeat;
+    n.mode = 'idleSeat'; n.phase = 'act'; s.anim = 'chant';
+    s.ry = seat ? seat.ry : Math.PI; n.until = now + R(30_000, 60_000);
+    return;
+  }
+  if (n.def.behavior === 'wander' && n.mode === 'toIdleIncense') {
+    n.mode = 'idleIncense'; n.phase = 'act'; s.anim = 'incense';
+    s.ry = Math.PI; n.until = now + 7000;
+    room.fx.push({ id: n.def.id, kind: 'incense' });
+    return;
+  }
+  if (n.def.behavior === 'wander' && n.mode === 'toIdleRest') {
+    n.mode = 'idleRest'; n.phase = 'act'; s.anim = 'sit'; n.until = now + R(30_000, 60_000);
+    return;
+  }
   if (n.def.behavior === 'wander' && n.mode !== 'normal') return abbotArrive(n, now);
-  if (n.def.behavior === 'wander') { n.phase = 'act'; s.anim = Math.random() < 0.5 ? 'chant' : 'bow'; n.until = now + (s.anim === 'bow' ? 3000 : 2500); return; }
-  if (n.def.behavior === 'bell') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 15000); return; }
-  n.phase = 'act'; s.anim = 'sweep'; n.until = now + R(6000, 12000);
+  if (n.def.behavior === 'wander') {
+    const r = Math.random();
+    if (r < 0.25) { n.phase = 'act'; s.anim = 'bow'; n.until = now + 3000; }
+    else if (r < 0.5) { n.phase = 'act'; s.anim = 'chant'; n.until = now + 2500; }
+    else if (r < 0.6) {
+      const halls = ['chinhDien', 'tamThe', 'thienDuong', 'dienMau'] as const;
+      const start = Math.floor(Math.random() * halls.length);
+      let seat: ChantSeat | undefined;
+      for (let i = 0; i < halls.length && !seat; i++) seat = nearestFreeSeat(room, halls[(start + i) % halls.length], n.state);
+      if (seat && takeSeat(room, seat, n.def.id)) {
+        n.chantSeat = seat; n.mode = 'toIdleSeat';
+        startWalk(n, seatRoute(n, seat), 1.2);
+      } else { n.phase = 'act'; s.anim = 'bow'; n.until = now + 3000; }
+    }
+    else if (r < 0.75) {
+      const spot = IDLE_INCENSE[Math.floor(Math.random() * IDLE_INCENSE.length)];
+      n.mode = 'toIdleIncense';
+      startWalk(n, incenseRoute(n, spot), 1.2);
+    }
+    else if (r < 0.85) {
+      const node = IDLE_REST_NODES[Math.floor(Math.random() * IDLE_REST_NODES.length)];
+      n.mode = 'toIdleRest';
+      startWalk(n, routeFrom(n.state, node), 1.2);
+    }
+    else { n.phase = 'idle'; s.anim = 'idle'; s.ry = R(0, Math.PI * 2); n.until = now + R(4000, 9000); }
+    return;
+  }
+  if (n.def.behavior === 'bell') {
+    const r = Math.random();
+    if (r < 0.25) { n.phase = 'act'; s.anim = 'bow'; n.until = now + 3000; }
+    else if (r < 0.5) { n.phase = 'act'; s.anim = 'chant'; n.until = now + R(5000, 8000); }
+    else { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 15000); }
+    return;
+  }
+  if (n.def.behavior === 'sweepPlaza' || n.def.behavior === 'sweepBridge' || n.def.behavior === 'sweepZen' || n.def.behavior === 'sweepRoad') {
+    const r = Math.random();
+    if (r < 0.15) { n.phase = 'act'; s.anim = 'bow'; n.until = now + 3000; }
+    else if (r < 0.3) { n.phase = 'act'; s.anim = 'chant'; n.until = now + R(5000, 8000); }
+    else { n.phase = 'act'; s.anim = 'sweep'; n.until = now + R(6000, 12000); }
+  } else {
+    n.phase = 'act'; s.anim = 'sweep'; n.until = now + R(6000, 12000);
+  }
 }
 
 function decide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + 5000; return; }
-  if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
+  if (n.def.behavior === 'post') { postIdleAct(n, now); return; }
   if (n.mode === 'chanting' || n.mode === 'toChant') return; // runSchedule owns chanting
   if (n.def.behavior === 'bell') {
     if (activeBell(now)) return; // runSchedule is handling the bell window
@@ -618,6 +700,11 @@ function decide(room: NpcRoom, n: Npc, now: number) {
     return;
   }
   if (n.def.behavior === 'visitor') return visitorDecide(room, n, now);
+  if (n.def.behavior === 'wander' && (n.mode === 'toIdleSeat' || n.mode === 'idleSeat' || n.mode === 'toIdleIncense' || n.mode === 'idleIncense' || n.mode === 'toIdleRest' || n.mode === 'idleRest')) {
+    if (n.chantSeat) { releaseSeat(room, n.def.id); n.chantSeat = null; }
+    n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000);
+    return;
+  }
   if (n.def.behavior === 'wander' && n.mode !== 'normal') return abbotDecide(n, now);
   const slow = n.def.behavior !== 'wander';
   if (n.phase === 'act' && !slow) { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(3000, 8000); return; }

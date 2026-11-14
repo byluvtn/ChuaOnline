@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 70;
+export const LATEST_NEWS_ID = 71;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'NPC rảnh tự đi làm việc vặt trong chùa',
+    date: '2026-11-15',
+    items: [
+      'Sư thầy, sư phó và các tiểu rảnh rỗi giờ tự đi lại làm việc ngẫu nhiên: lạy, thắp hương, ngồi tụng trên bồ đoàn trống, ngồi nghỉ, ngắm cảnh — thay vì đứng yên một chỗ.',
+      'Người bán hàng và người giữ điện vẫn đứng tại quầy, nhưng thỉnh thoảng lạy, tụng hoặc quay ra ngắm cảnh; tiểu quét sân, tiểu đánh chuông cũng xen kẽ lạy/tụng giữa các việc.',
+      'Hết chỗ ngồi hay hết lư thì NPC bỏ qua việc đó, chọn việc khác — không xếp hàng, không kẹt. Không tốn xu, không đổi công đức hay nhiệm vụ.',
+    ],
+  },
   {
     title: 'Bảng vinh danh hiện top 10 công đức',
     date: '2026-11-15',
