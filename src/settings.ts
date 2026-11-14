@@ -9,7 +9,7 @@ export interface Settings {
   showTips: boolean;
   showNpcs: boolean;
 }
-const DEFAULTS: Settings = { sound: true, volume: 0.8, quality: 'high', showCouplets: true, showNames: true, showBubbles: true, showTips: true, showNpcs: true };
+const DEFAULTS: Settings = { sound: true, volume: 0.8, quality: (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? 'medium' : 'high'), showCouplets: true, showNames: true, showBubbles: true, showTips: true, showNpcs: true };
 const KEY = 'co:settings';
 
 function load(): Settings {

@@ -385,6 +385,12 @@ onSettings((st, key) => {
     renderer.setPixelRatio(Math.min(devicePixelRatio, cap));
     post.bloom.enabled = st.quality !== 'low';
     world.sun.castShadow = st.quality !== 'low';
+    const shadowSize = isTouch || st.quality !== 'high' ? 1024 : 2048;
+    if (world.sun.shadow.mapSize.x !== shadowSize) {
+      world.sun.shadow.mapSize.set(shadowSize, shadowSize);
+      world.sun.shadow.map?.dispose(); // bắt buộc, nếu không three.js giữ target 2048 cũ
+      world.sun.shadow.map = null;
+    }
     resize();
   }
   if (key === null || key === 'showNames') remotes.forEach((r) => (r.char.label.visible = st.showNames));
@@ -1638,11 +1644,14 @@ function updateReleaseAnims(dt: number) {
   }
 }
 
-function loop() {
+const FRAME_MS = 1000 / 60;
+const FRAME_TOLERANCE_MS = 1; // rAF 60Hz hay lệch ±0.2ms, tránh bị rơi xuống 30 FPS
+let lastRenderAt = 0;
+
+function loop(now: number = performance.now()) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.05, clock.getDelta());
   const t = clock.elapsedTime;
-  const now = performance.now();
 
   if (!me) {
     // login / connecting backdrop: slow cinematic orbit around the plaza
@@ -1863,7 +1872,11 @@ function loop() {
   updateReleaseAnims(dt);
   updateCouplet();
   world.update(t, me ? me.char.root.position : focusIdle);
-  post.render();
+  if (now - lastRenderAt >= FRAME_MS - FRAME_TOLERANCE_MS) {
+    lastRenderAt += FRAME_MS;
+    if (now - lastRenderAt > FRAME_MS) lastRenderAt = now; // đã trễ quá 1 frame (tab vừa hiện lại, lag): đặt lại mốc
+    post.render();
+  }
   if (!loadedHidden) {
     loadedHidden = true;
     prewarm();

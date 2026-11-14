@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 72;
+export const LATEST_NEWS_ID = 73;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Giảm nóng máy khi chơi trên điện thoại',
+    date: '2026-11-15',
+    items: [
+      'Giới hạn tốc độ vẽ hình ở 60 khung hình/giây, giúp máy màn hình 120Hz đỡ nóng hơn.',
+      'Điện thoại cảm ứng mặc định chất lượng đồ họa Vừa (người chơi đã chọn trước đó thì giữ nguyên) — vẫn đổi được trong Cài đặt.',
+      'Giảm độ phân giải bóng đổ trên điện thoại xuống 1024.',
+    ],
+  },
   {
     title: 'Nói chuyện với NPC chỉ hiện 1 câu',
     date: '2026-11-15',
