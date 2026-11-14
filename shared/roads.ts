@@ -74,7 +74,7 @@ export const ROAD_NODES: RoadNode[] = [
   // baoThap stops 2.2 m south of the thap's south steps (z -33..-31.2); the steps
   // no longer sit inside the Tam The platform (platform z -80..-56).
   { id: 'baoThap', x: -30, z: -28 }, // was -29: pillar r0.5 at (-30.2,-29.8) left only 0.33 clearance at the node
-  { id: 'phongCDDoor', x: -42, z: 30.5 },
+  { id: 'phongCDDoor', x: -36, z: 35 },
   { id: 'psPier', x: 30, z: -31 },
   { id: 'thienDuong', x: -39.5, z: -27.5 },
   { id: 'zenGarden', x: -34, z: -26 },
@@ -118,7 +118,7 @@ export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
   { id: 'amCo', x: 53, z: -72.25 },
   { id: 'tangXa', x: -41, z: -68 },
   { id: 'thienDuong', x: -40.5, z: -27 },
-  { id: 'phongCongDuc', x: -42, z: 31.5 },
+  { id: 'phongCongDuc', x: -38.5, z: 35 },
   { id: 'nhaTo', x: 36, z: -64.75 },
 ]
 

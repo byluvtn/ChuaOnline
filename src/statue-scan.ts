@@ -55,9 +55,9 @@ export function buildSeatedBuddhaStatue(
   scene.add(root);
   colliders.push({ x: gx, z: gz, r: COLLIDER_R });
 
-  loadModel('seated-buddha')
+  const loadBuddha = (retry: boolean): Promise<void> => loadModel('seated-buddha')
     .then((model) => {
-      if (!model) { console.warn('seated-buddha.glb không tải được, giữ khối đá giữ chỗ'); return; }
+      if (!model) { console.warn('seated-buddha.glb không tải được, giữ khối đá giữ chỗ'); if (retry) setTimeout(() => { void loadBuddha(false); }, 20000); return; }
       const gold = new THREE.MeshStandardMaterial({
         color: 0xd4af37, metalness: 1.0, roughness: 0.2, envMap: getGoldEnv(renderer), envMapIntensity: 1.0,
       });
@@ -83,6 +83,7 @@ export function buildSeatedBuddhaStatue(
       placeholder.geometry.dispose();
     })
     .catch((e) => { console.warn('seated-buddha: lỗi dựng tượng', e); });
+  void loadBuddha(true);
 
   return root;
 }

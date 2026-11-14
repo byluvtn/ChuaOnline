@@ -80,18 +80,33 @@ function prepare(model: THREE.Group, gold: THREE.Material, offset: number, uprig
  * Tải 4 tượng scan, đổ vàng bóng. Trả về 4 mẫu (null nếu lỗi) để temple.ts clone;
  * mẫu null → temple.ts dùng tượng chibi buildArhat làm fallback.
  */
-export function buildCorridorStatues(renderer: THREE.WebGLRenderer): Promise<(THREE.Group | null)[]> {
+export function buildCorridorStatues(
+  renderer: THREE.WebGLRenderer,
+  onLate?: (models: (THREE.Group | null)[]) => void,
+): Promise<(THREE.Group | null)[]> {
   const gold = new THREE.MeshStandardMaterial({
     color: 0xd4af37, metalness: 1.0, roughness: 0.2, envMap: getGoldEnv(renderer), envMapIntensity: 1.0,
   });
-  return Promise.all(CORRIDOR_STATUE_NAMES.map(async (name) => {
-    try {
-      const model = await loadModel(name);
-      if (!model) { console.warn(`${name}.glb không tải được, dùng tượng chibi dự phòng`); return null; }
-      return prepare(model, gold, FACE_OFFSET[name], UPRIGHT_X[name] ?? 0);
-    } catch (e) {
-      console.warn(`${name}: lỗi dựng tượng`, e);
-      return null;
+  return Promise.all(CORRIDOR_STATUE_NAMES.map((name) => buildOne(name, gold))).then((models) => {
+    // Mạng yếu: tượng nào còn null thì thử tải lại đúng 1 lần sau 20 s rồi báo qua onLate.
+    if (onLate && models.some((m) => !m)) {
+      setTimeout(() => {
+        Promise.all(CORRIDOR_STATUE_NAMES.map((name, i) => models[i] ?? buildOne(name, gold))).then(onLate);
+      }, RETRY_AFTER_MS);
     }
-  }));
+    return models;
+  });
+}
+
+const RETRY_AFTER_MS = 20000;
+
+async function buildOne(name: (typeof CORRIDOR_STATUE_NAMES)[number], gold: THREE.Material): Promise<THREE.Group | null> {
+  try {
+    const model = await loadModel(name);
+    if (!model) { console.warn(`${name}.glb không tải được, dùng tượng chibi dự phòng`); return null; }
+    return prepare(model, gold, FACE_OFFSET[name], UPRIGHT_X[name] ?? 0);
+  } catch (e) {
+    console.warn(`${name}: lỗi dựng tượng`, e);
+    return null;
+  }
 }

@@ -1139,7 +1139,7 @@ questTrackerEl.onclick = (e) => {
   if (guideQuestId) { clickTarget = null; pathTarget = null; pathQueue = []; guideFeedN = 0; guideStuckN = 0; }
   trackerRefresh?.call(questTrackerEl, e);
 };
-const DONOR_BOARD = { x: -7, z: 42 };
+const DONOR_BOARD = { x: -5, z: 32 };
 function nearestTalkNpc(): string | null {
   if (!me) return null;
   let best: string | null = null; let bestD = 2; // design: approach within ~2 m

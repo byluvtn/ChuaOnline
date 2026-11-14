@@ -195,7 +195,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       : def.behavior === 'visitor' ? visitorSpot(nodePt('gate'), def)
       : def.behavior === 'wander' ? nodePt('plaza')
       : def.behavior === 'bell' ? nodePt('bellTower')
-      : def.behavior === 'desk' ? { x: -42, z: 37.4 } // duty chair in Phong Ghi Cong Duc, after 180 deg rotation (chair box local (0, -2.4) -> world (0, +2.4) of PHONG_CD (-42, 35))
+      : def.behavior === 'desk' ? { x: -44.4, z: 35 } // duty chair in Phong Ghi Cong Duc, rotated +90 deg to face East (chair box local (0, -2.4) -> world (-44.4, 35)), npc faces East (ry PI/2)
       : def.behavior === 'sweepZen' ? nodePt('zenGarden')
       : def.behavior === 'sweepRoad' ? nodePt('rearKT')
       : def.behavior === 'sweepBridge' ? { x: SOUTH_END.x - 1.5, z: SOUTH_END.z }
@@ -205,9 +205,10 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
       shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, homeSlot: def.behavior, gone: false, goneUntil: 0,
-      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
+      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI / 2 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
+  spreadVisitors(npcs, now);
   const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
   for (const n of npcs) {
     if (n.def.behavior !== 'chant') continue;
@@ -216,6 +217,31 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
     if (seat && takeSeat(room, seat, n.def.id)) n.chantSeat = seat;
   }
   return room;
+}
+
+/** Rải sẵn khách viếng qua các chặng của flow lúc tạo phòng. Chỉ đổi trạng thái khởi tạo (vị trí, stage, anim, until); logic chuyển stage giữ nguyên. i = chỉ số trong NPC_DEFS. */
+const SPREAD_ROUTE_NODES = ['bridgeS', 'plaza', 'hallFront', 'axisMid'];
+const SPREAD_INSIDE: Npc['stage'][] = ['bow', 'chant', 'bow', 'branch'];
+function spreadVisitors(npcs: Npc[], now: number) {
+  let onRoute = 0, inside = 0;
+  npcs.forEach((n, i) => {
+    if (n.def.behavior !== 'visitor' || i % 3 === 0) return; // i % 3 === 0: ở lại cổng như cũ
+    const s = n.state;
+    if (i % 3 === 1) {
+      // Đang đi trên tuyến: đứng ở node giữa đường; visitorDecide tính tuyến còn lại tới bàn thờ từ vị trí hiện tại.
+      const p = nodePt(SPREAD_ROUTE_NODES[onRoute % SPREAD_ROUTE_NODES.length]);
+      s.x = p.x + (onRoute >= SPREAD_ROUTE_NODES.length ? 0.9 : 0); s.z = p.z;
+      n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(0, 2000);
+      onRoute++;
+      return;
+    }
+    // Đã ở trong chùa: bàn thờ (bow/chant) hoặc đi dạo quanh sân (branch).
+    const stage = SPREAD_INSIDE[inside++ % SPREAD_INSIDE.length];
+    const p = visitorSpot(stage === 'branch' ? PLAZA_SPOT : VISITOR_SPOT, n.def);
+    s.x = p.x; s.z = p.z; s.ry = Math.PI; n.stage = stage;
+    if (stage === 'branch') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(0, 5000); }
+    else { n.phase = 'act'; s.anim = stage === 'bow' ? 'bow' : 'chant'; n.until = now + R(5000, 15000); }
+  });
 }
 
 /** Vị trí hợp lệ: ngoài hồ, trong tường, không dính cột đèn ở sân chùa. */

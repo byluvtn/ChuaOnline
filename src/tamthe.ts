@@ -46,7 +46,7 @@ export function buildTamThe(c: TempleCtx) {
   floor.rotation.x = -Math.PI / 2; floor.position.y = BASE + 0.01; floor.receiveShadow = true; add(floor);
 
   const sz0 = TAM_THE_PLAT.zStart - TAM_THE.z;
-  const sz1 = TAM_THE_PLAT.hz;
+  const sz1 = TAM_THE_PLAT.stairTop - TAM_THE.z; // = 10.4: mép Nam bệ trên L3 (local z), bậc trên cùng chồng lên mép này
   const nSteps = 20;
   // Gỗ riêng cho bậc: cùng ảnh gỗ sàn điện nhưng repeat theo kích thước bậc (9 m ngang, ~0.3 m sâu)
   // → mật độ vân ≈ sàn điện (~0.44 ô/m ngang), không bị nén thành sọc sẫm.
@@ -66,7 +66,7 @@ export function buildTamThe(c: TempleCtx) {
   const stairMats = [stairSide, stairSide, stairTop, stairTop, stairRiser, stairRiser];
   const stairW = TAM_THE_PLAT.stairW * 2 + 0.6;
   // sz1 < sz0 (stairs ascend northward, z decreases), so use Math.abs to keep depth positive (negative depth inverts winding and culls faces under FrontSide).
-  const stairD = Math.abs(sz1 - sz0) / nSteps + 0.02; // = 0.32
+  const stairD = Math.abs(sz1 - sz0) / nSteps + 0.02; // = 0.40
   for (let i = 0; i < nSteps; i++) {
     const t0 = i / nSteps, t1 = (i + 1) / nSteps;
     const h = BASE * t1;

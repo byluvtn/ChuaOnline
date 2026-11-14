@@ -12,23 +12,37 @@ const cache = new Map<string, Promise<THREE.Group | null>>();
 export function loadModel(name: string): Promise<THREE.Group | null> {
   let p = cache.get(name);
   if (!p) {
-    p = fetch(`/models/${name}.glb`, { method: 'HEAD' })
-      .then((r) => (r.ok && !(r.headers.get('content-type') ?? '').includes('text/html') ? loader.loadAsync(`/models/${name}.glb`) : null))
-      .then((g) => {
-        if (!g) return null;
-        g.scene.traverse((o) => {
-          if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; }
-        });
-        return g.scene;
-      })
-      .catch(() => null)
-      .then((g) => {
-        if (!g) cache.delete(name); // lỗi mạng thoáng qua: cho phép thử lại ở lần gọi sau
-        return g;
-      });
+    p = loadWithRetry(name).then((g) => {
+      if (!g) cache.delete(name); // hết lần thử: cho phép gọi lại ở lần sau
+      return g;
+    });
     cache.set(name, p);
   }
   return p;
+}
+
+const RETRY_DELAYS_MS = [2000, 5000]; // 3 lần thử: ngay, +2 s, +5 s
+
+async function loadOnce(name: string): Promise<THREE.Group | null> {
+  try {
+    const r = await fetch(`/models/${name}.glb`, { method: 'HEAD' });
+    if (!r.ok || (r.headers.get('content-type') ?? '').includes('text/html')) return null;
+    const g = await loader.loadAsync(`/models/${name}.glb`);
+    g.scene.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; }
+    });
+    return g.scene;
+  } catch {
+    return null;
+  }
+}
+
+async function loadWithRetry(name: string): Promise<THREE.Group | null> {
+  for (let i = 0; ; i++) {
+    const g = await loadOnce(name);
+    if (g || i >= RETRY_DELAYS_MS.length) return g;
+    await new Promise((res) => setTimeout(res, RETRY_DELAYS_MS[i]));
+  }
 }
 
 /** Scales model so its bounding-box height equals `height`, and sits it on y=0. */

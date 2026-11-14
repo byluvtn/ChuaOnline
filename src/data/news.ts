@@ -4,9 +4,22 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 40;
+export const LATEST_NEWS_ID = 41;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa cầu thang Tam Thế, tượng vàng hành lang, sạp chợ, NPC cổng và Phòng ghi công đức',
+    date: '2026-11-14',
+    items: [
+      'Cầu thang Điện Tam Thế nối liền vào bậc thềm điện, không còn khe hở giữa bậc trên cùng và sàn điện.',
+      'Tượng vàng hành lang giờ tự tải lại khi mạng yếu, không còn kẹt ở tượng chibi.',
+      'Hai sạp Bán chim phóng sinh và Phở chay dời ra khỏi quầy Trà và Hương hoa, chợ ngoài cổng ngay ngắn hơn.',
+      'Khách vào chùa giờ đã rải sẵn khắp sân và các điện thay vì xếp hàng hết ở cổng Tam Quan.',
+      'Phòng ghi công đức xoay mặt mở về hướng Đông, nhìn ra lối đi chính; Sư Thầy Trực Ban vẫn ngồi ở bàn trực.',
+      'Hòm công đức to gấp 3 lần, đặt ngay bên trái lối vào phòng.',
+      'Bảng vinh danh dời ra cạnh lối lên hồ cá Koi, dễ thấy ngay khi đi về phía hồ.',
+    ],
+  },
   {
     title: 'Cho chim và chó mèo ăn',
     date: '2026-11-14',

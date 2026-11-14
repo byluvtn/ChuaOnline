@@ -22,12 +22,12 @@ export const TAM_THE = { x: 0, z: -68 };
 export const BAO_THAP = { x: -30, z: -38 };
 /**
  * Nền Điện Tam Thế: mặt nền đi được cao 3.0 (hx/hz theo trục thế giới), sườn dốc thoải 1.2 quanh nền;
- * thang lớn giữa trục (|x| <= stairW) dốc đều từ y 0 ở zStart lên y 3.0 ở mép Nam nền điện.
+ * thang lớn giữa trục (|x| <= stairW) dốc đều từ y 0 ở zStart lên y 3.0 ở stairTop (world z của bậc trên cùng).
  */
 export const TAM_THE_PLAT = {
   x: TAM_THE.x, z: TAM_THE.z,
   hx: 20, hz: 12, y: 3.0, ramp: 1.2,
-  stairW: 4.2, zStart: -50,
+  stairW: 4.2, zStart: -50, stairTop: -57.6,
 };
 /**
  * Nền + bậc thềm Bảo Tháp: mặt nền đi được cao 0.9, bậc thềm thấp dần về phía Nam
@@ -59,7 +59,7 @@ export const TRAI_DUONG_PLAT = { x: TRAI_DUONG.x, z: TRAI_DUONG.z, hx: 6.0, hz: 
 export const VUON_THAP = { x: 49, z: -63 };
 export const VUON_THAP_PLAT = { x: VUON_THAP.x, z: VUON_THAP.z, hx: 7.0, hz: 5.0, y: 0.2, ramp: 0.8 };
 export const PHONG_CD = { x: -42, z: 35 };
-export const PHONG_CD_PLAT = { x: PHONG_CD.x, z: PHONG_CD.z, hx: 6.5, hz: 4.5, y: 0.25, ramp: 0.8 };
+export const PHONG_CD_PLAT = { x: PHONG_CD.x, z: PHONG_CD.z, hx: 4.0, hz: 5.5, y: 0.25, ramp: 0.8 };
 /** Viện Khách Tăng (Tây) và Viện Tổ (Đông): hình chữ nhật có rào, cổng ở mặt Nam tại gateX. */
 export const VIEN_KT = { x0: -58, x1: -22, z0: -80, z1: -54, gateX: -30 };
 export const VIEN_TO = { x0: 24, x1: 58, z0: -80, z1: -54, gateX: 30 };
@@ -106,11 +106,11 @@ export function groundY(x: number, z: number) {
   const tdx = Math.max(Math.abs(x - tp.x) - tp.hx, 0), tdz = Math.max(Math.abs(z - tp.z) - tp.hz, 0);
   const td = Math.hypot(tdx, tdz);
   if (td < tp.ramp) {
-    const onAxis = Math.abs(x - tp.x) <= tp.stairW && z > tp.z + tp.hz;
+    const onAxis = Math.abs(x - tp.x) <= tp.stairW && z > tp.stairTop;
     if (!onAxis) y = Math.max(y, tp.y * (1 - td / tp.ramp));
   }
-  if (Math.abs(x - tp.x) <= tp.stairW && z > tp.z + tp.hz - 0.01 && z < tp.zStart) {
-    const u = (tp.zStart - z) / (tp.zStart - (tp.z + tp.hz));
+  if (Math.abs(x - tp.x) <= tp.stairW && z > tp.stairTop - 0.01 && z < tp.zStart) {
+    const u = (tp.zStart - z) / (tp.zStart - tp.stairTop);
     y = Math.max(y, tp.y * Math.max(0, Math.min(1, u)));
   }
   const ap = AM_CO_PLAT;
@@ -186,8 +186,8 @@ export function blocked(x: number, z: number) {
   if (Math.abs(x - BAO_THAP.x) < 2.2 && z > BAO_THAP.z + BAO_THAP_PLAT.step1.z0 - 1 && z < BAO_THAP.z + BAO_THAP_PLAT.step2.z1 + 1) return true;
   if (x < -27 && x > -41 && Math.abs(z + 27) < 2.2) return true;
   if (x > 27 && x < 36 && Math.abs(z - DIEN_MAU.z) < 2.2) return true;
-  // Lối tới cửa Phòng ghi công đức sau khi xoay 180 độ (cửa hướng Bắc).
-  if (Math.abs(x - PHONG_CD.x) < 2.2 && z > 27 && z < 31.5) return true;
+  // Lối tới cửa Đông của Phòng ghi công đức (cửa tại x = -38.5, z = 35).
+  if (x > -39 && x < -33 && Math.abs(z - PHONG_CD.z) < 2.2) return true;
   return false;
 }
 

@@ -181,18 +181,24 @@ export function buildTemple(c: TempleCtx) {
       colliders.push({ x, z, r: 0.85 });
     }
   }
-  const corridorStatuesP = buildCorridorStatues(c.renderer);
-  corridorStatuesP.then((models) => {
-    for (const s of corridorSlots) {
+  let corridorLateResolve!: (models: (THREE.Group | null)[]) => void;
+  const corridorLateP = new Promise<(THREE.Group | null)[]>((res) => { corridorLateResolve = res; });
+  const corridorStatuesP = buildCorridorStatues(c.renderer, corridorLateResolve);
+  const corridorDone = new Set<number>();
+  const applyCorridorStatues = (models: (THREE.Group | null)[]) => {
+    corridorSlots.forEach((s, si) => {
       const m = models[s.idx];
-      if (!m) continue;
+      if (!m || corridorDone.has(si)) return;
+      corridorDone.add(si);
       const inst = m.clone(true);
       inst.position.set(s.x, CORR.y + 0.55, s.z);
       inst.rotation.y = -s.side * Math.PI / 2;
       arhatGroup.add(inst);
       arhatGroup.remove(s.fallback);
-    }
-  }).catch((e) => { console.warn('statue-corridor: lỗi dựng, giữ tượng chibi', e); });
+    });
+  };
+  corridorStatuesP.then(applyCorridorStatues).catch((e) => { console.warn('statue-corridor: lỗi dựng, giữ tượng chibi', e); });
+  corridorLateP.then(applyCorridorStatues).catch((e) => { console.warn('statue-corridor: lỗi tải lại, giữ tượng chibi', e); });
   const arhatSeal = sealArchitectureJoints(arhatGroup, { maxGap: 0.3 });
   if (import.meta.env.DEV) console.warn(`gapdump arhats: filled=${arhatSeal.filled} remaining=${arhatSeal.remaining.length} ` + JSON.stringify(arhatSeal.remaining));
 
@@ -690,15 +696,22 @@ export function buildTemple(c: TempleCtx) {
     dm.g.add(gmFallback);
     colliders.push({ x: DIEN_MAU.x, z: gmZ, r: 0.85 });
     const gmIdx = CORRIDOR_STATUE_NAMES.indexOf('guanyin-ngoi');
-    corridorStatuesP.then((models) => {
+    let gmDone = false;
+    const applyGm = (models: (THREE.Group | null)[]) => {
       const m = models[gmIdx];
-      if (!m) { console.warn('dien-mau: guanyin-ngoi không có, giữ tượng chibi buildQuanAm'); return; }
+      if (!m || gmDone) return;
+      gmDone = true;
       const inst = m.clone(true);
       inst.position.set(0, y0 + 0.55, gmLz);
       inst.rotation.y = 0;
       dm.g.add(inst);
       dm.g.remove(gmFallback);
+    };
+    corridorStatuesP.then((models) => {
+      if (!models[gmIdx]) console.warn('dien-mau: guanyin-ngoi không có, giữ tượng chibi buildQuanAm (thử lại sau 20 s)');
+      applyGm(models);
     }).catch((e) => { console.warn('dien-mau: lỗi dựng tượng, giữ tượng chibi', e); });
+    corridorLateP.then(applyGm).catch((e) => { console.warn('dien-mau: lỗi tải lại tượng, giữ tượng chibi', e); });
   }
   const nk = extraHouse('nha-khach', NHA_KHACH, NHA_KHACH_PLAT, 'NHÀ KHÁCH', 'nhaKhach', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nk.g, COUPLETS.nhaKhach.am[i].split(',')[0], 0.42, 2.2, i ? nk.hx : -nk.hx, NHA_KHACH_PLAT.y + 1.7, nk.hz + 0.22);
@@ -723,15 +736,15 @@ export function buildTemple(c: TempleCtx) {
   void td;
   const trd = extraHouse('trai-duong', TRAI_DUONG, TRAI_DUONG_PLAT, 'TRAI ĐƯỜNG', 'traiDuong', 4.6, 2.75, true);
   for (let i = 0; i < 2; i++) labelBoard(trd.g, COUPLETS.traiDuong.am[i].split(',')[0], 0.42, 2.2, i ? trd.hx : -trd.hx, TRAI_DUONG_PLAT.y + 1.7, trd.hz + 0.22);
-  const pcd = buildHouse('phong-cong-duc', PHONG_CD, PHONG_CD_PLAT, 'PHÒNG GHI CÔNG ĐỨC', 'phongCongDuc', 5.1, 3.5, true);
-  // Mặt mở xoay 180 độ về hướng Bắc (sân chính); nhà 10.2 x 7.0 vẫn vừa nền 13 x 9.
-  pcd.g.rotation.y = Math.PI;
+  const pcd = buildHouse('phong-cong-duc', PHONG_CD, { hx: PHONG_CD_PLAT.hz, hz: PHONG_CD_PLAT.hx, y: PHONG_CD_PLAT.y }, 'PHÒNG GHI CÔNG ĐỨC', 'phongCongDuc', 5.1, 3.5, true);
+  // Mặt mở xoay +90 độ về hướng Đông (lối vào chính). Nền truyền bản hoán đổi hx/hz vì mesh nền nằm trong group xoay (như Thiền Đường): nhà 7.0 x 10.2 trên nền 8 x 11 theo trục thế giới.
+  pcd.g.rotation.y = Math.PI / 2;
   pcd.g.position.set(PHONG_CD.x, 0, PHONG_CD.z); scene.add(pcd.g);
   const pcdSeal = sealArchitectureJoints(pcd.g, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump phong-cong-duc: filled=${pcdSeal.filled} remaining=${pcdSeal.remaining.length}`);
   mergeStaticByMaterial(pcd.g);
   {
-    const tw = (lx: number, lz: number) => ({ x: PHONG_CD.x - lx, z: PHONG_CD.z - lz });
+    const tw = (lx: number, lz: number) => ({ x: PHONG_CD.x + lz, z: PHONG_CD.z - lx });
     const n = Math.round(pcd.hx / 0.9), sn = (2 * pcd.hx) / n, rn = sn / 2 - 0.4;
     const k = Math.max(1, Math.round((2 * pcd.hz - sn / 2) / 2.2 - 0.5)), sw = (2 * pcd.hz - sn / 2) / (k + 0.5), rw = sw / 2 - 0.4;
     for (let i = 0; i <= n; i++) colliders.push({ ...tw(-pcd.hx + i * sn, -pcd.hz), r: rn });
@@ -855,7 +868,7 @@ export function buildTemple(c: TempleCtx) {
     // --- Phòng ghi công đức: bàn dài + ghế trực + kệ sổ ---
     {
       const g = mkIn('phong-cong-duc-in', PHONG_CD), b = mk(g), y0 = PHONG_CD_PLAT.y, hxp = pcd.hx;
-      g.rotation.y = Math.PI;
+      g.rotation.y = Math.PI / 2;
       b(3.0, 0.06, 1.0, 0, y0 + 0.72, -1.5, woodM);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.1, 0.72, 0.1, sx * 1.4, y0 + 0.36, -1.5 + sz * 0.4, woodM);
       b(0.4, 0.05, 0.3, -0.6, y0 + 0.78, -1.5, paperM);
@@ -868,14 +881,14 @@ export function buildTemple(c: TempleCtx) {
       for (const sz of [-0.85, 0.85]) b(0.5, 1.1, 0.06, kx, y0 + 0.55, sz, woodM);
       for (let i = 0; i < 6; i++) b(0.2, 0.05, 0.28, kx, y0 + 0.55 + (i % 2) * 0.6 + 0.02, -0.7 + i * 0.28, paperM);
       cyl(g, 0.06, 0.06, 0.12, kx, y0 + 1.19, 0.75, inkM, 10);
-      // Hòm công đức: thùng gỗ cạnh bàn (phía phải bàn khi nhìn từ cửa), nắp có khe bỏ xu + khóa vàng
-      b(0.6, 0.5, 0.4, 2.2, y0 + 0.25, -1.5, woodM);
-      b(0.3, 0.02, 0.06, 2.2, y0 + 0.51, -1.5, inkM);
-      b(0.12, 0.12, 0.04, 2.2, y0 + 0.3, -1.28, c.goldM);
+      // Hòm công đức (to gấp 3): local (-2.8, 2.5) trong g xoay +π/2 → world (-39.5, 37.8), ngay trong cửa Đông, bên trái khi nhìn vào (phía Nam). Nắp có khe bỏ xu, khóa vàng quay về Đông.
+      b(1.8, 1.5, 1.2, -2.8, y0 + 0.75, 2.5, woodM);
+      b(0.9, 0.06, 0.18, -2.8, y0 + 1.53, 2.5, inkM);
+      b(0.36, 0.36, 0.12, -2.8, y0 + 0.9, 3.16, c.goldM);
       mergeStaticByMaterial(g); scene.add(g);
-      for (const lx of [-1.5, -0.5, 0.5, 1.5]) for (const lz of [1.0, 2.0]) colliders.push({ x: PHONG_CD.x + lx, z: PHONG_CD.z + lz, r: 0.1 });
-      // Collider hòm công đức: mesh ở local (2.2, -1.5) trong g xoay π → world (-44.2, 36.5) = PHONG_CD − local (khác diff gốc +2.2/−1.5 vì Phòng CD đã xoay 180° ở news 32)
-      colliders.push({ x: PHONG_CD.x - 2.2, z: PHONG_CD.z + 1.5, r: 0.4 });
+      for (const lz of [-2.0, -1.0]) for (const lx of [-1.5, -0.5, 0.5, 1.5]) colliders.push({ x: PHONG_CD.x + lz, z: PHONG_CD.z - lx, r: 0.1 });
+      // Collider hòm công đức: mesh ở local (-2.8, 2.5) trong g xoay +π/2 → world (PHONG_CD.x + lz, PHONG_CD.z − lx) = (-39.5, 37.8).
+      colliders.push({ x: PHONG_CD.x + 2.5, z: PHONG_CD.z + 2.8, r: 1.2 });
     }
   }
 
@@ -1081,7 +1094,7 @@ export function buildTemple(c: TempleCtx) {
     labelBoard(gate, COLUMN_LABELS.tamQuan[i], 0.5, 4.2, (i ? -1 : 1) * (WALL.gate - 0.9), 3.2, 0.64);
   }
   gate.position.set(0, 0, WALL.zS); scene.add(gate);
-  // ---- honor board (donation top 10) next to the gate, west side of the path ----
+  // ---- honor board (donation top 10) beside the path up to the Koi pond ----
   {
     const board = new THREE.Group();
     const postM = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 });
@@ -1095,9 +1108,9 @@ export function buildTemple(c: TempleCtx) {
     title.position.set(0, 1.7, 0.09); board.add(title);
     const note = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('TOP 10 CÔNG ĐỨC') }));
     note.position.set(0, 0.55, 0.09); board.add(note);
-    board.position.set(-7, 0, 42);
+    board.position.set(-5, 0, 32);
     scene.add(board);
-    colliders.push({ x: -7, z: 42, r: 1.0 });
+    colliders.push({ x: -5, z: 32, r: 1.0 });
   }
   const gateSeal = sealArchitectureJoints(gate, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump gate: filled=${gateSeal.filled} remaining=${gateSeal.remaining.length} ` + JSON.stringify(gateSeal.remaining));
@@ -1466,8 +1479,8 @@ export function buildTemple(c: TempleCtx) {
     for (let lx = -hw; lx <= hw + 0.01; lx += 1.0) colliders.push({ x: x + lx, z: z - hd - 0.6, r: 0.5 });
   };
   const STALLS: [number, string, StallKind][] = [
-    [-42, 'CƠM CHAY', 'com'], [-26, 'TRÀ ĐÁ', 'tra'], [-10, 'BÁN CHIM PHÓNG SINH', 'chim'],
-    [10, 'PHỞ CHAY', 'pho'], [26, 'TRÀ ĐÁ', 'tra'], [42, 'BÁN CÁ PHÓNG SINH', 'ca'],
+    [-42, 'CƠM CHAY', 'com'], [-26, 'TRÀ ĐÁ', 'tra'], [-18, 'BÁN CHIM PHÓNG SINH', 'chim'],
+    [18, 'PHỞ CHAY', 'pho'], [26, 'TRÀ ĐÁ', 'tra'], [42, 'BÁN CÁ PHÓNG SINH', 'ca'],
   ];
   for (const [sx, name, kind] of STALLS) buildStall(sx, 54.5, name, kind);
   pathRect(-62, 45, 62, 58);
