@@ -3,8 +3,8 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { levelOf, type Outfit, type Profile } from '../shared/types.js';
-import { ITEM_BY_ID, earnedTitles, type MailGift, type MailItem, type PlayerStats, type StatKey } from '../shared/game.js';
 import { dayKeyICT } from '../shared/time.js';
+import { ITEM_BY_ID, earnedTitles, type MailGift, type MailItem, type PlayerStats, type StatKey } from '../shared/game.js';
 
 const localFile = process.env.DB_FILE ? process.env.DB_FILE : 'data/chuaonline.db';
 if (!process.env.TURSO_DATABASE_URL) {
@@ -276,7 +276,7 @@ export async function setAccessory(id: number, item: string | null) {
 
 // ---- quests ----
 /** Khoá phiên nhiệm vụ: nhiệm vụ ngày dùng day_key, nhiệm vụ tuần (id `w_…`) dùng week_key. */
-export const questKey = (questId: string, d = new Date()) => (questId.startsWith('c_') ? 'once' : (questId.startsWith('w_') ? weekKey(d) : (questId.startsWith('gq_') ? dayKeyICT(d) : dayKey(d))));
+export const questKey = (questId: string, d = new Date()) => (questId.startsWith('c_') ? 'once' : (questId.startsWith('w_') ? weekKey(d) : ((questId.startsWith('dq_') || questId.startsWith('gq_')) ? dayKeyICT(d) : dayKey(d))));
 export async function questRows(id: number) {
   const rows = (await db.execute({ sql: "SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?, ?, 'once')", args: [id, dayKey(), dayKeyICT(), weekKey()] })).rows as unknown as { quest_id: string; progress: number; claimed: number }[];
   return rows.map((r) => ({ quest_id: r.quest_id, progress: Number(r.progress), claimed: Number(r.claimed) }));

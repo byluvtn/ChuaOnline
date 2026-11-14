@@ -4,7 +4,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GARDEN_HARVEST_MERIT, GARDEN_PLOTS, GARDEN_SEEDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
-  NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, defaultTitle, titleName,
+  NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, defaultTitle, titleName, dqTodayIds,
   type BeadsAck, type BeadsState, type CheckinAck, type GardenPlotState, type GardenSpecies, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
@@ -139,7 +139,7 @@ async function refreshQuestGuard(room: string): Promise<void> {
     for (const s of roomSessions(room)) {
       const rows = await db.questRows(s.pid);
       const byId = new Map(rows.map((r) => [r.quest_id, r]));
-      for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS]) {
+      for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS].filter((x) => !x.id.startsWith('dq_') || dqTodayIds().includes(x.id))) {
         const req = (q as any).requires as string | undefined;
         if (req && !byId.get(req)?.claimed) continue;
         const giver = (q as any).giver as string | undefined;
@@ -198,7 +198,7 @@ async function questList(pid: number): Promise<QuestState[]> {
     const req = (q as any).requires as string | undefined;
     return !req || !!rows.get(req)?.claimed;
   });
-  return [...QUESTS, ...WEEKLY_QUESTS, ...NPC_QUESTS, ...visibleChain].map(map);
+  return [...QUESTS, ...WEEKLY_QUESTS, ...NPC_QUESTS.filter((q) => !q.id.startsWith('dq_') || dqTodayIds().includes(q.id)), ...visibleChain].map(map);
 }
 // Single place for step / zone / accepted checks of NPC and chain quests.
 // Returns true if progress was advanced.
@@ -547,6 +547,7 @@ io.on('connection', (socket) => {
     const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
     const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
     if (!s || !q || !isNpcQuest(q)) return reply({ ok: false, error: 'Nhiệm vụ không hợp lệ' });
+    if (q.id.startsWith('dq_') && !dqTodayIds().includes(q.id)) return reply({ ok: false, error: 'Việc này không phải việc hôm nay' });
     const rows = await db.questRows(s.pid);
     const byId = new Map(rows.map((r) => [r.quest_id, r]));
     const req = (q as any).requires as string | undefined;
@@ -590,15 +591,16 @@ io.on('connection', (socket) => {
   socket.on('quest:feed', async (payload: { animalId: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
-    const q = findQuestDef('nq_feed_pets');
+    const defs = [findQuestDef('nq_feed_pets'), findQuestDef('dq_feed')].filter((x): x is AnyQuestDef => !!x && isNpcQuest(x));
     const animalId = payload && typeof payload.animalId === 'string' ? payload.animalId : undefined;
     const a = s && animalId ? getAnimalStates(s.room).find((x) => x.id === animalId) : undefined;
-    if (!s || !q || !isNpcQuest(q) || !a || (a.kind !== 'dog' && a.kind !== 'cat')) {
+    if (!s || !defs.length || !a || (a.kind !== 'dog' && a.kind !== 'cat')) {
       return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
     }
     if (distTo(s, a.x, a.z) > 2.5) return reply({ ok: false, error: 'Bạn đứng quá xa' });
     const rows = await db.questRows(s.pid);
-    const ok = await advanceNpcQuest(s, q, 'feed', 1, rows);
+    let ok = false;
+    for (const q of defs) if (await advanceNpcQuest(s, q, 'feed', 1, rows)) ok = true;
     if (!ok) return reply({ ok: false, error: 'Chưa thể cho ăn lúc này' });
     setAnimalEating(s.room, a.id, 3);
     reply({ ok: true });

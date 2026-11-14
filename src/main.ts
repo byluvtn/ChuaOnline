@@ -255,7 +255,7 @@ function refreshLabel(r: Remote) {
 
 function addPlayer(p: PlayerState) {
   if (remotes.has(p.id)) return remotes.get(p.id)!;
-  const char = p.npc ? buildCharacter(p.outfit, p.color, p.name, { scale: p.role === 'abbot' ? 1.15 : p.role === 'lay' ? 1 : 0.9, role: p.role }) : buildCharacter(p.outfit, p.color, p.name);
+  const char = p.npc ? buildCharacter(p.outfit, p.color, p.name, { scale: p.role === 'abbot' ? 1.15 : p.role === 'lay' ? 1 : 0.9, role: p.role, cane: p.role === 'abbot' && p.accessory === 'cane' }) : buildCharacter(p.outfit, p.color, p.name);
   char.setLabel(p.name, p.npc ? undefined : levelOf(p.merit), p.id === myId, p.npc ? undefined : (p.title ? titleName(p.title) : undefined));
   char.label.visible = settings.showNames;
   char.setAccessory(p.accessory);
@@ -1149,7 +1149,7 @@ function openDialogue(npcId: string): void {
             }, 'Đưa đồ')));
         } else if (kind === 'remind') {
           body.appendChild(h('p', {}, lines.reminder));
-        } else {
+        } else if (npcId !== 'npc37') {
           body.appendChild(h('p', {}, lines.offer));
           body.appendChild(h('div', { class: 'qrow' },
             h('button', {
@@ -1158,6 +1158,16 @@ function openDialogue(npcId: string): void {
         }
         if (qs.length > 1) {
           body.appendChild(h('small', { class: 'hint' }, 'Người này còn việc khác — làm xong việc này rồi quay lại nhé.'));
+        }
+      }
+      // Sư Ông: nhận tất cả việc hôm nay còn chưa nhận bằng một nút (thay cho nút "Nhận việc" từng cái).
+      if (npcId === 'npc37') {
+        const unaccepted = qs.filter((x) => x.id.startsWith('dq_') && !x.accepted);
+        if (unaccepted.length) {
+          body.appendChild(h('div', { class: 'qrow' },
+            h('button', {
+              onclick: () => { for (const u of unaccepted) sock.emit('quest:accept', u.id, failToast); },
+            }, `Nhận ${unaccepted.length} việc hôm nay`)));
         }
       }
     }
@@ -1362,6 +1372,8 @@ function questTarget(q: QuestState): Pt | null {
   if (!def) return null;
   // Finished and unclaimed: return to the giver to claim.
   if (q.progress >= q.target && !q.claimed) return npcPos(q.giver);
+  // Việc Sư Ông chưa nhận: dẫn tới gặp ông (ông đi lang thang, target là vị trí live, watchdog 2 s tự bám theo).
+  if (q.id.startsWith('dq_') && !q.accepted) return npcPos(q.giver);
   // Sweep: next un-swept point (progress counts swept points).
   if (def.event === 'sweep') return def.points?.[q.progress] ?? zoneCenter(def.zone);
   if (def.steps) {
@@ -1380,7 +1392,10 @@ function questTarget(q: QuestState): Pt | null {
     return zoneCenter(def.zone);
   }
   if (def.event === 'talk') return npcPos(q.giver); // Q10 bell
-  return zoneCenter(def.zone); // Q7/Q8/Q9/Q15/Q21 worship at a zone
+  const zc = zoneCenter(def.zone);
+  // Việc Sư Ông không có điểm cố định (thắp hương bất kỳ đâu): dẫn về gặp ông (nơi trả việc).
+  if (!zc && q.id.startsWith('dq_')) return npcPos(q.giver);
+  return zc; // Q7/Q8/Q9/Q15/Q21 worship at a zone
 }
 function startGuide(qid: string): void {
   guideQuestId = qid;
@@ -1449,6 +1464,30 @@ function sweepGuideKeepAlive(q: (typeof quests)[number], px: number, pz: number)
   return !!t && Math.hypot(t.x - px, t.z - pz) >= 1.5;
 }
 
+/** Tên khu vực theo tọa độ — dùng cho tracker khi dẫn tới NPC đang đi (Sư Ông). Thứ tự: điện/phòng trước, sân/chợ/hồ sau. */
+function zoneNameOf(x: number, z: number): string {
+  const inRect = (x0: number, x1: number, z0: number, z1: number) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
+  const near = (cx: number, cz: number, r: number) => Math.hypot(x - cx, z - cz) <= r;
+  if (inRect(-17, 17, -42, -22)) return 'Chính Điện';
+  if (inRect(-20, 20, -80, -56)) return 'Điện Tam Thế';
+  if (near(-47, -27, 8)) return 'Thiền Đường';
+  if (near(39, 10, 6)) return 'Điện Mẫu';
+  if (near(-30, -38, 7)) return 'Bảo Tháp';
+  if (near(36, -68, 8)) return 'Nhà Tổ';
+  if (near(-47, -61, 8)) return 'Nhà Khách';
+  if (near(-29, -61, 8)) return 'Trai Đường';
+  if (near(49, -63, 9)) return 'Vườn Tháp';
+  if (near(-34, -6, 6)) return 'Tháp Chuông';
+  if (near(34, -6, 6)) return 'Tháp Trống';
+  if (near(30, -31, 5)) return 'Bến Phóng Sinh';
+  if (inRect(-2, 2, 14, 30)) return 'Cầu Sen';
+  if (near(0, 22, 10)) return 'Hồ Sen';
+  if (inRect(5, 55, 47, 60)) return 'Chợ';
+  if (near(11, 39, 5)) return 'Đền Trình';
+  if (inRect(-17, 17, -14, 14)) return 'Sân Chùa';
+  return 'Trong Chùa';
+}
+
 function updateTracker(): void {
   const qt = document.getElementById('questTracker') as HTMLElement | null;
   if (!qt) return;
@@ -1463,7 +1502,18 @@ function updateTracker(): void {
   const label = qt.querySelector('.qt-label');
   const dist = qt.querySelector('.qt-dist');
   const arrow = qt.querySelector('.qt-arrow') as HTMLElement | null;
-  if (label) label.textContent = q.label;
+  if (label) {
+    // Dẫn tới Sư Ông (đang đi): hiện tên khu vực ông đang ở thay vì tên việc.
+    // Hỏi đích TƯƠI của bước hiện tại (questTarget tính lại ngay lúc này) thay vì
+    // guideTarget đã lưu (cũ tới 2 s trong khi ông đi ~1,5 m/s) — nếu không nhãn nhấp nháy.
+    // questTarget trả đúng npcPos('npc37') khi bước hiện tại dẫn tới ông (cùng 1 tick nên
+    // khoảng cách ~0); các bước dẫn đi chỗ khác (vd. dẫn tới npc4, tới con vật) thì không khớp.
+    const giverPos = q.id.startsWith('dq_') ? npcPos('npc37') : null;
+    const freshTarget = giverPos ? questTarget(q) : null;
+    label.textContent = (giverPos && freshTarget && Math.hypot(freshTarget.x - giverPos.x, freshTarget.z - giverPos.z) < 0.5)
+      ? `Sư Ông đang ở ${zoneNameOf(guideTarget.x, guideTarget.z)}`
+      : q.label;
+  }
   if (dist) dist.textContent = `${Math.round(d)} m`;
   if (arrow) {
     // Camera looks along (-sin(camYaw), -cos(camYaw)); screen-right is

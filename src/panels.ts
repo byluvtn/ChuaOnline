@@ -241,12 +241,13 @@ function renderBag(body: HTMLElement, ctx: PanelCtx) {
 function questRows(list: QuestState[], ctx: PanelCtx) {
   return list.map((q) => {
     const done = q.progress >= q.target;
-    const isNpc = q.id.startsWith('nq_') || q.id.startsWith('c_');
+    const isNpc = q.id.startsWith('nq_') || q.id.startsWith('c_') || q.id.startsWith('dq_');
     const giverName = isNpc && q.giver ? (DIALOGUES[q.giver]?.name ?? '') : '';
     const info = h('div', { class: 'qi' }, h('b', {}, q.label),
       h('div', {}, `${q.progress}/${q.target} · +${q.coins} xu · +${q.merit} công đức`),
       h('progress', { max: q.target, value: q.progress }));
     if (isNpc && giverName) info.append(h('div', { class: 'hint', style: 'margin:0' }, `Người giao: ${giverName}`));
+    if (q.id.startsWith('dq_')) info.append(h('div', { class: 'hint', style: 'margin:0' }, 'Việc mới lúc 0h'));
     const row = h('div', { class: 'qrow' }, info,
       h('button', { disabled: !done || q.claimed || undefined, onclick: () => ctx.socket.emit('quest:claim', q.id) }, q.claimed ? 'Đã nhận' : 'Nhận'));
     if (isNpc && !q.claimed) {
@@ -274,7 +275,7 @@ function renderQuests(body: HTMLElement, ctx: PanelCtx) {
       h('progress', { max: 100, value: pct.toFixed(0) }))),
     h('small', { class: 'hint', style: 'margin:0' }, 'Lên cấp nhận thưởng xu + công đức và mở khóa vật phẩm mới.'));
 
-  body.append(h('h3', { style: 'margin:8px 0 4px' }, 'Mỗi ngày'), h('p', { class: 'hint', style: 'margin:0 0 6px' }, 'Làm mới mỗi ngày (giờ UTC).'));
+  body.append(h('h3', { style: 'margin:8px 0 4px' }, 'Mỗi ngày'), h('p', { class: 'hint', style: 'margin:0 0 6px' }, 'Làm mới lúc 7h sáng mỗi ngày.'));
   body.append(...questRows(daily, ctx));
   body.append(h('h3', { style: 'margin:14px 0 4px' }, 'Mỗi tuần'), h('p', { class: 'hint', style: 'margin:0 0 6px' }, 'Làm mới vào thứ Hai hằng tuần — thưởng lớn hơn.'));
   body.append(...questRows(weekly, ctx));

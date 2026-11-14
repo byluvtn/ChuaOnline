@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 82;
+export const LATEST_NEWS_ID = 83;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sư Ông giao việc mỗi ngày',
+    date: '2026-11-15',
+    items: [
+      'Sư Ông, vị trụ trì già cầm gậy gỗ, đã về chùa và đi lại khắp các khu vực — gặp ông để nhận 3 việc mỗi ngày.',
+      'Ba việc xoay theo ngày: quét sân, đảnh lễ, tụng kinh, thắp hương, thả đèn, cho chó mèo ăn, phóng sinh, thỉnh chuông hoặc ngồi thiền; làm xong việc nào thì quay lại gặp ông để nhận thưởng.',
+      'Việc mới mỗi ngày lúc 0 giờ; ông đi tới đâu thì theo dấu "!" trên đầu ông và nút "Dẫn đường tới Sư Ông" để tìm.',
+    ],
+  },
   {
     title: 'Khu vườn trồng cây ở Vườn Tây',
     date: '2026-11-15',

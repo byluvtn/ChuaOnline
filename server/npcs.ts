@@ -48,6 +48,7 @@ export const NPC_DEFS: NpcDef[] = [
   { id: 'npc33', name: 'Cô Bán Cơm Chay', outfit: 'female', color: '#8aa84a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: 42, z: 57 } },
   { id: 'npc34', name: 'Bác Bán Phóng Sinh', outfit: 'male', color: '#9a5a3a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: 47, z: 57 } },
   { id: 'npc36', name: 'Bà Bán Trà Đá', outfit: 'female', color: '#b88a9a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: 52, z: 57 } },
+  { id: 'npc37', name: 'Sư Ông', outfit: 'monk', color: '#7a2a20', scale: 1.15, role: 'abbot', behavior: 'wander', accessory: 'cane' },
   { id: 'npc38', name: 'Tiểu Trồng Cây', outfit: 'monk', color: '#5a7a5a', scale: 0.9, role: 'novice', behavior: 'post', post: { x: -48, z: 22 } },
 ];
 
@@ -929,6 +930,7 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
     }
     return;
   }
+  if (n.def.id === 'npc37') return; // Sư Ông không dự thời khóa ở Chính Điện, cứ đi lang thang
   if (ses) {
     if (n.mode === 'normal') { n.mode = 'toAltar'; n.route = []; startWalk(n, abbotRouteIn(n), 1.2); }
     else if (n.mode === 'sitting' && now >= n.nextChat) {

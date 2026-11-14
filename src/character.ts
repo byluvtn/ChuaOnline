@@ -30,6 +30,9 @@ export interface Character {
   holdInc: THREE.Group;
   holdLotus: THREE.Group;
   holdBroom: THREE.Group;
+  head: THREE.Mesh;
+  cane: boolean;
+  holdStaff: THREE.Group;
   role?: 'abbot' | 'novice' | 'lay';
   poseW: number;
   poseKind: 'abbot' | 'sweep' | 'ring';
@@ -248,7 +251,7 @@ function embroideryTexture() {
   lotusEmbroidery = t; return t;
 }
 
-export function buildCharacter(outfit: Outfit, color: string, name: string, opts?: { scale?: number; role?: 'abbot' | 'novice' | 'lay' }): Character {
+export function buildCharacter(outfit: Outfit, color: string, name: string, opts?: { scale?: number; role?: 'abbot' | 'novice' | 'lay'; cane?: boolean }): Character {
   const root = new THREE.Group();
   if (opts?.scale) root.scale.setScalar(opts.scale);
   const body = new THREE.Group();
@@ -337,15 +340,28 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       const m = mesh(geo('abbotTaper', () => new THREE.ConeGeometry(1, 1, 16)), whiteM, head, x, y, z, false);
       m.scale.set(sx, sy, sz); m.rotation.x = Math.PI; return m;
     };
+    const hasCane = !!opts?.cane; // có gậy: râu dài treo ở neo cằm, bù góc cúi đầu để không chui vào áo
+    const beard = new THREE.Group();
+    if (hasCane) { beard.position.set(0, -0.42, 0.56); beard.rotation.x = -0.45; head.add(beard); }
     for (const sd of [-1, 1]) {
       const mo = blob(sd * 0.08, -0.165, 0.5, 0.1, 0.035, 0.05);
       mo.rotation.set(0, sd * 0.35, -sd * 0.3);
       outlined(mo, 0.014);
-      blob(sd * 0.25, -0.45, 0.39, 0.09, 0.15, 0.09);
-      taper(sd * 0.25, -0.62, 0.39, 0.09, 0.2, 0.09);
+      if (hasCane) {
+        beard.add(blob(sd * 0.25, -0.03, -0.09, 0.09, 0.15, 0.09));
+        beard.add(taper(sd * 0.25, -0.20, -0.09, 0.09, 0.2, 0.09));
+      } else {
+        blob(sd * 0.25, -0.45, 0.39, 0.09, 0.15, 0.09);
+        taper(sd * 0.25, -0.62, 0.39, 0.09, 0.2, 0.09);
+      }
     }
-    blob(0, -0.5, 0.4, 0.23, 0.15, 0.085);
-    taper(0, -0.68, 0.4, 0.23, 0.36, 0.085);
+    if (hasCane) {
+      beard.add(blob(0, -0.08, -0.08, 0.23, 0.15, 0.085));
+      beard.add(taper(0, -0.26, -0.08, 0.23, 0.36, 0.085));
+    } else {
+      blob(0, -0.5, 0.4, 0.23, 0.15, 0.085);
+      taper(0, -0.68, 0.4, 0.23, 0.36, 0.085);
+    }
   }
 
   if (outfit === 'monk') { // five incense scars on the crown
@@ -470,6 +486,18 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const hold = new THREE.Group();
   hold.position.set(0, 0.848, 0.4);
   body.add(hold);
+  // gậy Sư Ông: con trực tiếp của body (hold bị tắt/kéo theo animation), chỉ hiện khi c.cane
+  const holdStaff = new THREE.Group(); holdStaff.visible = false; body.add(holdStaff);
+  {
+    const top = new THREE.Vector3(0.43, 0.60, 0.07), bot = new THREE.Vector3(0.43, 0.022, 0.122);
+    const dir = new THREE.Vector3().subVectors(top, bot), len = dir.length();
+    const shaft = mesh(geo('staffShaft', () => new THREE.CylinderGeometry(0.035, 0.04, 1, 12)), tmat(0x8a5a2e), holdStaff, 0, 0, 0, false);
+    shaft.scale.y = len;
+    shaft.position.copy(top).add(bot).multiplyScalar(0.5);
+    shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    const knob = mesh(geo('staffKnob', () => new THREE.SphereGeometry(1, 14, 10)), tmat(0x7a4a26), holdStaff, top.x + 0.02, top.y, top.z, false);
+    knob.scale.setScalar(0.055); knob.rotation.z = 0.25;
+  }
   const holdInc = new THREE.Group(); holdInc.visible = false; hold.add(holdInc);
   const holdLotus = new THREE.Group(); holdLotus.visible = false; hold.add(holdLotus);
   // chá»•i quÃ©t lÃ¡: cÃ¡n nghiÃªng ra trÆ°á»›c, Ä‘áº§u chá»•i cháº¡m Ä‘áº¥t; chá»‰ hiá»‡n khi anim = sweep
@@ -588,6 +616,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       c.bubbleUntil = performance.now() + 5500 + shown.join('').length * 40;
     },
     dispose() { L.tex.dispose(); B.tex.dispose(); (L.sprite.material as THREE.Material).dispose(); (B.sprite.material as THREE.Material).dispose(); blob.material.dispose(); },
+    head, cane: !!opts?.cane, holdStaff,
   };
   return c;
 }
@@ -799,7 +828,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
       _tg.set(0.1, 1.22 - pull * 0.34, 0.46); solveArm(c.armR, c.foreR, 1, _tg, pw);
       _tg.set(-0.1, 1.22 - pull * 0.34, 0.46); solveArm(c.armL, c.foreL, -1, _tg, pw);
     } else {
-      _tg.set(0.05, 0.62, 0.38); solveArm(c.armR, c.foreR, 1, _tg, pw);
+      if (!c.cane) { _tg.set(0.05, 0.62, 0.38); solveArm(c.armR, c.foreR, 1, _tg, pw); }
       _tg.set(-0.08, 0.66, -0.36); solveArm(c.armL, c.foreL, -1, _tg, pw);
     }
   }
@@ -855,4 +884,18 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   c.holdInc.visible = held && anim === 'incense';
   c.holdLotus.visible = held && (anim === 'chant' || anim === 'bow');
   c.hold.visible = held || sweeping;
+  // Sư Ông cầm gậy: còng lưng + đầu cúi + tay phải đặt trên gậy + gậy hiện/ẩn
+  const hunched = c.cane && anim !== 'sit' && anim !== 'lie' && anim !== 'bow';
+  if (hunched) {
+    c.body.rotation.x += 0.18;
+    c.body.position.z -= 0.45 * Math.sin(0.18);
+    c.head.rotation.x = 0.30;
+  } else {
+    c.head.rotation.x = 0;
+  }
+  if (c.cane && (anim === 'idle' || anim === 'walk' || anim === 'run') && w === 0) {
+    c.armR.rotation.set(-0.1, 0, 0.22);
+    c.foreR.rotation.set(-0.1, 0, 0);
+  }
+  c.holdStaff.visible = c.cane && anim !== 'sit' && anim !== 'lie' && anim !== 'bow';
 }

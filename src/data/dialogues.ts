@@ -78,6 +78,75 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     chanting: 'Mô Phật, thí chủ cứ tự nhiên lễ Phật.',
   },
 
+  // npc37 — Sư Ông, trụ trì già cầm gậy. Giao 3 việc mỗi ngày, xoay 3 nhóm (dq_*), reset 00:00 VN.
+  npc37: {
+    name: 'Sư Ông',
+    role: 'Trụ trì già',
+    greetings: [
+      { time: 'morning', text: 'Mô Phật. Sáng rồi, thí chủ dậy sớm thế. Thầy đang đi dạo một vòng cho khỏe chân.' },
+      { time: 'noon', text: 'Mô Phật. Trưa rồi, thí chủ ghé chùa giữa nắng thế này, quý lắm.' },
+      { time: 'evening', text: 'Mô Phật. Chiều tối rồi, thí chủ còn ở chùa thì ở lại nghe một thời kinh đã nhé.' },
+    ],
+    questOffer: 'Mô Phật. Mỗi ngày thầy có ba việc nhỏ trong chùa, thí chủ giúp thầy một tay nhé. Nhận cả ba rồi làm dần, xong việc nào thì quay lại đây gặp thầy.',
+    questReminder: 'Ba việc hôm nay con làm tới đâu rồi? Xong việc nào thì cứ về đây gặp thầy, thầy trả công ngay.',
+    questDone: 'Tốt lắm, con làm chu đáo lắm. Thầy mừng cho con, cứ giữ như vậy mà tu tập.',
+    questLines: {
+      dq_sweep: {
+        offer: 'Sân chùa lá rụng nhiều quá, thí chủ giúp thầy quét ba chỗ dưới cây anh đào nhé.',
+        reminder: 'Sân còn lá ở mấy chỗ dưới cây anh đào đấy, thí chủ quét nốt giúp thầy nhé.',
+        done: 'Sân sạch rồi, cảm ơn con nhiều lắm.',
+      },
+      dq_bow: {
+        offer: 'Con vào Điện Tam Thế đảnh lễ ba lạy giúp thầy nhé, lòng có thành thì Phật mới chứng.',
+        reminder: 'Ba lạy trước điện Tam Thế con lạy xong chưa? Xong rồi quay lại gặp thầy nhé.',
+        done: 'Ba lạy thành tâm lắm, thầy mừng cho con. Mô Phật.',
+      },
+      dq_sutra: {
+        offer: 'Con vào Thiền Đường tụng một bài kinh giúp thầy nhé, tụng xong lòng sẽ nhẹ hẳn.',
+        reminder: 'Bài kinh ở Thiền Đường con tụng xong chưa? Thầy chờ con về kể thầy nghe nhé.',
+        done: 'Tiếng kinh của con hay lắm, thầy nghe vọng tới tận đây. Mô Phật.',
+      },
+      dq_incense: {
+        offer: 'Con thắp giúp thầy ba nén hương nhé, thắp ở đâu cũng được, miễn là lòng thành.',
+        reminder: 'Ba nén hương con thắp xong chưa? Xong rồi về đây gặp thầy nhé.',
+        done: 'Hương thơm bay khắp chùa rồi, cảm ơn con nhé.',
+      },
+      dq_lantern: {
+        offer: 'Con thả giúp thầy một đèn hoa đăng xuống hồ sen nhé, đèn mang điều ước của con đi xa lắm.',
+        reminder: 'Đèn hoa đăng con thả xuống hồ sen chưa? Thả rồi thì về gặp thầy nhé.',
+        done: 'Đèn sáng đẹp quá, điều ước của con nhất định thành. Mô Phật.',
+      },
+      dq_feed: {
+        offer: 'Chó mèo trong chùa đói rồi, thí chủ cho tụi nó ăn một bữa giúp thầy nhé.',
+        reminder: 'Chó mèo còn đợi con cho ăn đấy, lại gần tụi nó rồi cho ăn nhé.',
+        done: 'Tụi nó ăn no rồi, quấn con lắm đấy. Cảm ơn con nhé.',
+      },
+      dq_release: {
+        offer: 'Con ra quầy mua chim hay cá rồi thả ở bến phóng sinh giúp thầy nhé, cứu một mạng cũng là gieo một hạt lành.',
+        reminder: 'Chim cá con mua rồi thì mang ra bến thả đi, xong rồi nhớ quay lại đây gặp thầy nhé.',
+        done: 'Phóng sinh xong rồi, công đức của con lớn lắm. Mô Phật.',
+      },
+      dq_bell: {
+        offer: 'Con ghé tháp chuông gặp Tiểu Đánh Chuông, thỉnh một tiếng chuông giúp thầy nhé.',
+        reminder: 'Tiếng chuông con thỉnh chưa? Tiểu Đánh Chuông đang đợi con ở tháp chuông đấy.',
+        done: 'Tiếng chuông vang hay quá, thầy nghe thấy rồi. Cảm ơn con nhé.',
+      },
+      dq_meditate: {
+        offer: 'Con vào Thiền Đường ngồi thiền hai phút giúp thầy nhé, ngồi yên thì tâm mới lắng.',
+        reminder: 'Hai phút thiền con ngồi xong chưa? Ngồi cho đủ rồi về gặp thầy nhé.',
+        done: 'Thiền xong rồi, mặt con tươi hẳn ra. Tốt lắm, cứ giữ như vậy nhé.',
+      },
+    },
+    smallTalk: [
+      'Cây bồ đề trước sân là do thầy trồng hồi còn trẻ đấy, giờ nó che mát cả một góc sân rồi.',
+      'Thầy già rồi, chân chậm nên cứ đi dạo quanh chùa thế này, gặp ai cũng vui.',
+      'Ngày nào cũng có ba việc nhỏ, làm xong ba việc là thầy thấy ngày hôm đó trọn vẹn.',
+    ],
+    farewell: [
+      'Mô Phật, thí chủ về bình an.',
+      'Thầy đi dạo tiếp đây, thí chủ cứ tự nhiên nhé.',
+    ],
+  },
   // npc2 — Tiểu Quét Sân. Giao Q1: quét 3 điểm dưới 3 cây anh đào quảng trường.
   npc2: {
     name: 'Tiểu Quét Sân',

@@ -139,3 +139,9 @@ export function meritBoost(d: Date): MeritBoost {
   const holy = lunarDay === 1 || lunarDay === 15;
   return { mult: (session ? SESSION_MULT : 1) * (holy ? LUNAR_MULT : 1), session, lunarDay, holy };
 }
+
+/** Số thứ tự ngày trong năm VN (1 = 1/1) — xoay nhóm việc Sư Ông theo ngày. */
+export function ictDayOfYear(d = new Date()): number {
+  const p = ictParts(d);
+  return Math.floor((Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(p.year, 0, 0)) / 86400000);
+}
