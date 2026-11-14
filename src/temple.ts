@@ -1536,8 +1536,8 @@ export function buildTemple(c: TempleCtx) {
     for (let lx = -hw; lx <= hw + 0.01; lx += 1.0) colliders.push({ x: x + lx, z: z - hd - 0.6, r: 0.5 });
   };
   const STALLS: [number, string, StallKind][] = [
-    [-42, 'CƠM CHAY', 'com'], [-26, 'TRÀ ĐÁ', 'tra'], [-18, 'BÁN CHIM PHÓNG SINH', 'chim'],
-    [18, 'PHỞ CHAY', 'pho'], [26, 'TRÀ ĐÁ', 'tra'], [42, 'BÁN CÁ PHÓNG SINH', 'ca'],
+    [34.5, 'CƠM CHAY', 'com'], [22.5, 'TRÀ ĐÁ', 'tra'], [39, 'BÁN CHIM PHÓNG SINH', 'chim'],
+    [18, 'PHỞ CHAY', 'pho'], [48, 'TRÀ ĐÁ', 'tra'], [43.5, 'BÁN CÁ PHÓNG SINH', 'ca'],
   ];
   for (const [sx, name, kind] of STALLS) buildStall(sx, 54.5, name, kind);
   pathRect(-62, 45, 62, 58);

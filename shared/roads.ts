@@ -112,6 +112,16 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'marketW2', x: -4.5, z: 54 },
   { id: 'marketE2', x: 4.5, z: 54 },
   { id: 'marketS', x: 0, z: 56 },
+  { id: 'marketR1', x: 7, z: 51 },
+  { id: 'marketR2', x: 10.5, z: 51 },
+  { id: 'marketR3', x: 14, z: 51 },
+  { id: 'marketR4', x: 26.5, z: 51 },
+  { id: 'marketR5', x: 30, z: 51 },
+  { id: 'marketS1', x: 7, z: 58 },
+  { id: 'marketS2', x: 10.5, z: 58 },
+  { id: 'marketS3', x: 14, z: 58 },
+  { id: 'marketS4', x: 26.5, z: 58 },
+  { id: 'marketS5', x: 30, z: 58 },
 ]
 
 export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
@@ -153,10 +163,12 @@ export const ROAD_EDGES: [string, string][] = [
   // Zen garden east hedge gap: hallFront -> east side -> gap -> baoThap / zenIn
   ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
   ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],
-  // Market: gate gap (|x| < 4.4 at z = 45) to both rows, then south to marketS.
+  // Market: gate gap (|x| < 4.4 at z = 45) to the single east row, then south to marketS and along the south row behind the stalls.
   ['gate', 'marketGate'], ['marketGate', 'marketW1'], ['marketGate', 'marketE1'],
   ['marketW1', 'marketW2'], ['marketE1', 'marketE2'],
   ['marketW2', 'marketS'], ['marketE2', 'marketS'],
+  ['marketE1', 'marketR1'], ['marketR1', 'marketR2'], ['marketR2', 'marketR3'], ['marketR3', 'marketR4'], ['marketR4', 'marketR5'],
+  ['marketS', 'marketS1'], ['marketS1', 'marketS2'], ['marketS2', 'marketS3'], ['marketS3', 'marketS4'], ['marketS4', 'marketS5'],
 ]
 
 const NODE_BY_ID = new Map<string, RoadNode>(ROAD_NODES.map((n) => [n.id, n]))

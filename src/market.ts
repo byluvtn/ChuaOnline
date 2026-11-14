@@ -160,8 +160,8 @@ export function buildMarket(
     if (!STALL_STYLE[s.id]) continue;
     const stall = buildStall(s.id);
     stall.position.set(s.x, groundY(s.x, s.z), s.z);
-    // front (+z local) faces the road at x = 0
-    stall.rotation.y = s.x === 0 ? Math.PI : s.x < 0 ? Math.PI / 2 : -Math.PI / 2;
+    // front (+z local) faces north, into the temple
+    stall.rotation.y = Math.PI;
     scene.add(stall);
   }
 }

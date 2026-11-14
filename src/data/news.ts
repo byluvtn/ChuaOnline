@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 57;
+export const LATEST_NEWS_ID = 58;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Quầy chợ dồn về một bên đường, mặt quay vào trong chùa',
+    date: '2026-11-14',
+    items: [
+      '5 quầy bán và 6 quầy trống được dồn hết sang phía Đông thành 1 hàng dọc, thay chỗ quầy phở chay cũ.',
+      'Mặt quầy quay vào trong chùa; người bán đứng sau quầy, quay mặt ra khách tới mua.',
+      'Lối đi giữa thông thoáng. Giá, hàng và nhiệm vụ không đổi.',
+    ],
+  },
   {
     title: 'Mèo Mướp hay quanh quẩn ở sân trước và ao hơn',
     date: '2026-11-14',
