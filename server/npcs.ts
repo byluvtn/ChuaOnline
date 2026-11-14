@@ -128,8 +128,9 @@ interface Npc {
   def: NpcDef; state: PlayerState; phase: Phase; until: number; speed: number;
   route: Pt[]; roam: number; side: number;
   mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
-  stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant';
+  stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant' | 'toStroll' | 'stroll';
   shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; homeSlot: Behavior;
+  strollStops: string[]; strollIdx: number;
   gone: boolean; goneUntil: number;
 }
 export interface NpcChat { npcId: string; name: string; text: string }
@@ -204,7 +205,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
     return {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
-      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, homeSlot: def.behavior, gone: false, goneUntil: 0,
+      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, strollStops: [], strollIdx: 0, homeSlot: def.behavior, gone: false, goneUntil: 0,
       state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI / 2 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
@@ -376,6 +377,16 @@ function visitorArrive(room: NpcRoom, n: Npc, now: number) {
     s.ry = n.chantSeat ? n.chantSeat.ry : Math.PI;
     n.until = now + 30_000;
   }
+  else if (n.stage === 'toStroll') {
+    if (room.questGuard.has(n.def.id)) {
+      // Got a quest while strolling: cancel and stay.
+      n.strollStops = []; n.strollIdx = 0;
+      n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000);
+    } else {
+      n.stage = 'stroll'; n.phase = 'idle'; s.anim = 'idle'; s.ry = R(0, Math.PI * 2);
+      n.until = now + R(STROLL_IDLE_MIN_MS, STROLL_IDLE_MAX_MS);
+    }
+  }
   else if (n.stage === 'toGate' && n.mode === 'toLeave') {
     if (room.questGuard.has(n.def.id)) {
       // Got a quest while walking out: cancel leaving.
@@ -389,6 +400,32 @@ function visitorArrive(room: NpcRoom, n: Npc, now: number) {
   }
   else { n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000); }
 }
+/** Diem dao choi ngoai troi cho khach sau khi tung xong (chi dung node ngoai troi, khong vao dien): vuon Thien, Bao Thap, ben phong sinh, san Dien Mau, hanh lang, san truoc. */
+const STROLL_SPOTS = ['zenGarden', 'baoThap', 'thienDuong', 'psPier', 'quanYard', 'dienMau', 'buddhaYard', 'corrW', 'westMid', 'eastMid', 'restArea', 'denTrinh', 'bridgeN', 'pillars', 'drumTower', 'bellTower'] as const;
+const STROLL_CHANCE = 0.6; // ~60% khach dao choi, 40% ve thang nhu cu de cong khong vang
+const STROLL_STOP_MIN = 1;
+const STROLL_STOP_MAX = 3;
+const STROLL_IDLE_MIN_MS = 4000;
+const STROLL_IDLE_MAX_MS = 9000;
+
+function startStroll(room: NpcRoom, n: Npc, _now: number) {
+  if (room.questGuard.has(n.def.id) || Math.random() >= STROLL_CHANCE) { leaveToGate(n); return; }
+  const s = n.state;
+  const pool = [...STROLL_SPOTS];
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const want = STROLL_STOP_MIN + Math.floor(Math.random() * (STROLL_STOP_MAX - STROLL_STOP_MIN + 1));
+  const stops: string[] = [];
+  for (const id of pool) {
+    if (stops.length >= want) break;
+    if (dist(s, nodePt(id)) > 5) stops.push(id);
+  }
+  if (!stops.length) { leaveToGate(n); return; }
+  const route = routeFrom(s, stops[0]);
+  if (!route.length) { leaveToGate(n); return; }
+  n.mode = 'normal'; n.strollStops = stops; n.strollIdx = 0; n.stage = 'toStroll';
+  startWalk(n, route, visitorSpeed(n.def));
+}
+
 function visitorDecide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   switch (n.stage) {
@@ -410,7 +447,7 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
     }
     case 'seatChant':
       releaseSeat(room, n.def.id); n.chantSeat = null;
-      leaveToGate(n);
+      startStroll(room, n, now);
       break;
     case 'chant': {
       if (Math.random() < 0.3) {
@@ -421,6 +458,30 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
     }
     case 'toPlaza': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
     case 'branch': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
+    case 'stroll': {
+      if (room.questGuard.has(n.def.id)) {
+        n.strollStops = []; n.strollIdx = 0;
+        n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000);
+        break;
+      }
+      n.strollIdx++;
+      const route = n.strollIdx < n.strollStops.length ? routeFrom(s, n.strollStops[n.strollIdx]) : [];
+      if (route.length) { n.stage = 'toStroll'; startWalk(n, route, visitorSpeed(n.def)); }
+      else { n.strollStops = []; n.strollIdx = 0; leaveToGate(n); }
+      break;
+    }
+    case 'toStroll': {
+      if (room.questGuard.has(n.def.id)) {
+        n.strollStops = []; n.strollIdx = 0;
+        n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000);
+        break;
+      }
+      const id = n.strollStops[n.strollIdx];
+      const route = id ? routeFrom(s, id) : [];
+      if (route.length) startWalk(n, route, visitorSpeed(n.def));
+      else { n.strollStops = []; n.strollIdx = 0; leaveToGate(n); }
+      break;
+    }
     case 'plaza': case 'toGate': n.stage = 'toGate'; startWalk(n, [...routeFrom(s, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def)); break;
   }
 }

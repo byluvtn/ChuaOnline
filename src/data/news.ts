@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 46;
+export const LATEST_NEWS_ID = 47;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Khách đi dạo quanh chùa trước khi ra về',
+    date: '2026-11-14',
+    items: [
+      'Sau khi lạy và tụng xong, khoảng 6 trên 10 vị khách giờ đi dạo 1-3 điểm quanh chùa (vườn Thiền, Bảo Tháp, hồ Koi, hành lang...) rồi mới ra cổng Tam Quan.',
+      'Khách có nhiệm vụ vẫn ở lại làm nhiệm vụ, không đi dạo hay ra về; nhịp tụng 30 giây sau thắp hương không đổi.',
+    ],
+  },
   {
     title: 'Đàn chim thành chim cổ đỏ cỡ chim sẻ, mèo Mướp to gấp đôi',
     date: '2026-11-14',
