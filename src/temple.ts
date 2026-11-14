@@ -867,8 +867,14 @@ export function buildTemple(c: TempleCtx) {
       for (const sz of [-0.85, 0.85]) b(0.5, 1.1, 0.06, kx, y0 + 0.55, sz, woodM);
       for (let i = 0; i < 6; i++) b(0.2, 0.05, 0.28, kx, y0 + 0.55 + (i % 2) * 0.6 + 0.02, -0.7 + i * 0.28, paperM);
       cyl(g, 0.06, 0.06, 0.12, kx, y0 + 1.19, 0.75, inkM, 10);
+      // Hòm công đức: thùng gỗ cạnh bàn (phía phải bàn khi nhìn từ cửa), nắp có khe bỏ xu + khóa vàng
+      b(0.6, 0.5, 0.4, 2.2, y0 + 0.25, -1.5, woodM);
+      b(0.3, 0.02, 0.06, 2.2, y0 + 0.51, -1.5, inkM);
+      b(0.12, 0.12, 0.04, 2.2, y0 + 0.3, -1.28, c.goldM);
       mergeStaticByMaterial(g); scene.add(g);
       for (const lx of [-1.5, -0.5, 0.5, 1.5]) for (const lz of [1.0, 2.0]) colliders.push({ x: PHONG_CD.x + lx, z: PHONG_CD.z + lz, r: 0.1 });
+      // Collider hòm công đức: mesh ở local (2.2, -1.5) trong g xoay π → world (-44.2, 36.5) = PHONG_CD − local (khác diff gốc +2.2/−1.5 vì Phòng CD đã xoay 180° ở news 32)
+      colliders.push({ x: PHONG_CD.x - 2.2, z: PHONG_CD.z + 1.5, r: 0.4 });
     }
   }
 
@@ -1074,6 +1080,24 @@ export function buildTemple(c: TempleCtx) {
     labelBoard(gate, COLUMN_LABELS.tamQuan[i], 0.5, 4.2, (i ? -1 : 1) * (WALL.gate - 0.9), 3.2, 0.64);
   }
   gate.position.set(0, 0, WALL.zS); scene.add(gate);
+  // ---- honor board (donation top 10) next to the gate, west side of the path ----
+  {
+    const board = new THREE.Group();
+    const postM = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 });
+    for (const px of [-1.2, 1.2]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.0, 0.14), postM);
+      p.position.set(px, 1.0, 0); p.castShadow = true; board.add(p);
+    }
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x9a6a35, roughness: 0.8 }));
+    panel.position.set(0, 1.15, 0); panel.castShadow = true; board.add(panel);
+    const title = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture('BẢNG VINH DANH') }));
+    title.position.set(0, 1.7, 0.09); board.add(title);
+    const note = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('TOP 10 CÔNG ĐỨC') }));
+    note.position.set(0, 0.55, 0.09); board.add(note);
+    board.position.set(-7, 0, 42);
+    scene.add(board);
+    colliders.push({ x: -7, z: 42, r: 1.0 });
+  }
   const gateSeal = sealArchitectureJoints(gate, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump gate: filled=${gateSeal.filled} remaining=${gateSeal.remaining.length} ` + JSON.stringify(gateSeal.remaining));
   zones.push({ x: 0, z: WALL.zS, r: 6, id: 'tamQuan' });

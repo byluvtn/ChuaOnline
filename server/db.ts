@@ -224,6 +224,41 @@ export async function purchase(id: number, item: string, qty: number, cost: numb
     tx.close();
   }
 }
+export async function donate(
+  id: number,
+  amount: number,
+): Promise<{ ok: true; coins: number; merit: number } | { ok: false; error: string }> {
+  if (!Number.isInteger(amount) || amount < 1 || amount > 100000) {
+    return { ok: false, error: 'Số xu không hợp lệ' };
+  }
+  const tx = await db.transaction('write');
+  let committed = false;
+  try {
+    const upd = await tx.execute({
+      sql: 'UPDATE players SET coins = coins - ?, merit = merit + ? WHERE id = ? AND coins >= ?',
+      args: [amount, amount, id, amount],
+    });
+    if (upd.rowsAffected !== 1) {
+      await tx.rollback();
+      return { ok: false, error: 'Không đủ xu' };
+    }
+    const at = new Date().toISOString();
+    await tx.execute({
+      sql: 'INSERT INTO donations (player_id, total_coins, total_merit, last_at) VALUES (?,?,?,?) ON CONFLICT(player_id) DO UPDATE SET total_coins = total_coins + ?, total_merit = total_merit + ?, last_at = ?',
+      args: [id, amount, amount, at, amount, amount, at],
+    });
+    await tx.commit();
+    committed = true;
+    const row = (await db.execute({ sql: 'SELECT coins, merit FROM players WHERE id = ?', args: [id] })).rows[0];
+    return { ok: true, coins: Number(row?.coins ?? 0), merit: Number(row?.merit ?? 0) };
+  } catch (e) {
+    if (!committed) await tx.rollback();
+    throw e;
+  } finally {
+    tx.close();
+  }
+}
+
 export async function setAccessory(id: number, item: string | null) {
   await db.execute({ sql: 'UPDATE players SET accessory = ? WHERE id = ?', args: [item, id] });
 }
@@ -474,6 +509,13 @@ export async function grantLaunchMail(): Promise<number> {
 }
 console.log(`[db] mail launch grant: ${await grantLaunchMail()} thư`);
 
+  await db.execute(`CREATE TABLE IF NOT EXISTS donations (
+    player_id INTEGER PRIMARY KEY,
+    total_coins INTEGER NOT NULL DEFAULT 0,
+    total_merit INTEGER NOT NULL DEFAULT 0,
+    last_at TEXT NOT NULL DEFAULT ''
+  )`);
+
 // ---- ranking ----
 export async function topAllTime(limit = 20) {
   const rows = (await db.execute({ sql: 'SELECT name, merit FROM players WHERE merit > 0 ORDER BY merit DESC LIMIT ?', args: [limit] })).rows as unknown as { name: string; merit: number }[];
@@ -482,6 +524,11 @@ export async function topAllTime(limit = 20) {
 export async function topWeekly(limit = 20) {
   const rows = (await db.execute({ sql: 'SELECT name, weekly_merit AS merit FROM players WHERE week_key = ? AND weekly_merit > 0 ORDER BY weekly_merit DESC LIMIT ?', args: [weekKey(), limit] })).rows as unknown as { name: string; merit: number }[];
   return rows.map((r) => ({ name: r.name, merit: Number(r.merit) }));
+}
+
+export async function topDonors(limit = 10) {
+  const rows = (await db.execute({ sql: 'SELECT p.name, d.total_coins AS coins, d.total_merit AS merit FROM donations d JOIN players p ON p.id = d.player_id WHERE d.total_coins > 0 ORDER BY d.total_coins DESC, d.last_at ASC LIMIT ?', args: [limit] })).rows as unknown as { name: string; coins: number; merit: number }[];
+  return rows.map((r) => ({ name: r.name, coins: Number(r.coins), merit: Number(r.merit) }));
 }
 
 // ---- mini-games ----

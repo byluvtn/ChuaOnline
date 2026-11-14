@@ -8,7 +8,7 @@ import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
 import { clampToCompound, resolveBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
-import { closePanel, h, openCustomPanel, openPanel, panelOpen, refreshPanel } from './panels';
+import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { createPost } from './post';
 import { createWorld } from './world';
 import { buildBuddha, buildQuanAm } from './statues';
@@ -422,6 +422,7 @@ function connect() {
   });
   s.on('chat', addChat);
   s.on('lantern', (l: Lantern) => addLanternFeed(l, true));
+  s.on('donation', (d: { name: string; amount: number }) => { if (d.name === profile?.name) return; toast(`${d.name} vừa đóng góp ${d.amount.toLocaleString('vi-VN')} xu công đức!`); });
   s.on('player:action', ({ id, kind }: { id: string; kind: ActionKind }) => {
     const r = remotes.get(id);
     if (!r || id === myId) return;
@@ -1026,6 +1027,11 @@ function openDialogue(npcId: string): void {
           },
         }, `Mua ${VENDOR_GOODS[npcId]} · 10 xu`)));
     }
+    if (npcId === 'npc6') {
+      body.appendChild(h('div', { class: 'qrow' }, h('button', {
+        onclick: () => { dialogueNpc = null; openDonatePanel(panelCtx()); },
+      }, '🙏 Đóng góp công đức')));
+    }
 
     const st = pickRot(dlg.smallTalk);
     if (st) body.appendChild(h('p', {}, st));
@@ -1041,6 +1047,8 @@ function openDialogue(npcId: string): void {
 
 const talkBtn = $('talkBtn');
 talkBtn.onclick = () => { const n = nearestTalkNpc(); if (n) openDialogue(n); };
+const donorBtn = $('donorBtn');
+donorBtn.onclick = () => openDonorsPanel(panelCtx());
 // quest tracker: styled once here (no CSS file change); display is driven by updateTracker().
 const questTrackerEl = $('questTracker');
 questTrackerEl.hidden = false;
@@ -1059,6 +1067,7 @@ questTrackerEl.onclick = (e) => {
   if (guideQuestId) { clickTarget = null; pathTarget = null; pathQueue = []; guideFeedN = 0; guideStuckN = 0; }
   trackerRefresh?.call(questTrackerEl, e);
 };
+const DONOR_BOARD = { x: -7, z: 42 };
 function nearestTalkNpc(): string | null {
   if (!me) return null;
   let best: string | null = null; let bestD = 2; // design: approach within ~2 m
@@ -1079,6 +1088,15 @@ function updateTalkBtn() {
   const lb = talkBtn.querySelector('.lb')!;
   const label = 'Nói chuyện';
   if (lb.textContent !== label) lb.textContent = label;
+}
+
+function updateDonorBtn() {
+  if (!me) { if (!donorBtn.hidden) donorBtn.hidden = true; return; }
+  const d = Math.hypot(DONOR_BOARD.x - me.char.root.position.x, DONOR_BOARD.z - me.char.root.position.z);
+  if (d > 3.5) { if (!donorBtn.hidden) donorBtn.hidden = true; return; }
+  if (donorBtn.hidden) donorBtn.hidden = false;
+  const lb = donorBtn.querySelector('.lb')!;
+  if (lb.textContent !== 'Bảng vinh danh') lb.textContent = 'Bảng vinh danh';
 }
 
 function npcPos(id: string | undefined): Pt | null {
@@ -1514,6 +1532,7 @@ function loop() {
   if (t - lastDrum > 45) { lastDrum = t; if (me) { world.ringDrum(); audio.play('bow'); } }
   updateTeacherBtn();
   updateTalkBtn();
+  updateDonorBtn();
   updateNpcMarkers();
   updateTracker();
   updateSweep(now);

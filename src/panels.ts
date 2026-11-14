@@ -100,6 +100,84 @@ function render() {
 // ------------------------------------------------------------------ cửa hàng (tab category)
 let shopTab: ShopCategory = 'le_vat';
 
+export function openDonatePanel(ctx: PanelCtx) {
+  openCustomPanel('Đóng góp công đức', (body) => {
+    const p = ctx.profile();
+    const have = p?.coins ?? 0;
+    const amountInput = h('input', {
+      type: 'number',
+      min: '1',
+      step: '1',
+      placeholder: 'Nhập số xu',
+      class: 'donate-input',
+    }) as HTMLInputElement;
+    const quickRow = h('div', { class: 'qrow' });
+    for (const v of [10, 50, 100, 500]) {
+      quickRow.appendChild(h('button', {
+        onclick: () => { amountInput.value = String(v); },
+      }, String(v)));
+    }
+    const submitBtn = h('button', {}, 'Đóng góp') as HTMLButtonElement;
+    submitBtn.onclick = () => {
+      const n = Number(amountInput.value);
+      if (!Number.isInteger(n) || n < 1) { ctx.toast('Số xu không hợp lệ'); return; }
+      if (n > (ctx.profile()?.coins ?? 0)) { ctx.toast('Không đủ xu'); return; }
+      submitBtn.disabled = true;
+      ctx.socket.emit('donate', n, (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string }) => {
+        if (!r.ok) {
+          ctx.toast(r.error ?? 'Lỗi');
+          submitBtn.disabled = false;
+          return;
+        }
+        ctx.toast(`Đã đóng góp ${n} xu · +${n} công đức${r.broadcast ? ' · Mọi người trong chùa đều thấy' : ''}`);
+        closePanel();
+      });
+    };
+    const laterBtn = h('button', { onclick: () => closePanel() }, 'Để sau');
+    body.append(
+      h('p', { class: 'hint' }, `Bạn có ${have.toLocaleString('vi-VN')} xu.`),
+      amountInput,
+      quickRow,
+      h('p', { class: 'hint' }, '1 xu = 1 công đức · Đóng góp trên 50 xu sẽ được thông báo cho mọi người trong chùa'),
+      h('div', { class: 'qrow' }, submitBtn, laterBtn),
+    );
+  });
+}
+
+export function openDonorsPanel(ctx: PanelCtx) {
+  openCustomPanel('Bảng vinh danh', (body) => {
+    body.appendChild(h('p', { class: 'hint' }, 'Đang tải...'));
+    ctx.socket.emit('donors:get', (rows: { name: string; coins: number; merit: number }[]) => {
+      body.replaceChildren();
+      if (!rows || rows.length === 0) {
+        body.appendChild(h('p', { class: 'hint' }, 'Chưa có ai đóng góp. Bạn sẽ là người đầu tiên?'));
+      } else {
+        const tbody = h('tbody', {});
+        rows.forEach((r, i) => {
+          tbody.appendChild(h('tr', {},
+            h('td', {}, String(i + 1)),
+            h('td', {}, r.name),
+            h('td', {}, r.coins.toLocaleString('vi-VN')),
+            h('td', {}, r.merit.toLocaleString('vi-VN')),
+          ));
+        });
+        body.appendChild(h('table', { class: 'donor-table' },
+          h('thead', {}, h('tr', {},
+            h('th', {}, 'Hạng'),
+            h('th', {}, 'Tên'),
+            h('th', {}, 'Đã đóng góp (xu)'),
+            h('th', {}, 'Công đức'),
+          )),
+          tbody,
+        ));
+      }
+      body.appendChild(h('div', { class: 'qrow' }, h('button', {
+        onclick: () => { closePanel(); openDonatePanel(ctx); },
+      }, 'Đóng góp ngay')));
+    });
+  });
+}
+
 function shopTile(it: ShopItem, ctx: PanelCtx, p: Profile | null) {
   const lvl = levelOf(p?.merit ?? 0);
   const owned = (p?.inventory[it.id] ?? 0) > 0 && it.kind === 'accessory';

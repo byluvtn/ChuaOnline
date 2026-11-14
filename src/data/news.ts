@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 34;
+export const LATEST_NEWS_ID = 35;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đóng góp công đức',
+    date: '2026-11-14',
+    items: [
+      'Hòm công đức mới đặt trong Phòng ghi công đức, cạnh bàn của Sư Thầy Trực Ban.',
+      'Nói chuyện với Sư Thầy Trực Ban để đóng góp xu — 1 xu = 1 công đức.',
+      'Đóng góp trên 50 xu sẽ được thông báo cho mọi người đang trong chùa.',
+      'Bảng vinh danh top 10 người đóng góp nhiều nhất đặt ngay cạnh cổng Tam Quan.',
+    ],
+  },
   {
     title: 'Cầu thang Điện Tam Thế: bậc gỗ đặc, liền khối',
     date: '2026-11-14',

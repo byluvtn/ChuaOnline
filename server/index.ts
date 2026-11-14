@@ -14,6 +14,7 @@ import {
 import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
+import { PHONG_CD } from '../src/layout.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const DIST = resolve('dist');
@@ -92,7 +93,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
@@ -566,6 +567,35 @@ io.on('connection', (socket) => {
     await pushQuests(s);
   });
 
+  socket.on('donate', async (amount: unknown, cb?: (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    const now = Date.now();
+    if (now - (s.last.donate ?? 0) < 1500) return reply({ ok: false, error: 'Đang xử lý, thử lại sau' });
+    s.last.donate = now;
+    if (distTo(s, PHONG_CD.x, PHONG_CD.z) > 6) return reply({ ok: false, error: 'Bạn đứng quá xa bàn ghi công đức' });
+    const n = typeof amount === 'number' ? amount : Number(amount);
+    if (!Number.isInteger(n) || n < 1 || n > 100000) return reply({ ok: false, error: 'Số xu không hợp lệ' });
+    const before = (await db.getProfile(s.pid))?.merit ?? 0;
+    const lvBefore = levelOf(before);
+    const r = await db.donate(s.pid, n);
+    if (!r.ok) return reply({ ok: false, error: r.error });
+    // Cong duc nhiem vu 'merit': KHONG dung grantRewards vi no nhan he so gio le (meritBoost), pha ti le 1 xu = 1 cong duc.
+    await questEvent(s, 'merit', n);
+    // Xet len cap (giong grantRewards, khong nhan he so)
+    const lvAfter = levelOf(r.merit);
+    if (lvAfter > lvBefore && (await db.claimLevelReward(s.pid, lvAfter))) {
+      await db.addRewards(s.pid, LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore), LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore));
+      s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
+    }
+    await pushProfile(s);
+    const broadcast = n > 50;
+    reply({ ok: true, coins: r.coins, merit: r.merit, broadcast });
+    // Broadcast SAU commit + pushProfile; fire-and-forget, loi emit khong rollback.
+    if (broadcast) io.to(s.room).emit('donation', { name: s.state.name, amount: n });
+  });
+
   socket.on('quest:claim', async (qid: string) => {
     const s = me();
     const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
@@ -702,6 +732,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('rank:get', async (cb?: (r: Awaited<ReturnType<typeof rankings>>) => void) => cb?.(await rankings()));
+  socket.on('donors:get', async (cb?: (r: { name: string; coins: number; merit: number }[]) => void) => cb?.(await db.topDonors(10)));
   socket.on('rooms:list', (cb?: (r: RoomInfo[]) => void) => cb?.(roomList()));
 
   socket.on('disconnect', () => {
