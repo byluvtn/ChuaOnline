@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 50;
+export const LATEST_NEWS_ID = 51;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Quầy chợ xếp lại hai bên đường, thông lối đi giữa',
+    date: '2026-11-14',
+    items: [
+      '5 quầy mua bán xếp thành 2 hàng dọc hai bên đường, mặt quầy quay ra đường; giữa đường để trống lối đi thẳng rộng cho người chơi và khách đi lại.',
+      'Quầy phóng sinh dời khỏi giữa đường sang bên phải; người bán hàng đứng ngay sau quầy của mình.',
+      'Tất cả quầy trong chợ, kể cả 6 quầy trống phía sau, giờ cùng một mẫu mái sọc, không còn mái đỏ phẳng lệch tông.',
+    ],
+  },
   {
     title: 'Thêm chó Labrador làm chó thứ 3 trong chùa',
     date: '2026-11-14',

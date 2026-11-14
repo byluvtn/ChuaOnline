@@ -1450,7 +1450,7 @@ export function buildTemple(c: TempleCtx) {
   type StallKind = 'com' | 'tra' | 'chim' | 'pho' | 'ca';
   const buildStall = (x: number, z: number, sign: string, kind: StallKind) => {
     const g = new THREE.Group(); g.name = `sap-${sign}`;
-    const wood = lamb(0x6b4426), roofM = lamb(0x8a3a24, { roughness: 0.8 }), cloth = lamb(0xd9c9a3, { roughness: 0.95 });
+    const wood = lamb(0x6b4426), cloth = lamb(0xd9c9a3, { roughness: 0.95 });
     const hw = 1.8, hd = 1.1;
     for (const [px, pz] of [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]] as [number, number][]) {
       const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.6, 0.14), wood); p.position.set(px, 1.3, pz); p.castShadow = true; g.add(p);
@@ -1459,8 +1459,15 @@ export function buildTemple(c: TempleCtx) {
     const counter = new THREE.Mesh(new THREE.BoxGeometry(hw * 2, 0.9, 0.7), wood);
     counter.position.set(0, 0.45, hd - 0.1); counter.castShadow = counter.receiveShadow = true; g.add(counter);
     const top = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.2, 0.08, 0.85), cloth); top.position.set(0, 0.92, hd - 0.1); g.add(top);
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.8, 0.12, hd * 2 + 0.8), roofM);
-    roof.position.set(0, 2.66, 0); roof.rotation.x = 0.12; roof.castShadow = true; g.add(roof);
+    const awnColor = ({ com: 0x4a9a4a, tra: 0x5a7ab8, chim: 0x3a7a5a, pho: 0xb83a2a, ca: 0x4a90b8 } as Record<string, number>)[kind];
+    const awnM = lamb(awnColor), whiteM = lamb(0xf4ead2);
+    const stripeW = (hw * 2 + 0.8) / 5;
+    const awn = new THREE.Group();
+    for (let i = 0; i < 5; i++) {
+      const s = new THREE.Mesh(new THREE.BoxGeometry(stripeW, 0.06, hd * 2 + 0.8), i % 2 === 0 ? awnM : whiteM);
+      s.position.x = (i - 2) * stripeW; s.castShadow = true; awn.add(s);
+    }
+    awn.position.set(0, 2.5, 0.1); awn.rotation.x = 0.28; g.add(awn);
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 0.6), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
     sg.position.set(0, 2.2, hd + 0.5); sg.rotation.x = 0.12; g.add(sg);
     const py = 0.96, pz = hd - 0.1;

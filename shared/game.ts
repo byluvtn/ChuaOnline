@@ -207,11 +207,11 @@ export const SUTRAS: Sutra[] = [
 ];
 
 export const MARKET_STALLS: { id: string; x: number; z: number }[] = [
-  { id: 'stall_fruit', x: -8.5, z: 48 },
-  { id: 'stall_cake', x: 8.5, z: 48 },
-  { id: 'stall_tea', x: -8.5, z: 53 },
-  { id: 'stall_incense', x: 8.5, z: 53 },
-  { id: 'stall_phongsinh', x: 0, z: 53 },
+  { id: 'stall_fruit', x: -7, z: 47.5 },
+  { id: 'stall_cake', x: 7, z: 47.5 },
+  { id: 'stall_tea', x: -7, z: 53 },
+  { id: 'stall_incense', x: 7, z: 53 },
+  { id: 'stall_phongsinh', x: 7, z: 56.3 },
 ];
 
 // Zones (shared by several quests)
