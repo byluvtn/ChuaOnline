@@ -206,7 +206,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
       shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, strollStops: [], strollIdx: 0, homeSlot: def.behavior, gone: false, goneUntil: 0,
-      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI / 2 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
+      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI / 2 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post && def.post.z >= 47 && def.post.x < 0 ? Math.PI / 2 : def.post && def.post.z >= 47 && def.post.x > 0 ? -Math.PI / 2 : def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
   spreadVisitors(npcs, now);
@@ -525,7 +525,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   }
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
   if (n.def.behavior === 'visitor') return visitorArrive(room, n, now);
-  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI; n.until = now + 5000; return; }
+  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + 5000; return; }
   if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
   if (n.mode === 'toChant') {
     const seat = n.chantSeat;
@@ -542,7 +542,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
 
 function decide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
-  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI; n.until = now + 5000; return; }
+  if (n.def.behavior === 'desk') { n.phase = 'idle'; s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + 5000; return; }
   if (n.def.behavior === 'post') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; return; }
   if (n.mode === 'chanting' || n.mode === 'toChant') return; // runSchedule owns chanting
   if (n.def.behavior === 'bell') {

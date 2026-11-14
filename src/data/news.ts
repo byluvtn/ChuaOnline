@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 53;
+export const LATEST_NEWS_ID = 54;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sư Thầy Trực Ban và người bán hàng quay đúng hướng',
+    date: '2026-11-14',
+    items: [
+      'Sư Thầy Trực Ban trong Phòng ghi công đức giờ ngồi quay mặt ra cửa phía Đông, đối diện người tới bàn công đức, không còn quay ngang về phía Bắc như trước.',
+      'Người bán hàng ngoài chợ (trà, hoa quả, bánh, hương hoa, chim cá) giờ đứng sau quầy và quay mặt ra lối đi giữa, đối diện khách tới mua.',
+    ],
+  },
   {
     title: 'Tượng Phật vàng trong Đền Trình',
     date: '2026-11-14',
