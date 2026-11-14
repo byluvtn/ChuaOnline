@@ -11,6 +11,7 @@ import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { createPost } from './post';
 import { createWorld } from './world';
+import { initAnimals, updateAnimals, nearestFeedable, lostAnimal } from './animals';
 import { buildBuddha, buildQuanAm } from './statues';
 import { ACTION_RULES, CHAIN_QUESTS, MARKET_STALLS, NPC_QUESTS, ROOMS, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
 import { DIALOGUES } from './data/dialogues';
@@ -18,7 +19,7 @@ import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, type Pt } from '../shared/roads';
 import {
   MAP_HALF, MAP_Z_MIN, OUTFIT_COLOR, levelOf, meritForLevel,
-  type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState, type Profile,
+  type ActionKind, type Anim, type AnimalState, type ChatMessage, type Lantern, type Outfit, type PlayerState, type Profile,
 } from '../shared/types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -36,6 +37,7 @@ let color = localStorage.getItem('co:color') || '#d99a1e';
 let roomId = localStorage.getItem('co:room') || ROOMS[0].id;
 let profile: Profile | null = null;
 let quests: QuestState[] = [];
+let latestAnimals: AnimalState[] = [];
 const nameInput = $<HTMLInputElement>('name');
 nameInput.value = localStorage.getItem('co:name') || randName();
 
@@ -162,6 +164,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
 const world = createWorld(renderer);
+initAnimals(world.scene, () => settings.showNames);
 const pathfinder = createPathfinder(world.colliders);
 const post = createPost(renderer, world.scene, camera, isTouch);
 const prewarm = () => {
@@ -410,8 +413,9 @@ function connect() {
     remotes.delete(id);
   });
   s.on('player:look', ({ id, accessory }: { id: string; accessory: string | null }) => remotes.get(id)?.char.setAccessory(accessory));
-  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'ry' | 'anim'>[] }) => {
+  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'ry' | 'anim'>[]; animals?: AnimalState[] }) => {
     $('onlineN').textContent = String(st.online);
+    latestAnimals = st.animals ?? [];
     for (const p of st.players) {
       const r = remotes.get(p.id);
       if (!r || p.id === myId) continue;
@@ -1089,6 +1093,43 @@ function updateTalkBtn() {
   const label = 'Nói chuyện';
   if (lb.textContent !== label) lb.textContent = label;
 }
+function myPos(): Pt | null {
+  return me ? { x: me.char.root.position.x, z: me.char.root.position.z } : null;
+}
+
+const animalBtn = $('animalBtn') as HTMLButtonElement;
+let animalAct: { event: 'feed' | 'find'; id: string } | null = null;
+animalBtn.addEventListener('click', () => {
+  const a = animalAct;
+  if (!a || !socket) return;
+  socket.emit(
+    a.event === 'feed' ? 'quest:feed' : 'quest:find',
+    { animalId: a.id },
+    (r: { ok: boolean; error?: string }) => { if (!r.ok) toast(r.error ?? 'Lỗi'); },
+  );
+});
+
+function updateAnimalBtn() {
+  const p = myPos();
+  let act: { event: 'feed' | 'find'; id: string } | null = null;
+  if (p) {
+    for (const q of quests) {
+      if (q.claimed || q.progress >= q.target) continue;
+      const step = currentStep(q);
+      const a = step === 'feed' ? nearestFeedable(p) : step === 'find' ? lostAnimal() : null;
+      if (a && Math.hypot(a.x - p.x, a.z - p.z) <= 2) {
+        act = { event: step === 'feed' ? 'feed' : 'find', id: a.id };
+        break;
+      }
+    }
+  }
+  animalAct = act;
+  if (!act) { if (!animalBtn.hidden) animalBtn.hidden = true; return; }
+  if (animalBtn.hidden) animalBtn.hidden = false;
+  const lb = animalBtn.querySelector('.lb')!;
+  const label = act.event === 'feed' ? 'Cho ăn' : 'Tìm thấy';
+  if (lb.textContent !== label) lb.textContent = label;
+}
 
 function updateDonorBtn() {
   if (!me) { if (!donorBtn.hidden) donorBtn.hidden = true; return; }
@@ -1121,6 +1162,8 @@ function questTarget(q: QuestState): Pt | null {
     if (step === 'deliver') return npcPos(def.receiver);
     if (step === 'marketbuy') { const s = MARKET_STALLS.find((x) => x.id === def.stall); return s ? { x: s.x, z: s.z } : null; }
     if (step === 'visit') return zoneCenter(def.zone);
+    if (step === 'feed') { const p = myPos(); const a = p ? nearestFeedable(p) : null; return a ? { x: a.x, z: a.z } : null; }
+    if (step === 'find') { const a = lostAnimal(); return a ? { x: a.x, z: a.z } : null; }
     return zoneCenter(def.zone);
   }
   if (def.event === 'talk') return npcPos(q.giver); // Q10 bell
@@ -1152,7 +1195,13 @@ function updateGuideTarget(): void {
   if (!t) { stopGuide(); return; }
   guideTarget = t;
 }
+function guideStep(): string | null {
+  const q = quests.find((x) => x.id === guideQuestId);
+  return q ? currentStep(q) : null;
+}
+
 function updateGuidePath(): void {
+  if (guideStep() === 'find') { guideGroup.visible = false; guideWaypoints = []; return; }
   if (!guideTarget || !me) { guideGroup.visible = false; return; }
   const p = me.char.root.position;
   const from = { x: p.x, z: p.z };
@@ -1371,7 +1420,7 @@ function loop() {
       }
     }
     // quest auto-walk: feed the next road waypoint as clickTarget
-    if (guideQuestId && guideTarget && me && !clickTarget && !sitting) {
+    if (guideQuestId && guideTarget && me && !clickTarget && !sitting && guideStep() !== 'find') {
       const p = me.char.root.position;
       const d = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
       if (d < 1.5) { stopGuide(); }
@@ -1533,8 +1582,10 @@ function loop() {
   updateTeacherBtn();
   updateTalkBtn();
   updateDonorBtn();
+  updateAnimalBtn();
   updateNpcMarkers();
   updateTracker();
+  updateAnimals(latestAnimals, dt);
   updateSweep(now);
   updateZoneBtn();
   updateCouplet();

@@ -90,6 +90,13 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questOffer: 'Sân chùa lá rụng nhiều quá, một mình con quét không xuể. Thí chủ giúp con quét ba chỗ dưới cây anh đào nhé, chổi con để sẵn rồi.',
     questReminder: 'Thí chủ quét được mấy chỗ rồi? Còn đống lá dưới cây anh đào kia nữa nhé.',
     questDone: 'Sân sạch bong rồi! Cảm ơn thí chủ nhiều lắm.',
+    questLines: {
+      nq_find_lost_pet: {
+        offer: 'Trời ơi, Vàng với Mướp chạy đâu mất tiêu rồi. Tôi quét sân mãi mà không thấy. Con tìm giúp tôi với, tụi nó hay trốn sau Bảo Tháp, trong vườn hay bờ ao lắm.',
+        reminder: 'Con tìm quanh chùa thử xem, nhớ nhìn kỹ sau mấy cái cây, cái cột. Tụi nó khéo trốn lắm.',
+        done: 'Tìm thấy rồi à, may quá! Cảm ơn con nhiều, để tôi dắt nó về sân.',
+      },
+    },
     smallTalk: [
       'Con quét sân từ 5 giờ sáng, giờ tay quen chổi lắm rồi.',
       'Mùa này lá anh đào rụng đẹp ơi là đẹp, mà quét thì mệt ơi là mệt.',
@@ -395,6 +402,11 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         offer: '',
         reminder: '',
         done: 'Bao gạo tới rồi, cảm ơn thí chủ nhiều, con nấu cơm cho các thầy ngay đây!',
+      },
+      nq_feed_pets: {
+        offer: 'Chó mèo trong chùa đói bụng rồi, mà tôi đang bận dưới bếp. Đồ ăn để sẵn ở Trai Đường, con cho hai bé ăn giúp thầy nhé.',
+        reminder: 'Chó mèo đang quanh quẩn ngoài sân đó. Con lại gần rồi bấm Cho ăn là được.',
+        done: 'Cảm ơn con. Hai bé ăn no, nằm ngoan rồi. Con có lòng lắm.',
       },
     },
     smallTalk: [

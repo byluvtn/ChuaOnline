@@ -80,7 +80,7 @@ export const ITEMS: ShopItem[] = [
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
-export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy';
+export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy' | 'feed' | 'find';
 export type QuestZone =
   | { x: number; z: number; r: number }
   | { x0: number; x1: number; z0: number; z1: number };
@@ -258,6 +258,8 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc20', receiver: 'npc20', stall: 'stall_tea', steps: ['marketbuy', 'deliver'] },
   { id: 'nq_incense_chinhdien', label: 'Thắp hương hộ ở Chính Điện', event: 'incense', target: 1, coins: 15, merit: 8,
     giver: 'npc23', zone: Z_CHINH_DIEN },
+  { id: 'nq_feed_pets', label: 'Cho chó mèo ăn', event: 'feed', target: 2, coins: 20, merit: 10, giver: 'npc14', steps: ['talk', 'feed'] },
+  { id: 'nq_find_lost_pet', label: 'Tìm chó mèo đi lạc', event: 'find', target: 2, coins: 25, merit: 12, giver: 'npc2', steps: ['talk', 'find'] },
 ];
 
 // Chain quests (one-time, ids start with c_)

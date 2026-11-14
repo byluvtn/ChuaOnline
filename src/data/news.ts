@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 35;
+export const LATEST_NEWS_ID = 36;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chó, mèo và chim về chùa, thêm hai nhiệm vụ mới',
+    date: '2026-11-14',
+    items: [
+      'Trong chùa có thêm hai chú chó Vàng và Đen, mèo Mướp, ba con cú bay lượn và hai con chim đậu quanh vườn và bờ ao.',
+      'Nhiệm vụ mới "Cho chó mèo ăn": nhận từ thầy ở Trai Đường, lại gần chó hoặc mèo rồi bấm Cho ăn.',
+      'Nhiệm vụ mới "Tìm chó mèo đi lạc": nhận từ Tiểu Quét Sân, tìm con vật đang trốn quanh chùa rồi lại gần để dắt về.',
+    ],
+  },
   {
     title: 'Đóng góp công đức',
     date: '2026-11-14',

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 const loader = new GLTFLoader();
 const cache = new Map<string, Promise<THREE.Group | null>>();
@@ -41,4 +42,32 @@ export function fitModel(model: THREE.Object3D, height: number): THREE.Object3D 
   const wrap = new THREE.Group();
   wrap.add(model);
   return wrap;
+}
+const gltfCache = new Map<string, Promise<GLTF | null>>();
+
+/**
+ * Like loadModel but resolves the whole GLTF (scene + animations).
+ * Resolves null when the file is missing or invalid. Clone skinned scenes
+ * with SkeletonUtils.clone, not Object3D.clone.
+ */
+export function loadGltf(name: string): Promise<GLTF | null> {
+  let p = gltfCache.get(name);
+  if (!p) {
+    p = fetch(`/models/${name}.glb`, { method: 'HEAD' })
+      .then((r) => (r.ok && !(r.headers.get('content-type') ?? '').includes('text/html') ? loader.loadAsync(`/models/${name}.glb`) : null))
+      .then((g) => {
+        if (!g) return null;
+        g.scene.traverse((o) => {
+          if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; }
+        });
+        return g;
+      })
+      .catch(() => null)
+      .then((g) => {
+        if (!g) gltfCache.delete(name);
+        return g;
+      });
+    gltfCache.set(name, p);
+  }
+  return p;
 }

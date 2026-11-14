@@ -40,3 +40,16 @@ export const MAP_HALF = 68;
 export const MAP_Z_MIN = -82;
 export const levelOf = (merit: number) => Math.floor(Math.sqrt(merit / 10)) + 1;
 export const meritForLevel = (lv: number) => (lv - 1) * (lv - 1) * 10;
+
+export type AnimalAnim = 'idle' | 'walk' | 'run' | 'eat' | 'sit' | 'sleep' | 'fly';
+export interface AnimalState {
+  id: string;
+  kind: 'dog' | 'cat' | 'owl' | 'parrot' | 'chick';
+  name: string;
+  x: number;
+  y: number;
+  z: number;
+  ry: number;
+  anim: AnimalAnim;
+  lost?: boolean;
+}

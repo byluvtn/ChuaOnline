@@ -15,6 +15,7 @@ import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 import { PHONG_CD } from '../src/layout.js';
+import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost } from './animals.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const DIST = resolve('dist');
@@ -495,6 +496,7 @@ io.on('connection', (socket) => {
     await db.acceptQuest(s.pid, q.id);
     const steps = (q as any).steps as QuestEvent[] | undefined;
     if (steps?.[0] === 'talk' || (!steps && q.event === 'talk')) await db.bumpQuest(s.pid, q.id, q.target, 1);
+    if (q.id === 'nq_find_lost_pet') triggerLost(s.room);
     reply({ ok: true });
     await pushQuests(s);
     refreshQuestGuard(s.room).catch(() => {});
@@ -522,6 +524,42 @@ io.on('connection', (socket) => {
     const ok = await advanceNpcQuest(s, q, 'sweep', 1, rows);
     if (!ok) return reply({ ok: false, error: 'Chưa thể quét lúc này' });
     set.add(key);
+    reply({ ok: true });
+    await pushQuests(s);
+  });
+
+  socket.on('quest:feed', async (payload: { animalId: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const q = findQuestDef('nq_feed_pets');
+    const animalId = payload && typeof payload.animalId === 'string' ? payload.animalId : undefined;
+    const a = s && animalId ? getAnimalStates(s.room).find((x) => x.id === animalId) : undefined;
+    if (!s || !q || !isNpcQuest(q) || !a || (a.kind !== 'dog' && a.kind !== 'cat')) {
+      return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
+    }
+    if (distTo(s, a.x, a.z) > 2.5) return reply({ ok: false, error: 'Bạn đứng quá xa' });
+    const rows = await db.questRows(s.pid);
+    const ok = await advanceNpcQuest(s, q, 'feed', 1, rows);
+    if (!ok) return reply({ ok: false, error: 'Chưa thể cho ăn lúc này' });
+    setAnimalEating(s.room, a.id, 3);
+    reply({ ok: true });
+    await pushQuests(s);
+  });
+
+  socket.on('quest:find', async (payload: { animalId: string }, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const q = findQuestDef('nq_find_lost_pet');
+    const animalId = payload && typeof payload.animalId === 'string' ? payload.animalId : undefined;
+    const a = s && animalId ? getAnimalStates(s.room).find((x) => x.id === animalId) : undefined;
+    if (!s || !q || !isNpcQuest(q) || !a || a.lost !== true) {
+      return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
+    }
+    if (distTo(s, a.x, a.z) > 2.5) return reply({ ok: false, error: 'Bạn đứng quá xa' });
+    const rows = await db.questRows(s.pid);
+    const ok = await advanceNpcQuest(s, q, 'find', 1, rows);
+    if (!ok) return reply({ ok: false, error: 'Chưa thể tìm lúc này' });
+    resolveLost(s.room, a.id);
     reply({ ok: true });
     await pushQuests(s);
   });
@@ -751,6 +789,7 @@ setInterval(() => {
     if (!list.length) { nr.sleeping = true; continue; }
     resumeNpcs(nr);
     const npcs = tickNpcs(nr, Date.now(), list.length);
+    tickAnimals(r.id, 0.1);
     for (const id of nr.left.splice(0)) io.to(r.id).emit('player:leave', id);
     for (const st of nr.joined.splice(0)) io.to(r.id).emit('player:join', st);
     for (const c of nr.outbox.splice(0)) {
@@ -764,6 +803,7 @@ setInterval(() => {
     io.to(r.id).volatile.emit('state', {
       online: list.length,
       players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, anim: p.anim })),
+      animals: getAnimalStates(r.id),
     });
   }
 }, 100);
