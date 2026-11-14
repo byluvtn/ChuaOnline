@@ -225,28 +225,83 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
   return room;
 }
 
-/** Rải sẵn khách viếng qua các chặng của flow lúc tạo phòng. Chỉ đổi trạng thái khởi tạo (vị trí, stage, anim, until); logic chuyển stage giữ nguyên. i = chỉ số trong NPC_DEFS. */
-const SPREAD_ROUTE_NODES = ['bridgeS', 'plaza', 'hallFront', 'axisMid'];
-const SPREAD_INSIDE: Npc['stage'][] = ['bow', 'chant', 'bow', 'branch'];
+// Rải NPC ngẫu nhiên lúc TẠO PHÒNG (mỗi lần tạo phòng = 1 bố cục khác; join không gọi lại).
+// - Visitor: bốc thăm chặng khởi đầu: cổng (≤ 2 người) / trên tuyến (node ngoài trời + offset ±0,8 m)
+//   / trong điện (bow|chant ở Chính Điện, hoặc branch ở sân). Tách ≥ 1,2 m với mọi NPC khác.
+// - Wanderer (npc1/npc29): mỗi người 1 node WANDER_NODES khác nhau (bỏ 'gate'), cách nhau ≥ 3 m.
+// Không đụng NPC cố định (vendor, desk, bell, chant, tiểu quét...).
+const SPREAD_ROUTE_POOL = ['bridgeS', 'bridgeN', 'plaza', 'hallFront', 'axisMid', 'pillars', 'corrW'];
+const SPREAD_GATE_MAX = 2;
+const SPREAD_MIN_GAP = 1.2;
 function spreadVisitors(npcs: Npc[], now: number) {
-  let onRoute = 0, inside = 0;
-  npcs.forEach((n, i) => {
-    if (n.def.behavior !== 'visitor' || i % 3 === 0) return; // i % 3 === 0: ở lại cổng như cũ
+  const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
+  const near = (x: number, z: number, self: Npc) =>
+    npcs.some(o => o !== self && o.state && dist({ x, z }, { x: o.state.x, z: o.state.z }) < SPREAD_MIN_GAP);
+  const okPt = (x: number, z: number, self: Npc) =>
+    walkable({ x, z }) && !near(x, z, self);
+  const toGate = (n: Npc) => {
+    const p = visitorSpot(nodePt('gate'), n.def);
+    n.state.x = p.x; n.state.z = p.z;
+    n.stage = 'gate'; n.phase = 'idle'; n.state.anim = 'idle'; n.until = now + R(0, 2000);
+  };
+  const toInside = (n: Npc): void => {
     const s = n.state;
-    if (i % 3 === 1) {
-      // Đang đi trên tuyến: đứng ở node giữa đường; visitorDecide tính tuyến còn lại tới bàn thờ từ vị trí hiện tại.
-      const p = nodePt(SPREAD_ROUTE_NODES[onRoute % SPREAD_ROUTE_NODES.length]);
-      s.x = p.x + (onRoute >= SPREAD_ROUTE_NODES.length ? 0.9 : 0); s.z = p.z;
-      n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(0, 2000);
-      onRoute++;
-      return;
-    }
-    // Đã ở trong chùa: bàn thờ (bow/chant) hoặc đi dạo quanh sân (branch).
-    const stage = SPREAD_INSIDE[inside++ % SPREAD_INSIDE.length];
+    const stage: Npc['stage'] = pick(['bow', 'chant', 'branch']);
     const p = visitorSpot(stage === 'branch' ? PLAZA_SPOT : VISITOR_SPOT, n.def);
     s.x = p.x; s.z = p.z; s.ry = Math.PI; n.stage = stage;
     if (stage === 'branch') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(0, 5000); }
     else { n.phase = 'act'; s.anim = stage === 'bow' ? 'bow' : 'chant'; n.until = now + R(5000, 15000); }
+  };
+  const placeRoute = (n: Npc, id: string): boolean => {
+    let base: { x: number; z: number };
+    try { base = nodePt(id); } catch { return false; }
+    if (!base) return false;
+    for (let t = 0; t < 10; t++) {
+      let x: number, z: number;
+      if (t === 0) { x = base.x + R(-0.8, 0.8); z = base.z + R(-0.8, 0.8); }
+      else { const a = Math.random() * Math.PI * 2; x = base.x + R(-0.8, 0.8) + Math.cos(a) * SPREAD_MIN_GAP * t * 0.5; z = base.z + R(-0.8, 0.8) + Math.sin(a) * SPREAD_MIN_GAP * t * 0.5; }
+      if (okPt(x, z, n)) {
+        n.state.x = x; n.state.z = z;
+        n.stage = 'gate'; n.phase = 'idle'; n.state.anim = 'idle'; n.until = now + R(0, 2000);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // 1) Wanderer: 2 node khác nhau, cách nhau ≥ 3 m, bỏ 'gate'
+  const wanderers = npcs.filter(n => n.def.behavior === 'wander');
+  const wPool = WANDER_NODES.filter(id => id !== 'gate');
+  const used: { x: number; z: number }[] = [];
+  wanderers.forEach(n => {
+    for (let t = 0; t < 20; t++) {
+      const p = nodePt(pick(wPool));
+      if (used.some(u => dist(u, p) < 3)) continue;
+      if (!walkable(p)) continue;
+      // Tách ≥ 1,2 m với MỌI NPC khác (kể cả NPC cố định như bell/sweepZen/sweepRoad)
+      if (near(p.x, p.z, n)) continue;
+      n.state.x = p.x; n.state.z = p.z; n.phase = 'idle';
+      used.push(p);
+      return;
+    }
+    // Hết 20 lần thử mà không có node hợp lệ: NPC giữ nguyên vị trí plaza mặc định.
+    // Trường hợp này gần như không xảy ra vì còn nhiều node trống trong WANDER_NODES.
+  });
+
+  // 2) Visitor: bốc thăm chặng khởi đầu
+  let atGate = 0;
+  npcs.forEach(n => {
+    if (n.def.behavior !== 'visitor') return;
+    const r = Math.random();
+    const want = r < 0.1 ? 'gate' : r < 0.5 ? 'route' : 'inside';
+    if (want === 'gate' && atGate < SPREAD_GATE_MAX) { toGate(n); atGate++; return; }
+    if (want === 'inside' || want === 'gate') { toInside(n); return; }
+    // trên tuyến
+    if (placeRoute(n, pick(SPREAD_ROUTE_POOL))) return;
+    if (atGate < SPREAD_GATE_MAX) { toGate(n); atGate++; return; }
+    // Fallback cuối luôn thành công: visitorSpot cấp góc RIÊNG theo từng NPC,
+    // nên không bao giờ trùng điểm với visitor khác và không để NPC kẹt ở cổng.
+    toInside(n);
   });
 }
 

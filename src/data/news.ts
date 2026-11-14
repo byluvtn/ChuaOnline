@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 67;
+export const LATEST_NEWS_ID = 68;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'NPC rải khắp chùa mỗi lần vào game',
+    date: '2026-11-15',
+    items: [
+      'NPC giờ rải ngẫu nhiên khắp chùa ngay khi vào game — mỗi lần vào là bố cục khác, không còn 4 khách đứng ở cổng.',
+      'Người bán hàng, sư thầy trực ban, sư cô và NPC giao quest vẫn ở đúng chỗ cũ, nói chuyện + nhận/trả quest như trước.',
+    ],
+  },
   {
     title: 'Gộp 2 quầy phóng sinh thành 1',
     date: '2026-11-15',
