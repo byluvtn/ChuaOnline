@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 60;
+export const LATEST_NEWS_ID = 61;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tên NPC không còn chồng lên nhau',
+    date: '2026-11-14',
+    items: [
+      'Khi nhiều NPC tụ lại ở cổng hoặc sân, tên của họ giờ xếp tầng dọc, mỗi tên một hàng, vẫn đọc được thay vì chồng thành một đống.',
+      'Dấu "!" nhiệm vụ vẫn luôn hiện trên đầu NPC có quest; tên người chơi không bao giờ bị ẩn hay dời.',
+    ],
+  },
   {
     title: 'Xin xăm ở giá treo quẻ',
     date: '2026-11-14',

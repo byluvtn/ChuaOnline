@@ -86,7 +86,7 @@ function makeLabelSprite(tall?: boolean) {
   return { sprite, canvas, tex };
 }
 
-function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean, title?: string) {
+function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean, title?: string): number {
   const g = canvas.getContext('2d')!;
   g.clearRect(0, 0, 512, canvas.height);
   const oy = canvas.height - 96; // nhãn cao: chip tên bám đáy canvas, dòng danh hiệu nằm phía trên
@@ -121,6 +121,7 @@ function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: st
     g.restore();
   }
   tex.needsUpdate = true;
+  return w;
 }
 
 
@@ -514,7 +515,18 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   if (!opts?.role) L.sprite.center.set(0.5, 1 / 3); // neo tại điểm giữa của nhãn cũ (48/144 từ đáy) để chip tên không dịch chỗ
   L.sprite.position.y = 2.65;
   root.add(L.sprite);
-  const setLabel = (n: string, level?: number, isMe?: boolean, title?: string) => drawLabel(L.canvas, L.tex, n, level, isMe, title);
+  const setLabel = (n: string, level?: number, isMe?: boolean, title?: string) => {
+    L.sprite.userData.chipFrac = drawLabel(L.canvas, L.tex, n, level, isMe, title) / 512;
+    // Rect dọc của nhãn, tính bằng phần của chiều cao sprite (dùng cho updateLabelLayout):
+    // nhãn thường (canvas 96): chip 18-76, neo ở giữa (48). Nhãn cao của người chơi
+    // (canvas 144): chip 66-124, dòng danh hiệu 20-48, neo ở 96 (1/3 từ đáy).
+    const tall = L.canvas.height > 96;
+    const anchorY = tall ? 96 : 48;
+    const topY = tall ? 20 : 18;
+    const botY = 76 + (L.canvas.height - 96);
+    L.sprite.userData.chipTop = (anchorY - topY) / L.canvas.height;
+    L.sprite.userData.chipBot = (botY - anchorY) / L.canvas.height;
+  };
   setLabel(name);
 
   const B = makeLabelSprite();
