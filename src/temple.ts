@@ -9,6 +9,7 @@ import {
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
 import { loadModel, fitModel } from './models';
+import { makeGoldMaterial } from './statue-scan';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
@@ -1171,11 +1172,36 @@ export function buildTemple(c: TempleCtx) {
   dtRoof.position.y = dtRoofY; dtRoof.castShadow = true; dtRoof.userData.sealable = true; denT.add(dtRoof);
   const dtFin = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.8, 8), c.goldM);
   dtFin.position.y = dtRoofY + dtRoofH / 2 + 0.3; dtFin.userData.sealable = true; denT.add(dtFin);
-  dtStone(1.3, 0.7, 0.7, 0, dtBase + 0.35, -1.0);
+  dtStone(1.6, 0.7, 1.2, 0, dtBase + 0.35, -1.0);
   const dtCenser = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.28, 14), c.goldM);
-  dtCenser.position.set(0, dtBase + 0.84, -1.0); dtCenser.castShadow = true; denT.add(dtCenser);
+  dtCenser.position.set(0, dtBase + 0.14, -0.2); dtCenser.castShadow = true; denT.add(dtCenser);
   const dtRim = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 8, 16), c.goldM);
-  dtRim.rotation.x = Math.PI / 2; dtRim.position.set(0, dtBase + 0.98, -1.0); denT.add(dtRim);
+  dtRim.rotation.x = Math.PI / 2; dtRim.position.set(0, dtBase + 0.30, -0.2); denT.add(dtRim);
+  const dtPlaceholder = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 1.1, 14), stoneM);
+  dtPlaceholder.position.set(0, 1.05 + 0.55, -1.0); dtPlaceholder.castShadow = true; denT.add(dtPlaceholder);
+  loadModel('seated-buddha').then((model) => {
+    if (!model) return;
+    const inst = model.clone(true);
+    const gold = makeGoldMaterial(c.renderer);
+    inst.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) { m.material = gold; m.castShadow = true; m.receiveShadow = true; }
+    });
+    const size = new THREE.Box3().setFromObject(inst).getSize(new THREE.Vector3());
+    inst.scale.multiplyScalar(size.y > 0 ? 1.6 / size.y : 1);
+    const b2 = new THREE.Box3().setFromObject(inst);
+    const ctr = b2.getCenter(new THREE.Vector3());
+    inst.position.x -= ctr.x;
+    inst.position.z -= ctr.z;
+    inst.position.y -= b2.min.y;
+    const wrap = new THREE.Group();
+    wrap.add(inst);
+    wrap.position.set(0, 1.05, -0.92);
+    wrap.rotation.y = 0;
+    denT.add(wrap);
+    denT.remove(dtPlaceholder);
+    dtPlaceholder.geometry.dispose();
+  });
   for (const s of [-1, 1]) dtStone(0.4, 0.42, 0.4, s * 1.3, dtBase + 0.21, 0.5);
   const dtSign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.55), new THREE.MeshBasicMaterial({ map: signTexture('ĐỀN TRÌNH') }));
   dtSign.position.set(0, dtBeam - 0.45, 1.65); denT.add(dtSign);
@@ -1183,7 +1209,8 @@ export function buildTemple(c: TempleCtx) {
   denT.position.set(DEN_TRINH.x, 0, DEN_TRINH.z); denT.rotation.y = -Math.PI / 2; scene.add(denT);
   const dtSeal = sealArchitectureJoints(denT, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump denTrinh: filled=${dtSeal.filled} remaining=${dtSeal.remaining.length} ` + JSON.stringify(dtSeal.remaining));
-  colliders.push({ x: DEN_TRINH.x + 1.0, z: DEN_TRINH.z, r: 0.8 });
+  colliders.push({ x: DEN_TRINH.x + 1.0, z: DEN_TRINH.z, r: 1.0 });
+  colliders.push({ x: DEN_TRINH.x + 0.2, z: DEN_TRINH.z, r: 0.3 });
   zones.push({ x: DEN_TRINH.x, z: DEN_TRINH.z, r: 5, id: 'denTrinh' });
 
   // ---- Vườn Cột Kinh: hai hàng cột đá khắc kinh dọc trục, từ quảng trường lên chính điện ----

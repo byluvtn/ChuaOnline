@@ -21,6 +21,10 @@ function getGoldEnv(renderer: THREE.WebGLRenderer): THREE.Texture {
   return goldEnv;
 }
 
+export function makeGoldMaterial(renderer: THREE.WebGLRenderer): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1.0, roughness: 0.2, envMap: getGoldEnv(renderer), envMapIntensity: 1.0 });
+}
+
 export function buildSeatedBuddhaStatue(
   scene: THREE.Scene,
   renderer: THREE.WebGLRenderer,
@@ -58,9 +62,7 @@ export function buildSeatedBuddhaStatue(
   const loadBuddha = (retry: boolean): Promise<void> => loadModel('seated-buddha')
     .then((model) => {
       if (!model) { console.warn('seated-buddha.glb không tải được, giữ khối đá giữ chỗ'); if (retry) setTimeout(() => { void loadBuddha(false); }, 20000); return; }
-      const gold = new THREE.MeshStandardMaterial({
-        color: 0xd4af37, metalness: 1.0, roughness: 0.2, envMap: getGoldEnv(renderer), envMapIntensity: 1.0,
-      });
+      const gold = makeGoldMaterial(renderer);
       const inst = model.clone(true);
       inst.traverse((o) => {
         const m = o as THREE.Mesh;

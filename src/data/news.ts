@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 52;
+export const LATEST_NEWS_ID = 53;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tượng Phật vàng trong Đền Trình',
+    date: '2026-11-14',
+    items: [
+      'Đền Trình giờ có tượng Phật ngồi mạ vàng trên bệ đá giữa đền, thay cho bàn thờ đá trống trước đây; lư hương dời xuống sàn, đặt sát mặt trước bệ thờ.',
+      'Tượng cao đúng 1,6 m, vừa trong lòng đền, không chạm trần và không chắn lối vào; đường đi và điểm tương tác trong đền không đổi.',
+    ],
+  },
   {
     title: 'Hai chó mới: Collie và chó Munchkin thay chó khối vuông',
     date: '2026-11-14',
