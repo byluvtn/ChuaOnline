@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 41;
+export const LATEST_NEWS_ID = 42;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đàn chim không vào trong điện nữa',
+    date: '2026-11-14',
+    items: [
+      'Đàn chim mặt đất (3 gà con, 3 vẹt) giờ chỉ đậu và đi lại ngoài trời: sân trước, vườn và bờ hồ.',
+      'Chim không còn đi vào trong các điện nữa.',
+    ],
+  },
   {
     title: 'Sửa cầu thang Tam Thế, tượng vàng hành lang, sạp chợ, NPC cổng và Phòng ghi công đức',
     date: '2026-11-14',

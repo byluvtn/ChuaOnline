@@ -1,5 +1,10 @@
 import type { AnimalState, AnimalAnim } from '../shared/types';
 import { routeFrom, nearestNode, ROAD_NODES } from '../shared/roads';
+import {
+  HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
+  NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
+  PHONG_CD_PLAT, BAO_THAP,
+} from '../src/layout.js';
 
 type P = { x: number; z: number };
 type Mode = 'orbit' | 'toPerch' | 'perch' | 'rise';
@@ -25,13 +30,36 @@ const pick = <T,>(l: T[]): T => l[Math.floor(Math.random() * l.length)];
 const jitter = (p: P, r: number): P => ({ x: p.x + rnd(-r, r), z: p.z + rnd(-r, r) });
 const nodePt = (id: string): P => { const n = ROAD_NODES.find((n) => n.id === id)!; return { x: n.x, z: n.z }; };
 const route = (from: P, toId: string): P[] => [...routeFrom(from, toId), jitter(nodePt(toId), 1.5)];
-const FLOCK_SPOTS = ['plaza', 'bridgeN', 'bridgeS', 'axisMid', 'hallFront'];
+const INDOOR_RECTS = [
+  HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
+  NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
+  PHONG_CD_PLAT,
+];
+
+/** True inside any roofed interior (1 m margin) or the tower platform circle. */
+function indoors(x: number, z: number): boolean {
+  for (const p of INDOOR_RECTS) {
+    if (Math.abs(x - p.x) < p.hx + 1 && Math.abs(z - p.z) < p.hz + 1) return true;
+  }
+  return Math.hypot(x - BAO_THAP.x, z - BAO_THAP.z) < 6;
+}
+
+/** Same jitter as `jitter`, but re-rolls (max 10 tries) while the result is indoors. */
+function outdoorJitter(p: P, r: number): P {
+  for (let i = 0; i < 10; i++) {
+    const q = jitter(p, r);
+    if (!indoors(q.x, q.z)) return q;
+  }
+  return { x: 0, z: 6 };
+}
+
+const FLOCK_SPOTS = ['plaza', 'bridgeN', 'bridgeS', 'axisMid'];
 let flockAnchor: P | null = null;
 let flockMoveAt = 0;
 
 function pickFlockAnchor(): P {
   const pt = nodePt(pick(FLOCK_SPOTS));
-  return jitter(pt, 2.5);
+  return outdoorJitter(pt, 2.5);
 }
 const routeToPoint = (from: P, pt: P): P[] => [...routeFrom(from, nearestNode(pt)), pt];
 const set = (a: A, anim: string) => { a.s.anim = anim as AnimalAnim; };
@@ -63,7 +91,7 @@ export function createAnimals(room: string): A[] {
   flockAnchor = pickFlockAnchor();
   for (const a of list) {
     if (a.s.kind === 'parrot' || a.s.kind === 'chick') {
-      a.home = jitter(flockAnchor, 2.5);
+      a.home = outdoorJitter(flockAnchor, 2.5);
       a.s.x = a.home.x; a.s.z = a.home.z;
     }
   }
@@ -131,7 +159,7 @@ function tickWalker(a: A, dt: number) {
   a.wait -= dt;
   if (a.wait > 0) return;
   if (a.cat && Math.random() < 0.4) { set(a, Math.random() < 0.5 ? 'sit' : 'sleep'); a.wait = rnd(10, 30); return; }
-  a.path = a.home ? [jitter(a.home, 3)] : route(s, pick(SAFE));
+  a.path = a.home ? [outdoorJitter(a.home, 3)] : route(s, pick(SAFE));
   a.wait = rnd(3, 8);
 }
 
@@ -139,7 +167,7 @@ export function tickAnimals(room: string, dt: number) {
   if (Date.now() > flockMoveAt) {
     flockAnchor = pickFlockAnchor();
     for (const a of get(room)) {
-      if (a.s.kind === 'parrot' || a.s.kind === 'chick') a.home = jitter(flockAnchor, 2.5);
+      if (a.s.kind === 'parrot' || a.s.kind === 'chick') a.home = outdoorJitter(flockAnchor, 2.5);
     }
     flockMoveAt = Date.now() + 120_000 + Math.random() * 60_000;
   }
@@ -160,10 +188,10 @@ export function feedFlock(room: string, x: number, z: number, seconds = 10): voi
   flockAnchor = pickFlockAnchor();
   for (const a of get(room)) {
     if (a.s.kind !== 'parrot' && a.s.kind !== 'chick') continue;
-    a.feedTo = jitter({ x, z }, 1.5);
+    a.feedTo = outdoorJitter({ x, z }, 1.5);
     a.feedEat = seconds;
     a.path = [];
-    a.home = jitter(flockAnchor, 2.5);
+    a.home = outdoorJitter(flockAnchor, 2.5);
   }
   flockMoveAt = Date.now() + 150_000;
 }
