@@ -328,7 +328,7 @@ export interface MailAck {
   merit?: number; coins?: number; items?: Record<string, number>;
 }
 
-export type StatKey = 'bows' | 'chants' | 'lanterns' | 'meditate_sec' | 'beads_rounds';
+export type StatKey = 'bows' | 'chants' | 'lanterns' | 'meditate_sec' | 'beads_rounds' | 'incense';
 export interface StatMilestone { id: string; stat: StatKey; threshold: number; title: string; coins: number; item?: string }
 export const STAT_MILESTONES: StatMilestone[] = [
   { id: 'bow100', stat: 'bows', threshold: 100, title: 'Chắp tay thành kính', coins: 20 },
@@ -347,10 +347,55 @@ export const STAT_MILESTONES: StatMilestone[] = [
   { id: 'bead25', stat: 'beads_rounds', threshold: 25, title: 'Tràng hạt không rời tay', coins: 50, item: 'huong_tram' },
   { id: 'bead100', stat: 'beads_rounds', threshold: 100, title: 'Một trăm vòng an nhiên', coins: 120, item: 'den_hoa_dang' },
 ];
-export interface PlayerStats { bows: number; chants: number; lanterns: number; meditateSec: number; beadsRounds: number }
+export interface PlayerStats { bows: number; chants: number; lanterns: number; meditateSec: number; beadsRounds: number; incense: number }
 export interface StatsState { stats: PlayerStats; claimed: string[] }
 export interface StatsAck { ok: boolean; error?: string; state?: StatsState }
 export interface MilestoneEvent { id: string; title: string; coins: number; item?: string }
+
+export type TitleKind = 'level' | 'quests' | 'donated' | 'stat';
+/** need: cấp tối thiểu (level), số nhiệm vụ khác nhau (quests), tổng xu (donated) hoặc ngưỡng của stat. */
+export interface TitleRule { id: string; name: string; kind: TitleKind; need: number; desc: string; stat?: keyof PlayerStats }
+export const TITLES: TitleRule[] = [
+  { id: 'lv-t1', name: 'Sơ phát tâm', kind: 'level', need: 1, desc: 'Đạt cấp 1' },
+  { id: 'lv-t2', name: 'Cư sĩ', kind: 'level', need: 4, desc: 'Đạt cấp 4' },
+  { id: 'lv-t3', name: 'Thiện nam tín nữ', kind: 'level', need: 7, desc: 'Đạt cấp 7' },
+  { id: 'lv-t4', name: 'Hộ pháp', kind: 'level', need: 10, desc: 'Đạt cấp 10' },
+  { id: 'lv-t5', name: 'Tịnh tín', kind: 'level', need: 13, desc: 'Đạt cấp 13' },
+  { id: 'lv-t6', name: 'Tinh tấn', kind: 'level', need: 16, desc: 'Đạt cấp 16' },
+  { id: 'lv-t7', name: 'Minh tâm', kind: 'level', need: 19, desc: 'Đạt cấp 19' },
+  { id: 'lv-t8', name: 'Giác hạnh', kind: 'level', need: 22, desc: 'Đạt cấp 22' },
+  { id: 'lv-t9', name: 'Từ bi', kind: 'level', need: 25, desc: 'Đạt cấp 25' },
+  { id: 'lv-t10', name: 'Trí tuệ', kind: 'level', need: 28, desc: 'Đạt cấp 28' },
+  { id: 'q5', name: 'Người Làm Thiện', kind: 'quests', need: 5, desc: 'Hoàn thành 5 nhiệm vụ khác nhau' },
+  { id: 'q15', name: 'Bậc Thiện Hạnh', kind: 'quests', need: 15, desc: 'Hoàn thành 15 nhiệm vụ khác nhau' },
+  { id: 'q26', name: 'Viên Mãn Hạnh Nguyện', kind: 'quests', need: 26, desc: 'Hoàn thành 26 nhiệm vụ khác nhau' },
+  { id: 'd100', name: 'Người Gieo Duyên', kind: 'donated', need: 100, desc: 'Đóng góp tổng cộng 100 xu' },
+  { id: 'd500', name: 'Thí Chủ', kind: 'donated', need: 500, desc: 'Đóng góp tổng cộng 500 xu' },
+  { id: 'd1000', name: 'Đại Thí Chủ', kind: 'donated', need: 1000, desc: 'Đóng góp tổng cộng 1000 xu' },
+  { id: 'c50', name: 'Tụng Kinh Siêng Năng', kind: 'stat', stat: 'chants', need: 50, desc: 'Tụng kinh 50 lần' },
+  { id: 'c200', name: 'Pháp Âm Vi Diệu', kind: 'stat', stat: 'chants', need: 200, desc: 'Tụng kinh 200 lần' },
+  { id: 'i20', name: 'Hương Lòng Thành Kính', kind: 'stat', stat: 'incense', need: 20, desc: 'Thắp hương 20 lần' },
+  { id: 'i100', name: 'Hương Bay Ngàn Dặm', kind: 'stat', stat: 'incense', need: 100, desc: 'Thắp hương 100 lần' },
+  { id: 'b100', name: 'Lễ Phật Chí Thành', kind: 'stat', stat: 'bows', need: 100, desc: 'Lạy Phật 100 lần' },
+  { id: 'l20', name: 'Người Thắp Sáng', kind: 'stat', stat: 'lanterns', need: 20, desc: 'Thả 20 đèn hoa đăng' },
+  { id: 'be25', name: 'Niệm Phật Không Rời', kind: 'stat', stat: 'beadsRounds', need: 25, desc: 'Lần hạt 25 vòng' },
+  { id: 'm3600', name: 'Định Tâm An Lạc', kind: 'stat', stat: 'meditateSec', need: 3600, desc: 'Thiền tổng cộng 60 phút' },
+];
+export interface TitleInput { level: number; questsDone: number; donated: number; stats: PlayerStats }
+/** Không backfill: quest_done và player_stats.incense bắt đầu từ 0, người chơi cũ không được cấp bù phần đã làm trước bản này. */
+export function earnedTitles(i: TitleInput): string[] {
+  return TITLES.filter((t) => {
+    switch (t.kind) {
+      case 'level': return i.level >= t.need;
+      case 'quests': return i.questsDone >= t.need;
+      case 'donated': return i.donated >= t.need;
+      case 'stat': return t.stat !== undefined && i.stats[t.stat] >= t.need;
+    }
+  }).map((t) => t.id);
+}
+export const titleName = (id: string): string => TITLES.find((t) => t.id === id)?.name ?? id;
+/** Danh hiệu cao nhất = id cuối cùng theo thứ tự TITLES; earned đã theo thứ tự đó. */
+export const defaultTitle = (earned: string[]): string | null => (earned.length ? earned[earned.length - 1] : null);
 
 export interface BeadsState { rewarded: number }
 export interface BeadsAck { ok: boolean; rewarded?: boolean; merit?: number }

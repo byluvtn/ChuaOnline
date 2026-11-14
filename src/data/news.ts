@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 58;
+export const LATEST_NEWS_ID = 59;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Danh hiệu hiển thị trên đầu nhân vật',
+    date: '2026-11-14',
+    items: [
+      'Người chơi giờ có danh hiệu (ví dụ Sơ phát tâm, Thí Chủ, Đại Thí Chủ) hiện bằng chữ vàng ngay trên tên nhân vật trong game; khi đạt danh hiệu mới sẽ có thông báo riêng và một tin chúc mừng trên chat chung.',
+      'Mở bảng Cấp độ để xem toàn bộ 24 danh hiệu kèm điều kiện đạt: theo cấp, nhiệm vụ đã hoàn thành, tổng xu đóng góp, tụng kinh, thắp hương, lạy Phật, thả đèn, lần hạt và ngồi thiền. Danh hiệu nào đã đạt thì chạm để đeo; mặc định đeo danh hiệu cao nhất đã đạt.',
+      'Danh hiệu theo nhiệm vụ và thắp hương tính từ bản này trở đi (không cộng dồn phần đã làm trước đó).',
+    ],
+  },
   {
     title: 'Quầy chợ dồn về một bên đường, mặt quay vào trong chùa',
     date: '2026-11-14',

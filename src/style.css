@@ -71,6 +71,7 @@ textarea { height: 96px; resize: none; margin: 8px 0; }
 @keyframes donateScroll { to { transform: translateX(-100%); } }
 #msgs p.sys { text-align: center; color: #ffe9a8; background: rgba(255,214,102,.08); border: 1px solid #d4a73a; border-radius: 8px; padding: 4px 8px; margin: 6px 0; }
 .pinfo b { font-size: 15px; }
+#ptitle { color: #f4cd6e; font-size: 12px; font-weight: 700; }
 #plevel { font-size: 12px; opacity: .85; }
 .bar { height: 6px; width: 130px; background: rgba(255,255,255,.18); border-radius: 3px; margin-top: 4px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #f6d98a, #e8b64a); transition: width .5s var(--ease); box-shadow: 0 0 8px #e8b64a; }

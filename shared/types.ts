@@ -19,6 +19,8 @@ export interface PlayerState {
   /** nhân vật do máy chủ điều khiển (không phải phiên người chơi) */
   npc?: boolean;
   role?: 'abbot' | 'novice' | 'lay';
+  /** id danh hiệu đang đeo; chỉ người chơi có */
+  title?: string | null;
 }
 
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }
@@ -34,6 +36,8 @@ export interface Profile {
   username: string | null; // null = guest
   inventory: Record<string, number>;
   admin?: boolean;
+  titles: string[];
+  title: string | null;
 }
 
 export const MAP_HALF = 68;

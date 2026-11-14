@@ -2,8 +2,8 @@ import { createClient } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import type { Outfit, Profile } from '../shared/types.js';
-import { ITEM_BY_ID, type MailGift, type MailItem, type PlayerStats, type StatKey } from '../shared/game.js';
+import { levelOf, type Outfit, type Profile } from '../shared/types.js';
+import { ITEM_BY_ID, earnedTitles, type MailGift, type MailItem, type PlayerStats, type StatKey } from '../shared/game.js';
 
 const localFile = process.env.DB_FILE ? process.env.DB_FILE : 'data/chuaonline.db';
 if (!process.env.TURSO_DATABASE_URL) {
@@ -69,6 +69,7 @@ CREATE INDEX IF NOT EXISTS idx_merit ON players(merit DESC);
 CREATE INDEX IF NOT EXISTS idx_weekly ON players(week_key, weekly_merit DESC);
 `);
 try { await db.execute('ALTER TABLE players ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
+try { await db.execute('ALTER TABLE players ADD COLUMN title TEXT'); } catch { /* cột đã tồn tại */ }
 try {
   const fk = await db.execute('PRAGMA foreign_keys');
   console.log(`[db] PRAGMA foreign_keys = ${JSON.stringify(fk.rows[0] ?? null)}`);
@@ -163,13 +164,16 @@ export async function logoutToken(token: string) {
 }
 
 // ---- profile ----
-interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null; is_admin: number }
+interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null; is_admin: number; title: string | null }
 export async function getProfile(id: number): Promise<Profile | null> {
-  const r = (await db.execute({ sql: 'SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as Row | undefined;
+  const r = (await db.execute({ sql: 'SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin, title FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as Row | undefined;
   if (!r) return null;
   const inv: Record<string, number> = {};
   for (const i of (await db.execute({ sql: 'SELECT item_id, qty FROM inventory WHERE player_id = ? AND qty > 0', args: [id] })).rows as unknown as { item_id: string; qty: number }[]) inv[i.item_id] = Number(i.qty);
-  return { name: r.name, outfit: r.outfit, color: r.color, merit: Number(r.merit), coins: Number(r.coins), accessory: r.accessory, username: r.username, inventory: inv, admin: Number(r.is_admin) === 1 };
+  const merit = Number(r.merit);
+  const [stats, questsDone, donated] = await Promise.all([getStats(id), countQuestsDone(id), donatedTotal(id)]);
+  const titles = earnedTitles({ level: levelOf(merit), questsDone, donated, stats });
+  return { name: r.name, outfit: r.outfit, color: r.color, merit, coins: Number(r.coins), accessory: r.accessory, username: r.username, inventory: inv, admin: Number(r.is_admin) === 1, titles, title: r.title ?? null };
 }
 
 export async function saveLook(id: number, name: string, outfit: Outfit, color: string) {
@@ -323,8 +327,22 @@ CREATE TABLE IF NOT EXISTS stat_rewards (
   PRIMARY KEY (player_id, milestone_id)
 );
 `);
+try { await db.execute('ALTER TABLE player_stats ADD COLUMN incense INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
+await db.execute(`CREATE TABLE IF NOT EXISTS quest_done (
+  player_id INTEGER NOT NULL,
+  quest_id TEXT NOT NULL,
+  claimed_at INTEGER NOT NULL,
+  PRIMARY KEY (player_id, quest_id)
+)`);
+await db.execute(`CREATE TABLE IF NOT EXISTS title_awards (
+  player_id INTEGER NOT NULL,
+  title_id TEXT NOT NULL,
+  awarded_at INTEGER NOT NULL,
+  PRIMARY KEY (player_id, title_id)
+)`);
 const STAT_COLUMNS: Record<StatKey, string> = {
   bows: 'bows', chants: 'chants', lanterns: 'lanterns', meditate_sec: 'meditate_sec', beads_rounds: 'beads_rounds',
+  incense: 'incense',
 };
 /** Tăng bộ đếm trọn đời nguyên tử; trả về giá trị mới của cột. Tên cột chỉ lấy từ bảng cố định ở trên. */
 export async function bumpStat(id: number, key: StatKey, delta: number): Promise<number> {
@@ -346,17 +364,43 @@ export async function getStatValue(id: number, key: StatKey): Promise<number> {
   return r ? Number(r.v) : 0;
 }
 export async function getStats(id: number): Promise<PlayerStats> {
-  const r = (await db.execute({ sql: 'SELECT bows, chants, lanterns, meditate_sec, beads_rounds FROM player_stats WHERE player_id = ?', args: [id] })).rows[0] as unknown as
-    { bows: number; chants: number; lanterns: number; meditate_sec: number; beads_rounds: number } | undefined;
+  const r = (await db.execute({ sql: 'SELECT bows, chants, lanterns, meditate_sec, beads_rounds, incense FROM player_stats WHERE player_id = ?', args: [id] })).rows[0] as unknown as
+    { bows: number; chants: number; lanterns: number; meditate_sec: number; beads_rounds: number; incense: number } | undefined;
   return {
     bows: Number(r?.bows ?? 0), chants: Number(r?.chants ?? 0), lanterns: Number(r?.lanterns ?? 0),
-    meditateSec: Number(r?.meditate_sec ?? 0), beadsRounds: Number(r?.beads_rounds ?? 0),
+    meditateSec: Number(r?.meditate_sec ?? 0), beadsRounds: Number(r?.beads_rounds ?? 0), incense: Number(r?.incense ?? 0),
   };
 }
 /** Ghi nhận mốc thành tựu đã thưởng; true nếu lần đầu đạt mốc này. */
 export async function claimStatReward(id: number, milestoneId: string): Promise<boolean> {
   const r = await db.execute({ sql: 'INSERT OR IGNORE INTO stat_rewards (player_id, milestone_id, claimed_at) VALUES (?,?,?)', args: [id, milestoneId, now()] });
   return r.rowsAffected === 1;
+}
+
+/** Ghi nhận nhiệm vụ đã nhận thưởng; true nếu lần đầu. */
+export async function recordQuestDone(pid: number, qid: string): Promise<boolean> {
+  const r = await db.execute({ sql: 'INSERT OR IGNORE INTO quest_done (player_id, quest_id, claimed_at) VALUES (?,?,?)', args: [pid, qid, now()] });
+  return r.rowsAffected === 1;
+}
+export async function countQuestsDone(pid: number): Promise<number> {
+  const r = (await db.execute({ sql: 'SELECT COUNT(DISTINCT quest_id) AS n FROM quest_done WHERE player_id = ?', args: [pid] })).rows[0] as unknown as { n: number } | undefined;
+  return Number(r?.n ?? 0);
+}
+/** Các danh hiệu đã được ghi nhận trao (để tránh ghi lại từng lần). */
+export async function awardedTitles(pid: number): Promise<string[]> {
+  const rows = (await db.execute({ sql: 'SELECT title_id FROM title_awards WHERE player_id = ?', args: [pid] })).rows as unknown as { title_id: string }[];
+  return rows.map((r) => r.title_id);
+}
+export async function awardTitle(pid: number, titleId: string): Promise<boolean> {
+  const r = await db.execute({ sql: 'INSERT OR IGNORE INTO title_awards (player_id, title_id, awarded_at) VALUES (?,?,?)', args: [pid, titleId, now()] });
+  return r.rowsAffected === 1;
+}
+export async function donatedTotal(pid: number): Promise<number> {
+  const r = (await db.execute({ sql: 'SELECT total_coins FROM donations WHERE player_id = ?', args: [pid] })).rows[0] as unknown as { total_coins: number } | undefined;
+  return Number(r?.total_coins ?? 0);
+}
+export async function saveTitle(pid: number, titleId: string | null) {
+  await db.execute({ sql: 'UPDATE players SET title = ? WHERE id = ?', args: [titleId, pid] });
 }
 export async function claimedStatRewards(id: number): Promise<string[]> {
   const rows = (await db.execute({ sql: 'SELECT milestone_id FROM stat_rewards WHERE player_id = ? ORDER BY claimed_at, milestone_id', args: [id] })).rows as unknown as { milestone_id: string }[];

@@ -19,6 +19,7 @@ const ROWS: Row[] = [
   { stat: 'lanterns', label: 'Thả đèn', icon: '🏮', value: (s) => s.stats.lanterns },
   { stat: 'meditate_sec', label: 'Ngồi thiền', icon: '🧘', value: (s) => s.stats.meditateSec },
   { stat: 'beads_rounds', label: 'Vòng hạt', icon: '📿', value: (s) => s.stats.beadsRounds },
+  { stat: 'incense', label: 'Thắp hương', icon: '🕯', value: (s) => s.stats.incense },
 ];
 
 const nf = new Intl.NumberFormat('vi-VN');
@@ -27,7 +28,7 @@ const fmtThreshold = (stat: StatKey, t: number) => (stat === 'meditate_sec' ? `$
 
 function renderRows(box: HTMLElement) {
   box.replaceChildren();
-  const st: StatsState = cache ?? { stats: { bows: 0, chants: 0, lanterns: 0, meditateSec: 0, beadsRounds: 0 }, claimed: [] };
+  const st: StatsState = cache ?? { stats: { bows: 0, chants: 0, lanterns: 0, meditateSec: 0, beadsRounds: 0, incense: 0 }, claimed: [] };
   for (const row of ROWS) {
     const ms = STAT_MILESTONES.filter((m) => m.stat === row.stat).sort((a, b) => a.threshold - b.threshold);
     const v = row.value(st);
@@ -45,7 +46,7 @@ function renderRows(box: HTMLElement) {
       : h('progress', { class: 'stbar', max: 1, value: 1 });
     const note = next
       ? `Mốc tiếp theo: ${next.title} (${fmtTotal(row.stat, next.threshold)})`
-      : 'Đã đạt tất cả các mốc';
+      : ms.length ? 'Đã đạt tất cả các mốc' : '';
     box.append(h('div', { class: 'strow' },
       h('div', { class: 'sthead' }, h('span', {}, `${row.icon} ${row.label}`), h('b', {}, fmtTotal(row.stat, v))),
       bar,

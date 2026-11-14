@@ -46,7 +46,7 @@ export interface Character {
   label: THREE.Sprite;
   bubble: THREE.Sprite;
   bubbleUntil: number;
-  setLabel(name: string, level?: number, isMe?: boolean): void;
+  setLabel(name: string, level?: number, isMe?: boolean, title?: string): void;
   setAccessory(id: string | null): void;
   say(text: string): void;
   dispose(): void;
@@ -74,21 +74,22 @@ function mesh(g: THREE.BufferGeometry, m: THREE.Material, parent: THREE.Object3D
   return o;
 }
 
-function makeLabelSprite() {
+function makeLabelSprite(tall?: boolean) {
   const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = 96;
+  canvas.width = 512; canvas.height = tall ? 144 : 96;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, sizeAttenuation: false, toneMapped: false }));
-  sprite.scale.set(0.045 * (512 / 96), 0.045, 1);
+  sprite.scale.set(0.045 * (512 / 96), tall ? 0.0675 : 0.045, 1);
   sprite.renderOrder = 20;
   return { sprite, canvas, tex };
 }
 
-function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean) {
+function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: string, level?: number, isMe?: boolean, title?: string) {
   const g = canvas.getContext('2d')!;
-  g.clearRect(0, 0, 512, 96);
+  g.clearRect(0, 0, 512, canvas.height);
+  const oy = canvas.height - 96; // nhãn cao: chip tên bám đáy canvas, dòng danh hiệu nằm phía trên
   const text = name.length > 20 ? name.slice(0, 19) + '…' : name;
   g.font = '700 38px system-ui, "Segoe UI", sans-serif';
   const tw = g.measureText(text).width;
@@ -96,20 +97,29 @@ function drawLabel(canvas: HTMLCanvasElement, tex: THREE.CanvasTexture, name: st
   const w = Math.min(500, tw + 44 + chip), x0 = (512 - w) / 2;
   g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 8;
   g.fillStyle = isMe ? 'rgba(92,58,16,.9)' : 'rgba(34,22,14,.78)';
-  g.beginPath(); g.roundRect(x0, 18, w, 58, 29); g.fill();
+  g.beginPath(); g.roundRect(x0, 18 + oy, w, 58, 29); g.fill();
   g.shadowBlur = 0;
   g.strokeStyle = isMe ? 'rgba(244,205,110,.95)' : 'rgba(255,255,255,.18)';
   g.lineWidth = 3; g.stroke();
   if (level) {
     g.fillStyle = '#e8b64a';
-    g.beginPath(); g.arc(x0 + 34, 47, 20, 0, 7); g.fill();
+    g.beginPath(); g.arc(x0 + 34, 47 + oy, 20, 0, 7); g.fill();
     g.fillStyle = '#3b2414'; g.font = '800 26px system-ui, sans-serif';
-    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(level), x0 + 34, 49);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(level), x0 + 34, 49 + oy);
   }
   g.fillStyle = isMe ? '#ffe9ad' : '#fff';
   g.font = '700 38px system-ui, "Segoe UI", sans-serif';
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(text, x0 + chip / 2 + w / 2 + (level ? 6 : 0) - (level ? 0 : 0) - (level ? 6 : 0), 49);
+  g.fillText(text, x0 + chip / 2 + w / 2 + (level ? 6 : 0) - (level ? 0 : 0) - (level ? 6 : 0), 49 + oy);
+  if (title && oy > 0) {
+    g.save();
+    g.font = '700 28px system-ui, "Segoe UI", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.shadowColor = 'rgba(0,0,0,.75)'; g.shadowBlur = 6;
+    g.fillStyle = '#f4cd6e';
+    g.fillText(title.length > 24 ? title.slice(0, 23) + '…' : title, 256, 34);
+    g.restore();
+  }
   tex.needsUpdate = true;
 }
 
@@ -500,10 +510,11 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   };
 
   // Name label + chat bubble (constant on-screen size)
-  const L = makeLabelSprite();
+  const L = makeLabelSprite(!opts?.role); // người chơi: nhãn cao có dòng danh hiệu; NPC: nhãn thường
+  if (!opts?.role) L.sprite.center.set(0.5, 1 / 3); // neo tại điểm giữa của nhãn cũ (48/144 từ đáy) để chip tên không dịch chỗ
   L.sprite.position.y = 2.65;
   root.add(L.sprite);
-  const setLabel = (n: string, level?: number, isMe?: boolean) => drawLabel(L.canvas, L.tex, n, level, isMe);
+  const setLabel = (n: string, level?: number, isMe?: boolean, title?: string) => drawLabel(L.canvas, L.tex, n, level, isMe, title);
   setLabel(name);
 
   const B = makeLabelSprite();

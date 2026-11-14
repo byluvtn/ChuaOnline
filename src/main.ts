@@ -14,7 +14,7 @@ import { createWorld } from './world';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
-import { ACTION_RULES, CHAIN_QUESTS, MARKET_STALLS, NPC_QUESTS, ROOMS, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
+import { ACTION_RULES, CHAIN_QUESTS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
 import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, type Pt } from '../shared/roads';
@@ -233,7 +233,7 @@ const joy = { x: 0, y: 0, id: -1 };
 function addPlayer(p: PlayerState) {
   if (remotes.has(p.id)) return remotes.get(p.id)!;
   const char = p.npc ? buildCharacter(p.outfit, p.color, p.name, { scale: p.role === 'abbot' ? 1.15 : p.role === 'lay' ? 1 : 0.9, role: p.role }) : buildCharacter(p.outfit, p.color, p.name);
-  char.setLabel(p.name, p.npc ? undefined : levelOf(p.merit), p.id === myId);
+  char.setLabel(p.name, p.npc ? undefined : levelOf(p.merit), p.id === myId, p.npc ? undefined : (p.title ? titleName(p.title) : undefined));
   char.label.visible = settings.showNames;
   char.setAccessory(p.accessory);
   char.root.position.set(p.x, 0, p.z);
@@ -308,9 +308,12 @@ function updateProfileHud() {
     if (me) world.spawnBurst(me.char.root.position.x, me.char.root.position.z);
   }
   lastMerit = profile.merit; lastCoins = profile.coins; lastLevel = lv;
-  if (me) me.char.setLabel(profile.name, lv, true);
+  const curTitleId = profile.title ?? defaultTitle(profile.titles);
+  const curTitle = curTitleId ? titleName(curTitleId) : null;
+  if (me) me.char.setLabel(profile.name, lv, true, curTitle ?? undefined);
   const lo = meritForLevel(lv), hi = meritForLevel(lv + 1);
   $('pname').textContent = profile.name;
+  $('ptitle').textContent = curTitle ?? '';
   $('plevel').textContent = `Cấp ${lv} · ${profile.merit} công đức`;
   $('pbar').style.width = `${Math.min(100, ((profile.merit - lo) / (hi - lo)) * 100)}%`;
   $('coinN').textContent = String(profile.coins);
@@ -427,6 +430,19 @@ function connect() {
   s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); });
   s.on('level:bonus', ({ level, coins, merit }: { level: number; coins: number; merit: number }) => {
     toast(`Lên cấp ${level}! Thưởng +${coins} xu, +${merit} công đức`);
+  });
+  s.on('title', ({ titles }: { titles: { id: string; title: string }[] }) => {
+    if (!titles?.length) return;
+    const rank = (id: string) => TITLES.findIndex((r) => r.id === id);
+    const top = titles.reduce((a, b) => (rank(b.id) > rank(a.id) ? b : a));
+    toast(titles.length === 1 ? `Đạt danh hiệu mới: ${top.title}` : `Đạt danh hiệu mới: ${top.title} và ${titles.length - 1} danh hiệu khác`);
+  });
+  s.on('player:title', ({ id, title }: { id: string; title: string | null }) => {
+    const r = remotes.get(id);
+    if (!r || r.data.npc) return;
+    r.data.title = title;
+    const lv = id === myId && profile ? levelOf(profile.merit) : levelOf(r.data.merit);
+    r.char.setLabel(r.data.name, lv, id === myId, title ? titleName(title) : undefined);
   });
   s.on('quests', (q: QuestState[]) => {
     quests = q; updateQuestDot(); refreshPanel();

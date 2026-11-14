@@ -4,7 +4,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
-  NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment,
+  NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, defaultTitle, titleName,
   type BeadsAck, type BeadsState, type CheckinAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
@@ -246,6 +246,7 @@ async function grantRewards(s: Session, merit: number, coins: number) {
     s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
   }
   await pushProfile(s);
+  if (lvAfter > lvBefore) await maybeAwardTitles(s);
 }
 async function currentStatsState(pid: number): Promise<StatsState> {
   return { stats: await db.getStats(pid), claimed: await db.claimedStatRewards(pid) };
@@ -261,9 +262,35 @@ async function countStat(s: Session, stat: StatKey, delta = 1) {
     s.socket.emit('milestone', { id: m.id, title: m.title, coins: m.coins, item: m.item } satisfies MilestoneEvent);
     s.socket.emit('stats', await currentStatsState(s.pid));
   }
+  await maybeAwardTitles(s);
 }
 async function countStatSafe(s: Session, stat: StatKey, delta = 1) {
   try { await countStat(s, stat, delta); } catch (e) { console.warn('[stats]', (e as Error).message); }
+}
+
+/** Trao danh hiệu mới đạt (mỗi danh hiệu đúng một lần), báo riêng người chơi và gửi 1 tin hệ thống cho phòng. */
+async function maybeAwardTitles(s: Session, announce = true) {
+  try {
+    const prof = await db.getProfile(s.pid);
+    if (!prof) return;
+    const have = new Set(await db.awardedTitles(s.pid));
+    const fresh: string[] = [];
+    for (const id of prof.titles) if (!have.has(id) && (await db.awardTitle(s.pid, id))) fresh.push(id);
+    if (!prof.title) {
+      const def = defaultTitle(prof.titles);
+      if (def !== (s.state.title ?? null)) { s.state.title = def; io.to(s.room).emit('player:title', { id: s.state.id, title: def }); }
+    }
+    if (!fresh.length) return;
+    s.socket.emit('title', { titles: fresh.map((id) => ({ id, title: titleName(id) })) });
+    if (!announce) return;
+    const top = fresh[fresh.length - 1];
+    const sysMsg: ChatMessage = { id: seq++, name: '', text: `🎉 Phật tử ${s.state.name} vừa đạt danh hiệu ${titleName(top)}!`, t: Date.now(), sys: true };
+    const arr = roomChat.get(s.room) ?? [];
+    arr.push(sysMsg);
+    if (arr.length > 100) arr.shift();
+    roomChat.set(s.room, arr);
+    io.to(s.room).emit('chat', sysMsg);
+  } catch (e) { console.warn('[titles]', (e as Error).message); }
 }
 function meditationInfo(room: string) {
   const sitting = roomSessions(room).filter((s) => s.state.anim === 'sit').length;
@@ -314,6 +341,7 @@ io.on('connection', (socket) => {
     const state: PlayerState = {
       id: socket.id, name, outfit, color, accessory: prof.accessory,
       x: (Math.random() - 0.5) * 6, z: 8 + Math.random() * 3, ry: Math.PI, anim: 'idle', merit: prof.merit,
+      title: prof.title ?? defaultTitle(prof.titles),
     };
     const s: Session = old ?? { pid, state, room, socket, last: {} };
     s.state = state;
@@ -330,6 +358,7 @@ io.on('connection', (socket) => {
     });
     socket.to(room).emit('player:join', state);
     await pushProfile(s);
+    await maybeAwardTitles(s, false);
     await pushQuests(s);
     socket.emit('checkin', await db.checkinState(pid));
     socket.emit('mail', { unread: await db.mailUnread(pid) });
@@ -417,6 +446,7 @@ io.on('connection', (socket) => {
     if (kind === 'bow') await countStatSafe(s, 'bows');
     else if (kind === 'chant') await countStatSafe(s, 'chants');
     else if (kind === 'lantern') await countStatSafe(s, 'lanterns');
+    else if (kind === 'incense') await countStatSafe(s, 'incense');
   });
 
   /** Hoàn thành một bài kinh trong cửa sổ tụng kinh: cộng đức theo ACTION_RULES.chant. */
@@ -689,6 +719,7 @@ io.on('connection', (socket) => {
       s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
     }
     await pushProfile(s);
+    await maybeAwardTitles(s);
     const broadcast = n >= 50;
     reply({ ok: true, coins: r.coins, merit: r.merit, broadcast });
     // Broadcast SAU commit + pushProfile; fire-and-forget, loi emit khong rollback.
@@ -733,10 +764,25 @@ io.on('connection', (socket) => {
     }
     if (await db.claimQuest(pid, q.id, q.target)) {
       await db.addRewards(pid, q.merit, q.coins);
+      await db.recordQuestDone(pid, q.id);
       await pushProfile(s);
+      await maybeAwardTitles(s);
       await pushQuests(s);
       refreshQuestGuard(s.room).catch(() => {});
     }
+  });
+
+  socket.on('title:select', async (titleId: unknown, cb?: (r: { ok: boolean; error?: string; title?: string }) => void) => {
+    const reply = (r: { ok: boolean; error?: string; title?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    const prof = typeof titleId === 'string' ? await db.getProfile(s.pid) : null;
+    if (!prof || typeof titleId !== 'string' || !prof.titles.includes(titleId)) return reply({ ok: false, error: 'Chưa đạt danh hiệu này' });
+    await db.saveTitle(s.pid, titleId);
+    s.state.title = titleId;
+    io.to(s.room).emit('player:title', { id: s.state.id, title: titleId });
+    await pushProfile(s);
+    reply({ ok: true, title: titleId });
   });
 
   // Mini-game rewards: amounts/caps are decided here only; the client just says which game finished.
