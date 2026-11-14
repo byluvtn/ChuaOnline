@@ -12,6 +12,12 @@ export function ictParts(d: Date): IctParts {
   return { year: o.year, month: o.month, day: o.day, hour: o.hour % 24, minute: o.minute, second: o.second };
 }
 
+/** Ngày VN (Asia/Ho_Chi_Minh) dạng YYYY-MM-DD — daily reset 00:00 VN. */
+export const dayKeyICT = (d = new Date()): string => {
+  const p = ictParts(d);
+  return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
+};
+
 export interface LunarDate { day: number; month: number; year: number; leap: boolean }
 
 const PI = Math.PI;

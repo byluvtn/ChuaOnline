@@ -11,7 +11,7 @@ export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: numbe
 
 export type ShopCategory =
   | 'le_vat' | 'cay_phat' | 'ao_trang' | 'trang_hat' | 'bo_doan'
-  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh' | 'do_an';
+  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh' | 'do_an' | 'hat_giong';
 
 export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
   { id: 'le_vat', label: 'Lễ vật' },
@@ -87,10 +87,15 @@ export const ITEMS: ShopItem[] = [
   { id: 'ca_phong_sinh', name: 'Cá phóng sinh', desc: 'Mua về rồi mang tới bến thả ở hồ phóng sinh để thả. Thả cá nhận 10 công đức.', price: 10, kind: 'consumable', icon: '🐟', category: 'phong_sinh' },
   { id: 'thuc_an_chim', name: 'Túi thức ăn cho chim', desc: 'Cho đàn chim ăn nhận 5 công đức. Dùng 1 lần.', price: 5, kind: 'consumable', icon: '🌾', category: 'phong_sinh' },
   { id: 'thuc_an_cho_meo', name: 'Túi thức ăn cho chó mèo', desc: 'Cho chó mèo ăn nhận 5 công đức. Dùng 1 lần.', price: 5, kind: 'consumable', icon: '🍖', category: 'phong_sinh' },
+  // ---- Hạt giống (chỉ bán ở npc38 trong Vườn Cây, KHÔNG hiện trong shop trung tâm)
+  { id: 'hat_soi', name: 'Hạt sồi', desc: 'Gieo ở Vườn Cây để trồng cây sồi.', price: 10, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
+  { id: 'hat_thong', name: 'Hạt thông', desc: 'Gieo ở Vườn Cây để trồng cây thông.', price: 12, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
+  { id: 'hat_anh_dao', name: 'Hạt anh đào', desc: 'Gieo ở Vườn Cây để trồng cây anh đào.', price: 15, kind: 'consumable', icon: '🌸', category: 'hat_giong' },
+  { id: 'hat_bo_de', name: 'Hạt bồ đề', desc: 'Gieo ở Vườn Cây để trồng cây bồ đề.', price: 20, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
-export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy' | 'feed' | 'find' | 'release' | 'buyphongsinh' | 'buyfood';
+export type QuestEvent = ActionKind | 'chat' | 'meditate' | 'sutra' | 'buy' | 'room' | 'merit' | 'sweep' | 'deliver' | 'visit' | 'talk' | 'marketbuy' | 'feed' | 'find' | 'release' | 'buyphongsinh' | 'buyfood' | 'plant' | 'water' | 'harvest' | 'grow';
 export type QuestZone =
   | { x: number; z: number; r: number }
   | { x0: number; x1: number; z0: number; z1: number };
@@ -232,6 +237,9 @@ const Z_BAO_THAP: QuestZone = { x: -30, z: -38, r: 6 };
 const Z_CAU_SEN: QuestZone = { x0: -1.5, x1: 1.5, z0: 14.2, z1: 29.8 };
 const Z_PS_PIER: QuestZone = { x: 30, z: -31, r: 3 };
 
+/** Người giao Q27–Q30. ĐỔI GIVER CHỈ SỬA DÒNG NÀY (quyết định 5 đã chốt: giữ npc38). */
+export const GARDEN_GIVER = 'npc38';
+
 // NPC quests (daily reset, ids start with nq_)
 export const NPC_QUESTS: QuestDef[] = [
   { id: 'nq_sweep_plaza', label: 'Quét sân chùa', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc2',
@@ -283,7 +291,46 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc30', receiver: 'npc30', stall: 'stall_phongsinh', zone: Z_PS_PIER, steps: ['talk', 'buyphongsinh', 'release', 'deliver'] },
   { id: 'nq_feed_birds', label: 'Cho đàn chim ăn', event: 'talk', target: 4, coins: 25, merit: 12,
     giver: 'npc30', receiver: 'npc30', stall: 'stall_phongsinh', steps: ['talk', 'buyfood', 'feed', 'deliver'] },
+  { id: 'gq_plant', label: 'Gieo hạt đầu tiên', event: 'plant', target: 1, coins: 20, merit: 10, giver: GARDEN_GIVER },
+  { id: 'gq_water', label: 'Tưới cây mỗi ngày', event: 'water', target: 3, coins: 15, merit: 8, giver: GARDEN_GIVER },
+  { id: 'gq_grow', label: 'Chăm cây lớn', event: 'grow', target: 1, coins: 25, merit: 15, giver: GARDEN_GIVER },
+  { id: 'gq_harvest', label: 'Thu hoạch đầu mùa', event: 'harvest', target: 1, coins: 25, merit: 12, giver: GARDEN_GIVER },
 ];
+
+export type GardenSpecies = 'soi' | 'thong' | 'anh_dao' | 'bo_de';
+
+/** Hạt giống từng loại cây (item id trong ITEMS + giá bán ở npc38). */
+export const GARDEN_SEEDS: Record<GardenSpecies, { item: string; name: string; price: number }> = {
+  soi: { item: 'hat_soi', name: 'Sồi', price: 10 },
+  thong: { item: 'hat_thong', name: 'Thông', price: 12 },
+  anh_dao: { item: 'hat_anh_dao', name: 'Anh Đào', price: 15 },
+  bo_de: { item: 'hat_bo_de', name: 'Bồ Đề', price: 20 },
+};
+
+/** 8 luống Vườn Tây: hàng A z 16.1 (id 1–4), hàng B z 20.1 (id 5–8). */
+export const GARDEN_PLOTS: { id: number; x: number; z: number }[] = [
+  { id: 1, x: -53.6, z: 16.1 }, { id: 2, x: -50.6, z: 16.1 },
+  { id: 3, x: -47.6, z: 16.1 }, { id: 4, x: -44.6, z: 16.1 },
+  { id: 5, x: -53.6, z: 20.1 }, { id: 6, x: -50.6, z: 20.1 },
+  { id: 7, x: -47.6, z: 20.1 }, { id: 8, x: -44.6, z: 20.1 },
+];
+
+/** Một giai đoạn lớn mất 5 phút; quá 24 h không tưới → héo; quá 48 h → cây biến mất. */
+export const GARDEN_STAGE_MS = 5 * 60 * 1000;
+export const GARDEN_WILT_MS = 24 * 3600 * 1000;
+export const GARDEN_VANISH_MS = 48 * 3600 * 1000;
+/** Sau thu hoạch, luống nghỉ 1 giờ rồi mới trống lại. */
+export const GARDEN_REST_MS = 3600 * 1000;
+/** Thưởng thu hoạch cố định 15 công đức + 5–10 xu (random phía server). */
+export const GARDEN_HARVEST_MERIT = 15;
+
+/** Trạng thái 1 luống trả về cho client qua garden:list. */
+export interface GardenPlotState {
+  plot: number; species: GardenSpecies | null; stage: number;
+  wilted: boolean; wateredToday: boolean; harvestable: boolean; harvested: boolean;
+  /** 0..1 trong giai đoạn hiện tại; 1 khi stage 4; 0 khi hôm nay chưa tưới. */
+  progress: number;
+}
 
 // Chain quests (one-time, ids start with c_)
 export const CHAIN_QUESTS: QuestDef[] = [

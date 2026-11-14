@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 81;
+export const LATEST_NEWS_ID = 82;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Khu vườn trồng cây ở Vườn Tây',
+    date: '2026-11-15',
+    items: [
+      'Vườn Tây có khu vườn trồng cây mới: 8 luống, rào gỗ, giếng đá, có Tiểu Trồng Cây giữ vườn.',
+      'Mua hạt ở Tiểu Trồng Cây (Sồi 10 xu, Thông 12 xu, Anh Đào 15 xu, Bồ Đề 20 xu) rồi gieo vào luống trống; thư tặng 1 hạt Sồi đầu tiên.',
+      'Cây lớn sau khoảng 20 phút nếu tưới nước mỗi ngày; thu hoạch được 15 công đức, 5–10 xu và 1–2 hạt. Quá 24 giờ không tưới cây héo, quá 48 giờ cây biến mất.',
+      'Nhiệm vụ mới Q27–Q30 ở Tiểu Trồng Cây: gieo hạt, tưới cây, chăm cây lớn và thu hoạch.',
+    ],
+  },
   {
     title: 'Shop trung tâm không bán trùng hàng chợ',
     date: '2026-11-15',

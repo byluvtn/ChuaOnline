@@ -75,6 +75,7 @@ export const ROAD_NODES: RoadNode[] = [
   // no longer sit inside the Tam The platform (platform z -80..-56).
   { id: 'baoThap', x: -30, z: -28 }, // was -29: pillar r0.5 at (-30.2,-29.8) left only 0.33 clearance at the node
   { id: 'phongCDDoor', x: -36, z: 35 },
+  { id: 'vuonCay', x: -48, z: 24.5 },
   { id: 'psPier', x: 30, z: -31 },
   { id: 'thienDuong', x: -39.5, z: -27.5 },
   { id: 'zenGarden', x: -35.75, z: -27.25 }, // trên mặt cát, cách khung ≥ 1 m, xa 3 đá thiền
@@ -170,6 +171,7 @@ export const ROAD_EDGES: [string, string][] = [
   ['quanYard', 'restEast'], ['restEast', 'restSE'], ['restSE', 'restArea'], ['quanYard', 'dienMau'], ['buddhaYard', 'plaza'],
   ['buddhaYard', 'bridgeN'], ['denTrinh', 'gate'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'restArea'],
   ['phongCDDoor', 'gate'],
+  ['vuonCay', 'phongCDDoor'],
   // Zen garden east hedge gap: hallFront -> east side -> gap -> baoThap / zenIn
   ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
   ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],

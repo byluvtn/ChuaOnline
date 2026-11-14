@@ -787,6 +787,52 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     ],
   },
 
+  // npc38 — Tiểu Trồng Cây. Giữ Vườn Cây, bán hạt giống. Giao Q27–Q30 (gq_*).
+  npc38: {
+    name: 'Tiểu Trồng Cây',
+    role: 'Người giữ Vườn Cây',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng nay tiểu vừa tưới hết luống rồi, cây đang lớn tốt lắm.' },
+      { time: 'noon', text: 'Trưa nắng rồi, thí chủ nhớ tưới cây hôm nay chưa? Cây khát là héo đấy.' },
+      { time: 'afternoon', text: 'Chiều mát, thí chủ ra vườn gieo thử một hạt đi, cây lớn nhanh lắm.' },
+    ],
+    questOffer: 'Vườn Cây có 8 luống trống, thí chủ mua hạt giống ở tiểu rồi gieo xuống, ngày nào cũng nhớ tưới nước nhé.',
+    questReminder: 'Thí chủ làm xong việc vườn chưa? Gieo hạt, tưới nước, chăm cây lớn rồi thu hoạch, xong quay lại gặp tiểu nhé.',
+    questDone: 'Cây thí chủ chăm lớn tốt lắm, tiểu cảm ơn thí chủ nhé.',
+    questLines: {
+      gq_plant: {
+        offer: 'Thí chủ gieo hạt đầu tiên giúp tiểu nhé: mua một hạt giống rồi gieo vào luống trống trong vườn.',
+        reminder: 'Thí chủ gieo hạt chưa? Mua hạt giống ở tiểu rồi gieo vào luống trống nhé.',
+        done: 'Hạt đã nảy mầm rồi, thí chủ chăm sóc tốt lắm.',
+      },
+      gq_water: {
+        offer: 'Mỗi ngày thí chủ tưới giúp tiểu 3 cây nhé, cây nào chưa tưới hôm nay thì tưới luôn.',
+        reminder: 'Hôm nay thí chủ tưới đủ 3 cây chưa? Cây khát nước là dừng lớn đấy.',
+        done: 'Cây được tưới no nước rồi, mai lại tưới tiếp nhé.',
+      },
+      gq_grow: {
+        offer: 'Thí chủ chăm một cây lớn hẳn giúp tiểu nhé, tưới đều mỗi ngày là cây lớn sau khoảng 20 phút.',
+        reminder: 'Cây thí chủ chăm đã lớn hẳn chưa? Nhớ tưới mỗi ngày thì cây mới lớn.',
+        done: 'Có cây lớn hẳn rồi, vườn thêm xanh tốt, tiểu cảm ơn thí chủ.',
+      },
+      gq_harvest: {
+        offer: 'Cây nào lớn hẳn thì thí chủ thu hoạch giúp tiểu nhé, đứng gần cây lớn rồi thu hoạch.',
+        reminder: 'Thí chủ thu hoạch cây lớn chưa? Cây lớn hẳn đứng gần là thu hoạch được.',
+        done: 'Thu hoạch tốt lắm, vừa có công đức vừa có hạt mới để gieo tiếp.',
+      },
+    },
+    shopGreeting: 'Tiểu có hạt sồi 10 xu, hạt thông 12 xu, hạt anh đào 15 xu, hạt bồ đề 20 xu. Thí chủ mua hạt rồi gieo vào luống trống trong vườn nhé.',
+    smallTalk: [
+      'Mỗi giai đoạn cây lớn mất 5 phút sau khi tưới, tưới đều là khoảng 20 phút cây lớn hẳn.',
+      'Cây quá 24 giờ không tưới thì héo, quá 48 giờ thì biến mất, thí chủ nhớ tưới mỗi ngày.',
+      'Thu hoạch cây lớn được 15 công đức với ít xu và thêm hạt giống, gieo tiếp được ngay.',
+    ],
+    farewell: [
+      'Thí chủ chăm cây vui nhé, nhớ tưới mỗi ngày.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
   // npc31 — Cô Bán Phở Chay. Chỉ bán hàng, không giao quest.
   npc31: {
     name: 'Cô Bán Phở Chay',

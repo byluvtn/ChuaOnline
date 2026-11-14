@@ -13,10 +13,11 @@ import { openFortune } from './features/fortune';
 import { openFestivals } from './features/festivals';
 import { createPost } from './post';
 import { createWorld } from './world';
+import { renderGardenTrees, setGardenGateBoard } from './vuoncay';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
-import { ACTION_RULES, CHAIN_QUESTS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
+import { ACTION_RULES, CHAIN_QUESTS, GARDEN_PLOTS, GARDEN_SEEDS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
 import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, type Pt } from '../shared/roads';
@@ -1024,6 +1025,12 @@ const SHOP_VENDOR_GOODS: Record<string, { item: string; label: string; price: nu
     { item: 'thuc_an_chim', label: 'Túi thức ăn cho chim', price: 5 },
   ],
   npc36: [{ item: 'tra_da', label: 'Trà đá', price: 5 }],
+  npc38: [
+    { item: 'hat_soi', label: 'Hạt sồi', price: 10 },
+    { item: 'hat_thong', label: 'Hạt thông', price: 12 },
+    { item: 'hat_anh_dao', label: 'Hạt anh đào', price: 15 },
+    { item: 'hat_bo_de', label: 'Hạt bồ đề', price: 20 },
+  ],
 };
 
 type TimeSlot = 'morning' | 'noon' | 'afternoon' | 'evening' | 'any';
@@ -1573,9 +1580,152 @@ const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
   omikuji: { label: 'Xin xăm', run: () => openFortune(panelCtx()) },
 };
 let zoneBtnId = '';
-zoneBtn.onclick = () => ZONE_ACTIONS[zoneBtnId]?.run();
+let gardenStates: GardenPlotState[] = [];
+let gardenPanelOpen = false;
+let gardenZoneRun: (() => void) | null = null;
+let gardenBtnSig = '';
+let inGardenZone = false;
+
+function gardenGrowing(): number {
+  return gardenStates.filter((s) => s.species && s.stage < 4 && !s.wilted && !s.harvested).length;
+}
+
+function applyGardenStates(states: GardenPlotState[]) {
+  gardenStates = states;
+  setGardenGateBoard(gardenGrowing());
+  void renderGardenTrees(gardenStates);
+  if (gardenPanelOpen) openGardenPanel();
+}
+
+function refreshGarden() {
+  if (!socket) return;
+  socket.emit('garden:list', (r: { ok: boolean; states?: GardenPlotState[]; error?: string }) => {
+    if (!r.ok || !r.states) { if (r.error) toast(r.error); return; }
+    applyGardenStates(r.states);
+  });
+}
+
+function gardenPlant(plot: number, seed: string) {
+  if (!socket) return;
+  socket.emit('garden:plant', { plot, seed }, (r: { ok: boolean; states?: GardenPlotState[]; error?: string }) => {
+    if (!r.ok) { toast(r.error ?? 'Lỗi'); return; }
+    if (r.states) applyGardenStates(r.states);
+    toast('Đã gieo hạt');
+  });
+}
+
+function gardenWater(plot: number) {
+  if (!socket) return;
+  socket.emit('garden:water', { plot }, (r: { ok: boolean; states?: GardenPlotState[]; error?: string }) => {
+    if (!r.ok) { toast(r.error ?? 'Lỗi'); return; }
+    if (r.states) applyGardenStates(r.states);
+    toast('Đã tưới nước');
+  });
+}
+
+function gardenHarvest(plot: number) {
+  if (!socket) return;
+  socket.emit('garden:harvest', { plot }, (r: { ok: boolean; states?: GardenPlotState[]; error?: string; merit?: number; coins?: number; seeds?: number }) => {
+    if (!r.ok) { toast(r.error ?? 'Lỗi'); return; }
+    if (r.states) applyGardenStates(r.states);
+    toast(`Thu hoạch +${r.merit ?? 0} công đức, +${r.coins ?? 0} xu, được ${r.seeds ?? 0} hạt`);
+  });
+}
+
+const GARDEN_STAGE_NAME = ['', 'Mầm', 'Non', 'Nhỡ', 'Lớn'];
+
+function openGardenPanel() {
+  openCustomPanel('Vườn Cây', (body) => {
+    gardenPanelOpen = true;
+    for (const def of GARDEN_PLOTS) {
+      const st = gardenStates.find((s) => s.plot === def.id);
+      const row = h('div', { class: 'qrow' });
+      if (!st || !st.species) {
+        row.append(h('span', {}, `Luống ${def.id} — Trống`),
+          h('button', { onclick: () => { closePanel(); openSeedPicker(def.id); } }, 'Gieo hạt'));
+      } else {
+        const status = st.harvested ? 'Đã thu hoạch, đang nghỉ'
+          : st.wilted ? 'Héo — cần tưới'
+          : st.stage >= 4 ? 'Lớn, thu hoạch được'
+          : st.wateredToday ? 'Đang lớn' : 'Cần tưới';
+        row.append(
+          h('div', {},
+            h('div', {}, `Luống ${def.id} — ${GARDEN_SEEDS[st.species].name} • ${GARDEN_STAGE_NAME[st.stage]} • ${status}`),
+            h('progress', { max: 100, value: Math.round(st.progress * 100) })),
+          h('button', {
+            disabled: st.harvested || (!st.harvestable && st.wateredToday && !st.wilted),
+            onclick: () => {
+              if (st.harvestable) gardenHarvest(def.id);
+              else gardenWater(def.id);
+            },
+          }, st.harvestable ? 'Thu hoạch' : 'Tưới nước'),
+        );
+      }
+      body.appendChild(row);
+    }
+    body.appendChild(h('p', {}, `Đang lớn: ${gardenGrowing()}/8 — cây lớn 5 phút/giai đoạn khi đã tưới hôm nay; quá 24 h không tưới thì héo, quá 48 h cây biến mất.`));
+    return () => { gardenPanelOpen = false; };
+  });
+}
+
+function openSeedPicker(plot: number) {
+  openCustomPanel('Gieo hạt', (body) => {
+    for (const k of Object.keys(GARDEN_SEEDS) as GardenSpecies[]) {
+      const s = GARDEN_SEEDS[k];
+      const have = profile?.inventory?.[s.item] ?? 0;
+      body.appendChild(h('div', { class: 'qrow' },
+        h('span', {}, `${s.name} — ${s.price} xu/hạt (đang có ${have})`),
+        h('button', {
+          disabled: have <= 0,
+          onclick: () => { closePanel(); gardenPlant(plot, s.item); },
+        }, 'Gieo')));
+    }
+    body.appendChild(h('p', {}, 'Chưa có hạt? Mua ở Tiểu Trồng Cây trong vườn.'));
+  });
+}
+
+function nearestGardenPlot(): { def: (typeof GARDEN_PLOTS)[number]; st: GardenPlotState } | null {
+  if (!me) return null;
+  const px = me.char.root.position.x, pz = me.char.root.position.z;
+  let best: { def: (typeof GARDEN_PLOTS)[number]; st: GardenPlotState } | null = null;
+  let bd = Infinity;
+  for (const def of GARDEN_PLOTS) {
+    const st = gardenStates.find((s) => s.plot === def.id);
+    if (!st) continue;
+    const d = Math.hypot(px - def.x, pz - def.z);
+    if (d < bd) { bd = d; best = { def, st }; }
+  }
+  return bd <= 4 ? best : null;
+}
+
+zoneBtn.onclick = () => { if (zoneBtnId === 'vuoncay' && gardenZoneRun) gardenZoneRun(); else ZONE_ACTIONS[zoneBtnId]?.run(); };
 function updateZoneBtn() {
   const id = me ? world.zoneAt(me.char.root.position.x, me.char.root.position.z) : null;
+  // Vườn Cây: nút động theo luống gần nhất (≤ 4 m); không gần luống nào → mở panel vườn.
+  if (id === 'vuoncay') {
+    if (!inGardenZone) { inGardenZone = true; refreshGarden(); }
+    const near = nearestGardenPlot();
+    let label = 'Vườn Cây';
+    let run: () => void = () => openGardenPanel();
+    if (near) {
+      const { def, st } = near;
+      if (!st.species) { label = 'Gieo hạt'; run = () => openSeedPicker(def.id); }
+      else if (st.harvestable) { label = 'Thu hoạch'; run = () => gardenHarvest(def.id); }
+      else if (!st.harvested && (!st.wateredToday || st.wilted)) { label = 'Tưới nước'; run = () => gardenWater(def.id); }
+    }
+    const sig = `vuoncay:${label}:${near?.def.id ?? 0}`;
+    if (sig !== gardenBtnSig) {
+      gardenBtnSig = sig;
+      zoneBtnId = 'vuoncay';
+      gardenZoneRun = run;
+      zoneBtn.hidden = false;
+      zoneBtn.querySelector('.lb')!.textContent = label;
+    }
+    return;
+  }
+  if (inGardenZone) inGardenZone = false;
+  gardenBtnSig = '';
+  gardenZoneRun = null;
   let key = id && ZONE_ACTIONS[id] ? id : '';
   if (key === 'phongSinh' && (profile?.inventory?.['chim_phong_sinh'] ?? 0) <= 0 && (profile?.inventory?.['ca_phong_sinh'] ?? 0) <= 0) key = '';
   if (key === zoneBtnId) return;
@@ -1583,6 +1733,8 @@ function updateZoneBtn() {
   zoneBtn.hidden = !key;
   if (key) zoneBtn.querySelector('.lb')!.textContent = ZONE_ACTIONS[key].label;
 }
+
+setInterval(() => { if (inGardenZone) refreshGarden(); }, 60000);
 
 function hideCouplet() { $('couplet').classList.remove('show'); }
 function updateCouplet() {

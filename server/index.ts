@@ -3,9 +3,9 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
-  ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
+  ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GARDEN_HARVEST_MERIT, GARDEN_PLOTS, GARDEN_SEEDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
   NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, defaultTitle, titleName,
-  type BeadsAck, type BeadsState, type CheckinAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
+  type BeadsAck, type BeadsState, type CheckinAck, type GardenPlotState, type GardenSpecies, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
 import {
@@ -13,6 +13,7 @@ import {
 } from '../shared/types.js';
 import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
+import { gardenSeedGiftSent, harvestGardenRow, listGardenRows, plantGardenRow, waterGardenRow } from './garden.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 import { PHONG_CD } from '../src/layout.js';
 import { FORTUNES, type FortuneAck } from '../src/data/fortunes.js';
@@ -771,6 +772,89 @@ io.on('connection', (socket) => {
     await pushProfile(s);
     io.to(s.room).emit('player:release', { id: s.state.id, kind });
     cb?.({ ok: true, merit });
+  });
+
+  // ---- Vườn Cây (trồng cây) ----
+  // Lấy trạng thái vườn mới nhất; bump quest 'grow' cho các luống vừa lên stage 4
+  // (grow_counted đã set trong DB nên chỉ bump được từ `grew` của chính lần gọi này).
+  async function afterGardenOp(s: Session, grew?: number[]): Promise<GardenPlotState[]> {
+    if (grew?.length) await questEvent(s, 'grow');
+    const { states } = await listGardenRows(s.pid, Date.now());
+    return states;
+  }
+
+  socket.on('garden:list', async (cb?: (r: { ok: boolean; states?: GardenPlotState[]; error?: string }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const { states, grewTo4Plots } = await listGardenRows(s.pid, Date.now());
+    if (grewTo4Plots.length) await questEvent(s, 'grow');
+    // Hạt sồi đầu tiên: tặng 1 lần qua mail khi lần đầu mở vườn
+    if (!(await gardenSeedGiftSent(s.pid))) {
+      await db.sendMail(s.pid, 'garden_seed', 'Hạt sồi đầu tiên', 'Chào mừng thí chủ đến Vườn Cây! Tặng thí chủ 1 hạt sồi, gieo thử vào luống trống rồi tưới nước mỗi ngày nhé.', { merit: 0, coins: 0, items: { hat_soi: 1 } });
+    }
+    cb?.({ ok: true, states });
+  });
+
+  socket.on('garden:plant', async (p: { plot?: number; seed?: string }, cb?: (r: { ok: boolean; states?: GardenPlotState[]; error?: string }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const plot = Number(p?.plot);
+    const seedItem = String(p?.seed ?? '');
+    const species = (Object.keys(GARDEN_SEEDS) as GardenSpecies[]).find((k) => GARDEN_SEEDS[k].item === seedItem);
+    if (!species) return cb?.({ ok: false, error: 'Loại hạt không hợp lệ' });
+    const def = GARDEN_PLOTS.find((d) => d.id === plot);
+    if (!def) return cb?.({ ok: false, error: 'Luống không hợp lệ' });
+    if (distTo(s, def.x, def.z) > 4) return cb?.({ ok: false, error: 'Bạn đứng quá xa luống' });
+    if ((await db.itemQty(pid, seedItem)) < 1) return cb?.({ ok: false, error: 'Bạn không có hạt giống này' });
+    const r = await plantGardenRow(pid, plot, species, Date.now());
+    if (!r.ok) {
+      if (r.grew?.length) await questEvent(s, 'grow');
+      return cb?.({ ok: false, error: r.error });
+    }
+    await db.addItem(pid, seedItem, -1);
+    await questEvent(s, 'plant');
+    const states = await afterGardenOp(s, r.grew);
+    await pushProfile(s);
+    cb?.({ ok: true, states });
+  });
+
+  socket.on('garden:water', async (p: { plot?: number }, cb?: (r: { ok: boolean; states?: GardenPlotState[]; error?: string }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const plot = Number(p?.plot);
+    const def = GARDEN_PLOTS.find((d) => d.id === plot);
+    if (!def) return cb?.({ ok: false, error: 'Luống không hợp lệ' });
+    if (distTo(s, def.x, def.z) > 4) return cb?.({ ok: false, error: 'Bạn đứng quá xa luống' });
+    const r = await waterGardenRow(pid, plot, Date.now());
+    if (!r.ok) {
+      if (r.grew?.length) await questEvent(s, 'grow');
+      return cb?.({ ok: false, error: r.error });
+    }
+    await questEvent(s, 'water');
+    const states = await afterGardenOp(s, r.grew);
+    cb?.({ ok: true, states });
+  });
+
+  socket.on('garden:harvest', async (p: { plot?: number }, cb?: (r: { ok: boolean; states?: GardenPlotState[]; error?: string; merit?: number; coins?: number; seeds?: number }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const plot = Number(p?.plot);
+    const def = GARDEN_PLOTS.find((d) => d.id === plot);
+    if (!def) return cb?.({ ok: false, error: 'Luống không hợp lệ' });
+    if (distTo(s, def.x, def.z) > 4) return cb?.({ ok: false, error: 'Bạn đứng quá xa luống' });
+    const r = await harvestGardenRow(pid, plot, Date.now());
+    if (!r.ok) {
+      if (r.grew?.length) await questEvent(s, 'grow');
+      return cb?.({ ok: false, error: r.error });
+    }
+    const coins = 5 + Math.floor(Math.random() * 6); // 5-10 xu
+    const seeds = 1 + Math.floor(Math.random() * 2); // rơi 1-2 hạt cùng loại
+    await grantRewards(s, GARDEN_HARVEST_MERIT, coins);
+    await db.addItem(pid, GARDEN_SEEDS[r.species].item, seeds);
+    await questEvent(s, 'harvest');
+    const states = await afterGardenOp(s, r.grew);
+    await pushProfile(s);
+    cb?.({ ok: true, states, merit: GARDEN_HARVEST_MERIT, coins, seeds });
   });
 
   socket.on('quest:claim', async (qid: string) => {

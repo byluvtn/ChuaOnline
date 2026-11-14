@@ -8,6 +8,7 @@ import { blocked, LAKE, HALL, PLAZA } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
 import { buildSeatedBuddhaStatue } from './statue-scan';
 import { buildGarden } from './garden';
+import { buildVuonCay } from './vuoncay';
 import { buildMarket } from './market';
 
 export interface Mood { sky: string; zenith: string; sun: string; sunI: number; hemi: string; fog: number; night?: boolean }
@@ -189,6 +190,13 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   for (let i = 0; i < 400 && treeSpots.length < 90; i++) {
     const x = (rngSeed(i) - 0.5) * 2 * (MAP_HALF + 24), z = (rngSeed(i + 100) - 0.5) * 2 * (MAP_HALF + 24);
     if (blocked(x, z)) continue;
+    // Vườn Cây: không scatter cây trong rào (x −55..−41, z 11..23); cây góc dời ra
+    // (−57,25) — giữ trống quanh đó để khỏi trồng đè; cây góc cũ (−53.7,23.4) là
+    // scatter i=138, nằm ngoài rect 0.4 m nên loại riêng bằng bán kính (cây bóng mát
+    // trong vườn do vuoncay.ts trồng cố định, không qua scatter).
+    if (x >= -55 && x <= -41 && z >= 11 && z <= 23) continue;
+    if (Math.hypot(x + 57, z - 25) < 2) continue;
+    if (Math.hypot(x + 53.7, z - 23.4) < 2) continue;
     treeSpots.push({ x, z, s: 0.85 + rngSeed(i + 7) * 0.9, v: i % 4 });
   }
   treeSpots.forEach(({ x, z, s, v }) => {
@@ -304,6 +312,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   const temple = buildTemple({ scene, colliders, lamb, roofGeometry, tileM, redM, goldM, wallM, redBase, glowSprites, renderer });
   buildSeatedBuddhaStatue(scene, renderer, colliders);
   buildGarden(scene, colliders);
+  buildVuonCay(scene, colliders);
   buildMarket(scene, colliders);
 
   // ---- Sửa cảnh quan khuôn viên ----
