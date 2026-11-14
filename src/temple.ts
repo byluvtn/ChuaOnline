@@ -8,6 +8,7 @@ import {
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
+import { loadModel, fitModel } from './models';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
 import { glowTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture } from './textures';
@@ -122,6 +123,7 @@ export function buildTemple(c: TempleCtx) {
   for (let z = CORR.z0 + 0.6; z <= CORR.z1 - 0.4; z += spacing) zs.push(z);
   const lanterns = new THREE.InstancedMesh(new THREE.SphereGeometry(0.26, 12, 10), c.redBase, zs.length * 4);
   let li = 0;
+  const benchSpots: { x: number; z: number }[] = [];
   for (const side of [-1, 1]) {
     const cx = side * CORR.x, zc = (CORR.z0 + CORR.z1) / 2, len = CORR.z1 - CORR.z0;
     const floor = new THREE.Mesh(new THREE.BoxGeometry(CORR.half * 2, 0.12, len), lamb(0xffffff, { map: floorT }));
@@ -149,15 +151,20 @@ export function buildTemple(c: TempleCtx) {
       d.position.set(cx + off, CORR.y + 2.75, z + spacing / 2); d.scale.set(1, 1.2, 1); d.updateMatrix(); lanterns.setMatrixAt(li++, d.matrix);
     }
     for (let z = CORR.z0 + 2.4; z < CORR.z1 - 1; z += spacing * 2) {
-      const bench = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 1.8), lamb(0x6d4426));
-      bench.position.set(cx - side * 1.7, CORR.y + 0.5, z); bench.castShadow = true; corridor.add(bench);
-      colliders.push({ x: bench.position.x, z, r: 0.5 });
-      for (const lz of [-0.7, 0.7]) {
-        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.1), lamb(0x4a2e18));
-        leg.position.set(bench.position.x, CORR.y + 0.25, z + lz); corridor.add(leg);
-      }
+      benchSpots.push({ x: cx - side * 1.7, z });
+      colliders.push({ x: cx - side * 1.7, z, r: 0.5 });
     }
   }
+  loadModel('wooden_bench').then((base) => {
+    if (!base) return;
+    for (const s of benchSpots) {
+      const inst = base.clone(true);
+      inst.scale.setScalar(1.125);
+      inst.rotation.y = Math.PI / 2;
+      inst.position.set(s.x, CORR.y, s.z);
+      corridor.add(inst);
+    }
+  });
   d.scale.setScalar(1); lanterns.count = li; scene.add(lanterns);
   // bảng chữ Việt treo trên hai cột đầu hành lang
   for (const side of [-1, 1]) {
@@ -348,22 +355,28 @@ export function buildTemple(c: TempleCtx) {
   sealArchitectureJoints(yard, { maxGap: 0.3 });
   colliders.push({ x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 4 });
 
-  // ---- pagoda (moved east) ----
+  // ---- tháp nhỏ (model 3D, 3 tầng, mái đỏ) ----
   const pagoda = new THREE.Group();
-  for (let i = 0; i < 5; i++) {
-    const w = 5.2 - i * 0.7;
-    const f = new THREE.Mesh(new THREE.BoxGeometry(w - 1, 1.3, w - 1), i % 2 ? c.wallM : c.redM); f.position.y = 0.9 + i * 2.6; f.castShadow = true; f.userData.sealable = true; pagoda.add(f);
-    const r = new THREE.Mesh(c.roofGeometry(w * 1.45, w * 1.45, 1.1, 0.5), c.tileM); r.position.y = 2.0 + i * 2.6; r.castShadow = true; r.userData.sealable = true; pagoda.add(r);
-  }
-  for (let i = 0; i < 2; i++) {
-    const pb = new THREE.Mesh(new THREE.BoxGeometry(6.2 - i * 0.8, 0.3, 6.2 - i * 0.8), stoneM);
-    pb.position.y = 0.15 + i * 0.3 - 0.0; pb.castShadow = pb.receiveShadow = true; pb.userData.sealable = true; pagoda.add(pb);
-  }
-  const spireBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, 0.5, 8), c.goldM); spireBase.position.y = 13.1; spireBase.userData.sealable = true; pagoda.add(spireBase);
-  const spire = new THREE.Mesh(new THREE.ConeGeometry(0.2, 2.2, 8), c.goldM); spire.position.y = 14.4; spire.userData.sealable = true; pagoda.add(spire);
+  pagoda.name = 'pagoda';
+  loadModel('pagoda').then((base) => {
+    if (!base) return;
+    const inst = fitModel(base.clone(true), 15);
+    inst.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      for (const mat of mats) {
+        const sm = mat as THREE.MeshStandardMaterial;
+        if (sm.name === 'blk') {
+          const c2 = sm.clone();
+          c2.color.set(0x7a2a1d);
+          m.material = c2;
+        }
+      }
+    });
+    pagoda.add(inst);
+  });
   pagoda.position.set(PAGODA.x, 0, PAGODA.z); scene.add(pagoda);
-  const pgSeal = sealArchitectureJoints(pagoda, { maxGap: 1.4 });
-  if (import.meta.env.DEV) console.warn(`gapdump pagoda: filled=${pgSeal.filled} remaining=${pgSeal.remaining.length} ` + JSON.stringify(pgSeal.remaining));
   colliders.push({ x: PAGODA.x, z: PAGODA.z, r: 3.4 });
 
   // ---- Bảo Tháp thờ xá lợi (phía Tây Điện Tam Thế) — tháp đá bát giác nhiều tầng, cao ~26 m ----
@@ -885,9 +898,13 @@ export function buildTemple(c: TempleCtx) {
       for (let i = 0; i < 6; i++) b(0.2, 0.05, 0.28, kx, y0 + 0.55 + (i % 2) * 0.6 + 0.02, -0.7 + i * 0.28, paperM);
       cyl(g, 0.06, 0.06, 0.12, kx, y0 + 1.19, 0.75, inkM, 10);
       // Hòm công đức (to gấp 3): local (-2.8, 2.5) trong g xoay +π/2 → world (-39.5, 37.8), ngay trong cửa Đông, bên trái khi nhìn vào (phía Nam). Nắp có khe bỏ xu, khóa vàng quay về Đông.
-      b(1.8, 1.5, 1.2, -2.8, y0 + 0.75, 2.5, woodM);
-      b(0.9, 0.06, 0.18, -2.8, y0 + 1.53, 2.5, inkM);
-      b(0.36, 0.36, 0.12, -2.8, y0 + 0.9, 3.16, c.goldM);
+      loadModel('offering_box').then((base) => {
+        if (!base) return;
+        const inst = base.clone(true);
+        inst.scale.setScalar(1.25);
+        inst.position.set(-2.8, y0, 2.5);
+        g.add(inst);
+      });
       mergeStaticByMaterial(g); scene.add(g);
       for (const lz of [-2.0, -1.0]) for (const lx of [-1.5, -0.5, 0.5, 1.5]) colliders.push({ x: PHONG_CD.x + lz, z: PHONG_CD.z - lx, r: 0.1 });
       // Collider hòm công đức: mesh ở local (-2.8, 2.5) trong g xoay +π/2 → world (PHONG_CD.x + lz, PHONG_CD.z − lx) = (-39.5, 37.8).

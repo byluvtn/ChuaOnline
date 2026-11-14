@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 47;
+export const LATEST_NEWS_ID = 48;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hòm công đức, ghế hành lang, đèn lồng và tháp nhỏ đổi sang model 3D',
+    date: '2026-11-14',
+    items: [
+      'Hòm công đức trong Phòng ghi công đức giờ là hòm gỗ có khe bỏ xu, thay cho hộp gỗ cũ; vị trí, điểm va chạm và cách đóng góp không đổi.',
+      'Ghế hành lang đổi sang ghế gỗ 3D; đèn dọc lối đi và quanh vườn Thiền đổi sang đèn lồng đỏ treo cột gỗ, vẫn phát sáng ban đêm.',
+      'Tháp nhỏ đổi sang tháp 3 tầng mái ngói đỏ, cao như cũ; thêm giá treo quẻ gần Chính Điện, chuẩn bị cho tính năng xin xăm sau này.',
+    ],
+  },
   {
     title: 'Khách đi dạo quanh chùa trước khi ra về',
     date: '2026-11-14',

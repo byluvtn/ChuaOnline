@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LAKE, WALL, PLAZA, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS } from './layout';
 import { stoneTexture, vietnameseColumnTexture } from './textures';
+import { loadModel } from './models';
 
 /* =====================================================================
  * SỬA CHỮA KIẾN TRÚC & CẢNH QUAN KHUÔN VIÊN CHÙA
@@ -410,20 +411,35 @@ export function buildZenGarden(g: GardenCtx) {
   g.colliders.push({ x: -38.5, z: -20.5, r: 0.9 }, { x: cx - 1.5, z: cz + 7.0, r: 0.9 });
   stoneTableSet(g, grp, cx - 5.2, cz - 6.2);
 
-  // 4 đèn đá ở 4 góc vòng cát
-  const lampM = g.lamb(0x9a9387);
+  // 4 đèn lồng đỏ treo cột gỗ ở 4 góc vòng cát
+  const lampSpots: { a: number; x: number; z: number }[] = [];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2, x = cx + Math.cos(a) * 4.6, z = cz + Math.sin(a) * 4.6;
-    const l = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.38, 0.3, 8), lampM); base.position.y = 0.15; l.add(base);
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.9, 8), lampM); post.position.y = 0.72; post.castShadow = true; l.add(post);
-    const lm = new THREE.MeshStandardMaterial({ color: 0xffd36b, emissive: 0xff9c2a, emissiveIntensity: 1.2 });
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.4, 0.46), lm); box.position.y = 1.37; l.add(box);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.35, 4), g.lamb(0x4a3020)); cap.position.y = 1.75; cap.rotation.y = Math.PI / 4; cap.castShadow = true; l.add(cap);
-    l.position.set(x, GY, z); grp.add(l);
-    g.glowSpr(x, GY + 1.4, z, 2.0, 0xffb040, 0.5);
+    lampSpots.push({ a, x, z });
     g.colliders.push({ x, z, r: 0.3 });
   }
+  loadModel('hanging_lantern').then((base) => {
+    if (!base) return;
+    for (const p of lampSpots) {
+      const l = new THREE.Group();
+      const inst = base.clone(true);
+      inst.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const tint = (mat: THREE.Material): THREE.Material => {
+          if (mat.name !== 'vermil') return mat;
+          const c = (mat as THREE.MeshStandardMaterial).clone();
+          c.emissive.set(0xc02010); c.emissiveIntensity = 1.2;
+          return c;
+        };
+        mesh.material = Array.isArray(mesh.material) ? mesh.material.map(tint) : tint(mesh.material);
+      });
+      l.add(inst);
+      l.rotation.y = Math.PI - p.a;
+      l.position.set(p.x, GY, p.z); grp.add(l);
+      g.glowSpr(p.x - Math.cos(p.a) * 1.0, GY + 2.0, p.z - Math.sin(p.a) * 1.0, 2.0, 0xffb040, 0.5);
+    }
+  });
 
   // hàng rào cây xanh thấp ở cạnh Nam (z=-17) và Đông (x=-24.5), chừa lối ~2.4 tại x=-28
   const hedgeM = g.lamb(0x3f8a3e, { flatShading: true });

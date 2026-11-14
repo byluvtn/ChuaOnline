@@ -222,24 +222,49 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   // Bụi cỏ dạng khối cứng quanh quảng trường đã được loại bỏ hoàn toàn (xem paveCompound):
   // mặt sân nay là gạch đá phẳng, không còn các "cục" hình học lổn nhổn giữa khuôn viên.
 
-  // ---- Stone lamps (path edge) with glow ----
+  // ---- Đèn lồng đỏ treo cột gỗ (dọc lối đi) với glow ----
   const glowers: THREE.MeshStandardMaterial[] = [];
   const glowSprites: THREE.Sprite[] = [];
-  const lampStone = lamb(0x9a9387);
+  const lampSpots: { x: number; z: number }[] = [];
   const addLamp = (x: number, z: number) => {
-    const g = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.38, 0.35, 8), lampStone); base.position.y = 0.17; g.add(base);
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 1.2, 8), lampStone); post.position.y = 0.95; post.castShadow = true; g.add(post);
-    const m = new THREE.MeshStandardMaterial({ color: 0xffd36b, emissive: 0xff9c2a, emissiveIntensity: 1.6 });
-    glowers.push(m);
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.5, 0.58), m); box.position.y = 1.8; g.add(box);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.4, 4), lamb(0x4a3020)); cap.position.y = 2.28; cap.rotation.y = Math.PI / 4; cap.castShadow = true; g.add(cap);
-    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffb040, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
-    spr.scale.setScalar(2.6); spr.position.y = 1.8; g.add(spr); glowSprites.push(spr);
-    g.position.set(x, 0, z); scene.add(g);
+    lampSpots.push({ x, z });
     colliders.push({ x, z, r: 0.35 });
   };
   for (let z = 40; z > -19; z -= 7) { addLamp(-4, z); addLamp(4, z); }
+  loadModel('hanging_lantern').then((base) => {
+    if (!base) return;
+    for (const p of lampSpots) {
+      const g = new THREE.Group();
+      const inst = base.clone(true);
+      inst.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        const tint = (mat: THREE.Material): THREE.Material => {
+          if (mat.name !== 'vermil') return mat;
+          const c = (mat as THREE.MeshStandardMaterial).clone();
+          c.emissive.set(0xc02010); c.emissiveIntensity = 1.2;
+          glowers.push(c);
+          return c;
+        };
+        mesh.material = Array.isArray(mesh.material) ? mesh.material.map(tint) : tint(mesh.material);
+      });
+      g.add(inst);
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffb040, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
+      spr.scale.setScalar(2.6); spr.position.set(1.0, 2.0, 0); g.add(spr); glowSprites.push(spr);
+      g.rotation.y = p.x < 0 ? 0 : Math.PI;
+      g.position.set(p.x, 0, p.z); scene.add(g);
+    }
+  });
+
+  // ---- Giá treo quẻ gần Chính Điện (prop cho tính năng xin xăm R2.1 sau này, chưa có mechanic) ----
+  colliders.push({ x: 24, z: -24, r: 1.1 });
+  loadModel('omikuji_rack').then((base) => {
+    if (!base) return;
+    const inst = base.clone(true);
+    inst.rotation.y = -Math.PI / 2;
+    inst.position.set(24, 0, -24);
+    scene.add(inst);
+  });
 
   // ---- Hanging red lanterns ----
   const redGeo = new THREE.SphereGeometry(0.34, 14, 12);
