@@ -1861,7 +1861,7 @@ function loop(now: number = performance.now()) {
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân
         if (Math.hypot(r.char.root.position.x - px, r.char.root.position.z - pz) > 0.004 || r.lastMoveAt === undefined) r.lastMoveAt = now;
         if (r.anim === 'walk' && now - r.lastMoveAt > 500) r.anim = 'idle';
-        if (id === 'npc4' && r.anim === 'ring' && (r.prevAnim !== 'ring' || now - (r.lastRingAt ?? 0) > 4000)) { r.lastRingAt = now; world.ringBell(); audio.play('bow'); }
+        if (r.data.npc && r.anim === 'ring' && (r.prevAnim !== 'ring' || now - (r.lastRingAt ?? 0) > 4000)) { r.lastRingAt = now; world.ringBell(); audio.play('bow'); }
         r.prevAnim = r.anim;
       }
     }

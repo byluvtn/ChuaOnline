@@ -972,7 +972,10 @@ setInterval(() => {
       roomChat.set(r.id, arr);
       io.to(r.id).emit('chat', msg);
     }
-    for (const f of nr.fx.splice(0)) io.to(r.id).emit('player:action', { id: f.id, kind: f.kind });
+    for (const f of nr.fx.splice(0)) {
+      if (f.type === 'release') io.to(r.id).emit('player:release', { id: f.id, kind: f.kind });
+      else io.to(r.id).emit('player:action', { id: f.id, kind: f.kind });
+    }
     io.to(r.id).volatile.emit('state', {
       online: list.length,
       players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, ry: p.ry, anim: p.anim })),

@@ -135,17 +135,19 @@ interface Npc {
   mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave' | 'toIdleSeat' | 'idleSeat' | 'toIdleIncense' | 'idleIncense' | 'toIdleRest' | 'idleRest' | 'toDesk'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
   stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant' | 'toStroll' | 'stroll';
   shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; homeSlot: Behavior;
-  strollStops: string[]; strollIdx: number;
+  tourStops: TourStop[]; tourIdx: number; tourPhase: number;
   gone: boolean; goneUntil: number;
 }
 export interface NpcChat { npcId: string; name: string; text: string }
 export interface NpcRoom {
-  npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; fx: { id: string; kind: ActionKind }[]; beds: (string | null)[]; seats: Map<string, string>;
+  npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; fx: ({ id: string; kind: ActionKind; type?: 'action' } | { id: string; kind: 'bird' | 'fish'; type: 'release' })[]; lastTourBellAt: number; beds: (string | null)[]; seats: Map<string, string>;
   questGuard: Set<string>; left: string[]; joined: PlayerState[];
 }
 
 /** Ghế tụng: hàng đầu mỗi điện (đo từ code thật). S6 sẽ đặt đệm 3D đúng các tọa độ này. */
-export interface ChantSeat { hall: 'chinhDien' | 'tamThe' | 'thienDuong' | 'dienMau'; x: number; z: number; ry: number }
+export interface ChantSeat { hall: 'chinhDien' | 'tamThe' | 'thienDuong' | 'dienMau' | 'nhaKhach'; x: number; z: number; ry: number }
+export type TourKind = 'bell' | 'zen' | 'guest' | 'release' | 'nhaTo' | 'tower';
+export interface TourStop { kind: TourKind; seat?: ChantSeat }
 export const CHANT_SEATS: ChantSeat[] = [
   { hall: 'chinhDien', x: -4.9, z: -35.2, ry: Math.PI },
   { hall: 'chinhDien', x: -3.4, z: -35.2, ry: Math.PI },
@@ -159,6 +161,10 @@ export const CHANT_SEATS: ChantSeat[] = [
   { hall: 'thienDuong', x: -43, z: -27, ry: Math.PI / 2 },
   { hall: 'dienMau', x: 37, z: 10, ry: Math.PI },
   { hall: 'dienMau', x: 39, z: 10, ry: Math.PI },
+  { hall: 'nhaKhach', x: -48.1, z: -63.3, ry: Math.PI / 2 },
+  { hall: 'nhaKhach', x: -45.9, z: -63.3, ry: -Math.PI / 2 },
+  { hall: 'nhaKhach', x: -48.1, z: -61.9, ry: Math.PI / 2 },
+  { hall: 'nhaKhach', x: -45.9, z: -61.9, ry: -Math.PI / 2 },
 ];
 const seatKey = (s: ChantSeat) => `${s.hall}:${s.x},${s.z}`;
 function takeSeat(room: NpcRoom, seat: ChantSeat, npcId: string): boolean {
@@ -210,12 +216,12 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
     return {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
-      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, strollStops: [], strollIdx: 0, homeSlot: def.behavior, gone: false, goneUntil: 0,
+      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, tourStops: [], tourIdx: 0, tourPhase: 0, homeSlot: def.behavior, gone: false, goneUntil: 0,
       state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI / 2 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post && def.post.z >= 47 ? Math.PI : def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
   spreadVisitors(npcs, now);
-  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], fx: [], beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
+  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], fx: [], lastTourBellAt: 0, beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
   for (const n of npcs) {
     if (n.def.behavior !== 'chant') continue;
     const homeHall = n.def.id === 'npc27' ? 'thienDuong' : 'dienMau';
@@ -424,7 +430,8 @@ function seatRoute(n: Npc, seat: ChantSeat): Pt[] {
 /** Leave through the Tam Quan gate; despawn happens on arrival (visitorArrive). */
 function leaveToGate(n: Npc) {
   n.mode = 'toLeave'; n.stage = 'toGate';
-  startWalk(n, [...routeFrom(n.state, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def));
+  const walk = inNhaKhach(n.state) ? nkExit('gate') : routeFrom(n.state, 'gate');
+  startWalk(n, [...walk, visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def));
 }
 
 function visitorArrive(room: NpcRoom, n: Npc, now: number) {
@@ -438,14 +445,8 @@ function visitorArrive(room: NpcRoom, n: Npc, now: number) {
     n.until = now + 30_000;
   }
   else if (n.stage === 'toStroll') {
-    if (room.questGuard.has(n.def.id)) {
-      // Got a quest while strolling: cancel and stay.
-      n.strollStops = []; n.strollIdx = 0;
-      n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000);
-    } else {
-      n.stage = 'stroll'; n.phase = 'idle'; s.anim = 'idle'; s.ry = R(0, Math.PI * 2);
-      n.until = now + R(STROLL_IDLE_MIN_MS, STROLL_IDLE_MAX_MS);
-    }
+    if (room.questGuard.has(n.def.id)) cancelTour(room, n, now);
+    else tourBegin(room, n, now);
   }
   else if (n.stage === 'toGate' && n.mode === 'toLeave') {
     if (room.questGuard.has(n.def.id)) {
@@ -460,30 +461,103 @@ function visitorArrive(room: NpcRoom, n: Npc, now: number) {
   }
   else { n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000); }
 }
-/** Diem dao choi ngoai troi cho khach sau khi tung xong (chi dung node ngoai troi, khong vao dien): vuon Thien, Bao Thap, ben phong sinh, san Dien Mau, hanh lang, san truoc. */
-const STROLL_SPOTS = ['zenGarden', 'baoThap', 'thienDuong', 'psPier', 'quanYard', 'dienMau', 'buddhaYard', 'corrW', 'westMid', 'eastMid', 'restArea', 'denTrinh', 'bridgeN', 'pillars', 'drumTower', 'bellTower'] as const;
-const STROLL_CHANCE = 0.6; // ~60% khach dao choi, 40% ve thang nhu cu de cong khong vang
-const STROLL_STOP_MIN = 1;
-const STROLL_STOP_MAX = 3;
-const STROLL_IDLE_MIN_MS = 4000;
-const STROLL_IDLE_MAX_MS = 9000;
-
-function startStroll(room: NpcRoom, n: Npc, _now: number) {
+/** Tour sau khi tung: 2-3 trong 6 diem (chuong, Thien Duong, Nha Khach, phong sinh, Nha To, Vuon Thap), moi lan chon khac nhau. */
+const STROLL_CHANCE = 0.6; // ~60% khach di tour, 40% ve thang nhu cu de cong khong vang
+const TOUR_STOP_MIN = 2;
+const TOUR_STOP_MAX = 3;
+const TOUR_BELL_GAP_MS = 20_000;
+const BELL_SPOT: Pt = { x: -34, z: -6 };
+let tourReleaseBird = false;
+const via = (from: Pt, id: string, ...tail: Pt[]): Pt[] => { const r = routeFrom(from, id); return r.length ? [...r, ...tail] : []; };
+function bellOk(room: NpcRoom, now: number): boolean {
+  if (now - room.lastTourBellAt < TOUR_BELL_GAP_MS || activeBell(now)) return false;
+  const bell = room.npcs.find((m) => m.def.id === 'npc4');
+  return !(bell && !bell.gone && dist(bell.state, BELL_SPOT) < 1.5);
+}
+function pickFreeSeat(room: NpcRoom, hall: ChantSeat['hall']): ChantSeat | undefined {
+  const free = CHANT_SEATS.filter((s) => s.hall === hall && !room.seats.has(seatKey(s)));
+  return free.length ? free[Math.floor(Math.random() * free.length)] : undefined;
+}
+const NK_DOOR: Pt = { x: -47, z: -56.55 };
+const NK_OUT: Pt = { x: -47, z: -55.5 };
+const NK_MID: Pt = { x: -34, z: -56 };
+const inNhaKhach = (p: Pt) => p.x > -51.6 && p.x < -42.4 && p.z > -64.25 && p.z < -57.75;
+const nkVia = (id: string, ...tail: Pt[]): Pt[] => { const r = routeFrom(NK_MID, id); return r.length ? [NK_DOOR, NK_OUT, NK_MID, ...r, ...tail] : []; };
+const nkExit = (id: string): Pt[] => [NK_DOOR, NK_OUT, NK_MID, ...routeFrom(NK_MID, id)];
+function tourRoute(from: Pt, st: TourStop): Pt[] {
+  const inside = inNhaKhach(from);
+  const go = (id: string, ...tail: Pt[]): Pt[] => (inside ? nkVia(id, ...tail) : via(from, id, ...tail));
+  switch (st.kind) {
+    case 'bell': return go('bellTower');
+    case 'zen': return st.seat ? go('thienDuong', { x: st.seat.x, z: st.seat.z }) : [];
+    case 'guest': return st.seat ? (inside ? [{ x: st.seat.x, z: st.seat.z }] : via(from, 'ktIn', { x: -47, z: -55.5 }, { x: -47, z: -56.55 }, { x: st.seat.x, z: st.seat.z })) : [];
+    case 'release': return go('psPier');
+    case 'nhaTo': return go('toYard', { x: 36, z: -67.5 });
+    case 'tower': return go('toYard', { x: 43.6, z: -58.6 });
+  }
+}
+function dropSeat(room: NpcRoom, n: Npc, st: TourStop) {
+  if (st.seat && room.seats.get(seatKey(st.seat)) === n.def.id) room.seats.delete(seatKey(st.seat));
+}
+function resetTour(n: Npc) { n.tourStops = []; n.tourIdx = 0; n.tourPhase = 0; }
+/** Leave the tour for the gate; gives back every cushion still held. */
+function endTour(room: NpcRoom, n: Npc) {
+  releaseSeat(room, n.def.id); resetTour(n);
+  leaveToGate(n);
+}
+/** Quest arrived mid-tour: cancel and stay at the gate, like the old stroll. */
+function cancelTour(room: NpcRoom, n: Npc, now: number) {
+  releaseSeat(room, n.def.id); resetTour(n);
+  n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; n.state.anim = 'idle'; n.until = now + R(5000, 9000);
+}
+/** Walk to the current stop; stops with no route are skipped. */
+function tourGo(room: NpcRoom, n: Npc) {
+  while (n.tourIdx < n.tourStops.length) {
+    const st = n.tourStops[n.tourIdx];
+    const route = tourRoute(n.state, st);
+    if (route.length) { n.mode = 'normal'; n.stage = 'toStroll'; startWalk(n, route, visitorSpeed(n.def)); return; }
+    dropSeat(room, n, st); n.tourIdx++;
+  }
+  endTour(room, n);
+}
+function tourNext(room: NpcRoom, n: Npc) {
+  const st = n.tourStops[n.tourIdx];
+  if (st) dropSeat(room, n, st);
+  n.tourIdx++; n.tourPhase = 0;
+  tourGo(room, n);
+}
+/** Arrived at the stop: start its activity. */
+function tourBegin(room: NpcRoom, n: Npc, now: number) {
+  const s = n.state, st = n.tourStops[n.tourIdx];
+  if (!st) { endTour(room, n); return; }
+  n.stage = 'stroll'; n.mode = 'normal'; n.tourPhase = 0;
+  if (st.kind === 'bell') {
+    if (!bellOk(room, now)) { tourNext(room, n); return; }
+    room.lastTourBellAt = now; n.phase = 'act'; s.anim = 'ring'; n.until = now + 10_000;
+  } else if (st.kind === 'zen' || st.kind === 'guest') {
+    n.phase = 'act'; s.anim = 'sit'; if (st.seat) s.ry = st.seat.ry; n.until = now + R(30_000, 60_000);
+  } else {
+    s.ry = st.kind === 'release' ? Math.PI / 2 : Math.PI;
+    n.phase = 'act'; s.anim = 'bow'; n.until = now + (st.kind === 'release' ? 2000 : 3000);
+  }
+}
+function startStroll(room: NpcRoom, n: Npc, now: number) {
   if (room.questGuard.has(n.def.id) || Math.random() >= STROLL_CHANCE) { leaveToGate(n); return; }
-  const s = n.state;
-  const pool = [...STROLL_SPOTS];
-  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  const want = STROLL_STOP_MIN + Math.floor(Math.random() * (STROLL_STOP_MAX - STROLL_STOP_MIN + 1));
-  const stops: string[] = [];
-  for (const id of pool) {
+  const kinds: TourKind[] = ['bell', 'zen', 'guest', 'release', 'nhaTo', 'tower'];
+  for (let i = kinds.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [kinds[i], kinds[j]] = [kinds[j], kinds[i]]; }
+  const want = TOUR_STOP_MIN + Math.floor(Math.random() * (TOUR_STOP_MAX - TOUR_STOP_MIN + 1));
+  const stops: TourStop[] = [];
+  for (const kind of kinds) {
     if (stops.length >= want) break;
-    if (dist(s, nodePt(id)) > 5) stops.push(id);
+    if (kind === 'bell') { if (bellOk(room, now)) stops.push({ kind }); }
+    else if (kind === 'zen' || kind === 'guest') {
+      const seat = pickFreeSeat(room, kind === 'zen' ? 'thienDuong' : 'nhaKhach');
+      if (seat && takeSeat(room, seat, n.def.id)) stops.push({ kind, seat });
+    } else stops.push({ kind });
   }
   if (!stops.length) { leaveToGate(n); return; }
-  const route = routeFrom(s, stops[0]);
-  if (!route.length) { leaveToGate(n); return; }
-  n.mode = 'normal'; n.strollStops = stops; n.strollIdx = 0; n.stage = 'toStroll';
-  startWalk(n, route, visitorSpeed(n.def));
+  n.tourStops = stops; n.tourIdx = 0; n.tourPhase = 0;
+  tourGo(room, n);
 }
 
 function visitorDecide(room: NpcRoom, n: Npc, now: number) {
@@ -519,27 +593,27 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
     case 'toPlaza': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
     case 'branch': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
     case 'stroll': {
-      if (room.questGuard.has(n.def.id)) {
-        n.strollStops = []; n.strollIdx = 0;
-        n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000);
+      if (room.questGuard.has(n.def.id)) { cancelTour(room, n, now); break; }
+      const st = n.tourStops[n.tourIdx];
+      if (st && n.tourPhase === 0 && (st.kind === 'release' || st.kind === 'nhaTo' || st.kind === 'tower')) {
+        n.tourPhase = 1; n.phase = 'act';
+        if (st.kind === 'release') {
+          tourReleaseBird = !tourReleaseBird;
+          s.anim = 'idle'; n.until = now + 3000;
+          room.fx.push({ id: n.def.id, kind: tourReleaseBird ? 'bird' : 'fish', type: 'release' });
+        } else {
+          s.anim = 'incense'; n.until = now + 7000;
+          room.fx.push({ id: n.def.id, kind: 'incense' });
+        }
         break;
       }
-      n.strollIdx++;
-      const route = n.strollIdx < n.strollStops.length ? routeFrom(s, n.strollStops[n.strollIdx]) : [];
-      if (route.length) { n.stage = 'toStroll'; startWalk(n, route, visitorSpeed(n.def)); }
-      else { n.strollStops = []; n.strollIdx = 0; leaveToGate(n); }
+      tourNext(room, n);
       break;
     }
     case 'toStroll': {
-      if (room.questGuard.has(n.def.id)) {
-        n.strollStops = []; n.strollIdx = 0;
-        n.mode = 'normal'; n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000);
-        break;
-      }
-      const id = n.strollStops[n.strollIdx];
-      const route = id ? routeFrom(s, id) : [];
-      if (route.length) startWalk(n, route, visitorSpeed(n.def));
-      else { n.strollStops = []; n.strollIdx = 0; leaveToGate(n); }
+      if (room.questGuard.has(n.def.id)) { cancelTour(room, n, now); break; }
+      // Walk to the stop was aborted (blocked): drop the stop and move on.
+      tourNext(room, n);
       break;
     }
     case 'plaza': case 'toGate': n.stage = 'toGate'; startWalk(n, [...routeFrom(s, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def)); break;

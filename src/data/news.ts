@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 76;
+export const LATEST_NEWS_ID = 77;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Khách viếng tham quan chùa',
+    date: '2026-11-15',
+    items: [
+      'Sau khi lạy và tụng kinh, khách viếng có thể đi thêm một vòng quanh chùa.',
+      'Khách có thể rung chuông, ngồi thiền, nghỉ ở Nhà Khách, phóng sinh hoặc thắp hương ở Nhà Tổ và Vườn Tháp.',
+      'Mỗi lần viếng, khách chọn vài nơi khác nhau.',
+    ],
+  },
   {
     title: 'Bảng thông báo ngày lễ lớn trong năm',
     date: '2026-11-15',
