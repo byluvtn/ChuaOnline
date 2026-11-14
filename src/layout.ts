@@ -39,7 +39,7 @@ export const BAO_THAP_PLAT = {
   y: 0.9,          // cao độ mặt nền
   stepW: 1.3,      // nửa rộng bậc thềm
   step1: { z0: 5.0, z1: 5.9, y: 0.6 },
-  step2: { z0: 5.9, z1: 6.8, y: 0.3 },
+  step2: { z0: 5.9, z1: 6.8, y: 0.45 }, // 0.45 = mặt bệ base1 (đo raycast: seal-filler phủ bậc 2 ở 0.47, bậc hộp 0.3 bị chôn; 0.45 khớp filler ±0.02, mesh+groundY đồng bộ qua hằng này)
 };
 export const NHA_TO = { x: 36, z: -68 };
 export const NHA_TO_PLAT = { x: NHA_TO.x, z: NHA_TO.z, hx: 6.0, hz: 4.25, y: 0.3, ramp: 0.8 };
@@ -87,8 +87,13 @@ export function bridgeY(x: number, z: number) {
 export function groundY(x: number, z: number) {
   let y = 0;
   const dx = Math.max(Math.abs(x - HALL.x) - HALL.hx, 0), dz = Math.max(Math.abs(z - HALL.z) - HALL.hz, 0);
-  const d = Math.hypot(dx, dz);
-  if (d < HALL.ramp) y = HALL.h * (1 - d / HALL.ramp);
+  // Chính Điện: ba bậc nền hình chữ nhật khớp mesh hall.ts (nền 1.35, tầng 2 cao 0.9, tầng 1 cao 0.45).
+  const hm = Math.max(dx, dz);
+  if (hm <= 0) y = HALL.h;
+  else if (hm <= 0.45) y = 0.9;
+  else if (hm <= 0.8) y = 0.45;
+  // Ba bậc thềm phía Nam (world z -22 đến -20.4), cao 0.45.
+  if (Math.abs(x - HALL.x) <= 5.2 && z > HALL.z + HALL.hz && z <= -20.4) y = Math.max(y, 0.45);
   const ax = Math.abs(x);
   if (ax >= DECK.x0 && ax <= DECK.x1 && z >= DECK.z0 && z <= DECK.z1) y = Math.max(y, DECK.y);
   if (Math.abs(ax - CORR.x) <= CORR.half && z >= CORR.z0 && z <= CORR.z1) y = Math.max(y, CORR.y);
@@ -96,22 +101,36 @@ export function groundY(x: number, z: number) {
   if (Math.abs(x - PIER_FLOOR.x) <= PIER_FLOOR.hx && Math.abs(z - PIER_FLOOR.z) <= PIER_FLOOR.hz) y = Math.max(y, PIER_FLOOR.y);
   // nền Bảo Tháp + bậc thềm phía Nam
   const bp = BAO_THAP_PLAT;
-  if (Math.hypot(x - bp.x, z - bp.z) < bp.r) y = Math.max(y, bp.y);
+  // Vành đế Bảo Tháp: hai tầng bát giác (mặt phẳng hướng 0/45/90/135 độ). m là khoảng cách bát giác (apothem),
+  // bR = m / cos(pi/8) là bán kính ngoại tiếp tương đương, khớp CylinderGeometry xoay pi/8.
+  const bdx = x - bp.x, bdz = z - bp.z;
+  const bm = Math.max(Math.abs(bdx), Math.abs(bdz), Math.abs(bdx + bdz) * Math.SQRT1_2, Math.abs(bdx - bdz) * Math.SQRT1_2);
+  const bR = bm / Math.cos(Math.PI / 8);
+  // Hop bu seal (sealArchitectureJoints noi base1 voi than tang 0) top 0.92,
+  // nua canh 4.34 do bbox xoay phong dai (goc cylinder r 3.312 xoay pi/8).
+  if (Math.abs(bdx) <= 4.34 && Math.abs(bdz) <= 4.34) y = Math.max(y, 0.92);
+  if (bR <= 5.6) y = Math.max(y, bp.y);
+  else if (bR <= 6.0) y = Math.max(y, bp.y - (bp.y / 2) * (bR - 5.6) / 0.4);
+  else if (bR <= 6.5) y = Math.max(y, bp.y / 2);
+  else if (bR <= 6.8) y = Math.max(y, (bp.y / 2) * (6.8 - bR) / 0.3);
   if (Math.abs(x - bp.x) <= bp.stepW) {
     const dz = z - bp.z;
     if (dz > bp.step1.z0 && dz <= bp.step1.z1) y = Math.max(y, bp.step1.y);
     else if (dz > bp.step2.z0 && dz <= bp.step2.z1) y = Math.max(y, bp.step2.y);
   }
   const tp = TAM_THE_PLAT;
-  const tdx = Math.max(Math.abs(x - tp.x) - tp.hx, 0), tdz = Math.max(Math.abs(z - tp.z) - tp.hz, 0);
-  const td = Math.hypot(tdx, tdz);
-  if (td < tp.ramp) {
-    const onAxis = Math.abs(x - tp.x) <= tp.stairW && z > tp.stairTop;
-    if (!onAxis) y = Math.max(y, tp.y * (1 - td / tp.ramp));
+  const tax = Math.abs(x - tp.x), taz = Math.abs(z - tp.z);
+  const onAxis = tax <= tp.stairW && z > tp.stairTop;
+  // Ba tầng ledge tính theo từng trục (3.0 / 2.04 / 1.02); ngoài tầng 1 là đất trống nên không có sườn dốc.
+  if (!onAxis) {
+    if (tax <= 18.4 && taz <= 10.4) y = Math.max(y, tp.y);
+    else if (tax <= 19.2 && taz <= 11.2) y = Math.max(y, 2.04);
+    else if (tax <= 20 && taz <= 12) y = Math.max(y, 1.02);
   }
-  if (Math.abs(x - tp.x) <= tp.stairW && z > tp.stairTop - 0.01 && z < tp.zStart) {
-    const u = (tp.zStart - z) / (tp.zStart - tp.stairTop);
-    y = Math.max(y, tp.y * Math.max(0, Math.min(1, u)));
+  // Cầu thang 20 bậc, bước sâu thật 0.38 (= 7.6 / 20), mỗi bậc cao tp.y / 20.
+  if (tax <= tp.stairW && z > tp.stairTop - 0.01 && z <= tp.zStart) {
+    const k = Math.min(20, Math.floor((tp.zStart - z) / ((tp.zStart - tp.stairTop) / 20)) + 1);
+    y = Math.max(y, tp.y * k / 20);
   }
   const ap = AM_CO_PLAT;
   const adx = Math.max(Math.abs(x - ap.x) - ap.hx, 0), adz = Math.max(Math.abs(z - ap.z) - ap.hz, 0);
@@ -127,6 +146,12 @@ export function groundY(x: number, z: number) {
   const vdx = Math.max(Math.abs(x - vp.x) - vp.hx, 0), vdz = Math.max(Math.abs(z - vp.z) - vp.hz, 0);
   const vd = Math.hypot(vdx, vdz);
   if (vd < vp.ramp) y = Math.max(y, vp.y * (1 - vd / vp.ramp));
+  // Bệ tháp chuông và tháp trống: hai bậc vuông cứng (mesh tower() trong temple.ts, không vát).
+  for (const tw of [BELL, DRUM]) {
+    const tdx = Math.abs(x - tw.x), tdz = Math.abs(z - tw.z);
+    if (tdx <= 2.45 && tdz <= 2.45) y = Math.max(y, 0.8);
+    else if (tdx <= 2.8 && tdz <= 2.8) y = Math.max(y, 0.4);
+  }
   return Math.max(y, bridgeY(x, z));
 }
 

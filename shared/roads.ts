@@ -41,7 +41,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'hallFront', x: 0, z: -20 },
   { id: 'hallIn', x: 0, z: -24 },
   { id: 'hallWestWp', x: -21, z: -12.5 }, // west of the x=-18.1 colonnade; was (-18,-10), 0.50 from r0.50 column (-18.8,-9.4)
-  { id: 'hallEastWp', x: 22.8, z: -12.3 }, // gap between columns (22.5,-13.5) and (22.9,-11.2); was (24,-12.5)
+  { id: 'hallEastWp', x: 24.5, z: -12.3 }, // gap between columns (22.5,-13.5) and (22.9,-11.2); was (24,-12.5); dời khỏi collider tượng hành lang
   // Rear west / east
   { id: 'rearW', x: -46, z: -46 },
   { id: 'rearKT', x: -30, z: -46 },
@@ -77,7 +77,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'phongCDDoor', x: -36, z: 35 },
   { id: 'psPier', x: 30, z: -31 },
   { id: 'thienDuong', x: -39.5, z: -27.5 },
-  { id: 'zenGarden', x: -34, z: -26 },
+  { id: 'zenGarden', x: -35.75, z: -27.25 }, // trên mặt cát, cách khung ≥ 1 m, xa 3 đá thiền
   { id: 'corrW', x: -20.5, z: -6 },
   { id: 'pillars', x: 0, z: -5.9 },
   // Waypoints that route around the zen-garden/drum/pier colliders
@@ -96,8 +96,8 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'toIn', x: 30, z: -58 },
   { id: 'toYard', x: 41, z: -58 },
   { id: 'toE', x: 50, z: -58 },
-  { id: 'amCoE1', x: 55, z: -58 },
-  { id: 'amCoE2', x: 55, z: -68.5 },
+  { id: 'amCoE1', x: 57, z: -58 },
+  { id: 'amCoE2', x: 57, z: -68.5 },
   { id: 'amCoDoor', x: 53, z: -71 },
   { id: 'amCoEast', x: 57.2, z: -75 },
   // Zen garden east hedge gap (z = -26.6)

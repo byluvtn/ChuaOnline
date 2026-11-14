@@ -37,13 +37,19 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('stone_lantern', 26, -18, 0, 2.15, null, 0.3),
   p('stone_lantern', -25, -32, 0, 2.15, null, 0.3),
   p('stone_lantern', 28, -30, 0, 2.15, null, 0.3),
-  p('pagoda', 53, -66, 0, 5.1, null, 0.6),
+  p('pagoda', 53, -66, 0, 5.1, null, 1.3),
   p('zen_sand_garden', -34, -26, 0.2, null, 2.0, null),
 ];
 
-export const GARDEN_COLLIDERS: { x: number; z: number; r: number }[] = GARDEN_PLACEMENTS
-  .filter((g) => g.colliderR !== null)
-  .map((g) => ({ x: g.x, z: g.z, r: g.colliderR as number }));
+export const GARDEN_COLLIDERS: { x: number; z: number; r: number }[] = [
+  ...GARDEN_PLACEMENTS
+    .filter((g) => g.colliderR !== null)
+    .map((g) => ({ x: g.x, z: g.z, r: g.colliderR as number })),
+  // Đá thiền vườn cát (vườn cát GLB không có collider, chỉ đá)
+  { x: -34, z: -26, r: 0.65 },
+  { x: -33.3, z: -25.6, r: 0.45 },
+  { x: -34.5, z: -25.45, r: 0.38 },
+];
 
 function toToon(root: THREE.Object3D): void {
   root.traverse((o) => {

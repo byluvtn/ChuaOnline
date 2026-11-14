@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 78;
+export const LATEST_NEWS_ID = 79;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Không còn đi xuyên đồ vật',
+    date: '2026-11-15',
+    items: [
+      'Đã rà soát toàn bộ đồ vật trong chùa: nhân vật và NPC không còn đi xuyên qua bàn, ghế, giường, tường và tượng.',
+      'Sửa bậc thềm Bảo Tháp, bậc Tam Thế và đế tháp chuông/trống — đi lên xuống không còn bị chìm xuống đất.',
+      'NPC giờ tìm được đường tới cửa Nhà Khách và đi đúng đường trong chùa.',
+    ],
+  },
   {
     title: 'NPC đang làm gì thì tên hiện dòng trạng thái',
     date: '2026-11-15',
