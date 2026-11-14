@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 79;
+export const LATEST_NEWS_ID = 80;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa nhân vật chìm trong vườn cát thiền',
+    date: '2026-11-15',
+    items: [
+      'Nhân vật ngồi trong vườn cát thiền và sàn Đền Trình không còn bị chìm nửa người — mặt đất tại hai chỗ này đã nâng đúng độ cao bục.',
+      'Vườn cát vẫn nằm sát đất như cũ, không bị đội lên.',
+    ],
+  },
   {
     title: 'Không còn đi xuyên đồ vật',
     date: '2026-11-15',

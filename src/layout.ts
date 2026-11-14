@@ -10,6 +10,8 @@ export const WALL = { x: 62, zN: -82, zS: 45, gate: 4.4 };
 export const BELL = { x: -34, z: -6 };
 export const DRUM = { x: 34, z: -6 };
 export const DEN_TRINH = { x: 11, z: 39 };
+// Sàn Đền Trình: temple.ts:1130-1131, dtStone(4.4, 0.35, 3.6), mặt sàn y = 0.35
+export const DEN_TRINH_FLOOR = { x: 11, z: 39, hx: 1.8, hz: 2.2, y: 0.35 };
 /** Sân tượng Quan Âm (Đông), đối xứng BUDDHA_YARD (Tây). */
 export const QUAN = { x: 28, z: 14 };
 export const PIER = { x0: -10.6, x1: -4.4, z: 23, hw: 1.6, y: 0.55 };
@@ -72,6 +74,8 @@ export const BUDDHA_YARD = { x: -28, z: 14 };
 export const PLAZA = { x: 0, z: 6, r: 8.4 };
 /** Vườn Thiền (góc Tây–Bắc), khu nghỉ bóng cây (Đông–Nam) và hai bồn hoa bên bờ hồ. */
 export const ZEN = { x: -34, z: -26 };
+// Vườn cát thiền: zen_sand_garden.glb, đế 3.0x2.0 m, scale 2.0, mặt cát GLB y 0.34 x 2 = 0.68
+export const ZEN_GARDEN = { x: ZEN.x, z: ZEN.z, hx: 3.0, hz: 2.0, ry: 0.2, y: 0.68 };
 export const REST = { x: 27, z: 31 };
 export const FLOWER_BEDS = [{ x: 16.5, z: 23, a: 5, b: 3.5 }, { x: -16.5, z: 23, a: 5, b: 3.5 }];
 
@@ -84,7 +88,7 @@ export function bridgeY(x: number, z: number) {
 }
 
 /** Ground height under (x, z): hall platform, meditation decks, corridors and bridge are raised. */
-export function groundY(x: number, z: number) {
+export function groundYBase(x: number, z: number) {
   let y = 0;
   const dx = Math.max(Math.abs(x - HALL.x) - HALL.hx, 0), dz = Math.max(Math.abs(z - HALL.z) - HALL.hz, 0);
   // Chính Điện: ba bậc nền hình chữ nhật khớp mesh hall.ts (nền 1.35, tầng 2 cao 0.9, tầng 1 cao 0.45).
@@ -152,7 +156,21 @@ export function groundY(x: number, z: number) {
     if (tdx <= 2.45 && tdz <= 2.45) y = Math.max(y, 0.8);
     else if (tdx <= 2.8 && tdz <= 2.8) y = Math.max(y, 0.4);
   }
+  // Sàn Đền Trình
+  if (Math.abs(x - DEN_TRINH_FLOOR.x) <= DEN_TRINH_FLOOR.hx && Math.abs(z - DEN_TRINH_FLOOR.z) <= DEN_TRINH_FLOOR.hz) {
+    y = Math.max(y, DEN_TRINH_FLOOR.y);
+  }
   return Math.max(y, bridgeY(x, z));
+}
+
+/** Vườn cát thiền: viền khung ở 0.6, thấp hơn cát 0.08, dùng chung 0.68 cho cả footprint. Khi đặt chính vườn, dùng groundYBase. */
+export function groundY(x: number, z: number) {
+  const y = groundYBase(x, z);
+  const dx = x - ZEN_GARDEN.x, dz = z - ZEN_GARDEN.z;
+  const c = Math.cos(ZEN_GARDEN.ry), s = Math.sin(ZEN_GARDEN.ry);
+  const lx = dx * c - dz * s, lz = dx * s + dz * c;
+  if (Math.abs(lx) <= ZEN_GARDEN.hx && Math.abs(lz) <= ZEN_GARDEN.hz) return Math.max(y, ZEN_GARDEN.y);
+  return y;
 }
 
 export function inLake(x: number, z: number, pad = 0) {

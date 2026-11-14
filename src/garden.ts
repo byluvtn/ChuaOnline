@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { loadModel, fitModel } from './models';
 import { toon } from './toon';
-import { groundY } from './layout';
+import { groundYBase } from './layout';
 
 export interface GardenPlacement {
   name: string;
@@ -90,7 +90,7 @@ function buildInstance(base: THREE.Object3D, g: GardenPlacement): THREE.Object3D
   const outer = new THREE.Group();
   outer.add(inner);
   outer.rotation.y = g.ry;
-  outer.position.set(g.x, groundY(g.x, g.z), g.z);
+  outer.position.set(g.x, groundYBase(g.x, g.z), g.z);
   return outer;
 }
 
