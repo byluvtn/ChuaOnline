@@ -1166,9 +1166,10 @@ export function buildTemple(c: TempleCtx) {
     scene.add(board);
     colliders.push({ x: -5, z: 32, r: 1.0 });
   }
-  // ---- notice board (festival days) facing the honor board across the path ----
+  // ---- notice board (festival days) facing the gate like the honor board ----
+  let noticeBoard!: THREE.Group;
   {
-    const noticeBoard = new THREE.Group();
+    noticeBoard = new THREE.Group();
     const nPostM = new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 });
     for (const px of [-1.2, 1.2]) {
       const p = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.0, 0.14), nPostM);
@@ -1181,7 +1182,7 @@ export function buildTemple(c: TempleCtx) {
     const nNote = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('CÁC NGÀY LỄ LỚN') }));
     nNote.position.set(0, 0.55, 0.09); noticeBoard.add(nNote);
     noticeBoard.position.set(5, 0, 32);
-    noticeBoard.rotation.y = -Math.PI / 2;
+    noticeBoard.rotation.y = 0;
     scene.add(noticeBoard);
     colliders.push({ x: 5, z: 32, r: 1.0 });
   }
@@ -1624,5 +1625,5 @@ export function buildTemple(c: TempleCtx) {
   // bảng chữ Việt trên mọi cột đã gắn inscription (kể cả cột do hall.ts dựng)
   relabelColumns(scene);
 
-  return { seats, update, ringBell, ringDrum, zoneAt, inLake, pond: pondHandle, setHonorBoard, setStele };
+  return { seats, update, ringBell, ringDrum, zoneAt, inLake, pond: pondHandle, setHonorBoard, setStele, noticeBoard };
 }

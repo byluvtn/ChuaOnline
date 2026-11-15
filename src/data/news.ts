@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 94;
+export const LATEST_NEWS_ID = 95;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bảng thông báo: xoay ra cổng, bấm để đọc',
+    date: '2026-11-15',
+    items: [
+      'Bảng thông báo các ngày lễ lớn đã xoay mặt ra cổng chùa như bảng vinh danh — đi từ cổng vào là thấy mặt bảng.',
+      'Bấm thẳng vào bảng (khi đứng gần) sẽ mở bảng đọc các ngày lễ lớn, chữ to rõ; nút Ngày lễ gần bảng vẫn mở được như cũ.',
+    ],
+  },
   {
     title: 'Đổi vị trí điểm quét Q2/Q3/Q4',
     date: '2026-11-15',

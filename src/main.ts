@@ -666,6 +666,15 @@ addEventListener('pointerup', (e) => {
     const ndc = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, camera);
+    const boardHit = ray.intersectObject(world.noticeBoard, true)[0];
+    if (boardHit) {
+      const dist = Math.hypot(NOTICE_BOARD.x - me.char.root.position.x, NOTICE_BOARD.z - me.char.root.position.z);
+      if (dist <= 3.5) {
+        openFestivals();
+        dragging = false;
+        return;
+      }
+    }
     const hit = ray.intersectObject(world.ground)[0];
     if (hit) { if (guideQuestId) stopGuide(); sweepState = null; clickTarget = hit.point.clone(); bowSeat = null; setSitting(false); }
   }
