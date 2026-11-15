@@ -1310,8 +1310,17 @@ noticeBtn.onclick = () => openFestivals();
 // quest tracker: styled once here (no CSS file change); display is driven by updateTracker().
 const questTrackerEl = $('questTracker');
 questTrackerEl.hidden = false;
-let guideFeedX = 0, guideFeedZ = 0, guideFeedPX = 0, guideFeedPZ = 0, guideFeedN = 0;
+let guideFeedX = 0, guideFeedZ = 0, guideFeedN = 0;
 let guideRefreshT = 0, guideStillT = 0, guideStuckN = 0, guideMoveX = 0, guideMoveZ = 0;
+// Theo doi TIEN DO toi dich (chong ket truot vong / ping-pong): chi reset khi
+// khoang cach toi dich cai thien, khong reset khi nguoi choi nhuc nhich bat ky.
+// guideFeedPD: khoang cach toi dich luc feed gan nhat (de guideFeedN dem dung).
+let guideBestD = Infinity, guideBestT = 0, guideStallN = 0, guideFeedPD = Infinity;
+let guideSide: { x: number; z: number } | null = null;
+let guideStepKey = '';
+function resetGuideProgress(): void {
+  guideBestD = Infinity; guideBestT = 0; guideStallN = 0; guideSide = null; guideFeedPD = Infinity;
+}
 function guideGiveUp() {
   if (guideWaypoints.length > 1) guideWaypoints.shift();
   else { stopGuide(); toast('Không tới được, thử đi bộ tới gần hơn'); }
@@ -1475,6 +1484,7 @@ function startGuide(qid: string): void {
   }
   guideQuestId = qid;
   clickTarget = null; pathTarget = null; pathQueue = []; guideFeedN = 0; guideStuckN = 0;
+  guideStepKey = ''; resetGuideProgress();
   updateGuideTarget();
   updateGuidePath();
   updateTracker();
@@ -1496,6 +1506,11 @@ function updateGuideTarget(): void {
   if (!q || q.claimed) { stopGuide(); return; }
   const t = questTarget(q);
   if (!t) { stopGuide(); return; }
+  // Buoc nhiem vu doi (diem quet ke tiep, buoc moi): do lai tien do tu dau.
+  // NPC dang di (cung buoc, dich troi dan) thi KHONG reset — nguoi choi van
+  // duoi kip duoc, best-distance van cai thien binh thuong.
+  const key = guideQuestId + ':' + (currentStep(q) ?? '') + ':' + q.progress;
+  if (key !== guideStepKey) { guideStepKey = key; resetGuideProgress(); }
   guideTarget = t;
 }
 function guideStep(): string | null {
@@ -1508,9 +1523,15 @@ function updateGuidePath(): void {
   if (!guideTarget || !me) { guideGroup.visible = false; return; }
   const p = me.char.root.position;
   const from = { x: p.x, z: p.z };
-  let pts = routeFrom(from, nearestNode(guideTarget));
-  if (!pts.length) pts = [from, guideTarget];
-  else pts = [...pts, guideTarget];
+  // Duong dan ve bang findPath (tranh collider, co tangent detour) de hinh
+  // ve trung voi duong nguoi choi thuc su di; chi dung routeFrom khi findPath
+  // fallback (dich khong toi duoc) hoac tra ve rong.
+  let pts = pathfinder.findPath(from, guideTarget);
+  if (pathfinder.lastFallback || !pts.length) {
+    pts = routeFrom(from, nearestNode(guideTarget));
+    if (!pts.length) pts = [from, guideTarget];
+    else pts = [...pts, guideTarget];
+  } else pts = [from, ...pts];
   // Cap the discs at 40: if the route is longer, take every Nth waypoint.
   const step = Math.max(1, Math.ceil(pts.length / 40));
   const sampled = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
@@ -2023,7 +2044,37 @@ function loop(now: number = performance.now()) {
         updateGuideTarget();
         if (guideTarget && Math.hypot(guideTarget.x - ox, guideTarget.z - oz) > 1) updateGuidePath();
       }
-      if (!clickTarget || Math.hypot(p.x - guideMoveX, p.z - guideMoveZ) > 0.3) { guideMoveX = p.x; guideMoveZ = p.z; guideStillT = 0; if (clickTarget) guideStuckN = 0; }
+      // Theo doi TIEN DO toi dich (khac voi do chuyen dong): truot vong quanh
+      // vat can hay ping-pong giua 2 node deu doi vi tri lien tuc nhung khong
+      // lai gan dich — watchdog do chuyen dong khong thay duoc. Chi reset
+      // guideStuckN khi khoang cach toi dich cai thien (khong reset khi nguoi
+      // choi nhuc nhich bat ky nua — do la loi lam re-plan mai khong giveUp).
+      // Bo qua khi da o trong tam trigger 1,5 m (dang dung quet / cho, khong phai ket).
+      const dT = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
+      guideBestT += dt;
+      if (dT < guideBestD - 0.5) { guideBestD = dT; guideBestT = 0; guideStuckN = 0; guideFeedN = 0; }
+      else if (guideBestT > 6 && dT >= 1.5) {
+        guideBestT = 0;
+        if (++guideStallN >= 2) {
+          guideStallN = 0;
+          stopGuide();
+          toast('Không tới được, thử đi bộ tới gần hơn');
+        } else {
+          // Ne sang ben 2 m vuong goc huong toi dich, chon phia co doan sach;
+          // diem ne chen len dau guideWaypoints de feeder di qua no truoc.
+          const hx = guideTarget.x - p.x, hz = guideTarget.z - p.z;
+          const hl = Math.hypot(hx, hz) || 1;
+          guideSide = null;
+          for (const s of [1, -1]) {
+            const sx = p.x - (hz / hl) * 2 * s, sz = p.z + (hx / hl) * 2 * s;
+            if (pathfinder.segmentClear(p.x, p.z, sx, sz)) { guideSide = { x: sx, z: sz }; break; }
+          }
+          clickTarget = null; pathTarget = null; pathQueue = [];
+          if (guideSide) guideWaypoints = [guideSide, ...guideWaypoints];
+          else updateGuidePath();
+        }
+      }
+      if (!clickTarget || Math.hypot(p.x - guideMoveX, p.z - guideMoveZ) > 0.3) { guideMoveX = p.x; guideMoveZ = p.z; guideStillT = 0; }
       else if ((guideStillT += dt) > 3) {
         guideStillT = 0;
         clickTarget = null; pathTarget = null; pathQueue = [];
@@ -2048,8 +2099,12 @@ function loop(now: number = performance.now()) {
         else {
           let fx = wp.x, fz = wp.z;
           if (guideWaypoints.length <= 1) { fx = guideTarget.x - (guideTarget.x - p.x) / d * 1.0; fz = guideTarget.z - (guideTarget.z - p.z) / d * 1.0; }
-          if (Math.hypot(fx - guideFeedX, fz - guideFeedZ) < 0.3 && Math.hypot(p.x - guideFeedPX, p.z - guideFeedPZ) < 0.3) guideFeedN++;
-          else { guideFeedX = fx; guideFeedZ = fz; guideFeedPX = p.x; guideFeedPZ = p.z; guideFeedN = 1; }
+          // Chi dem khi cung 1 diem feed lap lai MA khong lai gan dich tu lan
+          // feed truoc (truot vong / ping-pong deu doi vi tri nhung khong tien
+          // toi dich, nen dem theo vi tri nhu cu se reset mai khong bao gio du).
+          const dFeed = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
+          if (Math.hypot(fx - guideFeedX, fz - guideFeedZ) < 0.3 && dFeed > guideFeedPD - 0.3) guideFeedN++;
+          else { guideFeedX = fx; guideFeedZ = fz; guideFeedPD = dFeed; guideFeedN = 1; }
           if (guideFeedN >= 3) guideGiveUp();
           else clickTarget = new THREE.Vector3(fx, 0, fz);
         }

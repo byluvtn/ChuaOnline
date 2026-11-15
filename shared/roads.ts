@@ -75,6 +75,11 @@ export const ROAD_NODES: RoadNode[] = [
   // no longer sit inside the Tam The platform (platform z -80..-56).
   { id: 'baoThap', x: -30, z: -28 }, // was -29: pillar r0.5 at (-30.2,-29.8) left only 0.33 clearance at the node
   { id: 'phongCDDoor', x: -36, z: 35 },
+  // Vườn Tây: nối qua lối đông (quanh đầu đông hàng cây z=29,9) vì cạnh
+  // vuonCay->phongCDDoor thẳng bị hàng cây chắn nên bị pathfinder loại bỏ.
+  // gateW/vuonCayE lấy từ điểm tiếp tuyến đã đo (đoạn nào cũng segmentClear).
+  { id: 'gateW', x: -10.6, z: 40.7 },
+  { id: 'vuonCayE', x: -37.8, z: 28.4 },
   { id: 'vuonCay', x: -48, z: 24.5 },
   { id: 'psPier', x: 30, z: -31 },
   { id: 'thienDuong', x: -39.5, z: -27.5 },
@@ -171,7 +176,9 @@ export const ROAD_EDGES: [string, string][] = [
   ['quanYard', 'restEast'], ['restEast', 'restSE'], ['restSE', 'restArea'], ['quanYard', 'dienMau'], ['buddhaYard', 'plaza'],
   ['buddhaYard', 'bridgeN'], ['denTrinh', 'gate'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'restArea'],
   ['phongCDDoor', 'gate'],
-  ['vuonCay', 'phongCDDoor'],
+  // Vườn Tây qua lối đông: gate -> gateW -> vuonCayE -> vuonCay (cạnh cũ
+  // vuonCay->phongCDDoor đã xóa: đoạn thẳng xuyên hàng cây nên build loại bỏ).
+  ['gate', 'gateW'], ['gateW', 'vuonCayE'], ['vuonCayE', 'vuonCay'],
   // Zen garden east hedge gap: hallFront -> east side -> gap -> baoThap / zenIn
   ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
   ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],

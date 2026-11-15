@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 97;
+export const LATEST_NEWS_ID = 98;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tối ưu dẫn đường: đi vòng qua vật cản, tự phát hiện kẹt',
+    date: '2026-11-15',
+    items: [
+      'Dẫn đường giờ tự đi vòng qua vật cản nhỏ (cột đá, bàn ghế, gốc cây) thay vì đâm thẳng vào rồi đứng im; đường vẽ vàng cũng đi đúng đường người chơi thực sự đi.',
+      'Nếu đích không tới được, dẫn đường sẽ thử né sang bên rồi mới dừng và báo rõ, thay vì đi qua đi lại mãi không tới.',
+    ],
+  },
   {
     title: 'Khách viếng tản ra hai bên chùa',
     date: '2026-11-15',

@@ -55,6 +55,36 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
     return true;
   }
 
+  // Ban kinh dung duoc that: collide() o main.ts day nguoi choi ra toi r + 0.4.
+  // WALK_CLEAR = 0.40 (= collide, khong cong them) dung de kiem tra "dang dung trong vong" va chan tiep tuyen
+  // co di duoc khong — duong tiep tuyen co the sat vong ke ben (1,05 m) ma van
+  // di duoc (collide truot qua), trong khi CLEARANCE 0,55 bao khong.
+  const WALK_CLEAR = 0.40;
+
+  function segmentWalkable(ax: number, az: number, bx: number, bz: number): boolean {
+    const dx = bx - ax, dz = bz - az;
+    const len2 = dx * dx + dz * dz;
+    stampId++;
+    const x0 = Math.floor(Math.min(ax, bx) / CELL), x1 = Math.floor(Math.max(ax, bx) / CELL);
+    const z0 = Math.floor(Math.min(az, bz) / CELL), z1 = Math.floor(Math.max(az, bz) / CELL);
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cz = z0; cz <= z1; cz++) {
+        const cell = grid.get(key(cx, cz));
+        if (!cell) continue;
+        for (let n = 0; n < cell.length; n++) {
+          const i = cell[n];
+          if (stamp[i] === stampId) continue;
+          stamp[i] = stampId;
+          const c = colliders[i];
+          const t = len2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((c.x - ax) * dx + (c.z - az) * dz) / len2));
+          const px = ax + dx * t, pz = az + dz * t;
+          if (Math.hypot(c.x - px, c.z - pz) < c.r + WALK_CLEAR) return false;
+        }
+      }
+    }
+    return true;
+  }
+
   // Road graph (normalised defensively: nodes are {x,z} with optional id; edges are [a,b] or {a,b}/{from,to}).
   const rawNodes = ROAD_NODES as unknown as any[];
   const pts: Pt[] = rawNodes.map((n) => ({ x: n.x, z: n.z }));
@@ -162,6 +192,98 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
     return { x: from.x + ux * tEntry, z: from.z + uz * tEntry };
   }
 
+  // Cac collider chan doan a->b (tra ve index, toi da `max` + 1 de biet la qua nhieu).
+  function blockers(a: Pt, b: Pt, max: number): number[] {
+    const out: number[] = [];
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const len2 = dx * dx + dz * dz;
+    stampId++;
+    const x0 = Math.floor(Math.min(a.x, b.x) / CELL), x1 = Math.floor(Math.max(a.x, b.x) / CELL);
+    const z0 = Math.floor(Math.min(a.z, b.z) / CELL), z1 = Math.floor(Math.max(a.z, b.z) / CELL);
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cz = z0; cz <= z1; cz++) {
+        const cell = grid.get(key(cx, cz));
+        if (!cell) continue;
+        for (const i of cell) {
+          if (stamp[i] === stampId) continue;
+          stamp[i] = stampId;
+          const c = colliders[i];
+          const t = len2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.z - a.z) * dz) / len2));
+          if (Math.hypot(c.x - (a.x + dx * t), c.z - (a.z + dz * t)) < c.r + CLEARANCE) {
+            out.push(i);
+            if (out.length > max) return out;
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  // Di vong cuc bo quanh vat can nho: di tiep tuyen voi vong tron phinh
+  // (r + CLEARANCE) o phia gan dich hon, thay vi quay ve lo trinh duong bo.
+  // Tra ve null khi khong vong duoc (dang dung trong vong, qua sau).
+  function tangentDetour(from: Pt, to: Pt, depth: number): Pt[] | null {
+    if (segmentClear(from.x, from.z, to.x, to.z)) return [{ x: to.x, z: to.z }];
+    if (depth <= 0) return null;
+    const bl = blockers(from, to, 12);
+    if (bl.length === 0) return null;
+    // Vat chan dau tien doc theo huong di (t nho nhat).
+    const dx = to.x - from.x, dz = to.z - from.z, len2 = dx * dx + dz * dz;
+    const tOf = (i: number) => ((colliders[i].x - from.x) * dx + (colliders[i].z - from.z) * dz) / len2;
+    bl.sort((i, j) => tOf(i) - tOf(j));
+    // Vat chan duy nhat nam sat dich (diem quet dat tren cay, r <= 1,2):
+    // cu di thang vao, collide() se truot nguoi choi ra khoi vong tron o
+    // cach dich ~1 m — trong tam trigger quet 1,5 m. Khong can vong.
+    const first = colliders[bl[0]];
+    if (tOf(bl[0]) > 0.9 && first.r <= 1.2) return [{ x: to.x, z: to.z }];
+    const c = first;
+    const R = c.r + CLEARANCE + 0.05;
+    const cx = c.x - from.x, cz = c.z - from.z;
+    const dc = Math.hypot(cx, cz);
+    if (dc <= c.r + WALK_CLEAR) return null; // dang dung trong vong that: de startExitPoint xu ly
+    if (dc <= R + 0.25) {
+      // Dung sat vong: tiep tuyen gan nhu khong co (buoc 0,4 m, xoay mai
+      // quanh cung mot cot) — di vong (orbit) quanh vong tron, moi cap 0,9 rad
+      // (~52°), de qua mat xa cua vat can thay vi bo quanh no.
+      const angFrom = Math.atan2(from.z - c.z, from.x - c.x);
+      let best: Pt[] | null = null, bestLen = Infinity;
+      for (const s of [-1, 1]) {
+        const a = angFrom + s * 0.9;
+        const wp = { x: c.x + Math.cos(a) * R * 1.04, z: c.z + Math.sin(a) * R * 1.04 };
+        if (!segmentWalkable(from.x, from.z, wp.x, wp.z)) continue;
+        const rest = tangentDetour(wp, to, depth - 1);
+        if (!rest) continue;
+        const route = [wp, ...rest];
+        let L = 0, px = from.x, pz = from.z;
+        for (const q of route) { L += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; }
+        if (L < bestLen) { bestLen = L; best = route; }
+      }
+      // Ca 2 huong orbit deu khong duoc: thu di thang (collide truot qua).
+      if (!best && segmentWalkable(from.x, from.z, to.x, to.z)) return [{ x: to.x, z: to.z }];
+      return best;
+    }
+    const base = Math.atan2(cz, cx);
+    const ang = Math.asin(Math.min(1, R / dc));
+    const tl = Math.sqrt(dc * dc - R * R);
+    let best: Pt[] | null = null, bestLen = Infinity;
+    for (const s of [-1, 1]) {
+      const a = base + s * ang;
+      // Diem tiep tuyen that, day ra them mot chut de nam ngoai vong.
+      const tx = from.x + Math.cos(a) * tl, tz = from.z + Math.sin(a) * tl;
+      const wp = { x: c.x + (tx - c.x) * 1.04, z: c.z + (tz - c.z) * 1.04 };
+      // Chan di duoc (WALK_CLEAR), khong doi chan sach tuyet doi: duong tiep
+      // tuyen qua cum cot sat nhau se sat vong ke ben nhung collide() truot qua duoc.
+      if (!segmentWalkable(from.x, from.z, wp.x, wp.z)) continue;
+      const rest = tangentDetour(wp, to, depth - 1);
+      if (!rest) continue;
+      const route = [wp, ...rest];
+      let L = 0, px = from.x, pz = from.z;
+      for (const q of route) { L += Math.hypot(q.x - px, q.z - pz); px = q.x; pz = q.z; }
+      if (L < bestLen) { bestLen = L; best = route; }
+    }
+    return best;
+  }
+
   function planRoute(from: Pt, to: Pt): Pt[] {
     lastFallback = false;
     if (segmentClear(from.x, from.z, to.x, to.z)) return [{ x: to.x, z: to.z }];
@@ -244,14 +366,77 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
     return out;
   }
 
-  // Obstacle only near the start: if the detour is >3x the straight distance and the rest of the
-  // straight line is clear, walk straight and let collide() slide the player out.
+  // Di vong cuc bo quanh vat can nho truoc, roi moi xet lo trinh duong bo:
+  // 1 vat nho chan duong thang khong con bat ca lo trinh phai vong xa nua.
+  // Diem co dung duoc khong: khong nam trong vong di duoc (r + WALK_CLEAR)
+  // cua bat ky collider nao. Luoi hash luu collider theo bbox phinh CLEARANCE
+  // (0,55 > 0,40) nen chi can kiem o cell chua diem.
+  function pointStandable(p: Pt): boolean {
+    const cell = grid.get(key(Math.floor(p.x / CELL), Math.floor(p.z / CELL)));
+    if (!cell) return true;
+    for (const i of cell) {
+      const c = colliders[i];
+      if (Math.hypot(c.x - p.x, c.z - p.z) < c.r + WALK_CLEAR) return false;
+    }
+    return true;
+  }
+
+  // Diem thoat gan nhat khi xuat phat nam trong vat can (cum da, hang rao):
+  // quet vong tron mo rong, chon diem dung duoc gan dich nhat. Neu khong co,
+  // tra ve null de roi ve hanh vi cu.
+  function escapePoint(from: Pt, to: Pt): Pt | null {
+    for (const rad of [0.75, 1.25, 1.75, 2.5, 3.25, 4]) {
+      let best: Pt | null = null, bestD = Infinity;
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2;
+        const p = { x: from.x + Math.cos(a) * rad, z: from.z + Math.sin(a) * rad };
+        if (!pointStandable(p)) continue;
+        const d = Math.hypot(p.x - to.x, p.z - to.z);
+        if (d < bestD) { bestD = d; best = p; }
+      }
+      if (best) return best;
+    }
+    return null;
+  }
+
   function findPath(from: Pt, to: Pt): Pt[] {
-    const route = planRoute(from, to);
     const direct = Math.hypot(to.x - from.x, to.z - from.z);
+    // Xuat phat trong vat can: thoat ra diem dung duoc gan nhat truoc khi
+    // dinh tuyen — neu khong collide() day qua day lai giua cac vat can
+    // va nguoi choi khong bao gio di chuyen (5 start luoi 441 cua v4).
+    if (!pointStandable(from)) {
+      const esc = escapePoint(from, to);
+      if (esc) return [esc, ...findPath(esc, to)];
+    }
+    const local = tangentDetour(from, to, 6);
+    let localLen = Infinity;
+    if (local) {
+      localLen = 0;
+      let px = from.x, pz = from.z;
+      for (const p of local) { localLen += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }
+      // Do vong cuc bo phai o gan duong thang: neu mot diem vong lech qua xa
+      // (vuot max(3 m, 30% duong thang)) thi do khong con la "vong cuc bo"
+      // nua ma la mot lo trinh khac — de duong bo (duoc thiet ke san) dam nhan.
+      const dx = to.x - from.x, dz = to.z - from.z;
+      const d2 = dx * dx + dz * dz;
+      const cap = Math.max(3, 0.3 * direct);
+      for (const p of local) {
+        const t = d2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((p.x - from.x) * dx + (p.z - from.z) * dz) / d2));
+        if (Math.hypot(p.x - (from.x + dx * t), p.z - (from.z + dz * t)) > cap) { localLen = Infinity; break; }
+      }
+    }
+    const route = planRoute(from, to);
     let len = 0, px = from.x, pz = from.z;
     for (const p of route) { len += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }
+    // Uu tien di vong cuc bo neu no khong dai hon nhieu so voi duong thang
+    // va (duong bo that bai hoac khong ngan hon no).
+    if (local && localLen <= 3 * direct && (lastFallback || localLen <= len)) {
+      lastFallback = false;
+      return local;
+    }
     if (len <= 3 * direct) return route;
+    // Obstacle only near the start: if the detour is >3x the straight distance and the rest of the
+    // straight line is clear, walk straight and let collide() slide the player out.
     const exit = startExitPoint(from, to);
     if (exit && segmentClear(exit.x, exit.z, to.x, to.z)) {
       lastFallback = false;
