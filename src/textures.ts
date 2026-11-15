@@ -279,6 +279,72 @@ export function vietnamesePlaqueTexture(text: string, w = 1024, h = 256) {
   return t;
 }
 
+export interface SteleData { name: string; merit: number; weekLabel: string }
+
+/** Mặt bia công đức tuần: canvas dọc 320×540, tiêu đề trên, tên giữa, tuần + công đức dưới. */
+export function steleTexture(data: SteleData | null) {
+  const W = 320, H = 540;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d')!;
+  const grad = g.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#cfc8b6');
+  grad.addColorStop(1, '#b9b19e');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 1800; i++) {
+    g.fillStyle = Math.random() < 0.5 ? 'rgba(60,55,45,0.07)' : 'rgba(255,255,245,0.08)';
+    g.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 2, 1 + Math.random() * 2);
+  }
+  g.strokeStyle = 'rgba(55,48,38,0.75)';
+  g.lineWidth = 3;
+  g.strokeRect(14, 14, W - 28, H - 28);
+  g.lineWidth = 1.5;
+  g.strokeRect(24, 24, W - 48, H - 48);
+
+  const engrave = (text: string, x: number, y: number) => {
+    g.fillStyle = 'rgba(255,255,245,0.55)';
+    g.fillText(text, x + 1, y + 1);
+    g.fillStyle = '#3a3226';
+    g.fillText(text, x, y);
+  };
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+
+  g.font = 'bold 30px serif';
+  engrave('BIA CÔNG ĐỨC', W / 2, 78);
+  g.font = 'bold 22px serif';
+  engrave('TUẦN', W / 2, 114);
+  g.strokeStyle = 'rgba(55,48,38,0.6)';
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(60, 142); g.lineTo(W - 60, 142); g.stroke();
+
+  if (!data) {
+    g.font = 'bold 30px serif';
+    engrave('CHƯA CÓ', W / 2, 250);
+    engrave('CÔNG ĐỨC', W / 2, 295);
+    engrave('TUẦN NÀY', W / 2, 340);
+  } else {
+    let size = 46;
+    const maxW = W - 80;
+    g.font = `bold ${size}px serif`;
+    while (g.measureText(data.name).width > maxW && size > 16) {
+      size -= 2;
+      g.font = `bold ${size}px serif`;
+    }
+    engrave(data.name, W / 2, 285);
+    g.beginPath(); g.moveTo(60, 400); g.lineTo(W - 60, 400); g.stroke();
+    g.font = 'bold 26px serif';
+    engrave(data.weekLabel, W / 2, 440);
+    g.font = 'bold 28px serif';
+    engrave(`${data.merit.toLocaleString('vi-VN')} công đức`, W / 2, 485);
+  }
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
 /** Thân cột kinh: đá sáng, chữ Việt in hoa xếp dọc (mỗi từ một dòng), khắc chìm tông tối. */
 export function sutraPillarTexture(text: string, w = 192, h = 1120) {
   const c = document.createElement('canvas');

@@ -12,7 +12,7 @@ import { loadModel, fitModel } from './models';
 import { makeGoldMaterial } from './statue-scan';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
-import { glowTexture, honorBoardTexture, signTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture, type HonorRow } from './textures';
+import { glowTexture, honorBoardTexture, signTexture, steleTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture, type HonorRow, type SteleData } from './textures';
 import { buildZafuParts } from './zafu';
 
 export interface Seat { x: number; z: number; ry: number; rest?: boolean }
@@ -1185,6 +1185,47 @@ export function buildTemple(c: TempleCtx) {
     scene.add(noticeBoard);
     colliders.push({ x: 5, z: 32, r: 1.0 });
   }
+
+  // Bia công đức tuần (R3.3): rìa quảng trường phía cổng, không chắn trục.
+  const stele = new THREE.Group();
+  stele.position.set(10, 0, 14);
+  stele.rotation.y = Math.atan2(-10, -8);
+  const steleStone = new THREE.MeshStandardMaterial({ color: 0x8d8a82, roughness: 0.95 });
+  const steleParts: Array<[number, number, number, number]> = [
+    [1.6, 0.35, 0.5, 0.175],
+    [1.2, 2.0, 0.28, 1.35],
+    [1.45, 0.18, 0.42, 2.44],
+    [0.6, 0.12, 0.30, 2.59],
+  ];
+  for (const [sx, sy, sz, py] of steleParts) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), steleStone);
+    m.position.y = py;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    stele.add(m);
+  }
+  const steleFaceMat = new THREE.MeshBasicMaterial({ map: null, transparent: true });
+  const steleFace = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.85), steleFaceMat);
+  steleFace.position.set(0, 1.35, 0.145);
+  stele.add(steleFace);
+  scene.add(stele);
+  colliders.push({ x: 10, z: 14, r: 1.2 });
+
+  let steleKey = '';
+  const setStele = (d: { name: string; merit: number; weekKey: string } | null) => {
+    const key = d ? `${d.weekKey}|${d.name}|${d.merit}` : 'null';
+    if (key === steleKey) return;
+    steleKey = key;
+    const data: SteleData | null = d
+      ? { name: d.name, merit: d.merit, weekLabel: `Tuần ${Number(d.weekKey.split('-W')[1])} — ${d.weekKey.slice(0, 4)}` }
+      : null;
+    const old = steleFaceMat.map;
+    steleFaceMat.map = steleTexture(data);
+    steleFaceMat.needsUpdate = true;
+    if (old) old.dispose();
+  };
+  setStele(null);
+
   const gateSeal = sealArchitectureJoints(gate, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump gate: filled=${gateSeal.filled} remaining=${gateSeal.remaining.length} ` + JSON.stringify(gateSeal.remaining));
   zones.push({ x: 0, z: WALL.zS, r: 6, id: 'tamQuan' });
@@ -1583,5 +1624,5 @@ export function buildTemple(c: TempleCtx) {
   // bảng chữ Việt trên mọi cột đã gắn inscription (kể cả cột do hall.ts dựng)
   relabelColumns(scene);
 
-  return { seats, update, ringBell, ringDrum, zoneAt, inLake, pond: pondHandle, setHonorBoard };
+  return { seats, update, ringBell, ringDrum, zoneAt, inLake, pond: pondHandle, setHonorBoard, setStele };
 }

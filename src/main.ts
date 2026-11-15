@@ -18,6 +18,7 @@ import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } fro
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
 import { ACTION_RULES, CHAIN_QUESTS, GARDEN_PLOTS, GARDEN_SEEDS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
+import { weekKey } from '../shared/time';
 import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, type Pt } from '../shared/roads';
@@ -459,6 +460,25 @@ function loadHonorThrottled() {
   if (wait <= 0) loadHonor();
   else if (honorTimer === undefined) honorTimer = window.setTimeout(() => { honorTimer = undefined; loadHonor(); }, wait);
 }
+const STELE_MIN_GAP = 10_000;
+let steleLast = -Infinity;
+let steleTimer: number | undefined;
+let lastSteleWeek = '';
+let steleIntervalStarted = false;
+function loadStele() {
+  steleLast = performance.now();
+  socket?.emit('rank:get', (res: { weekly?: { name: string; merit: number }[] } | undefined) => {
+    const wk = weekKey();
+    lastSteleWeek = wk;
+    const top = res?.weekly?.[0];
+    world.setStele(top && top.merit > 0 ? { name: top.name, merit: top.merit, weekKey: wk } : null);
+  });
+}
+function loadSteleThrottled() {
+  const wait = steleLast + STELE_MIN_GAP - performance.now();
+  if (wait <= 0) loadStele();
+  else if (steleTimer === undefined) steleTimer = window.setTimeout(() => { steleTimer = undefined; loadStele(); }, wait);
+}
 function connect() {
   socket = io({ auth: { token: getToken() } });
   const s = socket;
@@ -487,6 +507,15 @@ function connect() {
     updateMeditationHud();
     updateProfileHud();
     loadHonor();
+    loadStele();
+    if (!steleIntervalStarted) {
+      steleIntervalStarted = true;
+      window.setInterval(() => {
+        if (!socket?.connected) return;
+        if (weekKey() !== lastSteleWeek) loadSteleThrottled();
+        else loadStele();
+      }, 5 * 60 * 1000);
+    }
   });
   s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); });
   s.on('level:bonus', ({ level, coins, merit }: { level: number; coins: number; merit: number }) => {

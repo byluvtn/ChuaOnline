@@ -18,6 +18,16 @@ export const dayKeyICT = (d = new Date()): string => {
   return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
 };
 
+/** Tuần ISO dạng YYYY-Www (quy tắc thứ Năm, getter UTC) — khớp server/db.ts weekKey. */
+export const weekKey = (d = new Date()): string => {
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear();
+  const week = Math.ceil(((t.getTime() - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7);
+  return `${y}-W${week}`;
+};
+
 export interface LunarDate { day: number; month: number; year: number; leap: boolean }
 
 const PI = Math.PI;

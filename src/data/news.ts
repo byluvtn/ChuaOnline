@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 86;
+export const LATEST_NEWS_ID = 87;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bia công đức tuần',
+    date: '2026-11-15',
+    items: [
+      'Bia đá ở sân trước, rìa quảng trường phía cổng, khắc tên người có công đức cao nhất tuần.',
+      'Công đức tuần tính lại mỗi tuần; sang tuần mới bia đổi tên theo người dẫn đầu.',
+    ],
+  },
   {
     title: 'Tặng quà qua hòm thư',
     date: '2026-11-15',
