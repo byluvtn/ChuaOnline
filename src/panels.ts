@@ -32,6 +32,8 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Record<s
 
 const ITEM_ICON: Record<string, string> = {
   huong_tram: 'incense', hoa_sen: 'lotus', den_hoa_dang: 'lantern', mu_sen: 'lotus', hao_quang: 'halo', khan_do: 'scarf',
+  ao_dai_hong_sen: 'scarf', ao_dai_vang_nhat: 'scarf', ba_ba_nau: 'scarf', ba_ba_tim: 'scarf', ao_lam: 'scarf',
+  non_la: 'lotus', khan_dong: 'scarf',
 };
 /** Icon tile from the static, trusted SVG table (never user input). */
 function ic(itemId: string): HTMLElement {

@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 98;
+export const LATEST_NEWS_ID = 99;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Quần áo mới: áo dài, bà ba, áo lam, nón lá, khăn đóng',
+    date: '2026-11-15',
+    items: [
+      'Cửa hàng có thêm 7 món mặc được: áo dài hồng sen 90 xu, áo dài vàng nhạt 100 xu, bà ba nâu/tím 70 xu, áo lam 60 xu, nón lá 50 xu, khăn đóng 60 xu.',
+      'Mua xong vào Túi đồ bấm Đeo là mặc ngay — áo dài tà dài tới chân khi đứng, tự ngắn lại khi ngồi/lạy; nón lá đội vừa cả búi tóc nữ.',
+      'Nón lá làm lại theo ý kiến: vành về cỡ ban đầu, chỉ tăng chiều cao chóp.',
+    ],
+  },
   {
     title: 'Tối ưu dẫn đường: đi vòng qua vật cản, tự phát hiện kẹt',
     date: '2026-11-15',

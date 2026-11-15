@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Anim, Outfit } from '../shared/types';
 import { shadowBlobTexture } from './textures';
 import { geo, outlined, toon } from './toon';
+import { buildAoDaiHongSenV3, buildAoDaiVangNhatV3, buildBaBaNauV3, buildBaBaTimV3, buildAoLamNonLaV3, buildKhanDongV3 } from './clothing';
 
 interface FadeFrom {
   t0: number;
@@ -13,6 +14,49 @@ interface FadeFrom {
   shinRot?: THREE.Quaternion[];
   bodyPos: THREE.Vector3;
   bodyRot: THREE.Quaternion;
+}
+
+export interface GarmentState {
+  group: THREE.Group;
+  armL: THREE.Group; armR: THREE.Group;
+  foreL: THREE.Group; foreR: THREE.Group;
+  legL: THREE.Group; legR: THREE.Group;
+  shinL: THREE.Group; shinR: THREE.Group;
+  hemExt: THREE.Object3D | null;
+}
+
+// Dispose geometry + material của một cây object do builder tạo mới (không dùng geo() cache).
+function disposeGarment(g: THREE.Object3D): void {
+  g.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry) m.geometry.dispose();
+    const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+    if (Array.isArray(mat)) mat.forEach((x) => x.dispose());
+    else if (mat) mat.dispose();
+  });
+}
+
+// Map pivot theo VỊ TRÍ x/y, không theo tên key (key bà ba/áo lam đặt ngược).
+function mapGarmentPivots(name: string, g: THREE.Group): Omit<GarmentState, 'group' | 'hemExt'> {
+  const found: Record<string, THREE.Group | undefined> = {};
+  const pivots = (g.userData.pivots ?? {}) as Record<string, THREE.Group>;
+  for (const p of Object.values(pivots)) {
+    const side = p.position.x < 0 ? 'L' : 'R';
+    const kind = p.position.y > 0.6 ? 'arm' : 'leg';
+    found[kind + side] = p;
+  }
+  const forePivots = Object.values((g.userData.forePivots ?? {}) as Record<string, THREE.Group>);
+  const shinPivots = Object.values((g.userData.shinPivots ?? {}) as Record<string, THREE.Group>);
+  const childOf = (list: THREE.Group[], parent: THREE.Group | undefined) =>
+    parent ? list.find((f) => f.parent === parent) : undefined;
+  const armL = found.armL, armR = found.armR, legL = found.legL, legR = found.legR;
+  const foreL = childOf(forePivots, armL), foreR = childOf(forePivots, armR);
+  const shinL = childOf(shinPivots, legL), shinR = childOf(shinPivots, legR);
+  const all = { armL, armR, foreL, foreR, legL, legR, shinL, shinR };
+  for (const [k, v] of Object.entries(all)) {
+    if (!v) throw new Error(`garment ${name}: thieu pivot ${k}`);
+  }
+  return all as Omit<GarmentState, 'group' | 'hemExt'>;
 }
 
 export interface Character {
@@ -34,6 +78,7 @@ export interface Character {
   cane: boolean;
   beard?: THREE.Group;
   holdStaff: THREE.Group;
+  garment: { current: GarmentState | null };
   role?: 'abbot' | 'novice' | 'lay';
   poseW: number;
   poseKind: 'abbot' | 'sweep' | 'ring';
@@ -256,6 +301,8 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const root = new THREE.Group();
   if (opts?.scale) root.scale.setScalar(opts.scale);
   const body = new THREE.Group();
+  const robeGroup = new THREE.Group(); body.add(robeGroup);
+  const pinParts: THREE.Object3D[] = [];
   root.add(body);
 
   // soft blob shadow
@@ -279,32 +326,32 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const rAt = (y: number) => 0.37 - 0.1 * ((y - 0.17) / 0.93); // robe radius at height y
 
   // ---- torso: bell-shaped robe, rounded shoulders, hem band ----
-  outlined(mesh(geo('torso2', () => new THREE.CylinderGeometry(0.27, 0.37, 0.93, 22)), robe, body, 0, 0.635, 0));
-  const sh = mesh(geo('shoulder', () => new THREE.SphereGeometry(1, 18, 12)), robe, body, 0, 1.0, 0, false);
+  outlined(mesh(geo('torso2', () => new THREE.CylinderGeometry(0.27, 0.37, 0.93, 22)), robe, robeGroup, 0, 0.635, 0));
+  const sh = mesh(geo('shoulder', () => new THREE.SphereGeometry(1, 18, 12)), robe, robeGroup, 0, 1.0, 0, false);
   sh.scale.set(0.34, 0.14, 0.27);
-  mesh(geo('hem2', () => new THREE.CylinderGeometry(0.372, 0.376, 0.07, 22)), robeDark, body, 0, 0.205, 0, false);
+  mesh(geo('hem2', () => new THREE.CylinderGeometry(0.372, 0.376, 0.07, 22)), robeDark, robeGroup, 0, 0.205, 0, false);
   if (outfit === 'monk' || outfit === 'nun') { // cross-collar (Ã¡o cá»• chÃ©o)
     for (const sd of [-1, 1]) {
-      const st = mesh(geo('lapel', () => new THREE.CapsuleGeometry(0.022, 0.3, 4, 8)), robeDark, body, sd * 0.07, 0.94, rAt(0.94) + 0.012, false);
+      const st = mesh(geo('lapel', () => new THREE.CapsuleGeometry(0.022, 0.3, 4, 8)), robeDark, robeGroup, sd * 0.07, 0.94, rAt(0.94) + 0.012, false);
       st.rotation.z = -sd * 0.46; st.scale.z = 0.5;
     }
   } else { // lay devotees: V collar + inner collar ring
     const lc = outfit === 'female' ? 0.034 : 0.026;
     for (const sd of [-1, 1]) {
-      const st = mesh(geo(`lapel${outfit}`, () => new THREE.CapsuleGeometry(lc, 0.3, 4, 8)), cream, body, sd * 0.07, 0.94, rAt(0.94) + 0.012, false);
+      const st = mesh(geo(`lapel${outfit}`, () => new THREE.CapsuleGeometry(lc, 0.3, 4, 8)), cream, robeGroup, sd * 0.07, 0.94, rAt(0.94) + 0.012, false);
       st.rotation.z = -sd * 0.46; st.scale.z = 0.5;
     }
-    mesh(geo('neckring', () => new THREE.TorusGeometry(0.255, 0.034, 8, 22)), cream, body, 0, 1.075, 0.0, false).rotation.x = Math.PI / 2;
+    mesh(geo('neckring', () => new THREE.TorusGeometry(0.255, 0.034, 8, 22)), cream, robeGroup, 0, 1.075, 0.0, false).rotation.x = Math.PI / 2;
   }
   if (outfit === 'male') { // narrow belt at 0.30H
-    const belt = mesh(geo('belt', () => new THREE.CylinderGeometry(rAt(0.64) + 0.012, rAt(0.64) + 0.014, 0.075, 22)), tmat(0x2a384d), body, 0, 0.64, 0, false);
+    const belt = mesh(geo('belt', () => new THREE.CylinderGeometry(rAt(0.64) + 0.012, rAt(0.64) + 0.014, 0.075, 22)), tmat(0x2a384d), robeGroup, 0, 0.64, 0, false);
     mesh(geo('buckle', () => new THREE.BoxGeometry(0.06, 0.07, 0.02)), tmat(0xc9a14a), belt, 0, 0, rAt(0.64) + 0.02, false);
   }
   if (outfit === 'female') { // lotus embroidery on the wearer's left chest
     const dec = new THREE.Mesh(geo('embroidery', () => new THREE.PlaneGeometry(0.15, 0.15)),
       new THREE.MeshToonMaterial({ map: embroideryTexture(), transparent: true, gradientMap: null as any }));
     dec.position.set(0.125, 0.8, rAt(0.8) * Math.cos(0.4) + 0.006); dec.rotation.y = 0.4;
-    body.add(dec);
+    robeGroup.add(dec);
   }
 
   // ---- head ----
@@ -410,6 +457,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       pt.scale.set(1, 1.3, 0.5); pt.rotation.z = a - Math.PI / 2;
     }
     mesh(geo('pinCore', () => new THREE.SphereGeometry(0.022, 8, 6)), tmat(0xffd35a), fl, 0, 0, 0.012, false);
+    pinParts.push(pin, fl);
   }
 
   // ---- prayer beads (monk: 14 solid dark beads on a hanging loop; nun: small light wood) ----
@@ -537,10 +585,54 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   }
 
   // Accessories
+  const garmentState: { current: GarmentState | null } = { current: null };
   let accGroup: THREE.Group | null = null;
+  let accOwned = false; // accGroup do builder mới tạo -> được phép dispose
+  const suitBuilders: Record<string, () => THREE.Group> = {
+    ao_dai_hong_sen: buildAoDaiHongSenV3,
+    ao_dai_vang_nhat: buildAoDaiVangNhatV3,
+    ba_ba_nau: buildBaBaNauV3,
+    ba_ba_tim: buildBaBaTimV3,
+    ao_lam: buildAoLamNonLaV3,
+  };
   const setAccessory = (id: string | null) => {
-    if (accGroup) { body.remove(accGroup); accGroup = null; }
+    if (accGroup) { body.remove(accGroup); if (accOwned) disposeGarment(accGroup); accGroup = null; accOwned = false; }
+    if (garmentState.current) { body.remove(garmentState.current.group); disposeGarment(garmentState.current.group); }
+    garmentState.current = null;
+    const isHat = id === 'non_la' || id === 'khan_dong';
+    pinParts.forEach((p) => { p.visible = !isHat; });
+    robeGroup.visible = true;
     if (!id) return;
+    const suit = suitBuilders[id];
+    if (suit) {
+      const gr = suit();
+      if (id === 'ao_lam') { const nl = gr.getObjectByName('nonLa'); if (nl) nl.visible = false; }
+      let mapped: Omit<GarmentState, 'group' | 'hemExt'>;
+      try { mapped = mapGarmentPivots(id, gr); } catch (e) { disposeGarment(gr); throw e; }
+      body.add(gr);
+      garmentState.current = { group: gr, ...mapped, hemExt: (gr.userData.hemExt as THREE.Object3D | undefined) ?? null };
+      robeGroup.visible = false;
+      lap.visible = false;
+      return;
+    }
+    if (id === 'non_la') {
+      const built = buildAoLamNonLaV3();
+      const nl = built.getObjectByName('nonLa');
+      if (!nl) { disposeGarment(built); throw new Error('non_la: khong tim thay group nonLa'); }
+      built.remove(nl);
+      disposeGarment(built);
+      body.add(nl);
+      accGroup = nl as THREE.Group;
+      accOwned = true;
+      return;
+    }
+    if (id === 'khan_dong') {
+      const kd = buildKhanDongV3();
+      body.add(kd);
+      accGroup = kd;
+      accOwned = true;
+      return;
+    }
     const g = new THREE.Group();
     if (id === 'mu_sen') {
       const pink = tmat(0xff8fb6, { emissive: 0x4a1020 });
@@ -595,6 +687,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const c: Character = {
     root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, shinL, shinR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory,
+    garment: garmentState,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
       const font = '700 30px system-ui, "Segoe UI", sans-serif';
@@ -625,7 +718,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       B.sprite.visible = true;
       c.bubbleUntil = performance.now() + 5500 + shown.join('').length * 40;
     },
-    dispose() { L.tex.dispose(); B.tex.dispose(); (L.sprite.material as THREE.Material).dispose(); (B.sprite.material as THREE.Material).dispose(); blob.material.dispose(); },
+    dispose() { L.tex.dispose(); B.tex.dispose(); (L.sprite.material as THREE.Material).dispose(); (B.sprite.material as THREE.Material).dispose(); if (garmentState.current) { disposeGarment(garmentState.current.group); garmentState.current = null; } blob.material.dispose(); },
     head, cane: !!opts?.cane, beard: beardGroup, holdStaff,
   };
   return c;
@@ -918,4 +1011,26 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.foreR.rotation.set(-0.1, 0, 0);
   }
   c.holdStaff.visible = c.cane && anim !== 'sit' && anim !== 'lie' && anim !== 'bow';
+  const gm = c.garment.current;
+  if (gm) {
+    // Gắn tay/chân áo theo đúng pivot thật (đã copy xong mọi pose, IK, fade ở trên).
+    gm.armL.quaternion.copy(c.armL.quaternion);
+    gm.armR.quaternion.copy(c.armR.quaternion);
+    gm.foreL.quaternion.copy(c.foreL.quaternion);
+    gm.foreR.quaternion.copy(c.foreR.quaternion);
+    gm.legL.quaternion.copy(c.legL.quaternion);
+    gm.legR.quaternion.copy(c.legR.quaternion);
+    gm.shinL.quaternion.copy(c.shinL.quaternion);
+    gm.shinR.quaternion.copy(c.shinR.quaternion);
+    // Chân dời vị trí khi ngồi/lạy nên copy cả position; tay đứng yên ở pivot vai.
+    gm.legL.position.copy(c.legL.position);
+    gm.legR.position.copy(c.legR.position);
+    // Khi nằm (lie) chân thật bị ẩn thì ống quần cũng ẩn theo.
+    gm.legL.visible = c.legL.visible;
+    gm.legR.visible = c.legR.visible;
+    // Lap là vạt áo choàng gốc, áo mới không dùng.
+    c.lap.visible = false;
+    // Tà dài chỉ hiện khi đứng thẳng.
+    if (gm.hemExt) gm.hemExt.visible = anim === 'idle' || anim === 'walk' || anim === 'run';
+  }
 }

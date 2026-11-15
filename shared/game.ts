@@ -62,6 +62,11 @@ export const ITEMS: ShopItem[] = [
   { id: 'ao_trang_nau', name: 'Áo tràng nâu', desc: 'Áo tràng màu nâu đất.', price: 120, kind: 'accessory', icon: '🧘', category: 'ao_trang', minLevel: 2 },
   { id: 'ao_trang_vang', name: 'Áo tràng vàng', desc: 'Áo tràng vàng kim — chỉ dành cho bậc cao cấp.', price: 320, kind: 'accessory', icon: '✨', category: 'ao_trang', minLevel: 4 },
   { id: 'ao_trang_truc', name: 'Áo tràng trúc xanh', desc: 'Áo tràng xanh lam.', price: 150, kind: 'accessory', icon: '🟦', category: 'ao_trang', minLevel: 3 },
+  { id: 'ao_dai_hong_sen', name: 'Áo dài hồng sen', desc: 'Áo dài hồng sen, tà dài tới chân, quần trắng.', price: 90, kind: 'accessory', icon: '🧥', category: 'ao_trang', minLevel: 2 },
+  { id: 'ao_dai_vang_nhat', name: 'Áo dài vàng nhạt', desc: 'Áo dài vàng nhạt, tà dài tới chân, quần trắng.', price: 100, kind: 'accessory', icon: '🧥', category: 'ao_trang', minLevel: 3 },
+  { id: 'ba_ba_nau', name: 'Bà ba nâu', desc: 'Áo bà ba nâu, áo ngắn tay, quần đen.', price: 70, kind: 'accessory', icon: '👕', category: 'ao_trang' },
+  { id: 'ba_ba_tim', name: 'Bà ba tím', desc: 'Áo bà ba tím, áo ngắn tay, quần đen.', price: 70, kind: 'accessory', icon: '👕', category: 'ao_trang', minLevel: 2 },
+  { id: 'ao_lam', name: 'Áo lam đi chùa', desc: 'Áo lam xám, cổ trắng — nam nữ đều mặc được.', price: 60, kind: 'accessory', icon: '👕', category: 'ao_trang' },
   // ---- Tràng hạt
   { id: 'trang_hat', name: 'Tràng hạt 108', desc: 'Mỗi lần tụng kinh nhận thêm công đức. Dùng 1 lần.', price: 30, kind: 'consumable', icon: '📿', category: 'trang_hat', boostMerit: 2 },
   { id: 'trang_hat_ngoc', name: 'Tràng hạt ngọc', desc: 'Tràng hạt ngọc trai — vật phẩm quý.', price: 200, kind: 'accessory', icon: '📿', category: 'trang_hat', minLevel: 3 },
@@ -72,6 +77,8 @@ export const ITEMS: ShopItem[] = [
   { id: 'mu_sen', name: 'Mũ sen', desc: 'Búp sen hồng trên đầu.', price: 120, kind: 'accessory', icon: '🌸', category: 'mu' },
   { id: 'khan_do', name: 'Khăn đỏ', desc: 'Khăn quàng cổ màu đỏ may mắn.', price: 80, kind: 'accessory', icon: '🧣', category: 'mu' },
   { id: 'mu_truc', name: 'Mũ trúc', desc: 'Mũ nan trúc.', price: 95, kind: 'accessory', icon: '🎩', category: 'mu', minLevel: 2 },
+  { id: 'non_la', name: 'Nón lá', desc: 'Nón lá — vành vừa đầu, chóp cao.', price: 50, kind: 'accessory', icon: '🎋', category: 'mu' },
+  { id: 'khan_dong', name: 'Khăn đóng', desc: 'Khăn đóng chàm đen, đội trên đầu.', price: 60, kind: 'accessory', icon: '🎩', category: 'mu' },
   // ---- Pháp khí
   { id: 'chuong_nho', name: 'Chuông nhỏ', desc: 'Chuông đồng nhỏ trong tay.', price: 110, kind: 'accessory', icon: '🔔', category: 'phap_khi' },
   { id: 'mo_go', name: 'Mõ gỗ', desc: 'Mõ gỗ cầm tay.', price: 100, kind: 'accessory', icon: '🥁', category: 'phap_khi' },
