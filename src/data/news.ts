@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 90;
+export const LATEST_NEWS_ID = 91;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa râu Sư Ông dính áo',
+    date: '2026-11-15',
+    items: [
+      'Râu trắng của Sư Ông giờ treo rời trước ngực, không còn dính bẹp lên áo khi đứng, đi hay ngồi.',
+      'Râu vẫn dài như cũ, gắn ở cằm; chỉ không còn chui vào áo nữa.',
+    ],
+  },
   {
     title: 'Sửa lỗi dẫn đường quét sân',
     date: '2026-11-15',

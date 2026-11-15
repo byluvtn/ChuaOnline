@@ -32,6 +32,7 @@ export interface Character {
   holdBroom: THREE.Group;
   head: THREE.Mesh;
   cane: boolean;
+  beard?: THREE.Group;
   holdStaff: THREE.Group;
   role?: 'abbot' | 'novice' | 'lay';
   poseW: number;
@@ -330,6 +331,10 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     m.scale.set(rx, ry, rz); m.rotation.z = rotZ; if (outline) outlined(m, 0.03); return m;
   };
 
+  // Beard hang: the cane-beard keeps a constant WORLD tilt (it hangs by gravity,
+  // not by the head), so it stays off the robe in every pose. The tilt is applied
+  // every frame in animateCharacter (see BEARD_WORLD_TILT below).
+  let beardGroup: THREE.Group | undefined;
   if (opts?.role === 'abbot') { // white moustache and long white beard, head-local (front = +Z)
     const whiteM = tmat(0xffffff);
     const blob = (x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
@@ -342,22 +347,27 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     };
     const hasCane = !!opts?.cane; // có gậy: râu dài treo ở neo cằm, bù góc cúi đầu để không chui vào áo
     const beard = new THREE.Group();
-    if (hasCane) { beard.position.set(0, -0.42, 0.56); beard.rotation.x = -0.45; head.add(beard); }
+    if (hasCane) { beard.position.set(0, -0.42, 0.56); beard.rotation.x = -0.45; head.add(beard); beardGroup = beard; }
     for (const sd of [-1, 1]) {
       const mo = blob(sd * 0.08, -0.165, 0.5, 0.1, 0.035, 0.05);
       mo.rotation.set(0, sd * 0.35, -sd * 0.3);
       outlined(mo, 0.014);
       if (hasCane) {
-        beard.add(blob(sd * 0.25, -0.03, -0.09, 0.09, 0.15, 0.09));
-        beard.add(taper(sd * 0.25, -0.20, -0.09, 0.09, 0.2, 0.09));
+        // Beard pieces follow the chest curve: the upper blobs sit further forward
+        // (+0.08) so the mid-beard clears the leaning robe; the tapers sit further
+        // forward still (+0.06 vs the old z) because the cone's widest part is its
+        // TOP and its back edge was the surface still touching the robe (measured
+        // gap -0.04 at y ~1.0 after the blob shift alone). Tip stays in range.
+        beard.add(blob(sd * 0.25, -0.03, -0.01, 0.09, 0.15, 0.09));
+        beard.add(taper(sd * 0.25, -0.20, -0.01, 0.09, 0.2, 0.09));
       } else {
         blob(sd * 0.25, -0.45, 0.39, 0.09, 0.15, 0.09);
         taper(sd * 0.25, -0.62, 0.39, 0.09, 0.2, 0.09);
       }
     }
     if (hasCane) {
-      beard.add(blob(0, -0.08, -0.08, 0.23, 0.15, 0.085));
-      beard.add(taper(0, -0.26, -0.08, 0.23, 0.36, 0.085));
+      beard.add(blob(0, -0.08, 0.00, 0.23, 0.15, 0.085));
+      beard.add(taper(0, -0.26, 0.00, 0.23, 0.36, 0.085));
     } else {
       blob(0, -0.5, 0.4, 0.23, 0.15, 0.085);
       taper(0, -0.68, 0.4, 0.23, 0.36, 0.085);
@@ -616,7 +626,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       c.bubbleUntil = performance.now() + 5500 + shown.join('').length * 40;
     },
     dispose() { L.tex.dispose(); B.tex.dispose(); (L.sprite.material as THREE.Material).dispose(); (B.sprite.material as THREE.Material).dispose(); blob.material.dispose(); },
-    head, cane: !!opts?.cane, holdStaff,
+    head, cane: !!opts?.cane, beard: beardGroup, holdStaff,
   };
   return c;
 }
@@ -678,6 +688,11 @@ const _fq = new THREE.Quaternion(), _fv = new THREE.Vector3();
 function fadeQ(cur: THREE.Quaternion, old: THREE.Quaternion, k: number) { _fq.copy(cur); cur.copy(old).slerp(_fq, k); }
 function fadeV(cur: THREE.Vector3, old: THREE.Vector3, k: number) { _fv.copy(cur); cur.copy(old).lerp(_fv, k); }
 export const BEADS_MS = 2400;
+// Beard world tilt for cane abbots (Sư Ông): the beard hangs at this fixed world
+// angle (just forward of vertical) in every pose, instead of swinging with the
+// head bow (which glued it to the robe when hunched and flung it forward when
+// sitting). Tuned by raycast: idle/walk/chant min gap +0.02..+0.03, sit tip 0.19.
+const BEARD_WORLD_TILT = 0.17;
 
 /** Procedural animation. t = seconds. */
 export function animateCharacter(c: Character, anim: Anim | string, t: number) {
@@ -892,6 +907,11 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.head.rotation.x = 0.30;
   } else {
     c.head.rotation.x = 0;
+  }
+  // Râu treo theo trọng lực: giữ tilt WORLD không đổi (xem BEARD_WORLD_TILT),
+  // bù cả còng lưng (body) lẫn cúi đầu (head) mỗi frame. Chỉ Sư Ông có beard.
+  if (c.beard) {
+    c.beard.rotation.x = BEARD_WORLD_TILT - c.body.rotation.x - c.head.rotation.x;
   }
   if (c.cane && (anim === 'idle' || anim === 'walk' || anim === 'run') && w === 0) {
     c.armR.rotation.set(-0.1, 0, 0.22);
