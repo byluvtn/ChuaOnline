@@ -18,7 +18,7 @@ import { renderGardenTrees, setGardenGateBoard } from './vuoncay';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
-import { ACTION_RULES, CHAIN_QUESTS, GARDEN_PLOTS, GARDEN_SEEDS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
+import { ACTION_RULES, CHAIN_QUESTS, GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEEDS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
 import { weekKey } from '../shared/time';
 import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
@@ -1790,10 +1790,10 @@ function gardenWater(plot: number) {
 
 function gardenHarvest(plot: number) {
   if (!socket) return;
-  socket.emit('garden:harvest', { plot }, (r: { ok: boolean; states?: GardenPlotState[]; error?: string; merit?: number; coins?: number; seeds?: number }) => {
+  socket.emit('garden:harvest', { plot }, (r: { ok: boolean; states?: GardenPlotState[]; error?: string; merit?: number; coins?: number; seeds?: number; goodSeeds?: number }) => {
     if (!r.ok) { toast(r.error ?? 'Lỗi'); return; }
     if (r.states) applyGardenStates(r.states);
-    toast(`Thu hoạch +${r.merit ?? 0} công đức, +${r.coins ?? 0} xu, được ${r.seeds ?? 0} hạt`);
+    toast(`Thu hoạch +${r.merit ?? 0} công đức${(r.coins ?? 0) > 0 ? `, +${r.coins} xu` : ''}, được ${r.seeds ?? 0} hạt${(r.goodSeeds ?? 0) > 0 ? ` (trong đó ${r.goodSeeds} hạt tốt!)` : ''}`);
   });
 }
 
@@ -1812,23 +1812,25 @@ function openGardenPanel() {
         const status = st.harvested ? 'Đã thu hoạch, đang nghỉ'
           : st.wilted ? 'Héo — cần tưới'
           : st.stage >= 4 ? 'Lớn, thu hoạch được'
-          : st.wateredToday ? 'Đang lớn' : 'Cần tưới';
+          : st.progress > 0 ? 'Đang lớn'
+          : st.waterCooldownMs > 0 ? `Chờ tưới lại sau ${Math.ceil(st.waterCooldownMs / 60000)} phút`
+          : 'Cần tưới';
         row.append(
           h('div', {},
-            h('div', {}, `Luống ${def.id} — ${GARDEN_SEEDS[st.species].name} • ${GARDEN_STAGE_NAME[st.stage]} • ${status}`),
+            h('div', {}, `Luống ${def.id} — ${(st.quality === 'good' ? GARDEN_GOOD_SEEDS : GARDEN_SEEDS)[st.species].name} • ${GARDEN_STAGE_NAME[st.stage]} • ${status} (đã tưới ${st.waters}/${st.quality === 'good' ? 2 : 3})`),
             h('progress', { max: 100, value: Math.round(st.progress * 100) })),
           h('button', {
-            disabled: st.harvested || (!st.harvestable && st.wateredToday && !st.wilted),
+            disabled: st.harvested || (!st.harvestable && st.waterCooldownMs > 0 && !st.wilted),
             onclick: () => {
               if (st.harvestable) gardenHarvest(def.id);
               else gardenWater(def.id);
             },
-          }, st.harvestable ? 'Thu hoạch' : 'Tưới nước'),
+          }, st.harvestable ? 'Thu hoạch' : st.waterCooldownMs > 0 && !st.wilted ? `Tưới lại sau ${Math.ceil(st.waterCooldownMs / 60000)} phút` : 'Tưới nước'),
         );
       }
       body.appendChild(row);
     }
-    body.appendChild(h('p', {}, `Đang lớn: ${gardenGrowing()}/8 — cây lớn 5 phút/giai đoạn khi đã tưới hôm nay; quá 24 h không tưới thì héo, quá 48 h cây biến mất.`));
+    body.appendChild(h('p', {}, `Đang lớn: ${gardenGrowing()}/8 — cây thường: tưới 3 lần, mỗi lần cách 15 phút, lớn sau ~45 phút; cây hạt tốt: tưới 2 lần, mỗi lần cách 10 phút, lớn sau ~20 phút; thu hoạch +15 công đức + 1–2 hạt, cây hạt tốt thêm 15 xu; quá 24 h không tưới thì héo, quá 48 h cây biến mất.`));
     return () => { gardenPanelOpen = false; };
   });
 }
@@ -1840,6 +1842,17 @@ function openSeedPicker(plot: number) {
       const have = profile?.inventory?.[s.item] ?? 0;
       body.appendChild(h('div', { class: 'qrow' },
         h('span', {}, `${s.name} — ${s.price} xu/hạt (đang có ${have})`),
+        h('button', {
+          disabled: have <= 0,
+          onclick: () => { closePanel(); gardenPlant(plot, s.item); },
+        }, 'Gieo')));
+    }
+    // Hạt TỐT: chỉ có từ thu hoạch, không bán ở shop.
+    for (const k of Object.keys(GARDEN_GOOD_SEEDS) as GardenSpecies[]) {
+      const s = GARDEN_GOOD_SEEDS[k];
+      const have = profile?.inventory?.[s.item] ?? 0;
+      body.appendChild(h('div', { class: 'qrow' },
+        h('span', {}, `★ ${s.name} — chỉ từ thu hoạch (đang có ${have})`),
         h('button', {
           disabled: have <= 0,
           onclick: () => { closePanel(); gardenPlant(plot, s.item); },
@@ -1876,7 +1889,7 @@ function updateZoneBtn() {
       const { def, st } = near;
       if (!st.species) { label = 'Gieo hạt'; run = () => openSeedPicker(def.id); }
       else if (st.harvestable) { label = 'Thu hoạch'; run = () => gardenHarvest(def.id); }
-      else if (!st.harvested && (!st.wateredToday || st.wilted)) { label = 'Tưới nước'; run = () => gardenWater(def.id); }
+      else if (!st.harvested && (st.waterCooldownMs === 0 || st.wilted)) { label = 'Tưới nước'; run = () => gardenWater(def.id); }
     }
     const sig = `vuoncay:${label}:${near?.def.id ?? 0}`;
     if (sig !== gardenBtnSig) {

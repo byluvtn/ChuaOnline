@@ -17,6 +17,12 @@ export const db = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 console.log(`[db] mode: ${process.env.TURSO_DATABASE_URL ? 'turso' : 'local file'}`);
+// Chịu đựng ghi đồng thời: khi 2 handler cùng ghi (2 người chơi tưới/thu hoạch cùng lúc),
+// SQLite local mặc định báo SQLITE_BUSY ngay và socket handler không bắt sẽ làm chết server.
+// Cho phép chờ khóa tối đa 5 s. Chỉ áp dụng cho file local (Turso remote không hỗ trợ PRAGMA này).
+if (!process.env.TURSO_DATABASE_URL) {
+  await db.execute({ sql: 'PRAGMA busy_timeout = 5000' });
+}
 
 await db.executeMultiple(`
 CREATE TABLE IF NOT EXISTS players (
@@ -351,6 +357,7 @@ await db.execute(`CREATE TABLE IF NOT EXISTS garden_plots (
   player_id INTEGER NOT NULL,
   plot_id INTEGER NOT NULL,
   species TEXT NOT NULL,
+  quality TEXT NOT NULL DEFAULT 'normal',
   stage INTEGER NOT NULL DEFAULT 1,
   planted_at INTEGER NOT NULL,
   last_watered_at INTEGER NOT NULL,
@@ -360,8 +367,24 @@ await db.execute(`CREATE TABLE IF NOT EXISTS garden_plots (
   wilted INTEGER NOT NULL DEFAULT 0,
   grow_counted INTEGER NOT NULL DEFAULT 0,
   harvested_at INTEGER NOT NULL DEFAULT 0,
+  waters INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (player_id, plot_id)
 )`);
+// Mở rộng Vườn Cây (2026-11-15): hạt thu hoạch có chất lượng (thường/tốt) + số lần đã tưới.
+// PRAGMA-guarded: chỉ chạy trên DB cũ (DB mới đã có 2 cột qua CREATE TABLE ở trên).
+{
+  const cols = await db.execute({ sql: `PRAGMA table_info(garden_plots)` });
+  const names = (cols.rows as unknown as { name: string }[]).map((c) => c.name);
+  if (!names.includes('quality')) {
+    await db.execute({ sql: `ALTER TABLE garden_plots ADD COLUMN quality TEXT NOT NULL DEFAULT 'normal'` });
+  }
+  if (!names.includes('waters')) {
+    await db.execute({ sql: `ALTER TABLE garden_plots ADD COLUMN waters INTEGER NOT NULL DEFAULT 0` });
+    // Backfill DUY NHẤT lúc vừa thêm cột: cây cũ ở stage N đã được tưới N-1 lần
+    // (mỗi giai đoạn cần 1 lần tưới; cây mới gieo từ hạt tốt ở stage 2 có waters = 0).
+    await db.execute({ sql: `UPDATE garden_plots SET waters = stage - 1` });
+  }
+}
 const STAT_COLUMNS: Record<StatKey, string> = {
   bows: 'bows', chants: 'chants', lanterns: 'lanterns', meditate_sec: 'meditate_sec', beads_rounds: 'beads_rounds',
   incense: 'incense',

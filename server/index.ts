@@ -3,9 +3,9 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
-  ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GARDEN_HARVEST_MERIT, GARDEN_PLOTS, GARDEN_SEEDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
-  NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, defaultTitle, titleName, dqTodayIds,
-  type BeadsAck, type BeadsState, type CheckinAck, type GardenPlotState, type GardenSpecies, type GiftAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
+  ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GARDEN_GOOD_CHANCE, GARDEN_GOOD_HARVEST_COINS, GARDEN_GOOD_SEEDS, GARDEN_HARVEST_MERIT, GARDEN_PLOTS, GARDEN_SEEDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
+  NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, gardenSeedOf, defaultTitle, titleName, dqTodayIds,
+  type BeadsAck, type BeadsState, type CheckinAck, type GardenPlotState, type GiftAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
 import {
@@ -501,6 +501,8 @@ io.on('connection', (socket) => {
   const buyItem = async (itemId: string, qty: number) => {
     const item = ITEM_BY_ID[String(itemId)];
     if (!item) return { ok: false as const, error: 'Vật phẩm không tồn tại' };
+    // Hạt tốt chỉ có từ thu hoạch — không bán ở đâu cả (giá 0 nên phải chặn ở server, không chỉ ẩn UI).
+    if (item.category === 'hat_giong' && item.price === 0) return { ok: false as const, error: 'Hạt tốt chỉ có từ thu hoạch' };
     const lvl = levelOf((await db.getProfile(pid))?.merit ?? 0);
     if (item.minLevel && lvl < item.minLevel) return { ok: false as const, error: `Cần cấp ${item.minLevel} để mua` };
     if (item.kind === 'accessory' && (await db.itemQty(pid, item.id)) > 0) return { ok: false as const, error: 'Bạn đã sở hữu' };
@@ -796,7 +798,7 @@ io.on('connection', (socket) => {
     if (grewTo4Plots.length) await questEvent(s, 'grow');
     // Hạt sồi đầu tiên: tặng 1 lần qua mail khi lần đầu mở vườn
     if (!(await gardenSeedGiftSent(s.pid))) {
-      await db.sendMail(s.pid, 'garden_seed', 'Hạt sồi đầu tiên', 'Chào mừng thí chủ đến Vườn Cây! Tặng thí chủ 1 hạt sồi, gieo thử vào luống trống rồi tưới nước mỗi ngày nhé.', { merit: 0, coins: 0, items: { hat_soi: 1 } });
+      await db.sendMail(s.pid, 'garden_seed', 'Hạt sồi đầu tiên', 'Chào mừng thí chủ đến Vườn Cây! Tặng thí chủ 1 hạt sồi, gieo thử vào luống trống rồi tưới nước nhiều lần cho cây lớn nhé.', { merit: 0, coins: 0, items: { hat_soi: 1 } });
     }
     cb?.({ ok: true, states });
   });
@@ -806,13 +808,14 @@ io.on('connection', (socket) => {
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const plot = Number(p?.plot);
     const seedItem = String(p?.seed ?? '');
-    const species = (Object.keys(GARDEN_SEEDS) as GardenSpecies[]).find((k) => GARDEN_SEEDS[k].item === seedItem);
-    if (!species) return cb?.({ ok: false, error: 'Loại hạt không hợp lệ' });
+    const parsed = gardenSeedOf(seedItem);
+    if (!parsed) return cb?.({ ok: false, error: 'Loại hạt không hợp lệ' });
+    const { species, quality } = parsed;
     const def = GARDEN_PLOTS.find((d) => d.id === plot);
     if (!def) return cb?.({ ok: false, error: 'Luống không hợp lệ' });
     if (distTo(s, def.x, def.z) > 4) return cb?.({ ok: false, error: 'Bạn đứng quá xa luống' });
     if ((await db.itemQty(pid, seedItem)) < 1) return cb?.({ ok: false, error: 'Bạn không có hạt giống này' });
-    const r = await plantGardenRow(pid, plot, species, Date.now());
+    const r = await plantGardenRow(pid, plot, species, quality, Date.now());
     if (!r.ok) {
       if (r.grew?.length) await questEvent(s, 'grow');
       return cb?.({ ok: false, error: r.error });
@@ -841,7 +844,7 @@ io.on('connection', (socket) => {
     cb?.({ ok: true, states });
   });
 
-  socket.on('garden:harvest', async (p: { plot?: number }, cb?: (r: { ok: boolean; states?: GardenPlotState[]; error?: string; merit?: number; coins?: number; seeds?: number }) => void) => {
+  socket.on('garden:harvest', async (p: { plot?: number }, cb?: (r: { ok: boolean; states?: GardenPlotState[]; error?: string; merit?: number; coins?: number; seeds?: number; goodSeeds?: number }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const plot = Number(p?.plot);
@@ -853,14 +856,20 @@ io.on('connection', (socket) => {
       if (r.grew?.length) await questEvent(s, 'grow');
       return cb?.({ ok: false, error: r.error });
     }
-    const coins = 5 + Math.floor(Math.random() * 6); // 5-10 xu
+    // Thu hoạch: +15 công đức + 1–2 hạt (mỗi hạt 25% là hạt TỐT); cây hạt tốt thêm 15 xu, cây thường 0 xu.
+    const quality = r.quality;
+    const coins = quality === 'good' ? GARDEN_GOOD_HARVEST_COINS : 0;
     const seeds = 1 + Math.floor(Math.random() * 2); // rơi 1-2 hạt cùng loại
+    let goodSeeds = 0;
+    for (let i = 0; i < seeds; i++) if (Math.random() < GARDEN_GOOD_CHANCE) goodSeeds++;
+    const normalSeeds = seeds - goodSeeds;
     await grantRewards(s, GARDEN_HARVEST_MERIT, coins);
-    await db.addItem(pid, GARDEN_SEEDS[r.species].item, seeds);
+    if (normalSeeds > 0) await db.addItem(pid, GARDEN_SEEDS[r.species].item, normalSeeds);
+    if (goodSeeds > 0) await db.addItem(pid, GARDEN_GOOD_SEEDS[r.species].item, goodSeeds);
     await questEvent(s, 'harvest');
     const states = await afterGardenOp(s, r.grew);
     await pushProfile(s);
-    cb?.({ ok: true, states, merit: GARDEN_HARVEST_MERIT, coins, seeds });
+    cb?.({ ok: true, states, merit: GARDEN_HARVEST_MERIT, coins, seeds, goodSeeds });
   });
 
   socket.on('quest:claim', async (qid: string) => {

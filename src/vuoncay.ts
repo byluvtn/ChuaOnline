@@ -3,7 +3,7 @@ import { toon } from './toon';
 import { signTexture } from './textures';
 import { groundY } from './layout';
 import { fitModel, loadModel } from './models';
-import { GARDEN_PLOTS, GARDEN_SEEDS, type GardenPlotState, type GardenSpecies } from '../shared/game.js';
+import { GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEEDS, type GardenPlotState, type GardenSpecies } from '../shared/game.js';
 
 type Collider = { x: number; z: number; r: number; x2?: number; z2?: number };
 
@@ -251,7 +251,7 @@ function treeStatus(st: GardenPlotState): string {
   if (st.harvested) return 'Đã thu hoạch';
   if (st.wilted) return 'Héo';
   if (st.stage >= 4) return 'Lớn';
-  return st.wateredToday ? 'Đang lớn' : 'Cần tưới';
+  return st.progress > 0 ? 'Đang lớn' : 'Cần tưới';
 }
 
 /** Recolor lá của bản clone GLB: lá → leafColor, thân → nâu. Chỉ gọi trên bản clone
@@ -326,7 +326,7 @@ export async function renderGardenTrees(states: GardenPlotState[]): Promise<void
   try {
     let next: GardenPlotState[] | null = states;
     while (next) {
-      const key = JSON.stringify(next.map((s) => [s.plot, s.species, s.stage, s.wilted, s.wateredToday, s.harvestable, s.harvested]));
+      const key = JSON.stringify(next.map((s) => [s.plot, s.species, s.stage, s.quality, s.wilted, s.wateredToday, s.harvestable, s.harvested]));
       if (key !== lastTreeKey) { await renderGardenTreesNow(next); lastTreeKey = key; }
       next = takePending();
     }
@@ -382,7 +382,7 @@ async function renderGardenTreesNow(states: GardenPlotState[]): Promise<void> {
       model = fitModel(model, height);
     }
     wrap.add(model);
-    const label = makeLabel(`${GARDEN_SEEDS[st.species].name} • ${treeStatus(st)}`);
+    const label = makeLabel(`${st.quality === 'good' ? '★ ' + GARDEN_GOOD_SEEDS[st.species].name : GARDEN_SEEDS[st.species].name} • ${treeStatus(st)}`);
     label.position.set(0, height + 0.7, 0);
     wrap.add(label);
     treeGroup.add(wrap);

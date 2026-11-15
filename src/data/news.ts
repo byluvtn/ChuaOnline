@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 102;
+export const LATEST_NEWS_ID = 103;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Trồng cây lâu hơn, hạt tốt và tưới nhiều lần',
+    date: '2026-11-15',
+    items: [
+      'Cây lớn chậm hơn: cây hạt thường cần tưới 3 lần, mỗi lần cách nhau 15 phút, lớn sau khoảng 45 phút; cây hạt tốt cần tưới 2 lần, mỗi lần cách nhau 10 phút, lớn sau khoảng 20 phút. Chưa tưới thì cây đứng yên, không tự lớn theo thời gian.',
+      'Thu hoạch cho +15 công đức + 1–2 hạt giống, không còn xu thưởng với cây thường; cây trồng từ hạt tốt thu hoạch thêm 15 xu.',
+      'Mỗi hạt thu hoạch có 25% là hạt TỐT (★): gieo hạt tốt thì cây lớn nhanh hơn; hạt tốt chỉ có từ thu hoạch, không bán ở Tiểu Trồng Cây.',
+      'Vẫn như trước: quá 24 giờ không tưới thì cây héo (tưới lại sẽ hồi), quá 48 giờ không tưới thì cây biến mất.',
+    ],
+  },
   {
     title: 'Thông báo game không còn bị khung chat che',
     date: '2026-11-15',

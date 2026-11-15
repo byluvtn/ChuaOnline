@@ -100,6 +100,11 @@ export const ITEMS: ShopItem[] = [
   { id: 'hat_thong', name: 'Hạt thông', desc: 'Gieo ở Vườn Cây để trồng cây thông.', price: 12, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
   { id: 'hat_anh_dao', name: 'Hạt anh đào', desc: 'Gieo ở Vườn Cây để trồng cây anh đào.', price: 15, kind: 'consumable', icon: '🌸', category: 'hat_giong' },
   { id: 'hat_bo_de', name: 'Hạt bồ đề', desc: 'Gieo ở Vườn Cây để trồng cây bồ đề.', price: 20, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
+  // ---- Hạt giống TỐT (chỉ từ thu hoạch, KHÔNG bán ở npc38, KHÔNG bán ở shop trung tâm)
+  { id: 'hat_soi_tot', name: 'Hạt Sồi tốt', desc: 'Hạt sồi tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
+  { id: 'hat_thong_tot', name: 'Hạt Thông tốt', desc: 'Hạt thông tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
+  { id: 'hat_anh_dao_tot', name: 'Hạt Anh Đào tốt', desc: 'Hạt anh đào tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
+  { id: 'hat_bo_de_tot', name: 'Hạt Bồ Đề tốt', desc: 'Hạt bồ đề tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 
@@ -334,6 +339,9 @@ export function dqTodayIds(d = new Date()): string[] {
 
 export type GardenSpecies = 'soi' | 'thong' | 'anh_dao' | 'bo_de';
 
+/** Chất lượng hạt giống: thường (mua ở npc38) hoặc tốt (chỉ từ thu hoạch). */
+export type GardenQuality = 'normal' | 'good';
+
 /** Hạt giống từng loại cây (item id trong ITEMS + giá bán ở npc38). */
 export const GARDEN_SEEDS: Record<GardenSpecies, { item: string; name: string; price: number }> = {
   soi: { item: 'hat_soi', name: 'Sồi', price: 10 },
@@ -341,6 +349,21 @@ export const GARDEN_SEEDS: Record<GardenSpecies, { item: string; name: string; p
   anh_dao: { item: 'hat_anh_dao', name: 'Anh Đào', price: 15 },
   bo_de: { item: 'hat_bo_de', name: 'Bồ Đề', price: 20 },
 };
+
+/** Hạt TỐT từng loại cây (chỉ từ thu hoạch, không bán). */
+export const GARDEN_GOOD_SEEDS: Record<GardenSpecies, { item: string; name: string }> = {
+  soi: { item: 'hat_soi_tot', name: 'Sồi tốt' },
+  thong: { item: 'hat_thong_tot', name: 'Thông tốt' },
+  anh_dao: { item: 'hat_anh_dao_tot', name: 'Anh Đào tốt' },
+  bo_de: { item: 'hat_bo_de_tot', name: 'Bồ Đề tốt' },
+};
+
+/** Phân giải 1 item hạt giống → loài + chất lượng; null nếu không phải hạt giống. */
+export function gardenSeedOf(item: string): { species: GardenSpecies; quality: GardenQuality } | null {
+  for (const k of Object.keys(GARDEN_SEEDS) as GardenSpecies[]) if (GARDEN_SEEDS[k].item === item) return { species: k, quality: 'normal' };
+  for (const k of Object.keys(GARDEN_GOOD_SEEDS) as GardenSpecies[]) if (GARDEN_GOOD_SEEDS[k].item === item) return { species: k, quality: 'good' };
+  return null;
+}
 
 /** 8 luống Vườn Tây: hàng A z 16.1 (id 1–4), hàng B z 20.1 (id 5–8). */
 export const GARDEN_PLOTS: { id: number; x: number; z: number }[] = [
@@ -350,20 +373,27 @@ export const GARDEN_PLOTS: { id: number; x: number; z: number }[] = [
   { id: 7, x: -47.6, z: 20.1 }, { id: 8, x: -44.6, z: 20.1 },
 ];
 
-/** Một giai đoạn lớn mất 5 phút; quá 24 h không tưới → héo; quá 48 h → cây biến mất. */
-export const GARDEN_STAGE_MS = 5 * 60 * 1000;
+/** Một giai đoạn lớn mất 15 phút (hạt tốt 10 phút) và cần 1 lần tưới để sang giai đoạn tiếp; quá 24 h không tưới → héo; quá 48 h → cây biến mất. */
+export const GARDEN_STAGE_MS = 15 * 60 * 1000;
+export const GARDEN_STAGE_MS_GOOD = 10 * 60 * 1000;
+export const GARDEN_GOOD_CHANCE = 0.25; // mỗi hạt thu hoạch có 25% là hạt tốt
+export const GARDEN_GOOD_HARVEST_COINS = 15; // cây hạt tốt thu hoạch thêm 15 xu
+export const GARDEN_HEAD_START: Record<GardenQuality, number> = { normal: 0, good: 1 }; // hạt tốt gieo ở stage 2 — cây con khỏe ngay từ đầu
 export const GARDEN_WILT_MS = 24 * 3600 * 1000;
 export const GARDEN_VANISH_MS = 48 * 3600 * 1000;
 /** Sau thu hoạch, luống nghỉ 1 giờ rồi mới trống lại. */
 export const GARDEN_REST_MS = 3600 * 1000;
-/** Thưởng thu hoạch cố định 15 công đức + 5–10 xu (random phía server). */
+/** Thưởng thu hoạch cố định 15 công đức + 1–2 hạt (25% mỗi hạt là hạt TỐT); cây hạt tốt thêm 15 xu. */
 export const GARDEN_HARVEST_MERIT = 15;
 
 /** Trạng thái 1 luống trả về cho client qua garden:list. */
 export interface GardenPlotState {
   plot: number; species: GardenSpecies | null; stage: number;
+  quality: GardenQuality; waters: number;
   wilted: boolean; wateredToday: boolean; harvestable: boolean; harvested: boolean;
-  /** 0..1 trong giai đoạn hiện tại; 1 khi stage 4; 0 khi hôm nay chưa tưới. */
+  /** Thời gian còn lại (ms) đến lần tưới tiếp theo; 0 khi tưới được ngay, khi stage 4 hoặc đã thu hoạch. */
+  waterCooldownMs: number;
+  /** 0..1 trong giai đoạn hiện tại; 1 khi stage 4; 0 khi giai đoạn này chưa có lần tưới nào. */
   progress: number;
 }
 
