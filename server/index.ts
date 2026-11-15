@@ -564,10 +564,10 @@ io.on('connection', (socket) => {
 
   socket.on('quest:sweep', async (
     payload: { qid: string; point: { x: number; z: number } },
-    cb?: (r: { ok: boolean; error?: string }) => void,
+    cb?: (r: { ok: boolean; error?: string; progress?: number }) => void,
   ) => {
     const s = me();
-    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const reply = (r: { ok: boolean; error?: string; progress?: number }) => { if (typeof cb === 'function') cb(r); };
     const q = payload && typeof payload.qid === 'string' ? findQuestDef(payload.qid) : undefined;
     const pt = payload?.point;
     if (!s || !q || !isNpcQuest(q) || !pt || typeof pt.x !== 'number' || typeof pt.z !== 'number') {
@@ -579,12 +579,16 @@ io.on('connection', (socket) => {
     let set = sweptPoints.get(s);
     if (!set) { set = new Set<string>(); sweptPoints.set(s, set); }
     const key = `${q.id}:${pt.x},${pt.z}`;
-    if (set.has(key)) return reply({ ok: false, error: 'Điểm này đã quét rồi' });
+    if (set.has(key)) {
+      const cur = await db.questRows(s.pid);
+      return reply({ ok: false, error: 'Điểm này đã quét rồi', progress: cur.find((r) => r.quest_id === q.id)?.progress ?? 0 });
+    }
     const rows = await db.questRows(s.pid);
     const ok = await advanceNpcQuest(s, q, 'sweep', 1, rows);
     if (!ok) return reply({ ok: false, error: 'Chưa thể quét lúc này' });
     set.add(key);
-    reply({ ok: true });
+    const progress = Math.min((rows.find((r) => r.quest_id === q.id)?.progress ?? 0) + 1, (q as any).target);
+    reply({ ok: true, progress });
     await pushQuests(s);
   });
 

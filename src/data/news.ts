@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 88;
+export const LATEST_NEWS_ID = 89;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa lỗi quét sân bị đứng im',
+    date: '2026-11-15',
+    items: [
+      'Quét sân không còn kẹt sau một điểm khi mạng chập chờn.',
+      'Tiến độ cập nhật ngay khi quét xong, không phụ thuộc push riêng từ server.',
+    ],
+  },
   {
     title: 'Chụp ảnh trong game',
     date: '2026-11-15',

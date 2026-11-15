@@ -788,6 +788,7 @@ let myActionUntil = 0;
 let sweepState: { qid: string; point: Pt; until: number } | null = null;
 let lastSweepCheck = 0;
 let lastSwept: { qid: string; x: number; z: number } | null = null;
+let lastSweptAt = 0;
 /** Điểm bồ đoàn đang trên đường tới để lạy (null = không có hành trình). */
 let bowSeat: { x: number; z: number } | null = null;
 /** Đi thẳng tới đệm (bỏ road graph). Chỉ có nghĩa khi bowSeat != null; startBow luôn ghi lại giá trị này. */
@@ -1562,8 +1563,25 @@ function updateSweep(now: number): void {
       const s = sweepState;
       sweepState = null;
       lastSwept = { qid: s.qid, x: s.point.x, z: s.point.z };
-      socket.emit('quest:sweep', { qid: s.qid, point: s.point }, (r: { ok: boolean; error?: string }) => {
-        if (!r.ok) { lastSwept = null; toast(r.error ?? 'Lỗi'); }
+      lastSweptAt = now;
+      socket.emit('quest:sweep', { qid: s.qid, point: s.point }, (r: { ok: boolean; error?: string; progress?: number }) => {
+        const applyProgress = (): boolean => {
+          if (typeof r.progress !== 'number') return false;
+          const q = quests.find((x) => x.id === s.qid);
+          if (q && r.progress > q.progress) {
+            q.progress = r.progress;
+            updateGuideTarget();
+            updateGuidePath();
+            return true;
+          }
+          return false;
+        };
+        if (r.ok) { applyProgress(); return; }
+        if (r.error === 'Điểm này đã quét rồi') {
+          if (applyProgress()) { lastSwept = null; return; }
+        }
+        lastSwept = null;
+        toast(r.error ?? 'Lỗi');
       });
     }
     return;
@@ -1571,6 +1589,8 @@ function updateSweep(now: number): void {
   // Throttle the arrival check to twice a second.
   if (now - lastSweepCheck < 500) return;
   lastSweepCheck = now;
+  // Tự hồi phục nếu bản cập nhật tiến độ bị mất (ack không bao giờ tới).
+  if (lastSwept && now - lastSweptAt > 10000) lastSwept = null;
   if (sitting || clickTarget) return;
   const p = me.char.root.position;
   for (const q of quests) {
