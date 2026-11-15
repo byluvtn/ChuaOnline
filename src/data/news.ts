@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 87;
+export const LATEST_NEWS_ID = 88;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chụp ảnh trong game',
+    date: '2026-11-15',
+    items: [
+      'Nút Chụp ảnh trong menu: bấm một lần là lưu ngay khung hình đang thấy thành file PNG, giao diện tự ẩn rồi hiện lại.',
+      'Ảnh có đóng dấu tên game, pháp danh của bạn và ngày chụp ở góc dưới; xem lại trong thư mục tải về của máy.',
+    ],
+  },
   {
     title: 'Bia công đức tuần',
     date: '2026-11-15',

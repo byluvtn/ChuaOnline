@@ -38,6 +38,7 @@ export const ICONS: Record<string, string> = {
   game: S('<rect x="3" y="8" width="18" height="10" rx="5"/><path d="M8 11v4M6 13h4"/><circle cx="15.500" cy="12" r=".8" fill="currentColor"/><circle cx="17.500" cy="14" r=".8" fill="currentColor"/>'),
   festival: S('<path d="M12 3v3M5 7l2 2M19 7l-2 2"/><path d="M8 21v-6a4 4 0 0 1 8 0v6M6 21h12"/><path d="M12 9v3"/>'),
   news: S('<path d="M12 3l2.200 5.300 5.800.5-4.400 3.800 1.400 5.600L12 15l-5 3.200 1.400-5.600L4 8.800l5.800-.5L12 3z"/>'),
+  camera: S('<path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>'),
   community: S('<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.400"/><path d="M16 14.200a5 5 0 0 1 5 5.800"/>'),
   level: S('<path d="M4 20V14h4v6M10 20V9h4v11M16 20V4h4v16"/>'),
   map: S('<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>'),

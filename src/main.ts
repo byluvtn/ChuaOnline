@@ -10,6 +10,7 @@ import { clampToCompound, resolveBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
+import { getLastPhoto, takePhoto } from './features/photo';
 import { openFestivals } from './features/festivals';
 import { createPost } from './post';
 import { createWorld } from './world';
@@ -638,6 +639,7 @@ function startMenu() {
     changeLook, chatLog: () => chatLog,
     act: (kind) => doAction(kind),
     guideTo: (qid: string) => { startGuide(qid); },
+    takePhoto: () => takePhoto(canvas, post, () => profile?.name ?? 'Phật tử', toast),
   });
 }
 // ---------- Input ----------
@@ -2169,4 +2171,4 @@ const focusIdle = new THREE.Vector3(0, 0, 8);
 let loadedHidden = false;
 requestAnimationFrame(loop);
 
-if (import.meta.env.DEV) (window as any).__co = { walkTo: (x: number, z: number) => { setSitting(false); clickTarget = new THREE.Vector3(x, 0, z); }, me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr, buildBuddha, buildQuanAm };
+if (import.meta.env.DEV) (window as any).__co = { walkTo: (x: number, z: number) => { setSitting(false); clickTarget = new THREE.Vector3(x, 0, z); }, me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr, buildBuddha, buildQuanAm, photo: () => getLastPhoto() };

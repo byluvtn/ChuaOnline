@@ -45,6 +45,7 @@ export interface MenuCtx {
   room(): string;
   switchRoom(id: string): void;
   toast(t: string): void;
+  takePhoto?: () => void;
   logout(): void;
   myPos(): { x: number; z: number } | null;
   players(): { id: string; name: string; x: number; z: number; level?: number }[];
@@ -81,6 +82,7 @@ export function initMenu(ctx: MenuCtx): void {
     { id: 'rank', icon: 'trophy', label: 'Xếp hạng', run: legacy('rank') },
     { id: 'rooms', icon: 'temple', label: 'Chọn chùa', run: legacy('rooms') },
     { id: 'map', icon: 'map', label: 'Bản đồ chùa', run: () => openMap(ctx) },
+    { id: 'photo', icon: 'camera', label: 'Chụp ảnh', run: () => ctx.takePhoto?.() },
     { id: 'fortune', icon: 'fortune', label: 'Xin xăm', run: () => openFortune(ctx) },
     { id: 'guide', icon: 'guide', label: 'Cách chơi', run: openGuide },
     { id: 'feedback', icon: 'feedback', label: 'Góp ý & ủng hộ', run: () => openFeedback(ctx) },
