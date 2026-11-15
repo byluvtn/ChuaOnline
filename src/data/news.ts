@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 93;
+export const LATEST_NEWS_ID = 94;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đổi vị trí điểm quét Q2/Q3/Q4',
+    date: '2026-11-15',
+    items: [
+      'Nhiệm vụ Quét cầu sen giờ quét ngay trên mặt cầu (2 điểm giữa cầu), không còn trùng điểm với Quét sân chùa.',
+      'Nhiệm vụ Quét vườn Thiền: điểm thứ 2 dời ra bãi cỏ thoáng, không còn vướng bộ bàn ghế đá.',
+      'Nhiệm vụ Quét đường chùa: 3 điểm dời ra ngoài cửa chùa, dọc đường chợ trước các quầy.',
+      'Quét sân chùa (Q1) giữ nguyên.',
+    ],
+  },
   {
     title: 'Cây trong chùa cao hơn',
     date: '2026-11-15',
