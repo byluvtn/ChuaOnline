@@ -419,7 +419,8 @@ export function buildTemple(c: TempleCtx) {
   colliders.push({ x: BAO_THAP.x, z: BAO_THAP.z, r: 2.9 });
   // Cột treo đèn lồng đỏ (vòng r 12.5 quanh (0, 8), cột tại i % 4 === 0).
   // Bỏ cột (3.86, 19.89) vì nằm trong hồ koi, người chơi không tới được.
-  for (const [px, pz] of [[12.5, 8], [-10.11, 15.35], [-10.11, 0.65], [3.86, -3.89]] as const) {
+  // News 96: cột ring-16 dời theo đèn (4.43, -3.69) để tránh cột đá khắc kinh.
+  for (const [px, pz] of [[12.5, 8], [-10.11, 15.35], [-10.11, 0.65], [4.43, -3.69]] as const) {
     colliders.push({ x: px, z: pz, r: 0.25 });
   }
   zones.push({ x: BAO_THAP.x, z: BAO_THAP.z, r: 8, id: 'baoThap' });

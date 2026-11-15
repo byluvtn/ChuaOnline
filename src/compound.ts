@@ -412,10 +412,13 @@ export function buildZenGarden(g: GardenCtx) {
   stoneTableSet(g, grp, cx - 5.2, cz - 6.2);
 
   // 4 đèn lồng đỏ treo cột gỗ ở 4 góc vòng cát
-  const lampSpots: { a: number; x: number; z: number }[] = [];
+  // News 96: cột đông (i=0) và tây (i=2) lật tay đèn ra NGOÀI — tay đèn hướng vào trong
+  // treo xuyên qua đèn đá (-30.5,-26) và (-37.5,-26). Lật ra ngoài, đèn cách đèn đá 2.1 m.
+  const FLIP_OUT = [true, false, true, false];
+  const lampSpots: { a: number; x: number; z: number; flip: boolean }[] = [];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2, x = cx + Math.cos(a) * 4.6, z = cz + Math.sin(a) * 4.6;
-    lampSpots.push({ a, x, z });
+    lampSpots.push({ a, x, z, flip: FLIP_OUT[i] });
     g.colliders.push({ x, z, r: 0.3 });
   }
   loadModel('hanging_lantern').then((base) => {
@@ -435,9 +438,12 @@ export function buildZenGarden(g: GardenCtx) {
         mesh.material = Array.isArray(mesh.material) ? mesh.material.map(tint) : tint(mesh.material);
       });
       l.add(inst);
-      l.rotation.y = Math.PI - p.a;
+      // flip=true: arm points outward (rotation -a puts local +x along (cos a, sin a));
+      // otherwise inward as before (rotation PI-a). Glow follows the lantern.
+      l.rotation.y = p.flip ? -p.a : Math.PI - p.a;
       l.position.set(p.x, GY, p.z); grp.add(l);
-      g.glowSpr(p.x - Math.cos(p.a) * 1.0, GY + 2.0, p.z - Math.sin(p.a) * 1.0, 2.0, 0xffb040, 0.5);
+      const sgn = p.flip ? 1 : -1;
+      g.glowSpr(p.x + sgn * Math.cos(p.a) * 1.0, GY + 2.0, p.z + sgn * Math.sin(p.a) * 1.0, 2.0, 0xffb040, 0.5);
     }
   });
 

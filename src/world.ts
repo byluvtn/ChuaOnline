@@ -241,7 +241,11 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     lampSpots.push({ x, z });
     colliders.push({ x, z, r: 0.35 });
   };
-  for (let z = 40; z > -19; z -= 7) { addLamp(-4, z); addLamp(4, z); }
+  // Walkway lamp posts (news 100): z=-11.3 (not -9) clears the sutra pillars by ~0.34 m
+  // and keeps the post collider 0.13 m off the pillar collider; z=19,26 moved out to
+  // x=±9.5 so the posts stand on dry land (the koi lake spans x ±4 at those z).
+  // The lamps at (±9.5) hang at x=±8.5, 0.30 m (z=19) / 1.41 m (z=26) off the water.
+  for (const [x, z] of [[-4, 40], [4, 40], [-4, 33], [4, 33], [-9.5, 26], [9.5, 26], [-9.5, 19], [9.5, 19], [-4, 12], [4, 12], [-4, 5], [4, 5], [-4, -2], [4, -2], [-4, -11.3], [4, -11.3], [-4, -16], [4, -16]] as const) addLamp(x, z);
   loadModel('hanging_lantern').then((base) => {
     if (!base) return;
     for (const p of lampSpots) {
@@ -293,8 +297,12 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   const redLanterns: THREE.Mesh[] = [];
   const stringPts: THREE.Vector3[] = [];
   const N = 20;
+  // Ring lanterns moved off obstacles (news 100): angle offsets in radians, minimal
+  // moves that clear by >= 0.20 m — ring-1/9 off the swing-oak hanging foliage
+  // (news 93 grew the trees into them), ring-14/16 off the sutra pillars.
+  const RING_OFF: Record<number, number> = { 1: 0.092, 9: 0.096, 14: -0.036, 16: 0.048 };
   for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2;
+    const a = (i / N) * Math.PI * 2 + (RING_OFF[i] ?? 0);
     const x = Math.cos(a) * 12.5, z = 8 + Math.sin(a) * 12.5, y = 4.6 + Math.sin(i * 1.7) * 0.35;
     const m = new THREE.Mesh(redGeo, redBase); m.scale.set(1, 1.2, 1); m.position.set(x, y, z); scene.add(m); redLanterns.push(m);
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 8), goldM); cap.position.set(x, y + 0.43, z); scene.add(cap);

@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 99;
+export const LATEST_NEWS_ID = 100;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sắp xếp lại đèn lồng đỏ, hết chồng lên cột đá',
+    date: '2026-11-15',
+    items: [
+      'Đèn lồng đỏ ở quảng trường và vườn Thiền đã dời khỏi các cột đá khắc kinh, đèn đá, lá sồi và hồ cá: không còn cảnh đèn chồng lên cột hay treo xuyên qua đèn đá.',
+      'Đèn vẫn đủ số lượng, vẫn màu đỏ treo cao như trước; 4 cột đèn dọc lối đi cũng dời ra khỏi mặt hồ, thành đèn ven hồ.',
+    ],
+  },
   {
     title: 'Quần áo mới: áo dài, bà ba, áo lam, nón lá, khăn đóng',
     date: '2026-11-15',
