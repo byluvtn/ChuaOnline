@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 101;
+export const LATEST_NEWS_ID = 102;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thông báo game không còn bị khung chat che',
+    date: '2026-11-15',
+    items: [
+      'Khung "Cộng đồng sân chùa" trên điện thoại đã dời xuống dưới vùng thông báo — banner "Giờ tụng kinh · Công đức ×2" giờ hiện đầy đủ, không còn bị che nửa trên.',
+      'Banner thông báo giờ hiện cả khi khung chat đang mở (trước đây bị ẩn); khung chat vẫn mở/thu gọn bình thường bằng nút −.',
+      'Sửa cả khi nằm ngang: khung chat dời xuống dưới banner, khung chat mở không tràn xuống menu.',
+    ],
+  },
   {
     title: 'Cảnh mới: tháp 5 tầng, cầu đá, cây cổ thụ bồ đề',
     date: '2026-11-15',

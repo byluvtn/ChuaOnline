@@ -178,9 +178,9 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   #chat { left: 8px; bottom: calc(80px + env(safe-area-inset-bottom)); width: min(240px, 55vw); padding: 8px; }
   #chat .title { font-size: 13px; }
   #msgs { height: 90px; font-size: 12.5px; }
-  body.touch #chat { bottom: auto; top: 116px; width: min(228px, 58vw); z-index: 9; }
+  body.touch #chat { bottom: auto; top: 256px; width: min(228px, 58vw); z-index: 9; }
   body.touch.menu-collapsed #chat { bottom: auto; }
-  body.touch #chat:not(.collapsed) { display: flex; flex-direction: column; max-height: min(38dvh, calc(100dvh - 380px - env(safe-area-inset-bottom))); }
+  body.touch #chat:not(.collapsed) { display: flex; flex-direction: column; max-height: min(38dvh, calc(100dvh - 520px - env(safe-area-inset-bottom))); }
   body.touch #chatBody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   body.touch #msgs { height: auto; flex: 1 1 auto; min-height: 64px; overflow-y: auto; overscroll-behavior: contain; }
   body.touch #chatForm { flex: none; }
@@ -188,7 +188,7 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   body.touch #chatInput { font-size: 16px; }
   body.touch #chatToggle { width: 40px; height: 40px; margin: -8px -4px -8px auto; }
   body.touch #medBanner { top: 106px; }
-  body.touch #boostBanner { top: 144px; }
+  body.touch #boostBanner { top: 166px; }
   #joystick { left: 14px; bottom: calc(92px + env(safe-area-inset-bottom)); width: 104px; height: 104px; }
   #stick { left: 29px; top: 29px; width: 46px; height: 46px; }
   #profile { top: 30px; left: 6px; padding: 5px 12px 5px 5px; }
@@ -201,10 +201,10 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   #coins { font-size: 13.5px; padding: 5px 10px; }
   #coins .ico { font-size: 17px; }
   #medBanner { top: 106px; font-size: 12px; width: 92vw; }
-  #boostBanner { top: 144px; font-size: 12px; max-width: 92vw; white-space: normal; }
+  #boostBanner { top: 166px; font-size: 12px; max-width: 92vw; white-space: normal; }
   #lanternFeed { display: none; }
   #marquee { font-size: 11px; height: 22px; line-height: 22px; }
-  #donateMarquee { top: 182px; font-size: 11px; height: 22px; line-height: 22px; border-radius: 11px; }
+  #donateMarquee { top: 226px; font-size: 11px; height: 22px; line-height: 22px; border-radius: 11px; }
   .bar { width: 80px; height: 5px; margin-top: 3px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
@@ -245,8 +245,9 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   #boostBanner, body.touch #boostBanner { top: 102px; }
   #toast { top: 60px; }
   #actions { flex-direction: column; flex-wrap: wrap-reverse; justify-content: flex-start; align-content: flex-start; right: 6px; bottom: calc(70px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 142px - env(safe-area-inset-bottom)); }
-  body.touch #chat { top: 76px; width: min(300px, 40vw); }
-  body.touch #chat:not(.collapsed) { max-height: 56dvh; }
+  body.touch #chat { top: 148px; width: min(300px, 40vw); }
+  body.touch #chat:not(.collapsed) { max-height: min(56dvh, calc(100dvh - 218px - env(safe-area-inset-bottom))); }
+  body.touch #msgs { min-height: 40px; }
   #joystick { width: 96px; height: 96px; left: 12px; bottom: calc(66px + env(safe-area-inset-bottom)); }
   #stick { width: 44px; height: 44px; left: 26px; top: 26px; }
   #couplet { bottom: calc(64px + env(safe-area-inset-bottom)); }
