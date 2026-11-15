@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 84;
+export const LATEST_NEWS_ID = 85;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tưới 1 cây còn 9 công đức để tổng ngày không vượt 36',
+    date: '2026-11-15',
+    items: [
+      "Việc 'Tưới 1 cây trong vườn' của Sư Ông đổi từ 10 xuống 9 công đức (vẫn 20 xu); tổng công đức mỗi ngày giờ tối đa 36.",
+      'Ba việc mỗi ngày, xoay đều theo ngày và reset lúc 0 giờ sáng không thay đổi.',
+    ],
+  },
   {
     title: 'Sư Ông thêm việc tưới cây mỗi ngày',
     date: '2026-11-15',

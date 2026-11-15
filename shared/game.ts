@@ -308,7 +308,7 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc37', receiver: 'npc37', stall: 'stall_phongsinh', zone: Z_PS_PIER, steps: ['talk', 'buyphongsinh', 'release', 'deliver'] },
   { id: 'dq_bell', label: 'Thỉnh chuông', event: 'talk', target: 2, coins: 15, merit: 8, giver: 'npc37', receiver: 'npc4', steps: ['talk', 'deliver'] },
   { id: 'dq_meditate', label: 'Thiền 2 phút', event: 'meditate', target: 12, coins: 30, merit: 15, giver: 'npc37', zone: Z_THIEN_DUONG },
-  { id: 'dq_water', label: 'Tưới 1 cây trong vườn', event: 'water', target: 1, coins: 20, merit: 10, giver: 'npc37' },
+  { id: 'dq_water', label: 'Tưới 1 cây trong vườn', event: 'water', target: 1, coins: 20, merit: 9, giver: 'npc37' },
 ];
 
 /** Kho việc Sư Ông (10 việc): mỗi ngày VN hiện đúng 3 việc liên tiếp, cửa sổ trượt
