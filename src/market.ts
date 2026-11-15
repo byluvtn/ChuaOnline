@@ -176,8 +176,25 @@ function buildStall(id: string): THREE.Group {
   const frame = box(2.3, 0.65, 0.04, 0x5a3a1b, 0, 1.95, 1.02, true);
   g.add(frame);
 
+  // Closed sign under the name sign, hidden until the vendor is away
+  const closedSign = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.2, 0.55),
+    new THREE.MeshBasicMaterial({ map: signTexture('Nghỉ bán, vui lòng đợi') }),
+  );
+  closedSign.position.set(0, 1.32, 1.05);
+  closedSign.visible = false;
+  g.add(closedSign);
+  closedSigns.set(id, closedSign);
+
   addGoods(g, style.goods);
   return g;
+}
+
+const closedSigns = new Map<string, THREE.Mesh>();
+
+export function setStallClosed(stallId: string, closed: boolean): void {
+  const m = closedSigns.get(stallId);
+  if (m) m.visible = closed;
 }
 
 export function buildMarket(

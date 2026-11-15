@@ -123,6 +123,19 @@ const ANIMS: Anim[] = ['idle', 'walk', 'run', 'sit', 'sweep', 'ring', 'incense',
 /** Mỗi phòng có bộ NPC riêng (cùng id npc1..npc5); NPC không phải phiên nên không tính vào số người online. */
 const npcRooms = new Map<string, NpcRoom>();
 const npcRoom = (room: string) => { let r = npcRooms.get(room); if (!r) { r = createNpcRoom(); npcRooms.set(room, r); } return r; };
+/** Quầy -> vendor đứng quầy (để biết quầy nào vắng khi vendor đi tụng). */
+const VENDOR_STALL: Record<string, string> = { stall_fruit: 'npc15', stall_cake: 'npc16', stall_tea: 'npc17', stall_pho: 'npc31', stall_trada: 'npc32', stall_incense: 'npc18', stall_phongsinh: 'npc30', stall_com: 'npc33', stall_chim: 'npc34', stall_trada2: 'npc36' };
+/** Món bán bởi vendor ngoài chợ (chỉ những món này mới bị chặn khi vendor vắng; hạt giống npc38 không bao giờ bị chặn). */
+const ITEM_VENDORS: Record<string, string[]> = { pho_chay: ['npc31'], tra_da: ['npc32', 'npc36'], com_chay: ['npc33'], chim_phong_sinh: ['npc34'], ca_phong_sinh: ['npc34'], thuc_an_chim: ['npc34'] };
+const VENDOR_AWAY_MSG = (name: string) => `Nghỉ bán, vui lòng đợi — ${name} đang đi tụng kinh, quay lại sau giờ tụng nhé`;
+/** Vendor có đang đi tụng kinh không (mode toChant/chanting trong phòng này). */
+function vendorAway(room: string, npcId: string): boolean {
+  const n = npcRoom(room).npcs.find((e) => e.def.id === npcId);
+  return !!n && (n.mode === 'toChant' || n.mode === 'chanting');
+}
+function vendorName(room: string, npcId: string): string {
+  return npcRoom(room).npcs.find((e) => e.def.id === npcId)?.def.name ?? 'Người bán';
+}
 const clean = (s: unknown, max: number) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max);
 const cleanColor = (c: unknown) => (/^#[0-9a-fA-F]{6}$/.test(String(c)) ? String(c) : '#d99a1e');
 const roomSessions = (room: string) => [...sessions.values()].filter((s) => s.room === room);
@@ -514,6 +527,10 @@ io.on('connection', (socket) => {
   socket.on('shop:buy', async (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const away = ITEM_VENDORS[String(itemId)];
+    if (away && away.length > 0 && away.every((v) => vendorAway(s.room, v))) {
+      return cb?.({ ok: false, error: VENDOR_AWAY_MSG(away.map((v) => vendorName(s.room, v)).join(', ')) });
+    }
     const r = await buyItem(itemId, 1);
     if (r.ok) { await questEvent(s, 'buy'); if (itemId === 'chim_phong_sinh') await questEvent(s, 'buyphongsinh', 1); if (itemId === 'thuc_an_chim') await questEvent(s, 'buyfood', 1); await pushProfile(s); }
     cb?.(r.ok ? { ok: true } : { ok: false, error: r.error });
@@ -523,6 +540,10 @@ io.on('connection', (socket) => {
   socket.on('shop:buy5', async (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+    const away = ITEM_VENDORS[String(itemId)];
+    if (away && away.length > 0 && away.every((v) => vendorAway(s.room, v))) {
+      return cb?.({ ok: false, error: VENDOR_AWAY_MSG(away.map((v) => vendorName(s.room, v)).join(', ')) });
+    }
     const item = ITEM_BY_ID[String(itemId)];
     if (!item) return cb?.({ ok: false, error: 'Vật phẩm không tồn tại' });
     if (item.kind !== 'consumable') return cb?.({ ok: false, error: 'Mua 5 chỉ áp dụng cho vật phẩm tiêu hao' });
@@ -706,6 +727,8 @@ io.on('connection', (socket) => {
     const stall = (MARKET_STALLS as any[]).find((m) => m.id === stallId);
     if (!s || !stall) return reply({ ok: false, error: 'Gian hàng không hợp lệ' });
     if (distTo(s, stall.x, stall.z) > 4) return reply({ ok: false, error: 'Bạn đứng quá xa gian hàng' });
+    const vid = VENDOR_STALL[stallId];
+    if (vid && vendorAway(s.room, vid)) return reply({ ok: false, error: VENDOR_AWAY_MSG(vendorName(s.room, vid)) });
     const rows = await db.questRows(s.pid);
     const byId = new Map(rows.map((r) => [r.quest_id, r]));
     const match = [...NPC_QUESTS, ...CHAIN_QUESTS].find((q) => {

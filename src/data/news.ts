@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 103;
+export const LATEST_NEWS_ID = 104;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tụng kinh đông vui: tăng ni, khách và người bán cùng tụng',
+    date: '2026-11-15',
+    items: [
+      'Đến giờ tụng kinh, chính điện giờ đông người tụng cùng: tăng ni, khách vãng lai ngồi kín ghế, mỗi buổi một nhóm khác nhau — hai sư ni trước đây chỉ tụng ở điện phụ giờ cũng ra chính điện.',
+      'Người bán hàng thi thoảng cũng đi tụng cùng (tối đa 2 người vắng một lúc); quầy vắng treo biển "Nghỉ bán, vui lòng đợi", mua lúc đó sẽ được nhắc quay lại sau giờ tụng.',
+    ],
+  },
   {
     title: 'Trồng cây lâu hơn, hạt tốt và tưới nhiều lần',
     date: '2026-11-15',

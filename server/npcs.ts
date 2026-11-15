@@ -153,7 +153,7 @@ interface Npc {
 export interface NpcChat { npcId: string; name: string; text: string }
 export interface NpcRoom {
   npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; fx: ({ id: string; kind: ActionKind; type?: 'action' } | { id: string; kind: 'bird' | 'fish'; type: 'release' })[]; lastTourBellAt: number; beds: (string | null)[]; seats: Map<string, string>;
-  questGuard: Set<string>; left: string[]; joined: PlayerState[];
+  questGuard: Set<string>; chantRosterKey: string; chantRoster: Set<string>; left: string[]; joined: PlayerState[];
 }
 
 /** Ghế tụng: hàng đầu mỗi điện (đo từ code thật). S6 sẽ đặt đệm 3D đúng các tọa độ này. */
@@ -165,6 +165,10 @@ export const CHANT_SEATS: ChantSeat[] = [
   { hall: 'chinhDien', x: -3.4, z: -35.2, ry: Math.PI },
   { hall: 'chinhDien', x: 3.4, z: -35.2, ry: Math.PI },
   { hall: 'chinhDien', x: 4.9, z: -35.2, ry: Math.PI },
+  { hall: 'chinhDien', x: -4.9, z: -33.4, ry: Math.PI },
+  { hall: 'chinhDien', x: -3.4, z: -33.4, ry: Math.PI },
+  { hall: 'chinhDien', x: 3.4, z: -33.4, ry: Math.PI },
+  { hall: 'chinhDien', x: 4.9, z: -33.4, ry: Math.PI },
   { hall: 'tamThe', x: -4.7, z: -68.4, ry: Math.PI },
   { hall: 'tamThe', x: -3.2, z: -68.4, ry: Math.PI },
   { hall: 'tamThe', x: 3.2, z: -68.4, ry: Math.PI },
@@ -233,7 +237,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
     };
   });
   spreadVisitors(npcs, now);
-  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], fx: [], lastTourBellAt: 0, beds: [null, null], seats: new Map(), questGuard: new Set(), left: [], joined: [] };
+  const room: NpcRoom = { npcs, lastTick: now, sleeping: false, outbox: [], fx: [], lastTourBellAt: 0, beds: [null, null], seats: new Map(), questGuard: new Set(), chantRosterKey: '', chantRoster: new Set(), left: [], joined: [] };
   for (const n of npcs) {
     if (n.def.behavior !== 'chant') continue;
     const homeHall = n.def.id === 'npc27' ? 'thienDuong' : 'dienMau';
@@ -787,12 +791,14 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
   if (n.def.behavior === 'visitor') return visitorArrive(room, n, now);
   if (n.def.behavior === 'desk') { npc6Arrive(n, s, now); return; }
-  if (n.def.behavior === 'post') { postIdleAct(n, now); return; }
+  if (n.def.behavior === 'post' && n.mode !== 'toChant') { postIdleAct(n, now); return; }
   if (n.mode === 'toChant') {
     const seat = n.chantSeat;
     n.mode = 'chanting'; n.phase = 'act'; s.anim = 'chant';
     s.ry = seat ? seat.ry : Math.PI;
-    n.until = now + R(300_000, 600_000);
+    // Đang trong buổi tụng: ngồi đến hết buổi để chính điện đông suốt thời khóa.
+    const ses = activeSession(now);
+    n.until = ses ? ses.endsAt : now + R(300_000, 600_000);
     return;
   }
   if (n.def.behavior === 'wander' && n.mode === 'toIdleSeat') {
@@ -891,6 +897,52 @@ function decide(room: NpcRoom, n: Npc, now: number) {
   startWalk(n, d.route, slow ? 0.6 : 1.2);
 }
 
+/** Luân phiên tụng kinh: mỗi buổi một nhóm tăng ni + người bán khác nhau (deterministic). */
+const MONK_POOL = ['npc2', 'npc3', 'npc7', 'npc8', 'npc13', 'npc14'];
+const VENDOR_POOL = ['npc15', 'npc16', 'npc17', 'npc18', 'npc30', 'npc31', 'npc32', 'npc33', 'npc34', 'npc36'];
+/** Số thứ tự buổi tụng từ key `${day}:${id}`: day*3 + ord (sang 0, trua 1, toi 2). */
+function sessionIdxOf(key: string): number {
+  const [d, id] = key.split(':');
+  const ord = id === 'sang' ? 0 : id === 'trua' ? 1 : 2;
+  return (parseInt(d, 10) || 0) * 3 + ord;
+}
+/** Liệt kê mọi cặp trong pool theo thứ tự từ điển (tăng: 15 cặp, vendor: 45 cặp). */
+function pairsOf(n: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) out.push([i, j]);
+  return out;
+}
+const MONK_PAIRS = pairsOf(MONK_POOL.length);
+const VENDOR_PAIRS = pairsOf(VENDOR_POOL.length);
+/** Roster buổi tụng này: 2 sư ni (luôn) + 2 tăng ni luân phiên + tối đa 2 vendor (buổi chẵn).
+    Mỗi buổi lấy đúng 1 cặp theo chỉ số buổi (tăng: chu kỳ 15 buổi, vendor: chu kỳ 45 buổi
+    chẵn) nên nhóm tụng không lặp lại sau vài buổi. Bỏ qua NPC đang trong room.questGuard
+    (người cho nhiệm vụ đang mở) hoặc đang nghỉ ca — thiếu người thì lấy tiếp trong pool. */
+function computeChantRoster(room: NpcRoom, key: string): Set<string> {
+  const idx = sessionIdxOf(key);
+  const roster = new Set<string>(['npc27', 'npc28']);
+  const usable = (id: string) => {
+    if (room.questGuard.has(id)) return false;
+    const npc = room.npcs.find((o) => o.def.id === id);
+    return !!npc && npc.mode !== 'resting' && npc.mode !== 'toRest' && npc.mode !== 'toWork';
+  };
+  const fill = (pool: string[], first: string[], count: number) => {
+    const picked = first.filter(usable);
+    for (const id of pool) {
+      if (picked.length >= count) break;
+      if (!picked.includes(id) && usable(id)) picked.push(id);
+    }
+    for (const id of picked) roster.add(id);
+  };
+  const [a, b] = MONK_PAIRS[idx % MONK_PAIRS.length];
+  fill(MONK_POOL, [MONK_POOL[a], MONK_POOL[b]], 2);
+  if (idx % 2 === 0) {
+    const [c, d] = VENDOR_PAIRS[Math.floor(idx / 2) % VENDOR_PAIRS.length];
+    fill(VENDOR_POOL, [VENDOR_POOL[c], VENDOR_POOL[d]], 2);
+  }
+  return roster;
+}
+
 /** Sư thầy giữ thời khóa; tiểu đánh chuông thỉnh chuông đầu giờ. */
 function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
   const s = n.state;
@@ -912,8 +964,22 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
     }
     return;
   }
+  // Roster tụng (người bán / tiểu trực quầy): hết buổi thì về lại quầy theo đường.
+  if (n.def.behavior === 'post' && room.chantRoster.has(n.def.id) && n.mode === 'chanting' && !activeSession(now) && now >= n.until) {
+    const seat = n.chantSeat;
+    releaseSeat(room, n.def.id); n.chantSeat = null;
+    n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle';
+    const node = n.def.id === 'npc13' ? 'dienMau' : n.def.id === 'npc14' ? 'ktGate' : 'marketS';
+    startWalk(n, [...routeFrom(seat ? { x: seat.x, z: seat.z } : n.state, node), ...(n.def.post ? [{ x: n.def.post.x, z: n.def.post.z }] : [])], 1.0);
+    n.until = now + 1000;
+    return;
+  }
   const sesNow = activeSession(now);
-  if (sesNow && SWEEP_CHANT.includes(n.def.behavior) && n.mode === 'normal' && n.chantKey !== sesNow.key) {
+  if (sesNow && room.chantRosterKey !== sesNow.key) {
+    room.chantRosterKey = sesNow.key;
+    room.chantRoster = computeChantRoster(room, sesNow.key);
+  }
+  if (sesNow && SWEEP_CHANT.includes(n.def.behavior) && n.mode === 'normal' && n.chantKey !== sesNow.key && !room.chantRoster.has(n.def.id) && !room.questGuard.has(n.def.id)) {
     n.chantKey = sesNow.key;
     if (Math.random() < 0.25) {
       const seat = freeSeat(room, 'chinhDien') ?? freeSeat(room, 'tamThe');
@@ -925,13 +991,32 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
       }
     }
   }
+  // Roster tụng: lấy ghế chính điện đầu tiên còn trống, không cướp ghế.
+  // Sư ni có thể đang tụng ở điện phụ lúc buổi bắt đầu (mode chanting) — kéo ra chính
+  // điện luôn, nhưng chỉ nhả ghế điện phụ khi đã chắc có ghế chính điện.
+  if (sesNow && room.chantRoster.has(n.def.id)
+    && (n.mode === 'normal' || (n.def.behavior === 'chant' && n.mode === 'chanting' && n.chantSeat?.hall !== 'chinhDien'))) {
+    const seat = freeSeat(room, 'chinhDien');
+    if (seat) {
+      const old = n.chantSeat;
+      n.chantSeat = null;
+      if (old) releaseSeat(room, n.def.id);
+      if (takeSeat(room, seat, n.def.id)) {
+        n.chantSeat = seat; n.mode = 'toChant';
+        startWalk(n, [...routeFrom(n.state, 'hallIn'), { x: seat.x, z: seat.z }], 1.0);
+        return;
+      }
+    }
+  }
   if (REST_POOL.has(n.def.behavior) && now >= n.shiftEnd) { tryRest(room, n, now); return; }
   if (n.def.behavior === 'chant') {
     const ses = activeSession(now);
     if (n.mode === 'chanting') {
       if (!ses && now >= n.until) {
+        // Về từ chính điện thì đi ngay, không nghỉ 2-5 phút ở sai điện.
+        const wasMain = n.chantSeat?.hall === 'chinhDien';
         releaseSeat(room, n.def.id); n.chantSeat = null;
-        n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(120_000, 300_000);
+        n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = wasMain ? now : now + R(120_000, 300_000);
       }
       return;
     }
@@ -942,7 +1027,10 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
       if (!seat) { n.until = now + 60_000; return; }
       if (!takeSeat(room, seat, n.def.id)) { n.until = now + 60_000; return; }
       n.chantSeat = seat; n.mode = 'toChant';
-      startWalk(n, [{ x: seat.x, z: seat.z }], 1.0);
+      // Về điện phụ từ chính điện: đi theo đường, không đi thẳng xuyên tường/hồ.
+      const node = n.def.id === 'npc27' ? 'thienDuong' : 'dienMau';
+      const far = Math.hypot(n.state.x - seat.x, n.state.z - seat.z) > 8;
+      startWalk(n, far ? [...routeFrom(n.state, node), { x: seat.x, z: seat.z }] : [{ x: seat.x, z: seat.z }], 1.0);
     }
     return;
   }

@@ -14,6 +14,7 @@ import { getLastPhoto, takePhoto } from './features/photo';
 import { openFestivals } from './features/festivals';
 import { createPost } from './post';
 import { createWorld } from './world';
+import { setStallClosed } from './market';
 import { renderGardenTrees, setGardenGateBoard } from './vuoncay';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
 import { createKoi } from './koi';
@@ -551,6 +552,19 @@ function connect() {
     remotes.delete(id);
   });
   s.on('player:look', ({ id, accessory }: { id: string; accessory: string | null }) => remotes.get(id)?.char.setAccessory(accessory));
+  const STALL_VENDORS: { stall: string; npc: string; x: number; z: number }[] = [
+    { stall: 'stall_fruit', npc: 'npc15', x: 7, z: 57 },
+    { stall: 'stall_cake', npc: 'npc16', x: 12, z: 57 },
+    { stall: 'stall_tea', npc: 'npc17', x: 17, z: 57 },
+    { stall: 'stall_pho', npc: 'npc31', x: 22, z: 57 },
+    { stall: 'stall_trada', npc: 'npc32', x: 27, z: 57 },
+    { stall: 'stall_incense', npc: 'npc18', x: 32, z: 57 },
+    { stall: 'stall_phongsinh', npc: 'npc30', x: 37, z: 57 },
+    { stall: 'stall_com', npc: 'npc33', x: 42, z: 57 },
+    { stall: 'stall_chim', npc: 'npc34', x: 47, z: 57 },
+    { stall: 'stall_trada2', npc: 'npc36', x: 52, z: 57 },
+  ];
+  const stallAway = new Map<string, boolean>();
   s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'ry' | 'anim' | 'act'>[]; animals?: AnimalState[] }) => {
     $('onlineN').textContent = String(st.online);
     latestAnimals = st.animals ?? [];
@@ -561,6 +575,14 @@ function connect() {
       r.ry = p.ry;
       if (performance.now() > r.actionUntil) r.anim = p.anim;
       if (p.act !== r.act) { r.act = p.act ?? null; refreshLabel(r); }
+    }
+    for (const v of STALL_VENDORS) {
+      const t = remotes.get(v.npc)?.target;
+      if (!t) continue;
+      const away = Math.hypot(t.x - v.x, t.z - v.z) > 4;
+      if (away === (stallAway.get(v.stall) ?? false)) continue;
+      stallAway.set(v.stall, away);
+      setStallClosed(v.stall, away);
     }
   });
   s.on('chat', addChat);
