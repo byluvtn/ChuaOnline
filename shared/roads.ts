@@ -71,6 +71,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'denN', x: 11.5, z: 35.5 },
   { id: 'denE', x: 18, z: 37 },
   { id: 'dienMau', x: 39, z: 14.5 },
+  { id: 'bodhiTree', x: 35.5, z: 20 },
   // baoThap stops 2.2 m south of the thap's south steps (z -33..-31.2); the steps
   // no longer sit inside the Tam The platform (platform z -80..-56).
   { id: 'baoThap', x: -30, z: -28 }, // was -29: pillar r0.5 at (-30.2,-29.8) left only 0.33 clearance at the node
@@ -174,6 +175,7 @@ export const ROAD_EDGES: [string, string][] = [
   ['zenGarden', 'thienDuong'], ['baoThap', 'zenIn'], ['zenIn', 'zenOut'], ['zenOut', 'bellTower'],
   ['quanYard', 'plaza'],
   ['quanYard', 'restEast'], ['restEast', 'restSE'], ['restSE', 'restArea'], ['quanYard', 'dienMau'], ['buddhaYard', 'plaza'],
+  ['quanYard', 'bodhiTree'],
   ['buddhaYard', 'bridgeN'], ['denTrinh', 'gate'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'restArea'],
   ['phongCDDoor', 'gate'],
   // Vườn Tây qua lối đông: gate -> gateW -> vuonCayE -> vuonCay (cạnh cũ

@@ -337,7 +337,7 @@ export function buildTemple(c: TempleCtx) {
   sealArchitectureJoints(yard, { maxGap: 0.3 });
   colliders.push({ x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 4 });
 
-  // ---- tháp nhỏ (model 3D, 3 tầng, mái đỏ) ----
+  // ---- tháp nhỏ (model 3D, 5 tầng, mái đỏ) ----
   const pagoda = new THREE.Group();
   pagoda.name = 'pagoda';
   loadModel('pagoda').then((base) => {
@@ -349,7 +349,7 @@ export function buildTemple(c: TempleCtx) {
       const mats = Array.isArray(m.material) ? m.material : [m.material];
       for (const mat of mats) {
         const sm = mat as THREE.MeshStandardMaterial;
-        if (sm.name === 'blk') {
+        if (sm.name === 'blk' || sm.name === 'tile') {
           const c2 = sm.clone();
           c2.color.set(0x7a2a1d);
           m.material = c2;
@@ -990,6 +990,19 @@ export function buildTemple(c: TempleCtx) {
   }
   // xác nhận hồ nằm đúng tâm khuôn viên
   const pondHandle = placeKoiPond(pond, LAKE);
+
+  // ---- cầu đá vòm đỏ (model 3D, trang trí — bắc qua vịnh đông hồ cá koi) ----
+  const stoneBridge = new THREE.Group();
+  stoneBridge.name = 'stone-bridge';
+  loadModel('stone_bridge').then((base) => {
+    if (!base) return;
+    const inst = base.clone(true);
+    stoneBridge.add(inst);
+  });
+  stoneBridge.position.set(8.1, 0, 22); scene.add(stoneBridge);
+  colliders.push({ x: 8.1, z: 19.2, r: 0.9 });
+  colliders.push({ x: 8.1, z: 24.8, r: 0.9 });
+  colliders.push({ x: 8.1, z: 22, r: 1.2 });
 
   // cầu cong: ván ghép, lan can, trụ, đèn — chạy dọc trục z qua hồ
   const bridge = new THREE.Group(); bridge.name = 'arched-bridge'; scene.add(bridge);

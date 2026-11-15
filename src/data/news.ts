@@ -4,11 +4,21 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 100;
+export const LATEST_NEWS_ID = 101;
 
 export const NEWS: NewsItem[] = [
   {
-    title: 'Sắp xếp lại đèn lồng đỏ, hết chồng lên cột đá',
+    title: 'Cảnh mới: tháp 5 tầng, cầu đá, cây cổ thụ bồ đề',
+    date: '2026-11-15',
+    items: [
+      'Tháp nhỏ ở (34,-15) giờ là tháp 5 tầng mái đỏ (thay tháp 3 tầng cũ); tháp mini ở vườn giữ mái đen.',
+      'Cầu đá vòm đỏ mới bắc qua vịnh đông hồ cá koi (gần cầu chính).',
+      'Thêm 4 cây mới: anh đào bên cầu sen, sồi bóng mát khu nghỉ, sồi heyhey bên hồ, cây đu phía tây — tán cao, không chắn màn hình.',
+      'Cây bồ đề cổ thụ (cao 15 m) mới trồng phía đông, cạnh Điện Mẫu; có ghế đá bên gốc — Sư Ông thi thoảng ra ngồi nghỉ dưới gốc cây.',
+    ],
+  },
+  {
+    title: 'Bảng thông báo: xoay ra cổng, bấm để đọc',
     date: '2026-11-15',
     items: [
       'Đèn lồng đỏ ở quảng trường và vườn Thiền đã dời khỏi các cột đá khắc kinh, đèn đá, lá sồi và hồ cá: không còn cảnh đèn chồng lên cột hay treo xuyên qua đèn đá.',

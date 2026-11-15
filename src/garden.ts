@@ -39,6 +39,12 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('stone_lantern', 28, -30, 0, 2.15, null, 0.3),
   p('pagoda', 53, -66, 0, 5.1, null, 1.3),
   p('zen_sand_garden', -34, -26, 0.2, null, 2.0, null),
+  p('castle-cherry-tree', -8, 30, 0.6, 7.2, null, 0.4),
+  p('broadleaf-oak', 42, 39, 2.1, 9.1, null, 0.5),
+  p('oak_nt', 10, 28, 0.9, 8.9, null, 0.8),
+  p('swing-oak', -48, -15, 0, 9.0, null, 0.4),
+  p('cenji-ancient-tree', 40, 20, 0.4, null, 1.0, 1.5),
+  p('wooden_bench', 35.5, 20, Math.PI / 2, null, 1.125, 0.5),
 ];
 
 export const GARDEN_COLLIDERS: { x: number; z: number; r: number }[] = [
@@ -59,7 +65,14 @@ function toToon(root: THREE.Object3D): void {
       | (THREE.Material & { color?: THREE.Color; map?: THREE.Texture | null })
       | undefined;
     const color = src && src.color ? src.color.clone() : new THREE.Color(0xffffff);
-    m.material = src && src.map ? toon(color, { map: src.map }) : toon(color);
+    // Model chỉ có màu đỉnh (COLOR_0, không map) phải bật vertexColors, nếu không sẽ render trắng.
+    const hasVtxColor = !!m.geometry.getAttribute('color');
+    m.material =
+      src && src.map
+        ? toon(color, { map: src.map })
+        : hasVtxColor
+          ? toon(color, { vertexColors: true })
+          : toon(color);
     m.castShadow = true;
     m.receiveShadow = true;
   });

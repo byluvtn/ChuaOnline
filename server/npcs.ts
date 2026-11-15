@@ -809,6 +809,8 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   }
   if (n.def.behavior === 'wander' && n.mode === 'toIdleRest') {
     n.mode = 'idleRest'; n.phase = 'act'; s.anim = 'sit'; n.until = now + R(30_000, 60_000);
+    // Ghế bồ đề (35.5, 20): ngồi quay mặt ra hồ (hướng Tây).
+    if (Math.hypot(s.x - 35.5, s.z - 20) < 0.6) s.ry = -Math.PI / 2;
     return;
   }
   if (n.def.behavior === 'wander' && n.mode !== 'normal') return abbotArrive(n, now);
@@ -832,7 +834,9 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
       startWalk(n, incenseRoute(n, spot), 1.2);
     }
     else if (r < 0.85) {
-      const node = IDLE_REST_NODES[Math.floor(Math.random() * IDLE_REST_NODES.length)];
+      const node = (n.def.id === 'npc37' && Math.random() < 0.6)
+        ? 'bodhiTree'
+        : IDLE_REST_NODES[Math.floor(Math.random() * IDLE_REST_NODES.length)];
       n.mode = 'toIdleRest';
       startWalk(n, routeFrom(n.state, node), 1.2);
     }
