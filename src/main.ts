@@ -720,8 +720,9 @@ joyEl.addEventListener('pointercancel', joyEnd);
 // Joystick có thể kéo tới vị trí tuỳ ý bằng tay nắm ở góc; vị trí được nhớ giữa các lần mở game.
 const JOY_POS_KEY = 'co:joyPos';
 const clampJoy = (x: number, y: number) => {
+  const vw = visualViewport?.width ?? innerWidth, vh = visualViewport?.height ?? innerHeight;
   const w = joyEl.offsetWidth || 124, h = joyEl.offsetHeight || 124;
-  return { x: Math.max(6, Math.min(innerWidth - w - 6, x)), y: Math.max(6, Math.min(innerHeight - h - 6, y)) };
+  return { x: Math.max(6, Math.min(vw - w - 6, x)), y: Math.max(6, Math.min(vh - h - 6, y)) };
 };
 const placeJoy = (x: number, y: number) => {
   const p = clampJoy(x, y);
@@ -735,20 +736,30 @@ if (isTouch) {
   grip.innerHTML = '<span data-icon="move"></span>';
   joyEl.append(grip);
   hydrateIcons(grip);
-  let drag: { id: number; ox: number; oy: number } | null = null;
+  let drag: { id: number; ox: number; oy: number; sx: number; sy: number } | null = null;
   grip.addEventListener('pointerdown', (e) => {
     e.stopPropagation(); e.preventDefault();
     const r = joyEl.getBoundingClientRect();
-    drag = { id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top };
+    drag = { id: e.pointerId, ox: e.clientX - r.left, oy: e.clientY - r.top, sx: r.left, sy: r.top };
     try { grip.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
     joyEl.classList.add('moving');
   });
-  grip.addEventListener('pointermove', (e) => { if (drag && e.pointerId === drag.id) placeJoy(e.clientX - drag.ox, e.clientY - drag.oy); });
+  grip.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const cx = e.clientX, cy = e.clientY;
+    if (!Number.isFinite(cx) || !Number.isFinite(cy) || cx < 0 || cy < 0 || (cx === 0 && cy === 0)) return;
+    placeJoy(cx - drag.ox, cy - drag.oy);
+  });
   const gripEnd = (e: PointerEvent) => {
     if (!drag || e.pointerId !== drag.id) return;
+    const { sx, sy } = drag;
     drag = null; joyEl.classList.remove('moving');
     const r = joyEl.getBoundingClientRect();
-    try { localStorage.setItem(JOY_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch { /* storage blocked */ }
+    if (r.top >= innerHeight * 0.25) {
+      try { localStorage.setItem(JOY_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch { /* storage blocked */ }
+    } else {
+      placeJoy(sx, sy);
+    }
   };
   grip.addEventListener('pointerup', gripEnd);
   grip.addEventListener('pointercancel', gripEnd);
@@ -759,11 +770,17 @@ if (isTouch) {
   const restoreJoy = () => {
     try {
       const s = JSON.parse(localStorage.getItem(JOY_POS_KEY) ?? 'null');
-      if (s && Number.isFinite(s.x) && Number.isFinite(s.y)) placeJoy(s.x, s.y);
+      if (s && Number.isFinite(s.x) && Number.isFinite(s.y) && s.y >= innerHeight * 0.25 && s.x >= 0 && s.y >= 0 && s.x < innerWidth && s.y < innerHeight) {
+        placeJoy(s.x, s.y);
+      } else {
+        localStorage.removeItem(JOY_POS_KEY);
+      }
     } catch { /* ignore */ }
   };
   restoreJoy();
-  addEventListener('resize', () => { if (joyEl.style.top) { const r = joyEl.getBoundingClientRect(); placeJoy(r.left, r.top); } });
+  const reclamp = () => { if (joyEl.style.top) { const r = joyEl.getBoundingClientRect(); placeJoy(r.left, r.top); } };
+  addEventListener('resize', reclamp);
+  visualViewport?.addEventListener('resize', reclamp);
 }
 
 // Pinch zoom

@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 95;
+export const LATEST_NEWS_ID = 96;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa nút di chuyển kẹt góc trên trên iPhone',
+    date: '2026-11-15',
+    items: [
+      'Nút di chuyển không còn bị kẹt ở góc trên-trái màn hình trên iPhone; mở game lên nút luôn ở góc dưới-trái như trước.',
+      'Kéo tay nắm để dời nút tới chỗ khác vẫn được, vị trí mới được nhớ cho lần mở sau.',
+    ],
+  },
   {
     title: 'Bảng thông báo: xoay ra cổng, bấm để đọc',
     date: '2026-11-15',
