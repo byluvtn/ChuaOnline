@@ -1430,6 +1430,23 @@ function questTarget(q: QuestState): Pt | null {
   return zc; // Q7/Q8/Q9/Q15/Q21 worship at a zone
 }
 function startGuide(qid: string): void {
+  const q = quests.find((x) => x.id === qid);
+  // Dẫn đường cho nhiệm vụ NPC chưa nhận: nhận hộ trước (server quest:accept),
+  // vì updateSweep chỉ quét nhiệm vụ đã nhận — nếu không, guide đi tới nơi rồi
+  // đứng im, không bao giờ cầm chổi (bug sweep v3, user 11:09 15/11).
+  if (q && !q.accepted && !q.claimed && (qid.startsWith('nq_') || qid.startsWith('dq_') || qid.startsWith('c_'))) {
+    socket?.emit('quest:accept', qid, (r: { ok: boolean; error?: string }) => {
+      if (r.ok) {
+        // Lật accepted tại chỗ, không chờ push 'quests' (push mất thì lại kẹt — đúng lỗi news 89).
+        const qq = quests.find((x) => x.id === qid);
+        if (qq) qq.accepted = true;
+        return;
+      }
+      if (r.error === 'Đã nhận hoặc đã hoàn thành nhiệm vụ này') return; // đã nhận (race) — quests push sẽ cập nhật
+      if (guideQuestId === qid) stopGuide();
+      toast(r.error ?? 'Lỗi');
+    });
+  }
   guideQuestId = qid;
   clickTarget = null; pathTarget = null; pathQueue = []; guideFeedN = 0; guideStuckN = 0;
   updateGuideTarget();

@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 89;
+export const LATEST_NEWS_ID = 90;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa lỗi dẫn đường quét sân',
+    date: '2026-11-15',
+    items: [
+      'Bấm "Dẫn đường" cho nhiệm vụ quét sân giờ tự nhận nhiệm vụ trước, rồi mới dẫn đi.',
+      'Tới điểm quét sẽ cầm chổi quét như thường, quét đủ điểm thì về trả người giao.',
+    ],
+  },
   {
     title: 'Sửa lỗi quét sân bị đứng im',
     date: '2026-11-15',
