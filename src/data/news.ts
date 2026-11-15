@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 91;
+export const LATEST_NEWS_ID = 92;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chổi quét to hơn, thấy rõ hơn',
+    date: '2026-11-15',
+    items: [
+      'Chổi cầm khi quét sân, quét cầu, quét vườn và quét đường đã to hơn khoảng 30%, cán dày hơn nên nhìn rõ ở khoảng cách chơi.',
+      'Đầu chổi giờ chấm đất đúng chỗ thay vì bị chìm dưới đất; cán không còn chọc vào áo.',
+    ],
+  },
   {
     title: 'Sửa râu Sư Ông dính áo',
     date: '2026-11-15',

@@ -512,8 +512,8 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const holdLotus = new THREE.Group(); holdLotus.visible = false; hold.add(holdLotus);
   // chá»•i quÃ©t lÃ¡: cÃ¡n nghiÃªng ra trÆ°á»›c, Ä‘áº§u chá»•i cháº¡m Ä‘áº¥t; chá»‰ hiá»‡n khi anim = sweep
   const holdBroom = new THREE.Group(); holdBroom.visible = false; holdBroom.rotation.x = -0.5; hold.add(holdBroom);
-  mesh(geo('broomHandle', () => new THREE.CylinderGeometry(0.018, 0.018, 1.25, 6)), tmat(0x6b4423), holdBroom, 0, -0.32, 0, false);
-  mesh(geo('broomHead', () => new THREE.ConeGeometry(0.15, 0.4, 8)), tmat(0x9a6b35), holdBroom, 0, -0.84, 0, false);
+  mesh(geo('broomHandle', () => new THREE.CylinderGeometry(0.024, 0.024, 0.95, 6)), tmat(0x6b4423), holdBroom, 0, -0.325, 0, false);
+  mesh(geo('broomHead', () => new THREE.ConeGeometry(0.195, 0.52, 8)), tmat(0x9a6b35), holdBroom, 0, -0.61, 0, false);
   for (let i = -1; i <= 1; i++) { // three incense sticks, red glowing tips
     const st = new THREE.Group(); st.position.set(i * 0.016, 0.02, 0); st.rotation.z = -i * 0.1; holdInc.add(st);
     mesh(geo('stick', () => new THREE.CylinderGeometry(0.0065, 0.0065, 0.212, 5)), tmat(0x8a4b2a), st, 0, 0.106, 0, false);
