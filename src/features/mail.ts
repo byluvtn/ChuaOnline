@@ -1,4 +1,4 @@
-import { ITEM_BY_ID, type MailAck, type MailGift, type MailItem } from '../../shared/game';
+import { ITEM_BY_ID, ITEMS, type GiftAck, type MailAck, type MailGift, type MailItem } from '../../shared/game';
 import { audio } from '../audio';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
@@ -30,8 +30,11 @@ export function giftText(g: MailGift): string {
 const fmtTime = (t: number) => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
 
 function renderList(body: HTMLElement, ctx: MenuCtx) {
+  const giftBtn = h('button', { class: 'mgift-btn', type: 'button' }, 'Tặng quà');
+  giftBtn.onclick = () => openGiftForm(body, ctx);
+
   if (!mails.length) {
-    body.replaceChildren(h('p', { class: 'hint' }, 'Hòm thư đang trống.'));
+    body.replaceChildren(giftBtn, h('p', { class: 'hint' }, 'Hòm thư đang trống.'));
     return;
   }
   const rows = mails.map((m) => {
@@ -44,7 +47,71 @@ function renderList(body: HTMLElement, ctx: MenuCtx) {
     row.onclick = () => openMailDetail(body, ctx, m);
     return row;
   });
-  body.replaceChildren(...rows);
+  body.replaceChildren(giftBtn, ...rows);
+}
+
+function openGiftForm(body: HTMLElement, ctx: MenuCtx) {
+  const players = ctx.players().filter(p => p.id !== ctx.socket.id);
+
+  const back = h('button', { class: 'mback', type: 'button' }, '← Hòm thư');
+  back.onclick = () => renderList(body, ctx);
+
+  const kids: (string | HTMLElement)[] = [back];
+
+  if (!players.length) {
+    kids.push(h('p', { class: 'hint' }, 'Không có người chơi nào khác trong phòng'));
+    body.replaceChildren(...kids);
+    return;
+  }
+
+  const gifts = ITEMS.filter(it => it.category === 'le_vat' && (ctx.profile()?.inventory[it.id] ?? 0) > 0);
+
+  if (!gifts.length) {
+    kids.push(h('p', { class: 'hint' }, 'Bạn chưa có lễ vật nào trong túi'));
+    body.replaceChildren(...kids);
+    return;
+  }
+
+  const selTo = h('select', { class: 'gift-to' },
+    h('option', { value: '' }, '-- Chọn người nhận --'),
+    ...players.map(p => h('option', { value: p.id }, p.name))
+  );
+  const selItem = h('select', { class: 'gift-item' },
+    h('option', { value: '' }, '-- Chọn lễ vật --'),
+    ...gifts.map(it => h('option', { value: it.id }, `${it.name} (×${ctx.profile()?.inventory[it.id] ?? 0})`))
+  );
+  const inpNote = h('input', { class: 'gift-note', maxlength: '120', placeholder: 'Tặng bạn một lễ vật' });
+
+  const btnSend = h('button', { class: 'gold', type: 'button' }, 'Gửi');
+  btnSend.disabled = true;
+
+  const checkValid = () => { btnSend.disabled = !selTo.value || !selItem.value; };
+  selTo.onchange = checkValid;
+  selItem.onchange = checkValid;
+
+  btnSend.onclick = () => {
+    btnSend.disabled = true;
+    ctx.socket.emit('gift:send', { to: selTo.value, item: selItem.value, note: inpNote.value }, (r: GiftAck) => {
+      if (r?.ok) {
+        ctx.toast(`Đã gửi quà. Còn ${r.left} lượt tặng hôm nay.`);
+        if (body.isConnected) renderList(body, ctx);
+      } else {
+        ctx.toast(r?.error ?? 'Gửi quà thất bại');
+        btnSend.disabled = false;
+      }
+    });
+  };
+
+  kids.push(
+    h('div', { class: 'fcard' },
+      h('label', {}, 'Người nhận'), selTo,
+      h('label', {}, 'Lễ vật'), selItem,
+      h('label', {}, 'Lời nhắn'), inpNote,
+      btnSend
+    )
+  );
+
+  body.replaceChildren(...kids);
 }
 
 function openMailDetail(body: HTMLElement, ctx: MenuCtx, m: MailItem) {

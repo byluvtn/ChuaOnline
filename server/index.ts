@@ -5,7 +5,7 @@ import { Server, type Socket } from 'socket.io';
 import {
   ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GARDEN_HARVEST_MERIT, GARDEN_PLOTS, GARDEN_SEEDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
   NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, defaultTitle, titleName, dqTodayIds,
-  type BeadsAck, type BeadsState, type CheckinAck, type GardenPlotState, type GardenSpecies, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
+  type BeadsAck, type BeadsState, type CheckinAck, type GardenPlotState, type GardenSpecies, type GiftAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
 import {
@@ -979,6 +979,46 @@ io.on('connection', (socket) => {
     for (const [item, qty] of Object.entries(items ?? {})) await db.addItem(pid, item, qty);
     await grantRewards(s, merit, coins);
     cb?.({ ok: true, merit, coins, items: items ?? {}, unread: await db.mailUnread(pid) });
+  });
+  socket.on('gift:send', async (payload: unknown, cb?: (r: GiftAck) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
+
+    const p = (payload ?? {}) as { to?: string; item?: string; note?: string };
+    const toSocketId = String(p.to ?? '');
+    const itemId = String(p.item ?? '');
+
+    // Resolve người nhận qua sessions map
+    const toSession = sessions.get(toSocketId);
+    if (!toSession) return cb?.({ ok: false, error: 'Người nhận không trực tuyến' });
+    if (toSession.room !== s.room) return cb?.({ ok: false, error: 'Người nhận không ở cùng phòng' });
+    if (toSession.pid === s.pid) return cb?.({ ok: false, error: 'Không thể tặng cho chính mình' });
+
+    // Validate lễ vật
+    const itemDef = ITEM_BY_ID[itemId];
+    if (!itemDef || itemDef.category !== 'le_vat' || itemDef.kind !== 'consumable') {
+      return cb?.({ ok: false, error: 'Món quà không hợp lệ' });
+    }
+
+    const note = clean(p.note, 120) || 'Tặng bạn một lễ vật';
+
+    const result = await db.sendGift(s.pid, toSession.pid, itemId, note);
+
+    if (result === 'cap') {
+      return cb?.({ ok: false, error: 'Hôm nay bạn đã tặng đủ 5 lượt rồi, mai tặng tiếp nhé' });
+    }
+    if (result === 'no_item') {
+      return cb?.({ ok: false, error: 'Bạn không có lễ vật này trong túi' });
+    }
+    if (result === 'error') {
+      return cb?.({ ok: false, error: 'Có lỗi xảy ra, thử lại sau' });
+    }
+
+    // Thành công: đẩy số thư chưa đọc cho người nhận, cập nhật túi người gửi
+    toSession.socket.emit('mail', { unread: await db.mailUnread(toSession.pid) });
+    await pushProfile(s);
+    const left = 5 - (await db.minigameCount(s.pid, 'gift'));
+    cb?.({ ok: true, left });
   });
 
   socket.on('spin:get', async (cb?: (r: SpinAck) => void) => {

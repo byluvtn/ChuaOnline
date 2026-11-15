@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 85;
+export const LATEST_NEWS_ID = 86;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tặng quà qua hòm thư',
+    date: '2026-11-15',
+    items: [
+      'Mở Hòm thư → Tặng quà: chọn người chơi cùng phòng, chọn 1 lễ vật trong túi và viết lời nhắn.',
+      'Mỗi ngày tặng tối đa 5 lần; người nhận mở thư bấm Nhận quà để lấy lễ vật.',
+    ],
+  },
   {
     title: 'Tưới 1 cây còn 9 công đức để tổng ngày không vượt 36',
     date: '2026-11-15',

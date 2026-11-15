@@ -552,6 +552,64 @@ export async function claimMail(id: number, mailId: number): Promise<{ gift: Mai
   const gift = parseGift(row?.gift);
   return gift ? { gift } : null;
 }
+export async function sendGift(
+  fromId: number,
+  toId: number,
+  itemId: string,
+  note: string
+): Promise<'ok' | 'no_item' | 'cap' | 'error'> {
+  const tx = await db.transaction('write');
+  try {
+    // 1. Trừ 1 món trong túi người gửi (điều kiện qty >= 1)
+    const invRes = await tx.execute({
+      sql: 'UPDATE inventory SET qty = qty - 1 WHERE player_id = ? AND item_id = ? AND qty >= 1',
+      args: [fromId, itemId],
+    });
+    if (invRes.rowsAffected !== 1) {
+      await tx.rollback();
+      return 'no_item';
+    }
+
+    // 2. Lấy tên người gửi
+    const nameRow = (
+      await tx.execute({ sql: 'SELECT name FROM players WHERE id = ?', args: [fromId] })
+    ).rows[0] as unknown as { name: string } | undefined;
+    const senderName = nameRow?.name ?? 'Ai đó';
+
+    // 3. Chèn thư quà vào hòm người nhận (created_at NOT NULL — bắt buộc kèm now())
+    const rawGift: MailGift = { merit: 0, coins: 0, items: { [itemId]: 1 } };
+    const safeGift = cleanGift(rawGift);
+    await tx.execute({
+      sql: 'INSERT INTO mail (player_id, kind, title, body, gift, created_at) VALUES (?,?,?,?,?,?)',
+      args: [toId, 'gift', `Quà tặng từ ${senderName}`, note, JSON.stringify(safeGift), now()],
+    });
+
+    // 4. Tiêu 1 lượt minigame_daily game 'gift', cap 5 (đúng thứ tự cột của claimMinigame)
+    const dk = dayKey();
+    const quotaRes = await tx.execute({
+      sql: `INSERT INTO minigame_daily (player_id, day_key, game, count)
+            VALUES (?, ?, 'gift', 1)
+            ON CONFLICT(player_id, day_key, game)
+            DO UPDATE SET count = count + 1
+            WHERE count < 5`,
+      args: [fromId, dk],
+    });
+    if (quotaRes.rowsAffected !== 1) {
+      await tx.rollback();
+      return 'cap';
+    }
+
+    await tx.commit();
+    return 'ok';
+  } catch (err) {
+    console.warn(`[gift] sendGift lỗi: ${(err as Error).message}`);
+    try { await tx.rollback(); } catch { /* đã đóng */ }
+    return 'error';
+  } finally {
+    tx.close();
+  }
+}
+
 /** Phát thư ra mắt đúng một lần cho mọi người chơi hiện có; idempotent nhờ khóa app_meta. Trả số thư đã phát (0 nếu đã chạy trước đó). */
 export async function grantLaunchMail(): Promise<number> {
   const tx = await db.transaction('write');

@@ -412,6 +412,7 @@ export interface MailAck {
   ok: boolean; error?: string; unread?: number; mails?: MailItem[];
   merit?: number; coins?: number; items?: Record<string, number>;
 }
+export interface GiftAck { ok: boolean; error?: string; left?: number }
 
 export type StatKey = 'bows' | 'chants' | 'lanterns' | 'meditate_sec' | 'beads_rounds' | 'incense';
 export interface StatMilestone { id: string; stat: StatKey; threshold: number; title: string; coins: number; item?: string }
