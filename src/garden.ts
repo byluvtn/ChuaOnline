@@ -21,11 +21,11 @@ function p(
 }
 
 export const GARDEN_PLACEMENTS: GardenPlacement[] = [
-  p('cherry_tree', -8.5, 12, 0, 4.7, null, 0.4),
-  p('cherry_tree', 8.5, 12, 2.1, 4.7, null, 0.4),
-  p('cherry_tree', -7.5, -1, 4.2, 4.7, null, 0.4),
-  p('maple_tree', -40, -22, 0.5, 4.5, null, 0.4),
-  p('maple_tree', -42, -34, 3.0, 4.5, null, 0.4),
+  p('swing-oak', -8.5, 12, 0, 9.0, null, 0.4),
+  p('swing-oak', 8.5, 12, Math.PI, 9.0, null, 0.4),
+  p('swing-oak', -7.5, -1, 0, 9.0, null, 0.4),
+  p('birch_nt', -40, -22, 0.5, 9.7, null, 0.4),
+  p('birch_nt', -42, -34, 3.0, 9.7, null, 0.4),
   p('bamboo_cluster', -41, -36.5, 1.1, 4.4, null, 0.4),
   p('bamboo_cluster', 48, -24, 2.4, 4.4, null, 0.4),
   p('stone_lantern', -37.5, -26, 0, 2.15, null, 0.3),

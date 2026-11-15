@@ -1532,10 +1532,10 @@ export function buildTemple(c: TempleCtx) {
     const psTrees: [number, number, number][] = [[hx0 + 3.5, hz0 + 3, 1.1], [hx1 - 3.5, hz0 + 3, 1.2], [hx1 - 3.5, hz1 - 3, 1.0], [hx0 + 4.5, hz1 - 3, 0.95]];
     psTrees.forEach(([x, z, s], i) => {
       const t = new THREE.Group();
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 2.2, 8), psTrunkM); trunk.position.y = 1.1; trunk.castShadow = true; t.add(trunk);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 5.2, 8), psTrunkM); trunk.position.y = 2.6; trunk.castShadow = true; t.add(trunk);
       for (let k = 0; k < 3; k++) {
         const cn = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), i === 1 ? psBlossomM : psCanopyM);
-        cn.scale.setScalar(1.5 - k * 0.22); cn.position.set((k - 1) * 0.5 * (k % 2 ? 1 : -1), 2.9 + k * 0.7, k * 0.2 - 0.2); cn.castShadow = true; t.add(cn);
+        cn.scale.setScalar(1.5 - k * 0.22); cn.position.set((k - 1) * 0.5 * (k % 2 ? 1 : -1), 5.9 + k * 0.7, k * 0.2 - 0.2); cn.castShadow = true; t.add(cn);
       }
       t.position.set(x, 0, z); t.scale.setScalar(s); scene.add(t);
       colliders.push({ x, z, r: 0.5 * s });

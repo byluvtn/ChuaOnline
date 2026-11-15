@@ -188,14 +188,14 @@ export function buildVuonCay(scene: THREE.Scene, colliders: Collider[]): void {
     const g = new THREE.Group();
     g.position.set(x, groundY(x, z), z);
     g.scale.setScalar(1.3);
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 2.2, 8), bark);
-    trunk.position.y = 1.1;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 4.1, 8), bark);
+    trunk.position.y = 2.05;
     trunk.castShadow = true;
     g.add(trunk);
     const tiers: [number, number, number, number][] = [
-      [0, 2.3, 0, 1.2],
-      [0.1, 2.95, -0.05, 1.0],
-      [-0.05, 3.5, 0.05, 0.75],
+      [0, 4.2, 0, 1.2],
+      [0.1, 4.85, -0.05, 1.0],
+      [-0.05, 5.4, 0.05, 0.75],
     ];
     for (const [ox, oy, oz, s] of tiers) {
       const c = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), leaf);

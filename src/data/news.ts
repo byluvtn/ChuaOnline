@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 92;
+export const LATEST_NEWS_ID = 93;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Cây trong chùa cao hơn',
+    date: '2026-11-15',
+    items: [
+      'Sồi sân chùa và bạch dương vườn Thiền giờ cao khoảng 9 m, tán nâng lên khỏi tầm nhìn.',
+      'Cây hồ sen, bồn hoa, khu nghỉ và Vườn Tây cũng cao thêm — đi lại không còn bị tán cây che màn hình.',
+    ],
+  },
   {
     title: 'Chổi quét to hơn, thấy rõ hơn',
     date: '2026-11-15',

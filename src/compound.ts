@@ -497,10 +497,10 @@ export function buildFlowerBeds(g: GardenCtx) {
     for (const [dx, dz] of trees) {
       const x = bed.x + dx * side, z = bed.z + dz;
       const t = new THREE.Group();
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 2.3, 8), trunkM); tr.position.y = 1.15; tr.castShadow = true; t.add(tr);
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 5.3, 8), trunkM); tr.position.y = 2.65; tr.castShadow = true; t.add(tr);
       for (let k = 0; k < 3; k++) {
         const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), blossomM);
-        cr.scale.setScalar(1.35 - k * 0.2); cr.position.set((k - 1) * 0.45 * (k % 2 ? 1 : -1), 2.7 + k * 0.6, k * 0.2 - 0.2); cr.castShadow = true; t.add(cr);
+        cr.scale.setScalar(1.35 - k * 0.2); cr.position.set((k - 1) * 0.45 * (k % 2 ? 1 : -1), 5.7 + k * 0.6, k * 0.2 - 0.2); cr.castShadow = true; t.add(cr);
       }
       t.position.set(x, GY, z); t.rotation.y = x + z; grp.add(t);
       g.colliders.push({ x, z, r: 0.35 });
@@ -524,8 +524,8 @@ export function buildRestArea(g: GardenCtx) {
   for (let i = 0; i < 3; i++) {
     const a = -Math.PI / 2 + (i * Math.PI * 2) / 3, x = cx + Math.cos(a) * 4.2, z = cz + Math.sin(a) * 4.2;
     const t = new THREE.Group();
-    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.5, 3.2, 10), trunkM); tr.position.y = 1.6; tr.castShadow = true; t.add(tr);
-    const parts: [number, number, number, number][] = [[0, 4.0, 0, 2.5], [1.3, 3.8, 0.5, 1.9], [-1.2, 3.9, -0.6, 2.0], [0.2, 5.0, 0.3, 1.7]];
+    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.5, 5.8, 10), trunkM); tr.position.y = 2.9; tr.castShadow = true; t.add(tr);
+    const parts: [number, number, number, number][] = [[0, 6.6, 0, 2.5], [1.3, 6.4, 0.5, 1.9], [-1.2, 6.5, -0.6, 2.0], [0.2, 7.6, 0.3, 1.7]];
     parts.forEach(([px, py, pz, r], k) => {
       const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), canopyMs[(i + k) % 3]);
       cr.scale.y = 0.8; cr.position.set(px, py, pz); cr.castShadow = true; cr.receiveShadow = true; t.add(cr);
