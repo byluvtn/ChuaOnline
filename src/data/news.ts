@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 96;
+export const LATEST_NEWS_ID = 97;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Khách viếng tản ra hai bên chùa',
+    date: '2026-11-15',
+    items: [
+      'Khách viếng giờ tái sinh rải khắp chùa thay vì chỉ ở cổng; ai đi tham quan thì đi hết một bên (Tây hoặc Đông) rồi mới về.',
+      'Nhiều khách đi tham quan hơn (3/4 thay vì hơn một nửa) và khách đứng chờ rải ra sân Quan Âm, khu nghỉ, vườn Thiền thay vì dồn ở sân chùa — sân chùa, cầu cá và trục giữa bớt đông.',
+    ],
+  },
   {
     title: 'Sửa nút di chuyển kẹt góc trên trên iPhone',
     date: '2026-11-15',
