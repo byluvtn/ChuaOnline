@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { MAP_HALF } from '../shared/types';
 import { fitModel, loadModel } from './models';
 import { applySkyPalette, paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
-import { glowTexture, grassTexture, petalTexture, signTexture, stoneTexture } from './textures';
+import { glowTexture, grassTexture, petalTexture, signTexture, signTexture2Lines, stoneTexture } from './textures';
 import { geo, outlined, toon } from './toon';
 import { blocked, LAKE, HALL, PLAZA } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
@@ -280,6 +280,24 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     inst.position.set(24, 0, -24);
     scene.add(inst);
   });
+
+  // Bảng gỗ chú thích ống xin xăm (đầu nam của ống, mặt quay về hướng tây)
+  {
+    const omikujiSignPostMat = lamb(0x5a3a22);
+    for (const pz of [-22.5, -20.3]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.9, 0.12), omikujiSignPostMat);
+      post.position.set(24, 0.95, pz);
+      scene.add(post);
+      colliders.push({ x: 24, z: pz, r: 0.3 });
+    }
+    const omikujiSign = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.6, 0.65),
+      new THREE.MeshBasicMaterial({ map: signTexture2Lines('Xin xăm', '— chạm vào ống để xin quẻ') }),
+    );
+    omikujiSign.rotation.y = -Math.PI / 2;
+    omikujiSign.position.set(23.93, 1.5, -21.4);
+    scene.add(omikujiSign);
+  }
 
   // ---- Bảng ước nguyện gần sân plaza (prop trang trí, chưa có mechanic) ----
   colliders.push({ x: 12, z: 6, r: 1.2 });

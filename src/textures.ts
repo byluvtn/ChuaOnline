@@ -108,6 +108,30 @@ export function signTexture(text: string) {
   return t;
 }
 
+export function signTexture2Lines(title: string, sub: string) {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 256;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#5a1a12'; g.fillRect(0, 0, 1024, 256);
+  g.strokeStyle = '#e8b64a'; g.lineWidth = 10; g.strokeRect(14, 14, 996, 228);
+  g.fillStyle = '#f4d27a';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const maxW = 900;
+  let fs1 = 100;
+  g.font = `700 ${fs1}px "Times New Roman", serif`;
+  const w1 = g.measureText(title).width;
+  if (w1 > maxW) { fs1 = Math.floor(fs1 * maxW / w1); g.font = `700 ${fs1}px "Times New Roman", serif`; }
+  g.fillText(title, 512, 98);
+  let fs2 = 64;
+  g.font = `700 ${fs2}px "Times New Roman", serif`;
+  const w2 = g.measureText(sub).width;
+  if (w2 > maxW) { fs2 = Math.floor(fs2 * maxW / w2); g.font = `700 ${fs2}px "Times New Roman", serif`; }
+  g.fillText(sub, 512, 190);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export interface HonorRow { name: string; coins: number; merit: number }
 
 /** Mặt bảng vinh danh 1024x424. rows = null: đang tải; rows rỗng: chưa có ai. */

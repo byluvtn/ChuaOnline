@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 117;
+export const LATEST_NEWS_ID = 118;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bảng chú thích ống xin xăm',
+    date: '2026-11-17',
+    items: [
+      'Ống xin xăm ở khu vực Nơi xin xăm giờ có bảng gỗ chú thích bên cạnh, ghi rõ "Xin xăm — chạm vào ống để xin quẻ".',
+      'Bảng đặt cạnh ống, không che ống và không chặn lối đi; nút Xin xăm vẫn hiện khi đứng gần ống như trước.',
+      'Người chơi mới nhìn bảng là biết chỗ này để làm gì, không cần hỏi.',
+    ],
+  },
   {
     title: 'Quản trị tự thêm xu và công đức cho bản thân',
     date: '2026-11-17',
