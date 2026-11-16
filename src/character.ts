@@ -399,25 +399,33 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       const mo = blob(sd * 0.08, -0.165, 0.5, 0.1, 0.035, 0.05);
       mo.rotation.set(0, sd * 0.35, -sd * 0.3);
       outlined(mo, 0.014);
-      if (hasCane) {
-        // Beard pieces follow the chest curve: the upper blobs sit further forward
-        // (+0.08) so the mid-beard clears the leaning robe; the tapers sit further
-        // forward still (+0.06 vs the old z) because the cone's widest part is its
-        // TOP and its back edge was the surface still touching the robe (measured
-        // gap -0.04 at y ~1.0 after the blob shift alone). Tip stays in range.
-        beard.add(blob(sd * 0.25, -0.03, 0.05, 0.09, 0.15, 0.09));
-        beard.add(taper(sd * 0.25, -0.20, 0.05, 0.09, 0.2, 0.09));
-      } else {
-        blob(sd * 0.25, -0.45, 0.39, 0.09, 0.15, 0.09);
-        taper(sd * 0.25, -0.62, 0.39, 0.09, 0.2, 0.09);
-      }
     }
+    // v3: chin bridge — a small blob on the HEAD (outside the beard group, so the
+    // fixed world tilt cannot rotate it away) that fills the vertical gap between
+    // the moustache underside (y = -0.20) and the beard top, and recesses back to
+    // the chin surface. Shared by both branches.
+    blob(0, -0.28, 0.50, 0.11, 0.09, 0.09);
     if (hasCane) {
-      beard.add(blob(0, -0.08, 0.06, 0.23, 0.15, 0.085));
-      beard.add(taper(0, -0.26, 0.06, 0.23, 0.36, 0.085));
+      // v3.2 central column: 5 round blobs, narrow and SHORTER than v3.1.
+      // Widths 0.32 -> 0.24 -> 0.18 -> 0.14 -> 0.11 (steep, even drop) so the
+      // middle third is clearly narrower than the top third (taper target).
+      // The bottom of the tip lands at y = -0.48 instead of -0.68: the old v3.1
+      // column hung 0.24 lower than the original cone tip (-0.44) and reached
+      // the belly, which both broke tipY and dropped minGap in the lowest sweep
+      // band. Shortening lifts that band back into the ~0.08 gap zone.
+      beard.add(blob(0, -0.06, 0.04, 0.16, 0.13, 0.12));
+      beard.add(blob(0, -0.15, 0.05, 0.12, 0.12, 0.11));
+      beard.add(blob(0, -0.24, 0.06, 0.09, 0.11, 0.10));
+      beard.add(blob(0, -0.32, 0.07, 0.07, 0.10, 0.09));
+      beard.add(blob(0, -0.40, 0.07, 0.055, 0.08, 0.08));
     } else {
-      blob(0, -0.5, 0.4, 0.23, 0.15, 0.085);
-      taper(0, -0.68, 0.4, 0.23, 0.36, 0.085);
+      // v3.2 central column, head-local. Same length as before (tipY 0.750 was
+      // on target, so do not move the tip), but the downward taper is steeper:
+      // widths 0.32 -> 0.24 -> 0.18 -> 0.11.
+      blob(0, -0.42, 0.44, 0.16, 0.13, 0.12);
+      blob(0, -0.54, 0.45, 0.12, 0.13, 0.11);
+      blob(0, -0.65, 0.46, 0.09, 0.12, 0.10);
+      blob(0, -0.75, 0.46, 0.055, 0.09, 0.08);
     }
   }
 
@@ -786,6 +794,7 @@ export const BEADS_MS = 2400;
 // head bow. v2: 0.17 -> 0.36 and anchor moved forward, because 0.17 left only a
 // ~2.5 cm gap (looked glued to the robe from a front-top view). (A sweep-only
 // extra tilt was tried and removed: it swung the beard backwards into the robe.)
+// v3 keeps the anchor and this tilt unchanged; only the beard shape changed.
 const BEARD_WORLD_TILT = 0.36;
 
 /** Procedural animation. t = seconds. */

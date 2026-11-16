@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 125;
+export const LATEST_NEWS_ID = 126;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa hình dáng râu Sư Ông: hẹp, rủ tự nhiên, liền cằm',
+    date: '2026-11-17',
+    items: [
+      'Râu Sư Ông giờ hẹp lại, rủ thon dần tới ngực, không còn đọc thành yếm trắng.',
+      'Râu mọc liền từ dưới cằm, nối với ria mép, nhìn từ trên xuống vẫn rõ là râu.',
+      'Râu hai Sư Thầy còn lại cũng được làm lại cùng kiểu, không tệ đi.',
+    ],
+  },
   {
     title: 'Thẻ quẻ có thêm mục Lời giải',
     date: '2026-11-17',
