@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 119;
+export const LATEST_NEWS_ID = 120;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Nhạc nền: thêm 2 bài tụng tiếng Phạn',
+    date: '2026-11-17',
+    items: [
+      'Nhạc nền trong chùa nay có thêm 2 bài tụng tiếng Phạn do người chơi cung cấp — Án Ma Ni Bát Di Hồng và Đại Bi Thần Chú — phát xen kẽ cùng 2 bài nhạc cũ.',
+      'Bốn bài phát xoay vòng tự động, hết bài này chuyển bài khác.',
+    ],
+  },
   {
     title: 'Thêm hai mèo mới Bông và Mun',
     date: '2026-11-17',

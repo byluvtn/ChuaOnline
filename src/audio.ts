@@ -7,7 +7,7 @@ let vol = 1;
 let bgm: HTMLAudioElement | null = null;
 const BGM_GAIN = 0.3;
 const applyBgm = () => { if (bgm) bgm.volume = muted ? 0 : Math.min(1, BGM_GAIN * vol); };
-const BGM_TRACKS = ['/audio/spiritual-ambient.mp3', '/audio/placid-ambient.mp3'];
+const BGM_TRACKS = ['/audio/spiritual-ambient.mp3', '/audio/placid-ambient.mp3', '/audio/om-mani-padme-hum.mp3', '/audio/dai-bi-than-chu.mp3'];
 let bgmIdx = 0;
 function startBgm() {
   if (!bgm) {
