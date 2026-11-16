@@ -45,6 +45,7 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('swing-oak', -48, -15, 0, 9.0, null, 0.4),
   p('cenji-ancient-tree', 40, 20, 0.4, null, 1.0, 1.5),
   p('wooden_bench', 35.5, 20, Math.PI / 2, null, 1.125, 0.5),
+  p('willow-sketchfab-S', -14, 30, 0.4, 13, null, 1.0),
 ];
 
 export const GARDEN_COLLIDERS: { x: number; z: number; r: number }[] = [
@@ -62,17 +63,26 @@ function toToon(root: THREE.Object3D): void {
     const m = o as THREE.Mesh;
     if (!m.isMesh) return;
     const src = (Array.isArray(m.material) ? m.material[0] : m.material) as
-      | (THREE.Material & { color?: THREE.Color; map?: THREE.Texture | null })
+      | (THREE.Material & {
+          color?: THREE.Color;
+          map?: THREE.Texture | null;
+          alphaMap?: THREE.Texture | null;
+        })
       | undefined;
     const color = src && src.color ? src.color.clone() : new THREE.Color(0xffffff);
+    // Giữ alpha cắt (lá liễu: alphaMode MASK) và hai mặt, nếu không lá thành tấm đặc.
+    const extra: Partial<THREE.MeshToonMaterialParameters> = {};
+    if (src && src.alphaTest > 0) extra.alphaTest = src.alphaTest;
+    if (src && src.side === THREE.DoubleSide) extra.side = THREE.DoubleSide;
+    if (src && src.alphaMap) extra.alphaMap = src.alphaMap;
     // Model chỉ có màu đỉnh (COLOR_0, không map) phải bật vertexColors, nếu không sẽ render trắng.
     const hasVtxColor = !!m.geometry.getAttribute('color');
     m.material =
       src && src.map
-        ? toon(color, { map: src.map })
+        ? toon(color, { map: src.map, ...extra })
         : hasVtxColor
-          ? toon(color, { vertexColors: true })
-          : toon(color);
+          ? toon(color, { vertexColors: true, ...extra })
+          : toon(color, extra);
     m.castShadow = true;
     m.receiveShadow = true;
   });

@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 104;
+export const LATEST_NEWS_ID = 105;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Cây liễu cổ thụ bên bờ hồ Tây',
+    date: '2026-11-16',
+    items: [
+      'Bờ Tây hồ sen có thêm cây liễu cổ thụ cao 13 m: rèm lá rủ dài gần chạm đất, thân thấp khuất sau rèm lá.',
+      'Lá giữ đúng dạng cắt alpha nên nhìn xuyên qua kẽ lá được, không thành tấm đặc; gốc cây có va chạm, đi bộ không xuyên qua thân.',
+      'Cây đứng ở bãi cỏ phía Tây hồ, cách đường đi Vườn Tây hơn 8 m; nếu muốn dời cây sang chỗ khác thì nhắn lại.',
+    ],
+  },
   {
     title: 'Tụng kinh đông vui: tăng ni, khách và người bán cùng tụng',
     date: '2026-11-15',

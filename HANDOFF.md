@@ -916,3 +916,13 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - `FACE_OFFSET` giữ 0 (ảnh game thật: cả 2 GLB đều quay mặt vào giữa hành lang; hướng không phải lỗi — news 21 sửa một lỗi không tồn tại).
 - `models.ts`: không cache null, cho phép thử lại khi lỗi mạng thoáng qua.
 - Còn treo: ảnh điện thoại thật 2 hành lang từ giữa sân + cầu thang từ góc user để xác nhận bằng mắt (GLB hay tải lỗi trong headless nên chưa chụp được GLB sau sửa ở game thật — chỉ đo được bằng render mặt trước + chibi fallback).
+
+## Cây liễu cổ thụ bên bờ hồ Tây (news 105)
+
+- Model: `/models/willow-sketchfab-S.glb` (do coordinator cung cấp riêng, không nằm trong diff), SHA256 `48f971f12792fe3c25ca1636e88d5ab6c32e4e10888ab10268369936cd6415cc`, 5.510.480 byte. 9.082 tris / 2 mesh (thân `bark10_0` 3.898 tris, lá `willow branch_1` 5.184 tris), đủ 5 texture PNG nhúng.
+- Vị trí: `p('willow-sketchfab-S', -14, 30, 0.4, 13, null, 1.0)` — tâm (-14, 30), cao 13 m, collider r=1.0 (tự đi theo `GARDEN_COLLIDERS`). `blocked()=false`, `groundY=0`.
+- Khoảng cách đã đo (tính từ tâm cây): đường Vườn Tây (cạnh gateW–vuonCayE) 8,35 m; mép hồ 7,81 m; cột đèn (-9.5, 26) 6,02 m; bồn hoa Tây (-16.5, 23) 3,79 m; cây anh đào castle-cherry-tree (-8, 30) 6,00 m; cây rải rác gần nhất 9,28 m. Tán rộng ~13,9 m (bán kính ~6,95 m): mép tán cách đường 1,40 m, cách mặt nước 0,86 m.
+- Độ lệch so với yêu cầu: yêu cầu gốc là tâm cây cách đường/nhà/mép nước ≥8 m, nhưng scan cho thấy không có điểm nào ở bờ Tây hồ đạt 8 m cho mọi hướng (tốt nhất là 6,85 m). (-14, 30) là điểm cân bằng tốt nhất; chọn scale 13 m thay vì 15 m để mọi khoảng trống chức năng đều dương.
+- `toToon()` sửa để giữ `alphaTest` (lá liễu: alphaMode MASK, alphaCutoff 0.246), `side: DoubleSide` và `alphaMap` nếu có; áp dụng cho cả 3 nhánh (có map / vertexColors / trơn). Material không có alpha không đổi hành vi.
+- `tools/willow-sim.mjs`: chạy `npx tsx tools/willow-sim.mjs` ra `WILLOW_SIM: ALL PASS` — A1 GLB đúng size/tris/meshes (5.510.480 B, 9.082 tris, 2 mesh, 1 material MASK cutoff 0,246); A2 vị trí (-14, 30) đúng, 25 placements; A3 blocked=false, groundY=0; B 90 node đường tới được từ plaza; C collider cách đường gần nhất 7,349 m; D đường 8,349 / hồ 7,814 / đèn 6,021 / bồn hoa 3,792 / anh đào 6,000; E `garden.ts` có `alphaTest`.
+- Còn treo: ảnh điện thoại thật từ quảng trường và từ bờ hồ để user xác nhận bằng mắt.
