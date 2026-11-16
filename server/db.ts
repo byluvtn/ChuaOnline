@@ -12,9 +12,25 @@ if (!process.env.TURSO_DATABASE_URL) {
     console.warn(`[db] cannot create dir for ${localFile}: ${(err as Error).message}`);
   }
 }
+const DB_TIMEOUT_MS = 5_000;
+
+// Turso remote qua HTTP: moi request deu kem AbortSignal.timeout de fail nhanh
+// khi Turso treo (nhan ket noi nhung khong tra loi). Abort la huy that
+// (dong socket), khong con request chay ngam. Voi SQLite local (file:) thi
+// tuy chon fetch khong duoc dung.
+const tursoFetch: typeof fetch = (input, init) => {
+  const timeoutSignal = AbortSignal.timeout(DB_TIMEOUT_MS);
+  const upstream = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+  const signal = upstream ? AbortSignal.any([upstream, timeoutSignal]) : timeoutSignal;
+  // Khong tao new Request: truyen signal qua init de fetch tu ghi de signal cua Request.
+  // (new Request(input, {signal}) treo khi tai dung socket keep-alive sau abort — da do bang ma tran tren Node 24.)
+  return fetch(input, { ...init, signal });
+};
+
 const rawDb = createClient({
   url: process.env.TURSO_DATABASE_URL ?? (process.env.DB_FILE ? `file:${process.env.DB_FILE}` : 'file:data/chuaonline.db'),
   authToken: process.env.TURSO_AUTH_TOKEN,
+  fetch: tursoFetch,
 });
 console.log(`[db] mode: ${process.env.TURSO_DATABASE_URL ? 'turso' : 'local file'}`);
 
@@ -24,16 +40,18 @@ console.log(`[db] mode: ${process.env.TURSO_DATABASE_URL ? 'turso' : 'local file
 // nó lan thành unhandled rejection rồi giết cả process (xem server/index.ts safeHandler).
 const TRANSIENT_PATTERNS = [
   'fetch failed', 'und_err_socket', 'und_err_connect_timeout', 'econnreset',
-  'econnrefused', 'etimedout', 'epipe', 'enotfound', 'eai_again',
+  'econnrefused', 'etimedout', 'timed out', 'epipe', 'enotfound', 'eai_again',
   'other side closed', 'socketerror', 'socket hang up',
 ];
 
 export function isTransientDbError(e: unknown, depth = 0): boolean {
   if (e == null || depth > 5) return false;
-  const err = e as { message?: unknown; code?: unknown; cause?: unknown };
+  const err = e as { name?: unknown; message?: unknown; code?: unknown; cause?: unknown };
   const text = `${typeof err.message === 'string' ? err.message : ''} ${typeof err.code === 'string' ? err.code : ''}`.toLowerCase();
   // Lỗi SQL không bao giờ là transient (BUSY đã có đường xử lý riêng ở garden.ts).
   if (text.includes('sqlite_constraint') || text.includes('sqlite_busy')) return false;
+  // AbortSignal.timeout() -> DOMException name === 'TimeoutError'.
+  if (err.name === 'TimeoutError') return true;
   if (TRANSIENT_PATTERNS.some((p) => text.includes(p))) return true;
   return isTransientDbError(err.cause, depth + 1);
 }
@@ -42,6 +60,67 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+// Circuit breaker cho job nen (refreshQuestGuard, meditation tick): khi Turso
+// chet lien tiep thi dung goi DB mot thoi gian thay vi na moi 10s/tick.
+// Chi job nen moi cap nhat breaker; loi tu hanh dong nguoi choi khong mo no.
+const CB_OPEN_AFTER = 3;
+const CB_COOLDOWN_MS = 30_000;
+const CB_COOLDOWN_MAX_MS = 120_000;
+
+let cbFails = 0;
+let cbOpenUntil = 0;
+let cbCooldown = CB_COOLDOWN_MS;
+let cbProbing = false;
+
+function cbOnSuccess(): void {
+  if (cbOpenUntil > 0) console.log('[db] circuit closed (Turso da hoi)');
+  cbFails = 0;
+  cbOpenUntil = 0;
+  cbCooldown = CB_COOLDOWN_MS;
+  cbProbing = false;
+}
+
+function cbOnTransientFail(): void {
+  const now = Date.now();
+
+  // Duong probe that bai: nhan doi cooldown, mo lai.
+  if (cbProbing) {
+    cbProbing = false;
+    cbCooldown = Math.min(cbCooldown * 2, CB_COOLDOWN_MAX_MS);
+    cbOpenUntil = now + cbCooldown;
+    console.warn(`[db] circuit van mo (probe that bai, cho ${Math.round(cbCooldown / 1000)}s)`);
+    return;
+  }
+
+  // Breaker dang mo, loi nay den tu job chay do truoc khi mo: bo qua,
+  // khong mo lai, khong keo dai cua so mo, khong log.
+  if (cbOpenUntil > now) return;
+
+  // Duong mo lan dau (hoac dong -> mo): dem loi lien tiep.
+  cbFails += 1;
+  if (cbFails >= CB_OPEN_AFTER) {
+    cbCooldown = CB_COOLDOWN_MS;
+    cbOpenUntil = now + cbCooldown;
+    console.warn('[db] circuit open (Turso loi lien tiep, tam dung job nen)');
+  }
+}
+
+export function dbBackgroundAllowed(): boolean {
+  const now = Date.now();
+  if (cbOpenUntil === 0 || now >= cbOpenUntil) {
+    if (cbProbing) return false;
+    if (cbOpenUntil > 0) cbProbing = true;
+    return true;
+  }
+  return false;
+}
+
+export function dbBackgroundResult(err?: unknown): void {
+  if (err === undefined) { cbOnSuccess(); return; }
+  if (isTransientDbError(err)) cbOnTransientFail();
+  else if (cbProbing) cbProbing = false;
 }
 
 // Đọc / idempotent: tối đa 3 lần (thêm 2 lần retry), chờ 150 ms rồi 400 ms.

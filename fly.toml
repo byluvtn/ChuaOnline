@@ -31,7 +31,8 @@ primary_region = "sin"
     interval = "30s"
     method = "GET"
     path = "/"
-    timeout = "5s"
+    # 10s thay vi 5s: DB treo co the lam process dap cham; sua goc la timeout Turso + circuit breaker, day chi giam bao dong gia
+    timeout = "10s"
 
 [[vm]]
   cpu_kind = "shared"

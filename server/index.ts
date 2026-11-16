@@ -158,9 +158,18 @@ function npcStates(room: string): PlayerState[] {
 }
 
 async function refreshQuestGuard(room: string): Promise<void> {
+  const list = roomSessions(room);
+  if (!list.length) {
+    // Room trống: không chạm DB, không báo cáo breaker.
+    // Vẫn xóa guard cũ (hành vi gốc luôn gán lại tập rỗng).
+    const nr = npcRoom(room);
+    if (nr.questGuard.size) nr.questGuard = new Set<string>();
+    return;
+  }
+  if (!db.dbBackgroundAllowed()) return; // breaker đang mở / probe đã bị chiếm
   try {
     const next = new Set<string>();
-    for (const s of roomSessions(room)) {
+    for (const s of list) {
       const rows = await db.questRows(s.pid);
       const byId = new Map(rows.map((r) => [r.quest_id, r]));
       for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS].filter((x) => !x.id.startsWith('dq_') || dqTodayIds().includes(x.id))) {
@@ -174,7 +183,9 @@ async function refreshQuestGuard(room: string): Promise<void> {
       }
     }
     npcRoom(room).questGuard = next;
+    db.dbBackgroundResult(); // chỉ báo thành công sau khi đã gọi DB thật
   } catch (e) {
+    db.dbBackgroundResult(e);
     console.warn('refreshQuestGuard failed:', (e as Error)?.message ?? e);
   }
 }
@@ -1280,9 +1291,17 @@ setInterval(async () => {
     const bonus = sitting.length >= GROUP_MEDITATE_MIN;
     roomMinutes.set(r.id, (roomMinutes.get(r.id) ?? 0) + (sitting.length * MEDITATE_TICK_MS) / 60_000);
     for (const s of sitting) {
-      await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0).catch((e) => console.warn('[meditate]', (e as Error).message));
-      await questEvent(s, 'meditate').catch((e) => console.warn('[meditate]', (e as Error).message));
-      await countStatSafe(s, 'meditate_sec', MEDITATE_TICK_MS / 1000);
+      // Breaker: all players share one DB, so if it is down, skip the rest of this room.
+      if (!db.dbBackgroundAllowed()) break;
+      try {
+        await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0);
+        await questEvent(s, 'meditate');
+        await countStatSafe(s, 'meditate_sec', MEDITATE_TICK_MS / 1000);
+        db.dbBackgroundResult();
+      } catch (e) {
+        db.dbBackgroundResult(e);
+        console.warn('[meditate]', (e as Error).message);
+      }
     }
     io.to(r.id).emit('meditation', meditationInfo(r.id));
   }
