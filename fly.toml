@@ -1,12 +1,12 @@
 # ChuaOnline on Fly.io — temporary host while Oracle A1.Flex has no capacity.
 # Cost target: bill < $5/month so Fly waives it ($0).
-#   Machine shared-cpu-1x 256MB in Singapore (sin): ~$2.78/mo
+#   Machine shared-cpu-1x 512MB in Singapore (sin): ~$3.88/mo
 #   Volume 1 GB for local SQLite: $0.15/mo
 #   Egress Asia-Pacific: $0.04/GB (Render Nov usage was ~6.8 GB -> ~$0.27)
-#   Typical total ~$3.20/mo -> waived -> $0.
+#   Typical total ~$4.30/mo -> waived -> $0.
 # Do NOT allocate a dedicated IPv4 ($2/mo) — the shared Anycast IPv4 is free.
-# Do NOT raise the machine size: 256MB is the budget. If the server OOMs,
-# stop and report instead of upgrading.
+# May len 512MB theo quyet dinh cua user 16/11 22:36 (may 256MB tac lien tuc toi 16/11).
+# Khong ha xuong 256MB neu khong co lenh moi tu user.
 app = "chua247"
 primary_region = "sin"
 
@@ -37,7 +37,7 @@ primary_region = "sin"
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 256
+  memory_mb = 512
 
 [mounts]
   source = "chua_data"
