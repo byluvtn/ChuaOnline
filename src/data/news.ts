@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 127;
+export const LATEST_NEWS_ID = 128;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bịt kín khe hở giữa các tầng mái',
+    date: '2026-11-17',
+    items: [
+      'Mái các điện (Chính Điện, Điện Tam Thế, tháp chuông/trống, cổng Tam Quan) không còn khoảng trống nhìn xuyên qua được giữa các tầng: cổ diêm giờ là tường đặc, chân chôn vào sườn mái dưới, đỉnh chạm chân mái trên.',
+      'Tháp nhỏ gần hồ cá chép cũng kín tầng; chóp vàng trên đỉnh tháp nay đặt đúng trên mái, không còn lơ lửng.',
+      'Cổng Tam Quan: cổ cổng rộng đúng thân cổng, chóp vàng hạ xuống đúng đỉnh mái.',
+      'Hình dáng nhiều tầng, mái đỏ, viền vàng không đổi; chỉ bịt khe hở.',
+    ],
+  },
   {
     title: 'Xóa hết cây anh đào hồng và tre cắm Bảo Tháp',
     date: '2026-11-17',

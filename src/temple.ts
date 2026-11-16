@@ -233,21 +233,13 @@ export function buildTemple(c: TempleCtx) {
     }
     const r1H = 2.1, r1Y = ringY + 0.1 + r1H / 2 - 0.2;
     const r1 = new THREE.Mesh(c.roofGeometry(8.2, 8.2, r1H, 0.8), c.tileM); r1.position.y = r1Y; r1.castShadow = true; r1.userData.sealable = true; t.add(r1);
-    const NK = 1.3, neckH = 1.5, neckY = r1Y + r1H / 2 - 0.2 + neckH / 2;
-    for (const [px, pz] of [[-NK, -NK], [NK, -NK], [-NK, NK], [NK, NK]] as [number, number][]) {
-      const nc = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, neckH + 0.1, 10), c.redM);
-      nc.position.set(px, neckY, pz); nc.castShadow = true; nc.userData.sealable = true; t.add(nc);
+    // cổ mái đặc: 4 tường đỏ bịt kín vành khuyên giữa mái 1 và mái 2
+    // (chân 5,4 × 5,4 = đúng chân mái 2; đáy chôn vào sườn mái 1, đỉnh chạm chân mái 2)
+    for (const s of [-1, 1]) {
+      red(5.4, 2.6, 0.3, 0, ringY + 1.7, s * 2.55);
+      red(0.3, 2.6, 5.4, s * 2.55, ringY + 1.7, 0);
     }
-    for (const y of [neckY - neckH / 2 + 0.12, neckY + neckH / 2 - 0.12]) for (const s of [-NK, NK]) {
-      red(2 * NK + 0.4, 0.2, 0.22, 0, y, s);
-      red(0.22, 0.2, 2 * NK + 0.4, s, y, 0);
-    }
-    const panelH = neckH * 0.42, panelY = neckY - neckH / 2 + 0.12 + panelH / 2 + 0.1;
-    for (const s of [-NK, NK]) {
-      red(2 * NK, panelH, 0.12, 0, panelY, s);
-      red(0.12, panelH, 2 * NK, s, panelY, 0);
-    }
-    const r2H = 1.5, r2Y = neckY + neckH / 2 + r2H / 2 - 0.3;
+    const r2H = 1.5, r2Y = ringY + 3.75;
     const r2 = new THREE.Mesh(c.roofGeometry(5.4, 5.4, r2H, 0.55), c.tileM); r2.position.y = r2Y; r2.castShadow = true; r2.userData.sealable = true; t.add(r2);
     const finBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.4, 8), c.goldM);
     finBase.position.y = r2Y + r2H / 2 + 0.1; finBase.userData.sealable = true; t.add(finBase);
@@ -1146,9 +1138,9 @@ export function buildTemple(c: TempleCtx) {
   }
   const lintel = new THREE.Mesh(new THREE.BoxGeometry(WALL.gate * 2 + 4.6, 0.8, 1.5), c.redM); lintel.position.y = 6.45; lintel.castShadow = true; lintel.userData.sealable = true; gate.add(lintel);
   const gRoof = new THREE.Mesh(c.roofGeometry(WALL.gate * 2 + 7.5, 5, 2.0, 0.8), c.tileM); gRoof.position.y = 7.45; gRoof.castShadow = true; gRoof.userData.sealable = true; gate.add(gRoof);
-  const gNeck = new THREE.Mesh(new THREE.BoxGeometry(3.0, 2.2, 2.0), c.redM); gNeck.position.y = 7.95; gNeck.castShadow = true; gNeck.userData.sealable = true; gate.add(gNeck);
+  const gNeck = new THREE.Mesh(new THREE.BoxGeometry(13.0, 1.45, 4.2), c.redM); gNeck.position.y = 7.375; gNeck.castShadow = true; gNeck.userData.sealable = true; gate.add(gNeck);
   const gRoof2 = new THREE.Mesh(c.roofGeometry(WALL.gate * 2 + 4.2, 4.2, 1.5, 0.6), c.tileM); gRoof2.position.y = 8.85; gRoof2.castShadow = true; gRoof2.userData.sealable = true; gate.add(gRoof2);
-  const gFin = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.2, 8), c.goldM); gFin.position.y = 10.45; gFin.userData.sealable = true; gate.add(gFin);
+  const gFin = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.2, 8), c.goldM); gFin.position.y = 10.1; gFin.userData.sealable = true; gate.add(gFin);
   const gSign = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), new THREE.MeshBasicMaterial({ map: signTexture('CHÙA ONLINE') }));
   gSign.position.set(0, 5.35, 0.85); gate.add(gSign);
   for (let i = 0; i < 2; i++) {

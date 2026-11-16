@@ -155,12 +155,14 @@ export function buildTamThe(c: TempleCtx) {
   const top1 = tier(W + 5.5, D + 5, h1, lift1, roofBaseY);
   const cw1 = (W + 5.5) * 0.2, cd1 = (D + 5) * 0.2;
   const yc1 = top1 - h1 * 0.2 - 0.3;
-  clerestory(cw1 * 0.78, cd1 * 0.78, yc1, 1.5);
+  // cổ diêm 1: rộng đúng bằng chân mái tầng 2, chân chôn vào sườn mái tầng 1
+  clerestory(W * 0.36, D * 0.36, top1 - 2.30, 2.20);
   const y2 = yc1 + 1.5;
   const top2 = tier(W * 0.36, D * 0.36, 4.4, 0.55, y2 - 0.1);
   const cw2 = W * 0.36 * 0.2, cd2 = D * 0.36 * 0.2;
   const yc2 = top2 - 4.4 * 0.2 - 0.3;
-  clerestory(cw2 * 0.7, cd2 * 0.7, yc2, 1.1);
+  // cổ diêm 2: rộng đúng bằng chân mái tầng 3, chân chôn vào sườn mái tầng 2
+  clerestory(W * 0.17, D * 0.17, top2 - 2.55, 2.37);
   const y3 = yc2 + 1.1;
   const top3 = tier(W * 0.17, D * 0.17, 3.2, 0.5, y3 - 0.1);
   const ridge = new THREE.Mesh(new THREE.BoxGeometry(W * 0.17 * 0.5, 0.34, 0.45), c.goldM); ridge.position.y = top3 - 0.1; add(ridge);

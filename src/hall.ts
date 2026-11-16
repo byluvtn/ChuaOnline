@@ -120,13 +120,15 @@ export function buildHall(c: TempleCtx) {
   // sườn tầng 1 tại t=0.18 → thu về chu vi còn ~0.2 của chân
   const cw1 = (W + 5) * 0.2, cd1 = (D + 4.5) * 0.2;
   const yc1 = top1 - h1 * 0.2 - 0.3;
-  clerestory(cw1 * 0.78, cd1 * 0.78, yc1, 1.2);
+  // cổ diêm 1: rộng đúng bằng chân mái tầng 2, chân chôn vào sườn mái tầng 1
+  clerestory(W * 0.34, D * 0.34, top1 - 1.85, 1.69);
   // tầng 2
   const y2 = yc1 + 1.2;
   const top2 = tier(W * 0.34, D * 0.34, 3.6, 0.5, y2 - 0.1);
   const cw2 = W * 0.34 * 0.2, cd2 = D * 0.34 * 0.2;
   const yc2 = top2 - 3.6 * 0.2 - 0.3;
-  clerestory(cw2 * 0.7, cd2 * 0.7, yc2, 0.9);
+  // cổ diêm 2: rộng đúng bằng chân mái tầng 3, chân chôn vào sườn mái tầng 2
+  clerestory(W * 0.16, D * 0.16, top2 - 2.04, 1.82);
   // tầng 3
   const y3 = yc2 + 0.9;
   const top3 = tier(W * 0.16, D * 0.16, 2.6, 0.45, y3 - 0.1);
