@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 118;
+export const LATEST_NEWS_ID = 119;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thêm hai mèo mới Bông và Mun',
+    date: '2026-11-17',
+    items: [
+      'Mèo Bông (lông nâu trắng) và mèo Mun (lông đen) gia nhập sân chùa, đi lại quanh sân và vườn như mèo Mướp.',
+      'Cả hai đều cho ăn được như các chó mèo khác; nhiệm vụ cho chó mèo ăn không đổi.',
+      'Tìm chó mèo đi lạc không đổi; Vàng và Mướp vẫn là hai con hay đi lạc.',
+      'Mèo mới dùng mẫu Polyfork, giấy phép Polyfork, dùng tự do.',
+    ],
+  },
   {
     title: 'Bảng chú thích ống xin xăm',
     date: '2026-11-17',

@@ -25,11 +25,14 @@ interface Spec { id: string; kind: Kind; file: string; name?: string; tint?: Tin
 const ROBIN_CLIPS: Record<string, string> = { walk: 'A_Hop_01', eat: 'A_PeckGround_01', idle: 'A_Idle_01' };
 const COLLIE_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Idle', idle: 'Idle' };
 const LABRADOR_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Sit', idle: 'Idle' };
+const POLYFORK_CAT_CLIPS: Record<string, string> = { walk: 'Walk', eat: 'Idle', idle: 'Idle' };
 
 const SPECS: Spec[] = [
   { id: 'vang', kind: 'dog', file: 'polyfork-dog', name: 'Vàng', scale: 1.43, labelY: 1.6, clipMap: COLLIE_CLIPS },
   { id: 'trang', kind: 'dog', file: 'polyfork-dog', name: 'Trắng', scale: 1.43, labelY: 1.6, clipMap: COLLIE_CLIPS, tint: { color: [1, 1, 1], amount: 0.7 } },
   { id: 'muop', kind: 'cat', file: 'animal-cat', name: 'Mướp', scale: 2, labelY: 1.6 },
+  { id: 'bong', kind: 'cat', file: 'polyfork-cat', name: 'Bông', scale: 3, labelY: 1.6, clipMap: POLYFORK_CAT_CLIPS },
+  { id: 'mun', kind: 'cat', file: 'polyfork-black-cat', name: 'Mun', scale: 3, labelY: 1.6, clipMap: POLYFORK_CAT_CLIPS },
   { id: 'lab', kind: 'dog', file: 'labrador-lite', name: 'Labrador', scale: 0.88, labelY: 1.6, clipMap: LABRADOR_CLIPS },
   { id: 'nau', kind: 'dog', file: 'labrador-lite', name: 'Nâu', scale: 0.88, labelY: 1.6, clipMap: LABRADOR_CLIPS, tint: { color: [0.35, 0.2, 0.1], amount: 0.65 } },
   { id: 'owl1', kind: 'owl', file: 'animal-owl' },
