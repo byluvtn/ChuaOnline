@@ -113,6 +113,7 @@ async function loadSession() {
   if (!getToken()) return;
   try {
     profile = await api.me();
+    syncCamUi();
     nameInput.value = profile.name;
     outfit = profile.outfit;
     color = profile.color;
@@ -207,6 +208,35 @@ let meditation: MeditationInfo = { sitting: 0, minutes: 0, goal: 500, bonus: fal
 const keys = new Set<string>();
 let camYaw = 0, camPitch = isTouch ? 0.55 : 0.45, camDist = isTouch ? 12 : 9;
 let freeCam = false;
+let camUp = false;
+let camDown = false;
+let camBtn: HTMLButtonElement | null = null;
+let camUpBtn: HTMLButtonElement | null = null;
+let camDownBtn: HTMLButtonElement | null = null;
+
+function syncCamUi() {
+  const adminTouch = !!profile?.admin && isTouch;
+  if (camBtn) {
+    camBtn.style.display = adminTouch ? '' : 'none';
+    camBtn.classList.toggle('on', freeCam);
+  }
+  const showUpDown = adminTouch && freeCam;
+  if (camUpBtn) camUpBtn.style.display = showUpDown ? '' : 'none';
+  if (camDownBtn) camDownBtn.style.display = showUpDown ? '' : 'none';
+  if (!showUpDown) { camUp = false; camDown = false; }
+}
+
+function toggleFreeCam() {
+  if (!profile?.admin) return;
+  freeCam = !freeCam;
+  if (freeCam) freePos.copy(camera.position);
+  toast(freeCam
+    ? (isTouch
+      ? 'Camera tự do: joystick di chuyển, kéo để xoay, nút lên/xuống để bay, bấm nút Camera để thoát'
+      : 'Camera tự do: WASD di chuyển, Space/E bay lên, Q xuống, lăn chuột zoom, Shift nhanh, kéo chuột để xoay, F để thoát')
+    : 'Đã thoát camera tự do');
+  syncCamUi();
+}
 let pavF = 0;
 let houseF = 0;
 let savedOutDist: number | null = null;
@@ -519,7 +549,7 @@ function connect() {
       }, 5 * 60 * 1000);
     }
   });
-  s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); });
+  s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); syncCamUi(); });
   s.on('level:bonus', ({ level, coins, merit }: { level: number; coins: number; merit: number }) => {
     toast(`Lên cấp ${level}! Thưởng +${coins} xu, +${merit} công đức`);
   });
@@ -670,9 +700,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closePanel(); $('wishModal').hidden = true; return; }
   if (typing() || panelOpen()) return;
   if (e.code === 'KeyF' && profile?.admin && !e.repeat) {
-    freeCam = !freeCam;
-    if (freeCam) freePos.copy(camera.position);
-    toast(freeCam ? 'Camera tự do: WASD di chuyển, Space/E bay lên, Q xuống, lăn chuột zoom, Shift nhanh, kéo chuột để xoay, F để thoát' : 'Đã thoát camera tự do');
+    toggleFreeCam();
     return;
   }
   if (e.code === 'Space' && freeCam && profile?.admin) e.preventDefault();
@@ -815,7 +843,14 @@ canvas.addEventListener('pointermove', (e) => {
     const other = [...touches.entries()].find(([id]) => id !== e.pointerId)![1];
     const before = Math.hypot(prev.x - other.x, prev.y - other.y);
     const after = Math.hypot(e.clientX - other.x, e.clientY - other.y);
-    camDist = Math.min(camMaxDist(), Math.max(4, camDist - (after - before) * 0.03));
+    if (freeCam && profile?.admin) {
+      const k = (after - before) * 0.05;
+      freePos.x += -Math.sin(camYaw) * Math.cos(camPitch) * k;
+      freePos.y = Math.max(0.5, Math.min(250, freePos.y - Math.sin(camPitch) * k));
+      freePos.z += -Math.cos(camYaw) * Math.cos(camPitch) * k;
+    } else {
+      camDist = Math.min(camMaxDist(), Math.max(4, camDist - (after - before) * 0.03));
+    }
     dragMoved = 99;
   }
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1041,6 +1076,30 @@ if (isTouch) {
   b.innerHTML = `<span class="ico">${iconSvg('lantern')}</span><span class="lb">Đèn</span>`;
   b.onclick = $('lanternBtn').onclick;
   $('actions').appendChild(b);
+
+  camBtn = document.createElement('button');
+  camBtn.className = 'act';
+  camBtn.style.display = 'none';
+  camBtn.innerHTML = `<span class="ico">${iconSvg('camera')}</span><span class="lb">Camera</span>`;
+  camBtn.onclick = () => toggleFreeCam();
+  $('actions').appendChild(camBtn);
+
+  const mkUpDown = (label: string, set: (v: boolean) => void) => {
+    const el = document.createElement('button');
+    el.className = 'act';
+    el.style.display = 'none';
+    el.innerHTML = `<span class="ico">${label}</span>`;
+    el.addEventListener('pointerdown', (e) => { set(true); el.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); });
+    const off = () => set(false);
+    el.addEventListener('pointerup', off);
+    el.addEventListener('pointercancel', off);
+    el.addEventListener('pointerleave', off);
+    $('actions').appendChild(el);
+    return el;
+  };
+  camUpBtn = mkUpDown('▲', (v) => { camUp = v; });
+  camDownBtn = mkUpDown('▼', (v) => { camDown = v; });
+  syncCamUi();
 }
 
 // ---------- Loop ----------
@@ -2056,7 +2115,7 @@ function loop(now: number = performance.now()) {
   }
   if (me && socket) {
     const root = me.char.root;
-    let ix = joy.x, iz = joy.y;
+    let ix = freeCam ? 0 : joy.x, iz = freeCam ? 0 : joy.y;
     if (!freeCam) {
       if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1;
       if (keys.has('KeyS') || keys.has('ArrowDown')) iz += 1;
@@ -2253,6 +2312,12 @@ function loop(now: number = performance.now()) {
       if (keys.has('KeyD') || keys.has('ArrowRight')) freePos.x += rx * fs, freePos.z += rz * fs;
       if (keys.has('KeyE') || keys.has('Space')) freePos.y += fs;
       if (keys.has('KeyQ')) freePos.y -= fs;
+      const js = 14 * dt;
+      freePos.x += (fx * -joy.y + rx * joy.x) * js;
+      freePos.y += fy * -joy.y * js;
+      freePos.z += (fz * -joy.y + rz * joy.x) * js;
+      if (camUp) freePos.y += js;
+      if (camDown) freePos.y -= js;
       freePos.y = Math.max(0.5, Math.min(250, freePos.y));
       camera.position.copy(freePos);
       camera.lookAt(freePos.x + fx * 10, freePos.y + fy * 10, freePos.z + fz * 10);

@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 105;
+export const LATEST_NEWS_ID = 106;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Camera tự do trên điện thoại cho quản trị viên',
+    date: '2026-11-16',
+    items: [
+      'Nút Camera chỉ quản trị viên mới thấy trên điện thoại.',
+      'Joystick lái camera, kéo màn hình để xoay, nút ▲/▼ để bay lên/xuống.',
+      'Trên máy tính vẫn dùng phím F như cũ.',
+    ],
+  },
   {
     title: 'Cây liễu cổ thụ bên bờ hồ Tây',
     date: '2026-11-16',
