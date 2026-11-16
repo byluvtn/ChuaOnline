@@ -8,7 +8,7 @@ import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
 import { clampToCompound, resolveBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
-import { closePanel, h, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
+import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
 import { getLastPhoto, takePhoto } from './features/photo';
 import { openFestivals } from './features/festivals';
@@ -213,6 +213,7 @@ let camDown = false;
 let camBtn: HTMLButtonElement | null = null;
 let camUpBtn: HTMLButtonElement | null = null;
 let camDownBtn: HTMLButtonElement | null = null;
+let adminBtn: HTMLButtonElement | null = null;
 
 function syncCamUi() {
   const adminTouch = !!profile?.admin && isTouch;
@@ -224,6 +225,10 @@ function syncCamUi() {
   if (camUpBtn) camUpBtn.style.display = showUpDown ? '' : 'none';
   if (camDownBtn) camDownBtn.style.display = showUpDown ? '' : 'none';
   if (!showUpDown) { camUp = false; camDown = false; }
+}
+
+function syncAdminUi() {
+  if (adminBtn) adminBtn.style.display = profile?.admin ? '' : 'none';
 }
 
 function toggleFreeCam() {
@@ -549,7 +554,7 @@ function connect() {
       }, 5 * 60 * 1000);
     }
   });
-  s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); syncCamUi(); });
+  s.on('profile', (p: Profile) => { profile = p; updateProfileHud(); refreshPanel(); syncCamUi(); syncAdminUi(); });
   s.on('level:bonus', ({ level, coins, merit }: { level: number; coins: number; merit: number }) => {
     toast(`Lên cấp ${level}! Thưởng +${coins} xu, +${merit} công đức`);
   });
@@ -621,6 +626,7 @@ function connect() {
     enqueueDonate(d.text || `🙏 Cảm ơn phật tử ${d.name} đã đóng góp ${d.amount.toLocaleString('vi-VN')} xu giúp xây dựng chùa`);
     loadHonorThrottled();
   });
+  s.on('announce', (a: { text: string; t: number }) => { enqueueDonate(a.text); addChat({ id: 0, name: '', text: a.text, t: a.t || Date.now(), sys: true }); });
   s.on('player:action', ({ id, kind }: { id: string; kind: ActionKind }) => {
     const r = remotes.get(id);
     if (!r || id === myId) return;
@@ -668,6 +674,7 @@ const panelCtx = () => ({
   socket: socket!, profile: () => profile, quests: () => quests, room: () => roomId, switchRoom, toast,
   guideTo: (qid: string) => { startGuide(qid); },
   onDonated: () => loadHonor(),
+  teleport: (x: number, z: number) => teleportTo(x, z),
 });
 $('panelClose').onclick = closePanel;
 $('panel').addEventListener('pointerdown', (e) => { if (e.target === $('panel')) closePanel(); });
@@ -1003,6 +1010,16 @@ function setSitting(v: boolean) {
   sitting = v;
   $('sitBtn').classList.toggle('on', v);
 }
+
+function teleportTo(x: number, z: number) {
+  if (!me) return;
+  const y = world.groundY(x, z);
+  me.char.root.position.set(x, y, z);
+  me.target.set(x, y, z);
+  clickTarget = null;
+  bowSeat = null;
+  setSitting(false);
+}
 const actionMs = (kind: ActionKind) => (kind === 'bow' ? BOW_MS : kind === 'palms' ? 1500 : kind === 'beads' ? 2400 : 2500);
 const cooling: Partial<Record<ActionKind, number>> = {};
 function startCooldown(kind: ActionKind) {
@@ -1101,6 +1118,14 @@ if (isTouch) {
   camDownBtn = mkUpDown('▼', (v) => { camDown = v; });
   syncCamUi();
 }
+
+// Nút Quản trị tạo NGOÀI khối isTouch để hiện cả PC lẫn điện thoại (không nằm trong khối trên).
+adminBtn = document.createElement('button');
+adminBtn.className = 'act';
+adminBtn.style.display = 'none';
+adminBtn.innerHTML = `<span class="ico">${iconSvg('settings')}</span><span class="lb">Quản trị</span>`;
+adminBtn.onclick = () => openAdminPanel(panelCtx());
+$('actions').appendChild(adminBtn);
 
 // ---------- Loop ----------
 const clock = new THREE.Clock();

@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 106;
+export const LATEST_NEWS_ID = 107;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bảng quản trị cho quản trị viên',
+    date: '2026-11-16',
+    items: [
+      'Quản trị viên có thêm nút Quản trị: mở bảng quản trị với 4 mục.',
+      'Mục Người chơi: tìm người chơi, tặng xu hoặc công đức, khóa hoặc mở khóa tài khoản.',
+      'Mục Thông báo: gửi tin cho mọi người đang online; mục Dịch chuyển: tới ngay bất cứ khu nào trong chùa; mục Thống kê: xem người online, người mới và tổng quyên góp.',
+    ],
+  },
   {
     title: 'Camera tự do trên điện thoại cho quản trị viên',
     date: '2026-11-16',

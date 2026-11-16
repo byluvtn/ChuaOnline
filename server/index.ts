@@ -96,7 +96,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** resume token cua tab (sessionStorage) de khoi phuc vi tri khi vao lai */
@@ -337,6 +337,11 @@ const lastPos = new Map<number, { x: number; z: number; ry: number; room: string
 function saveTombstone(s: Session): void {
   if (!s.resume) return;
   lastPos.set(s.pid, { x: s.state.x, z: s.state.z, ry: s.state.ry, room: s.room, resume: s.resume, at: Date.now() });
+}
+
+async function requireAdmin(s: Session | undefined): Promise<boolean> {
+  if (!s) return false;
+  return await db.isAdmin(s.pid);
 }
 
 io.on('connection', (socket) => {
@@ -1105,6 +1110,87 @@ io.on('connection', (socket) => {
   socket.on('rank:get', async (cb?: (r: Awaited<ReturnType<typeof rankings>>) => void) => cb?.(await rankings()));
   socket.on('donors:get', async (cb?: (r: { name: string; coins: number; merit: number }[]) => void) => cb?.(await db.topDonors(10)));
   socket.on('rooms:list', (cb?: (r: RoomInfo[]) => void) => cb?.(roomList()));
+
+  // ---- Admin panel ----
+  socket.on('admin:list', async (query: unknown, cb?: (r: { ok: boolean; rows?: db.AdminPlayerRow[]; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; rows?: db.AdminPlayerRow[]; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    const rows = await db.listPlayers(String(query ?? ''), 30);
+    reply({ ok: true, rows });
+  });
+
+  socket.on('admin:grant', async (payload: unknown, cb?: (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    const p = (payload && typeof payload === 'object' ? payload : {}) as { userId?: unknown; merit?: unknown; coins?: unknown };
+    const userId = Number(p.userId);
+    const merit = Number(p.merit);
+    const coins = Number(p.coins);
+    if (!Number.isInteger(userId) || userId <= 0) return reply({ ok: false, error: 'Người nhận không hợp lệ' });
+    if (!Number.isInteger(merit) || merit < 0 || merit > 100000) return reply({ ok: false, error: 'Công đức không hợp lệ' });
+    if (!Number.isInteger(coins) || coins < 0 || coins > 100000) return reply({ ok: false, error: 'Số xu không hợp lệ' });
+    if (merit === 0 && coins === 0) return reply({ ok: false, error: 'Cần tặng ít nhất công đức hoặc xu' });
+    if (!(await db.getProfile(userId))) return reply({ ok: false, error: 'Không tìm thấy người chơi' });
+    await db.addRewards(userId, merit, coins);
+    for (const other of sessions.values()) {
+      if (other.pid === userId) await pushProfile(other);
+    }
+    const after = await db.getProfile(userId);
+    reply({ ok: true, merit: after?.merit ?? 0, coins: after?.coins ?? 0 });
+  });
+
+  socket.on('admin:ban', async (payload: unknown, cb?: (r: { ok: boolean; banned?: boolean; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; banned?: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!s || !(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    const p = (payload && typeof payload === 'object' ? payload : {}) as { userId?: unknown; banned?: unknown };
+    const userId = Number(p.userId);
+    if (!Number.isInteger(userId) || userId <= 0) return reply({ ok: false, error: 'Người chơi không hợp lệ' });
+    if (typeof p.banned !== 'boolean') return reply({ ok: false, error: 'Trạng thái khóa không hợp lệ' });
+    const banned = p.banned;
+    if (userId === s.pid) return reply({ ok: false, error: 'Không thể khóa tài khoản của mình' });
+    if (await db.isAdmin(userId)) return reply({ ok: false, error: 'Không thể khóa tài khoản quản trị' });
+    const changed = await db.setBanned(userId, banned);
+    if (!changed) return reply({ ok: false, error: 'Không tìm thấy người chơi' });
+    if (banned) {
+      for (const [id, other] of sessions) {
+        if (other.pid === userId) { saveTombstone(other); other.socket.emit('kicked'); other.socket.disconnect(true); sessions.delete(id); }
+      }
+    }
+    reply({ ok: true, banned });
+  });
+
+  socket.on('admin:broadcast', async (payload: unknown, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!s || !(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    const now = Date.now();
+    if (now - (s.last.admin ?? 0) < 5000) return reply({ ok: false, error: 'Đang xử lý, thử lại sau' });
+    s.last.admin = now;
+    const p = (payload && typeof payload === 'object' ? payload : {}) as { text?: unknown };
+    const text = String(p.text ?? '').trim();
+    if (text.length < 1 || text.length > 200) return reply({ ok: false, error: 'Nội dung phải từ 1 đến 200 ký tự' });
+    io.emit('announce', { text, t: Date.now() });
+    for (const room of roomList()) {
+      const sysMsg: ChatMessage = { id: seq++, name: '', text, t: Date.now(), sys: true };
+      const arr = roomChat.get(room.id) ?? [];
+      arr.push(sysMsg);
+      if (arr.length > 100) arr.shift();
+      roomChat.set(room.id, arr);
+      io.to(room.id).emit('chat', sysMsg);
+    }
+    reply({ ok: true });
+  });
+
+  socket.on('admin:stats', async (cb?: (r: { ok: boolean; online?: number; totalPlayers?: number; newToday?: number; totalDonated?: number; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; online?: number; totalPlayers?: number; newToday?: number; totalDonated?: number; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    const st = await db.adminStats();
+    reply({ ok: true, online: sessions.size, totalPlayers: st.totalPlayers, newToday: st.newToday, totalDonated: st.totalDonated });
+  });
 
   socket.on('disconnect', () => {
     const s = sessions.get(socket.id);

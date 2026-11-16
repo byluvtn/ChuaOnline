@@ -14,6 +14,7 @@ export interface PanelCtx {
   toast: (t: string) => void;
   guideTo: (qid: string) => void;
   onDonated?: () => void;
+  teleport?: (x: number, z: number) => void;
 }
 export type PanelKind = 'shop' | 'bag' | 'quests' | 'rank' | 'rooms' | 'chant' | 'teacher';
 type Cur = PanelKind | 'custom';
@@ -179,6 +180,257 @@ export function openDonorsPanel(ctx: PanelCtx) {
         onclick: () => { closePanel(); openDonatePanel(ctx); },
       }, 'Đóng góp ngay')));
     });
+  });
+}
+
+interface AdminPlayerRow {
+  id: number;
+  username: string | null;
+  name: string;
+  merit: number;
+  coins: number;
+  is_admin: number;
+  is_banned: number;
+}
+
+type AdminTab = 'players' | 'broadcast' | 'teleport' | 'stats';
+
+const ADMIN_GRANT_MAX = 100000;
+
+export function openAdminPanel(ctx: PanelCtx) {
+  openCustomPanel('Quản trị', (body) => {
+    let tab: AdminTab = 'players';
+    let query = '';
+    let alive = true;
+
+    const tabsEl = h('div', { class: 'rtabs' });
+    const content = h('div', {});
+    body.append(tabsEl, content);
+
+    const tabs: { id: AdminTab; label: string }[] = [
+      { id: 'players', label: 'Người chơi' },
+      { id: 'broadcast', label: 'Thông báo' },
+      { id: 'teleport', label: 'Dịch chuyển' },
+      { id: 'stats', label: 'Thống kê' },
+    ];
+
+    const drawTabs = () => {
+      tabsEl.replaceChildren();
+      for (const t of tabs) {
+        tabsEl.appendChild(h('button', {
+          class: t.id === tab ? 'on' : '',
+          onclick: () => { tab = t.id; draw(); },
+        }, t.label));
+      }
+    };
+
+    const parseAmount = (raw: string): number | null => {
+      const s = raw.trim();
+      if (s === '') return 0;
+      const n = Number(s);
+      if (!Number.isInteger(n) || n < 0 || n > ADMIN_GRANT_MAX) return null;
+      return n;
+    };
+
+    const drawPlayers = () => {
+      content.replaceChildren();
+      const searchInput = h('input', {
+        type: 'text',
+        placeholder: 'Tìm tên đăng nhập hoặc pháp danh',
+        class: 'donate-input',
+      }) as HTMLInputElement;
+      searchInput.value = query;
+      const searchBtn = h('button', {}, 'Tìm') as HTMLButtonElement;
+      const listBox = h('div', {});
+
+      const load = () => {
+        query = searchInput.value;
+        listBox.replaceChildren(h('p', { class: 'hint' }, 'Đang tải...'));
+        ctx.socket.emit('admin:list', query, (r: { ok: boolean; rows?: AdminPlayerRow[]; error?: string }) => {
+          if (!alive || tab !== 'players') return;
+          if (!r.ok) {
+            ctx.toast(r.error ?? 'Lỗi');
+            listBox.replaceChildren();
+            return;
+          }
+          renderRows(r.rows ?? []);
+        });
+      };
+
+      const renderRows = (rows: AdminPlayerRow[]) => {
+        listBox.replaceChildren();
+        if (rows.length === 0) {
+          listBox.appendChild(h('p', { class: 'hint' }, 'Không tìm thấy người chơi nào.'));
+          return;
+        }
+        const tbody = h('tbody', {});
+        for (const row of rows) {
+          const label = row.username ? `${row.name} (${row.username})` : row.name;
+          const status = [row.is_admin === 1 ? 'Quản trị' : '', row.is_banned === 1 ? 'Bị khóa' : '']
+            .filter((x) => x !== '').join(' · ');
+
+          const coinsIn = h('input', {
+            type: 'number', min: '0', step: '1', placeholder: 'Xu', style: 'width:64px',
+          }) as HTMLInputElement;
+          const meritIn = h('input', {
+            type: 'number', min: '0', step: '1', placeholder: 'Công đức', style: 'width:64px',
+          }) as HTMLInputElement;
+          const grantBtn = h('button', {}, 'Tặng') as HTMLButtonElement;
+          grantBtn.onclick = () => {
+            const coins = parseAmount(coinsIn.value);
+            const merit = parseAmount(meritIn.value);
+            if (coins === null || merit === null) {
+              ctx.toast(`Số không hợp lệ (0 - ${ADMIN_GRANT_MAX.toLocaleString('vi-VN')})`);
+              return;
+            }
+            if (coins === 0 && merit === 0) { ctx.toast('Nhập số xu hoặc công đức cần tặng'); return; }
+            grantBtn.disabled = true;
+            ctx.socket.emit('admin:grant', { userId: row.id, merit, coins }, (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => {
+              grantBtn.disabled = false;
+              if (!r.ok) { ctx.toast(r.error ?? 'Lỗi'); return; }
+              ctx.toast(`Đã tặng ${label}: +${coins} xu, +${merit} công đức`);
+              if (alive && tab === 'players') load();
+            });
+          };
+
+          const banned = row.is_banned === 1;
+          const banBtn = h('button', {}, banned ? 'Mở khóa' : 'Khóa') as HTMLButtonElement;
+          banBtn.onclick = () => {
+            if (!banned && !confirm(`Khóa tài khoản ${label}?`)) return;
+            banBtn.disabled = true;
+            ctx.socket.emit('admin:ban', { userId: row.id, banned: !banned }, (r: { ok: boolean; banned?: boolean; error?: string }) => {
+              banBtn.disabled = false;
+              if (!r.ok) { ctx.toast(r.error ?? 'Lỗi'); return; }
+              ctx.toast(banned ? `Đã mở khóa ${label}` : `Đã khóa ${label}`);
+              if (alive && tab === 'players') load();
+            });
+          };
+
+          tbody.appendChild(h('tr', {},
+            h('td', {}, label),
+            h('td', {}, row.merit.toLocaleString('vi-VN')),
+            h('td', {}, row.coins.toLocaleString('vi-VN')),
+            h('td', {}, status),
+            h('td', {}, h('div', { class: 'qrow' }, coinsIn, meritIn, grantBtn, banBtn)),
+          ));
+        }
+        listBox.appendChild(h('table', { class: 'donor-table' },
+          h('thead', {}, h('tr', {},
+            h('th', {}, 'Tên'),
+            h('th', {}, 'Công đức'),
+            h('th', {}, 'Xu'),
+            h('th', {}, 'Trạng thái'),
+            h('th', {}, 'Thao tác'),
+          )),
+          tbody,
+        ));
+      };
+
+      searchBtn.onclick = () => load();
+      searchInput.onkeydown = (e: KeyboardEvent) => { if (e.key === 'Enter') load(); };
+      content.append(h('div', { class: 'qrow' }, searchInput, searchBtn), listBox);
+      load();
+    };
+
+    const drawBroadcast = () => {
+      content.replaceChildren();
+      const text = h('textarea', {
+        maxlength: '200',
+        rows: '4',
+        placeholder: 'Tin gửi cho mọi người đang online...',
+        class: 'donate-input',
+      }) as HTMLTextAreaElement;
+      const sendBtn = h('button', {}, 'Gửi cho mọi người') as HTMLButtonElement;
+      sendBtn.onclick = () => {
+        const t = text.value.trim();
+        if (t.length < 1 || t.length > 200) { ctx.toast('Nội dung phải từ 1 đến 200 ký tự'); return; }
+        sendBtn.disabled = true;
+        ctx.socket.emit('admin:broadcast', { text: t }, (r: { ok: boolean; error?: string }) => {
+          sendBtn.disabled = false;
+          if (!r.ok) { ctx.toast(r.error ?? 'Lỗi'); return; }
+          ctx.toast('Đã gửi thông báo');
+          text.value = '';
+        });
+      };
+      content.append(
+        h('p', { class: 'hint' }, 'Tin sẽ hiện trên marquee và chat hệ thống của mọi người đang online.'),
+        text,
+        h('div', { class: 'qrow' }, sendBtn),
+      );
+    };
+
+    const TELEPORT_DEST: { label: string; x: number; z: number }[] = [
+      { label: 'Sân chùa (quảng trường)', x: 0, z: 6 },
+      { label: 'Chính Điện (trước thềm)', x: 0, z: -20 },
+      { label: 'Điện Tam Thế (chân cầu thang)', x: 0, z: -50 },
+      { label: 'Bảo Tháp (phía nam)', x: -30, z: -31 },
+      { label: 'Cầu cong giữa hồ', x: 0, z: 22 },
+      { label: 'Sân Quan Âm', x: 28, z: 14 },
+      { label: 'Sân Phật (phía Tây)', x: -28, z: 14 },
+      { label: 'Điện Mẫu', x: 39, z: 10 },
+      { label: 'Chợ phiên', x: 47, z: 50 },
+      { label: 'Vườn Phóng Sinh (bến thả)', x: 30, z: -31 },
+      { label: 'Thiền đường', x: -47, z: -27 },
+      { label: 'Vườn Thiền', x: -34, z: -26 },
+    ];
+
+    const drawTeleport = () => {
+      content.replaceChildren();
+      for (const d of TELEPORT_DEST) {
+        const btn = h('button', { class: 'btn' }, 'Tới ngay');
+        btn.addEventListener('click', () => {
+          if (!ctx.teleport) {
+            ctx.toast('Không thể dịch chuyển ở đây');
+            return;
+          }
+          ctx.teleport(d.x, d.z);
+          closePanel();
+          ctx.toast('Đã dịch chuyển tới ' + d.label);
+        });
+        content.append(h('div', { class: 'row' }, h('span', {}, d.label), btn));
+      }
+    };
+
+    const drawStats = () => {
+      content.replaceChildren(h('div', {}, 'Đang tải...'));
+      ctx.socket.emit('admin:stats', (res: {
+        ok: boolean;
+        online?: number;
+        totalPlayers?: number;
+        newToday?: number;
+        totalDonated?: number;
+        error?: string;
+      }) => {
+        if (!alive || tab !== 'stats') return;
+        if (!res || !res.ok) {
+          ctx.toast((res && res.error) || 'Không tải được thống kê');
+          content.replaceChildren();
+          return;
+        }
+        const fmt = (n?: number) => (n ?? 0).toLocaleString('vi-VN');
+        const row = (label: string, value: string) =>
+          h('div', { class: 'row' }, h('span', {}, label), h('b', {}, value));
+        content.replaceChildren(
+          row('Đang online', fmt(res.online)),
+          row('Tổng người chơi', fmt(res.totalPlayers)),
+          row('Người mới hôm nay', fmt(res.newToday)),
+          row('Tổng quyên góp', fmt(res.totalDonated) + ' xu'),
+        );
+      });
+    };
+
+    const draw = () => {
+      drawTabs();
+      switch (tab) {
+        case 'players': drawPlayers(); break;
+        case 'broadcast': drawBroadcast(); break;
+        case 'teleport': drawTeleport(); break;
+        case 'stats': drawStats(); break;
+      }
+    };
+
+    draw();
+    return () => { alive = false; };
   });
 }
 

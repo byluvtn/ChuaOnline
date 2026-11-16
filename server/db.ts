@@ -82,6 +82,7 @@ CREATE INDEX IF NOT EXISTS idx_merit ON players(merit DESC);
 CREATE INDEX IF NOT EXISTS idx_weekly ON players(week_key, weekly_merit DESC);
 `);
 try { await db.execute('ALTER TABLE players ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
+try { await db.execute('ALTER TABLE players ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN title TEXT'); } catch { /* cột đã tồn tại */ }
 try {
   const fk = await db.execute('PRAGMA foreign_keys');
@@ -165,10 +166,11 @@ export async function register(username: string, password: string, guestId: numb
 }
 
 export async function login(username: string, password: string): Promise<{ token: string } | { error: string }> {
-  const r = (await db.execute({ sql: 'SELECT id, pass_hash FROM players WHERE username = ?', args: [String(username)] })).rows[0] as unknown as { id: number; pass_hash: string } | undefined;
+  const r = (await db.execute({ sql: 'SELECT id, pass_hash, is_banned FROM players WHERE username = ?', args: [String(username)] })).rows[0] as unknown as { id: number; pass_hash: string; is_banned: number } | undefined;
   // constant-ish work even if user is missing
   const ok = r ? checkPw(String(password), r.pass_hash) : (scryptSync('x', 'y', 64), false);
   if (!r || !ok) return { error: 'Sai tên đăng nhập hoặc mật khẩu' };
+  if (Number(r.is_banned) === 1) return { error: 'Tài khoản đã bị khóa' };
   return { token: await newSession(Number(r.id)) };
 }
 
@@ -201,6 +203,52 @@ export async function addRewards(id: number, merit: number, coins: number) {
       week_key = ?, merit = merit + ?, coins = coins + ? WHERE id = ?`,
     args: [wk, merit, merit, wk, merit, coins, id],
   });
+}
+
+export interface AdminPlayerRow { id: number; username: string | null; name: string; merit: number; coins: number; is_admin: number; is_banned: number }
+
+export async function isAdmin(id: number): Promise<boolean> {
+  const r = (await db.execute({ sql: 'SELECT is_admin FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as { is_admin: number } | undefined;
+  return !!r && Number(r.is_admin) === 1;
+}
+
+export async function setBanned(id: number, banned: boolean): Promise<boolean> {
+  const res = await db.execute({ sql: 'UPDATE players SET is_banned = ? WHERE id = ?', args: [banned ? 1 : 0, id] });
+  if (banned) await db.execute({ sql: 'DELETE FROM sessions WHERE player_id = ?', args: [id] });
+  return res.rowsAffected === 1;
+}
+
+export async function listPlayers(query: string, limit = 30): Promise<AdminPlayerRow[]> {
+  const q = String(query ?? '').trim();
+  const cap = Math.max(1, Math.min(30, Math.floor(limit)));
+  const cols = 'id, username, name, merit, coins, is_admin, is_banned';
+  let rows: unknown[];
+  if (q === '') {
+    rows = (await db.execute({ sql: `SELECT ${cols} FROM players ORDER BY merit DESC LIMIT ?`, args: [cap] })).rows;
+  } else {
+    const like = '%' + q.replace(/%/g, '\\%').replace(/_/g, '\\_') + '%';
+    rows = (await db.execute({
+      sql: `SELECT ${cols} FROM players WHERE username LIKE ? ESCAPE '\\' COLLATE NOCASE OR name LIKE ? ESCAPE '\\' COLLATE NOCASE ORDER BY merit DESC LIMIT ?`,
+      args: [like, like, cap],
+    })).rows;
+  }
+  return (rows as unknown as AdminPlayerRow[]).map((r) => ({
+    id: Number(r.id),
+    username: r.username,
+    name: r.name,
+    merit: Number(r.merit),
+    coins: Number(r.coins),
+    is_admin: Number(r.is_admin),
+    is_banned: Number(r.is_banned),
+  }));
+}
+
+export async function adminStats(): Promise<{ totalPlayers: number; newToday: number; totalDonated: number }> {
+  const since = Date.parse(dayKeyICT() + 'T00:00:00+07:00');
+  const total = (await db.execute('SELECT COUNT(*) AS n FROM players')).rows[0] as unknown as { n: number };
+  const fresh = (await db.execute({ sql: 'SELECT COUNT(*) AS n FROM players WHERE created_at >= ?', args: [since] })).rows[0] as unknown as { n: number };
+  const don = (await db.execute('SELECT SUM(total_coins) AS s FROM donations')).rows[0] as unknown as { s: number | null };
+  return { totalPlayers: Number(total.n), newToday: Number(fresh.n), totalDonated: Number(don.s ?? 0) };
 }
 
 export const itemQty = async (id: number, item: string): Promise<number> => {
