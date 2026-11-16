@@ -15,6 +15,9 @@ export interface PlayerState {
   accessory: string | null;
   x: number;
   z: number;
+  /** cao độ render tuyệt đối; chỉ đặt khi NPC ngồi trên ghế/bục có cao độ thật
+   *  (ví dụ ghế bồ đề seatY = 0.619). Bỏ trống thì client dùng world.groundY. */
+  y?: number;
   ry: number;
   anim: Anim;
   merit: number;

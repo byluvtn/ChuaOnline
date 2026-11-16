@@ -332,7 +332,7 @@ function addPlayer(p: PlayerState) {
   char.root.position.set(p.x, 0, p.z);
   if (p.npc) char.root.visible = settings.showNpcs;
   world.scene.add(char.root);
-  const r: Remote = { char, target: new THREE.Vector3(p.x, world.groundY(p.x, p.z), p.z), ry: p.ry, anim: p.anim, actionUntil: 0, data: p, act: null };
+  const r: Remote = { char, target: new THREE.Vector3(p.x, p.y ?? world.groundY(p.x, p.z), p.z), ry: p.ry, anim: p.anim, actionUntil: 0, data: p, act: null };
   remotes.set(p.id, r);
   return r;
 }
@@ -632,13 +632,13 @@ function connect() {
     { stall: 'stall_trada2', npc: 'npc36', x: 52, z: 57 },
   ];
   const stallAway = new Map<string, boolean>();
-  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'ry' | 'anim' | 'act'>[]; animals?: AnimalState[] }) => {
+  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'y' | 'ry' | 'anim' | 'act'>[]; animals?: AnimalState[] }) => {
     $('onlineN').textContent = String(st.online);
     latestAnimals = st.animals ?? [];
     for (const p of st.players) {
       const r = remotes.get(p.id);
       if (!r || p.id === myId) continue;
-      r.target.set(p.x, world.groundY(p.x, p.z), p.z);
+      r.target.set(p.x, p.y ?? world.groundY(p.x, p.z), p.z);
       r.ry = p.ry;
       if (performance.now() > r.actionUntil) r.anim = p.anim;
       if (p.act !== r.act) { r.act = p.act ?? null; refreshLabel(r); }
@@ -2573,7 +2573,7 @@ function loop(now: number = performance.now()) {
     if (id !== myId) {
       const px = r.char.root.position.x, pz = r.char.root.position.z;
       r.char.root.position.lerp(r.target, 1 - Math.pow(0.0005, dt));
-      r.char.root.position.y = world.groundY(r.char.root.position.x, r.char.root.position.z);
+      r.char.root.position.y = r.target.y;
       if (!r.data.npc && now > r.actionUntil && /^(bow|incense|chant|lantern|palms|beads)$/.test(r.anim)) r.anim = 'idle';
       if (r.data.npc) {
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân

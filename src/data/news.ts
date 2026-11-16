@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 121;
+export const LATEST_NEWS_ID = 122;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sư Ông ngồi đúng lên ghế bồ đề',
+    date: '2026-11-17',
+    items: [
+      'Sư Ông khi ngồi nghỉ ở gốc bồ đề nay ngồi đúng lên mặt ghế gỗ, quay mặt ra hồ, thay vì xếp bằng dưới đất như trước.',
+      'Ghế sau lưng ông không còn trống nữa; khi ông đứng dậy đi tiếp, vị trí trở lại mặt đất bình thường, không lơ lửng.',
+    ],
+  },
   {
     title: 'Bản đồ nhỏ hình tròn',
     date: '2026-11-17',

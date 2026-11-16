@@ -425,8 +425,15 @@ function pickDest(n: Npc): { to: Pt; route: Pt[] } | null {
   return null;
 }
 
+/** Ghế gỗ bồ đề ở (35.5, 20). seatY = đỉnh tấm ngồi của wooden_bench.glb (0.55)
+ *  × scale buildInstance (1.125) = 0.61875 ≈ 0.619. Đây là cao độ tuyệt đối để
+ *  NPC ngồi đúng mặt ghế thay vì xếp bằng dưới đất. */
+const BODHI_BENCH = { x: 35.5, z: 20, seatY: 0.619 };
+
 function startWalk(n: Npc, route: Pt[], speed: number) {
   n.route = route; n.speed = speed; n.phase = 'walk'; n.state.anim = 'walk';
+  // rời khỏi ghế/bục: bỏ cao độ đặc biệt để không lơ lửng khi đứng dậy
+  n.state.y = undefined;
 }
 
 function abbotRouteIn(n: Npc): Pt[] {
@@ -815,8 +822,11 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   }
   if (n.def.behavior === 'wander' && n.mode === 'toIdleRest') {
     n.mode = 'idleRest'; n.phase = 'act'; s.anim = 'sit'; n.until = now + R(30_000, 60_000);
-    // Ghế bồ đề (35.5, 20): ngồi quay mặt ra hồ (hướng Tây).
-    if (Math.hypot(s.x - 35.5, s.z - 20) < 0.6) s.ry = -Math.PI / 2;
+    // Ghế bồ đề (35.5, 20): snap đúng tâm ghế, quay mặt ra hồ (hướng Tây),
+    // và nâng lên đúng mặt ghế. Các điểm nghỉ mặt đất khác KHÔNG đặt y.
+    if (Math.hypot(s.x - BODHI_BENCH.x, s.z - BODHI_BENCH.z) < 0.6) {
+      s.x = BODHI_BENCH.x; s.z = BODHI_BENCH.z; s.ry = -Math.PI / 2; s.y = BODHI_BENCH.seatY;
+    }
     return;
   }
   if (n.def.behavior === 'wander' && n.mode !== 'normal') return abbotArrive(n, now);
@@ -887,6 +897,7 @@ function decide(room: NpcRoom, n: Npc, now: number) {
   if (n.def.behavior === 'wander' && (n.mode === 'toIdleSeat' || n.mode === 'idleSeat' || n.mode === 'toIdleIncense' || n.mode === 'idleIncense' || n.mode === 'toIdleRest' || n.mode === 'idleRest')) {
     if (n.chantSeat) { releaseSeat(room, n.def.id); n.chantSeat = null; }
     n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000);
+    s.y = undefined; // rời ghế bồ đề: trả về cao độ mặt đất
     return;
   }
   if (n.def.behavior === 'wander' && n.mode !== 'normal') return abbotDecide(n, now);
