@@ -154,7 +154,7 @@ export function buildHall(c: TempleCtx) {
   };
   board(COLUMN_LABELS[0], ENT);
   board(COLUMN_LABELS[1], -ENT);
-  zones.push({ x: HALL.x, z: HALL.z + fz, r: 6.2, id: 'tamBao' });
+  zones.push({ x: HALL.x, z: HALL.z + fz, r: 6.2, id: 'daiHung' });
 
   // ---- altar ----
   const AW = 25;

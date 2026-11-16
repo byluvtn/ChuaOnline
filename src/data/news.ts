@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 108;
+export const LATEST_NEWS_ID = 109;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa bảng giới thiệu Đại Hùng Bảo Điện',
+    date: '2026-11-16',
+    items: [
+      'Đứng trước Chính Điện, bảng giới thiệu giờ ghi đúng "Đại Hùng Bảo Điện" thay vì tên điện khác.',
+      'Bảng giới thiệu nhỏ gọn hơn, nhất là khi xoay ngang điện thoại, không còn che giữa màn hình.',
+      'Đã rà soát lại bảng giới thiệu ở mọi khu vực trong chùa.',
+      'Thêm bảng giới thiệu mới ở 7 khu vực chưa có bảng: Nơi phóng sinh, Vườn phóng sinh, Nơi xin xăm, Vườn Tây, Phòng Công Đức, Cổng Viện Tổ, Cổng Viện Khách Tăng.',
+    ],
+  },
   {
     title: 'Sửa nút di chuyển khi xoay ngang màn hình',
     date: '2026-11-16',

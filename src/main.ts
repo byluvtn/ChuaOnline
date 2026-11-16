@@ -249,7 +249,7 @@ let savedBump: number | null = null;
 const freePos = new THREE.Vector3();
 const camMaxDist = () => (profile?.admin ? 160 : 18);
 const camMaxPitch = () => (profile?.admin ? 1.55 : 1.3);
-const PAVILION_ZONES = ['tamBao', 'tamThe'];
+const PAVILION_ZONES = ['daiHung', 'tamThe'];
 const HOUSE_CAM: Record<string, { dist: number; bump: number }> = {
   dienMau: { dist: 2.6, bump: -0.05 },
   traiDuong: { dist: 3.0, bump: 0 },

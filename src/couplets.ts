@@ -2,8 +2,8 @@
 export interface Couplet { id: string; where: string; am: [string, string]; nghia: string }
 
 export const COUPLETS: Record<string, Couplet> = {
-  tamBao: {
-    id: 'tamBao', where: 'Điện thờ Tam Bảo',
+  daiHung: {
+    id: 'daiHung', where: 'Đại Hùng Bảo Điện',
     am: ['Phật nhật tăng huy, phổ chiếu thập phương thường lãng chiếu', 'Pháp luân thường chuyển, tế độ quần sinh tận quy y'],
     nghia: 'Ánh sáng Phật rực rỡ, chiếu soi khắp mười phương; bánh xe Pháp luôn chuyển, cứu độ chúng sinh đều nương tựa.',
   },
@@ -86,6 +86,41 @@ export const COUPLETS: Record<string, Couplet> = {
     id: 'amCo', where: 'Am Cổ — nơi tĩnh tu',
     am: ['Am cổ u tịch, một nén hương trầm thông cõi tịnh', 'Rêu xanh phủ mái, ngàn năm tiếng kệ vọng non cao'],
     nghia: 'Am xưa vắng lặng, một nén hương trầm nối về cõi tịnh; rêu xanh phủ mái, tiếng kệ ngàn năm còn vọng núi cao.',
+  },
+  phongSinh: {
+    id: 'phongSinh', where: 'Nơi phóng sinh',
+    am: ['Thả chim về trời rộng, thả cá về sông trong, lòng từ mở khắp muôn loài', 'Một niệm lành gieo xuống, muôn loài được sống, phước đức theo về'],
+    nghia: 'Thả chim về trời, thả cá về sông là gieo một niệm lành; muôn loài được tự do, phước đức cũng theo đó mà lớn lên.',
+  },
+  vuonPhongSinh: {
+    id: 'vuonPhongSinh', where: 'Vườn phóng sinh',
+    am: ['Cây xanh chim hót giữa vườn, nắng mai soi rọi muôn loài', 'Người đi lòng nhẹ bước chân, gieo duyên lành khắp cỏ hoa'],
+    nghia: 'Vườn phóng sinh là nơi chim cá được trở về tự nhiên; người tới đây lòng nhẹ nhõm, một bước chân cũng là một duyên lành.',
+  },
+  omikuji: {
+    id: 'omikuji', where: 'Nơi xin xăm',
+    am: ['Một quẻ xin xăm, lòng thành gửi gắm điều mong ước', 'Một lời Phật dạy, tâm an bước tiếp tháng ngày bình an'],
+    nghia: 'Xin xăm là gieo một quẻ để lắng nghe lời Phật dạy; dù quẻ tốt hay chưa tốt, lòng thành và tâm an mới là điều quan trọng nhất.',
+  },
+  vuoncay: {
+    id: 'vuoncay', where: 'Vườn Tây — Vườn cây',
+    am: ['Tay gieo hạt nhỏ, cây lớn thành bóng mát che đời', 'Lòng tưới từng ngày, công đức theo cây lớn dần lên'],
+    nghia: 'Vườn cây là nơi tự tay gieo hạt, tưới nước mỗi ngày; cây lớn lên thành bóng mát, công đức cũng theo đó mà lớn dần.',
+  },
+  phongCongDuc: {
+    id: 'phongCongDuc', where: 'Phòng Công Đức',
+    am: ['Sổ vàng ghi rõ, từng việc lành đều thành công đức', 'Lòng thành gửi gắm, từng đồng công quả đều sáng ngời'],
+    nghia: 'Phòng Công Đức là nơi ghi lại mọi việc lành và công quả; từng việc nhỏ đều được trân trọng, từng đồng công đức đều sáng ngời.',
+  },
+  vienToGate: {
+    id: 'vienToGate', where: 'Cổng Viện Tổ',
+    am: ['Qua cổng Viện Tổ, lòng thành hướng về chư vị tổ sư', 'Bước chân thanh tịnh, một niệm tri ân nối dài muôn đời'],
+    nghia: 'Viện Tổ là nơi thờ chư vị tổ sư đã khai sơn lập chùa; qua cổng này, người tới với một niệm tri ân và lòng thành kính.',
+  },
+  vienKtGate: {
+    id: 'vienKtGate', where: 'Cổng Viện Khách Tăng',
+    am: ['Viện Khách Tăng mở cửa, đón chư tăng bốn phương về tu học', 'Chốn thanh tịnh yên bình, tiếng kinh sớm chiều nuôi đạo hạnh'],
+    nghia: 'Viện Khách Tăng là nơi chư tăng từ bốn phương về ở và tu học; chốn này thanh tịnh, tiếng kinh sớm chiều nuôi dưỡng đạo hạnh.',
   },
 };
 
