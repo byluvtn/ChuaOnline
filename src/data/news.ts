@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 120;
+export const LATEST_NEWS_ID = 121;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bản đồ nhỏ hình tròn',
+    date: '2026-11-17',
+    items: [
+      'Góc trên-phải dưới hàng nút giờ có bản đồ nhỏ hình tròn, hiện vị trí của bạn (chấm hồng), người chơi khác (chấm xanh), sư thầy và NPC (chấm vàng) cùng các điểm tương tác (chấm nâu).',
+      'Chạm vào bản đồ hoặc bấm phím M để ẩn; khi đã ẩn, bấm nút Bản đồ ở cùng chỗ để mở lại. Lựa chọn ẩn/hiện được ghi nhớ cho lần vào sau.',
+      'Bản đồ mặc định hiện cả trên máy tính lẫn điện thoại; phía bắc (Điện Tam Thế) ở phía trên bản đồ.',
+    ],
+  },
   {
     title: 'Nhạc nền: thêm 2 bài tụng tiếng Phạn',
     date: '2026-11-17',

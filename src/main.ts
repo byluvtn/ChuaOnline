@@ -742,6 +742,10 @@ addEventListener('keydown', (e) => {
     toggleFreeCam();
     return;
   }
+  if (e.code === 'KeyM' && !e.repeat) {
+    toggleMinimap();
+    return;
+  }
   if (e.code === 'Space' && freeCam && profile?.admin) e.preventDefault();
   keys.add(e.code);
   if (e.key === 'Enter') { e.preventDefault(); $('chatInput').focus(); }
@@ -1651,6 +1655,103 @@ function npcPos(id: string | undefined): Pt | null {
   const r = id ? remotes.get(id) : undefined;
   return r ? { x: r.char.root.position.x, z: r.char.root.position.z } : null;
 }
+
+// ---- Bản đồ nhỏ hình tròn (góc trên-phải) ----
+const minimapWrap = $('minimapWrap');
+const minimapCv = $('minimap') as HTMLCanvasElement;
+const minimapShowBtn = $('minimapShowBtn');
+const MM_POIS: Pt[] = [
+  { x: -34, z: -6 }, { x: 34, z: -6 }, { x: 24, z: -24 }, { x: 30, z: -31 },
+  { x: -30, z: -38 }, { x: 0, z: -68 }, { x: 0, z: -32 }, { x: 0, z: 22 },
+];
+let mmStatic: HTMLCanvasElement | null = null;
+let mmStaticSize = 0;
+
+function mmProject(S: number, dpr: number) {
+  const MX0 = -66, MX1 = 66, MZ0 = -88, MZ1 = 64;
+  const PAD = 4 * dpr;
+  const k = (S - PAD * 2) / Math.max(MX1 - MX0, MZ1 - MZ0);
+  const OX = (S - (MX1 - MX0) * k) / 2, OZ = (S - (MZ1 - MZ0) * k) / 2;
+  return { k, X: (x: number) => (x - MX0) * k + OX, Z: (z: number) => (z - MZ0) * k + OZ };
+}
+
+function mmBuildStatic(S: number, dpr: number): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const g = c.getContext('2d')!;
+  const { k, X, Z } = mmProject(S, dpr);
+  g.fillStyle = '#c9d9a8';
+  g.fillRect(0, 0, S, S);
+  g.lineWidth = Math.max(1, dpr);
+  g.fillStyle = '#e4e8c4'; g.strokeStyle = '#8a5a2b';
+  g.beginPath(); g.rect(X(-62), Z(-82), 124 * k, 127 * k); g.fill(); g.stroke();
+  g.fillStyle = '#efe3bd';
+  g.beginPath(); g.ellipse(X(0), Z(8), 11.5 * k, 11.5 * k, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#8ec6e0'; g.strokeStyle = '#4f8fb0';
+  g.beginPath(); g.ellipse(X(0), Z(22), 9 * k, 6.5 * k, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  g.fillStyle = '#b5542f'; g.strokeStyle = '#6e2a14';
+  g.beginPath(); g.rect(X(-17), Z(-42), 34 * k, 20 * k); g.fill(); g.stroke();
+  return c;
+}
+
+function drawMinimap() {
+  if (!me || minimapWrap.hidden || $('hud').hidden) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const S = Math.round(minimapWrap.clientWidth * dpr);
+  if (S <= 0) return;
+  if (minimapCv.width !== S) { minimapCv.width = S; minimapCv.height = S; }
+  if (!mmStatic || mmStaticSize !== S) { mmStatic = mmBuildStatic(S, dpr); mmStaticSize = S; }
+  const g = minimapCv.getContext('2d');
+  if (!g) return;
+  const { X, Z } = mmProject(S, dpr);
+  g.clearRect(0, 0, S, S);
+  g.save();
+  g.beginPath(); g.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); g.clip();
+  g.drawImage(mmStatic, 0, 0);
+  g.font = `700 ${9 * dpr}px sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#6e2a14';
+  g.fillText('Bắc', S / 2, 10 * dpr);
+  const dot = (x: number, z: number, rad: number, fill: string) => {
+    g.beginPath(); g.arc(X(x), Z(z), rad * dpr, 0, Math.PI * 2);
+    g.fillStyle = fill; g.fill();
+    g.lineWidth = Math.max(1, dpr * 0.8); g.strokeStyle = '#fff'; g.stroke();
+  };
+  for (const p of MM_POIS) dot(p.x, p.z, 2.5, '#7a4a12');
+  for (const [id, r] of remotes) {
+    if (id === myId || !r.data.npc) continue;
+    dot(r.char.root.position.x, r.char.root.position.z, 3, '#e8b64a');
+  }
+  for (const [id, r] of remotes) {
+    if (id === myId || r.data.npc) continue;
+    dot(r.char.root.position.x, r.char.root.position.z, 3, '#2f6fb0');
+  }
+  const mx = me.char.root.position.x, mz = me.char.root.position.z;
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 250);
+  g.beginPath(); g.arc(X(mx), Z(mz), (5.5 + 3 * pulse) * dpr, 0, Math.PI * 2);
+  g.strokeStyle = `rgba(217,70,122,${(0.65 - 0.4 * pulse).toFixed(2)})`;
+  g.lineWidth = Math.max(1, 1.5 * dpr); g.stroke();
+  dot(mx, mz, 4.5, '#d9467a');
+  g.restore();
+}
+
+function setMinimapHidden(h: boolean) {
+  minimapWrap.hidden = h;
+  minimapShowBtn.hidden = !h;
+  try { localStorage.setItem('co:minimapHidden', h ? '1' : '0'); } catch { /* bỏ qua */ }
+  if (!h) drawMinimap();
+}
+function toggleMinimap() { setMinimapHidden(!minimapWrap.hidden); }
+{
+  let hidden = false;
+  try { hidden = localStorage.getItem('co:minimapHidden') === '1'; } catch { /* bỏ qua */ }
+  minimapWrap.hidden = hidden;
+  minimapShowBtn.hidden = !hidden;
+}
+minimapWrap.addEventListener('click', () => setMinimapHidden(true));
+minimapShowBtn.addEventListener('click', () => setMinimapHidden(false));
+window.setInterval(drawMinimap, 500);
+drawMinimap();
 function zoneCenter(zone: QuestZone | undefined): Pt | null {
   if (!zone) return null;
   if ('r' in zone) return { x: zone.x, z: zone.z };

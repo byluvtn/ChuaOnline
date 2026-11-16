@@ -80,6 +80,9 @@ textarea { height: 96px; resize: none; margin: 8px 0; }
 #online i { width: 8px; height: 8px; border-radius: 50%; background: #5fe05f; box-shadow: 0 0 8px #5fe05f; }
 .sep { opacity: .5; }
 #topright { top: 42px; right: 12px; display: flex; gap: 8px; align-items: center; }
+#minimapWrap { top: 88px; right: 12px; width: 150px; height: 150px; border-radius: 50%; overflow: hidden; border: 2px solid rgba(232,182,74,.8); box-shadow: 0 4px 16px rgba(0,0,0,.35); cursor: pointer; background: #c9d9a8; }
+#minimapWrap canvas { display: block; width: 100%; height: 100%; }
+#minimapShowBtn { top: 88px; right: 12px; width: auto; height: 38px; padding: 0 12px; border-radius: 19px; font-size: 13px; font-weight: 700; color: var(--cream); cursor: pointer; }
 #topright > * { position: static; }
 #coins { font-weight: 700; color: var(--gold2); font-size: 15px; }
 #coins .ico { font-size: 20px; }
@@ -105,7 +108,7 @@ textarea { height: 96px; resize: none; margin: 8px 0; }
 #chatInput { background: rgba(255,255,255,.1); color: var(--cream); border-color: rgba(255,255,255,.2); padding: 9px 13px; }
 #chatInput::placeholder { color: rgba(250,243,227,.5); }
 
-#lanternFeed { top: 150px; right: 12px; width: min(290px, 80vw); border-radius: 18px; padding: 12px; }
+#lanternFeed { top: 246px; right: 12px; width: min(290px, 80vw); border-radius: 18px; padding: 12px; }
 #lanternList { max-height: 32vh; overflow-y: auto; font-size: 13px; scrollbar-width: thin; }
 #lanternList .item { background: rgba(255,255,255,.08); border-left: 3px solid var(--gold); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; animation: rise .4s var(--ease); font-style: italic; }
 #lanternList small { opacity: .7; display: block; margin-top: 2px; font-style: normal; }
@@ -170,13 +173,13 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
 #stick { position: absolute; left: 36px; top: 36px; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1be, #e0ae3a); box-shadow: 0 3px 10px rgba(0,0,0,.45); }
 
 /* Desktop (không phải touch): cột dọc, nút thừa quấn sang cột thứ 2 bên trái, không đè #menu / #topright.
-   Dự trữ phía trên = 250px để chừa đáy #lanternFeed (250px = top 150 + chiều cao rỗng 100); dự trữ đáy 92px => 92 + 250 = 342px */
+   Dự trữ phía trên = 346px để chừa đáy #lanternFeed (346px = top 246 + chiều cao rỗng 100); dự trữ đáy 92px => 92 + 346 = 438px */
 @media (min-width: 761px) and (min-height: 501px) {
   #actions {
     flex-wrap: wrap-reverse;
     justify-content: flex-start;
     align-content: flex-start;
-    max-height: calc(100dvh - 342px);
+    max-height: calc(100dvh - 438px);
   }
 }
 
@@ -209,6 +212,8 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   #plevel { font-size: 11px; }
   #online { top: 78px; left: 6px; font-size: 11px; padding: 4px 10px; }
   #topright { top: 30px; right: 6px; }
+  #minimapWrap { top: 76px; right: 6px; width: 110px; height: 110px; }
+  #minimapShowBtn { top: 76px; right: 6px; }
   #coins { font-size: 13.5px; padding: 5px 10px; }
   #coins .ico { font-size: 17px; }
   #medBanner { top: 106px; font-size: 12px; width: 92vw; }
@@ -255,7 +260,9 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   #medBanner, body.touch #medBanner { top: 64px; }
   #boostBanner, body.touch #boostBanner { top: 102px; }
   #toast { top: 60px; }
-  #actions { flex-direction: column; flex-wrap: wrap-reverse; justify-content: flex-start; align-content: flex-start; right: 6px; bottom: calc(70px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 142px - env(safe-area-inset-bottom)); }
+  #minimapWrap { top: 66px; right: 6px; width: 96px; height: 96px; }
+  #minimapShowBtn { top: 66px; right: 6px; }
+  #actions { flex-direction: column; flex-wrap: wrap-reverse; justify-content: flex-start; align-content: flex-start; right: 6px; bottom: calc(70px + env(safe-area-inset-bottom)); max-height: calc(100dvh - 232px - env(safe-area-inset-bottom)); }
   body.touch #chat { top: 148px; width: min(300px, 40vw); }
   body.touch #chat:not(.collapsed) { max-height: min(56dvh, calc(100dvh - 218px - env(safe-area-inset-bottom))); }
   body.touch #msgs { min-height: 40px; }
