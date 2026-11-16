@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { AnimalAnim, AnimalState } from '../shared/types';
 import { loadGltf } from './models';
+import { groundY } from './layout';
 
 type Kind = AnimalState['kind'];
 
@@ -227,14 +228,15 @@ export function updateAnimals(states: AnimalState[] | undefined, dt: number): vo
     e.root.visible = s !== undefined;
     if (!s) continue;
     const p = e.root.position;
+    const flies = e.kind === 'owl';
     if (!e.placed || Math.hypot(s.x - p.x, s.z - p.z) > SNAP_DIST) {
-      p.set(s.x, s.y, s.z);
+      p.set(s.x, flies ? s.y : groundY(s.x, s.z), s.z);
       e.root.rotation.y = s.ry;
       e.placed = true;
     } else {
       p.x += (s.x - p.x) * k;
       p.z += (s.z - p.z) * k;
-      p.y = s.y;
+      p.y = flies ? s.y : groundY(p.x, p.z);
       const d = THREE.MathUtils.euclideanModulo(s.ry - e.root.rotation.y + Math.PI, Math.PI * 2) - Math.PI;
       e.root.rotation.y += d * Math.min(1, dt * 12);
     }

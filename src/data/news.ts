@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 114;
+export const LATEST_NEWS_ID = 115;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bậc thềm Chính Điện đồng màu đá, thú không còn đi xuyên bậc',
+    date: '2026-11-16',
+    items: [
+      'Bậc thềm trước Chính Điện giờ cùng màu đá với các bậc và bệ còn lại trong chùa.',
+      'Chó, mèo và các thú khác giờ bước lên bậc thay vì đi xuyên qua bậc.',
+      'Đã kiểm tra lại đường đi của NPC quanh thềm điện sau khi sửa.',
+    ],
+  },
   {
     title: 'Thêm chó Trắng và chó Nâu, tạm biệt chó Đen',
     date: '2026-11-16',

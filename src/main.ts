@@ -2472,6 +2472,7 @@ function loop(now: number = performance.now()) {
     if (id !== myId) {
       const px = r.char.root.position.x, pz = r.char.root.position.z;
       r.char.root.position.lerp(r.target, 1 - Math.pow(0.0005, dt));
+      r.char.root.position.y = world.groundY(r.char.root.position.x, r.char.root.position.z);
       if (!r.data.npc && now > r.actionUntil && /^(bow|incense|chant|lantern|palms|beads)$/.test(r.anim)) r.anim = 'idle';
       if (r.data.npc) {
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân

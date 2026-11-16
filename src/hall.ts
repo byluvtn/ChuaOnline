@@ -35,7 +35,7 @@ export function buildHall(c: TempleCtx) {
   for (const [e, h] of tiers) box(W + e * 2, h, D + e * 2, stoneM, 0, h / 2, 0);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.2, D - 0.2), lamb(0xffffff, { map: woodTexture([12, 6]), roughness: 0.7 }));
   floor.rotation.x = -Math.PI / 2; floor.position.y = BASE + 0.01; floor.receiveShadow = true; add(floor);
-  for (let i = 0; i < 3; i++) box(10.4 - i * 0.7, 0.45, 1.0, lamb(0xb9ae98), 0, 0.225, D / 2 + 1.1 - i * 0.3, false);
+  for (let i = 0; i < 3; i++) box(10.4 - i * 0.7, 0.45, 1.0, stoneM, 0, 0.225, D / 2 + 1.1 - i * 0.3, false);
 
   // ---- columns (no middle columns in front of the altar) ----
   const colH = 7.6;
