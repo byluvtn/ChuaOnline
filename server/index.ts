@@ -17,7 +17,11 @@ import { gardenSeedGiftSent, harvestGardenRow, listGardenRows, plantGardenRow, w
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 import { PHONG_CD } from '../src/layout.js';
 import { FORTUNES, type FortuneAck } from '../src/data/fortunes.js';
-import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost, flockCenter, feedFlock } from './animals.js';
+import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost, flockCenter, feedFlock, isIndoors } from './animals.js';
+import {
+  FIREWORKS, SKY_LANTERN_COST, SKY_LANTERN_MERIT, SKY_LANTERN_COOLDOWN_MS, SKY_LANTERN_WISH_MAX,
+} from '../shared/game.js';
+import type { FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
 // unhandledRejection: chỉ log và tiếp tục chạy (game server phải sống vì người chơi).
@@ -107,7 +111,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin' | 'sky' | 'fw:small' | 'fw:large' | 'fw:dragon', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** resume token cua tab (sessionStorage) de khoi phuc vi tri khi vao lai */
@@ -119,6 +123,8 @@ const sessions = new Map<string, Session>();
 const roomChat = new Map<string, ChatMessage[]>();
 const roomLanterns = new Map<string, Lantern[]>();
 const roomMinutes = new Map<string, number>();
+/** phòng -> mốc hết màn pháo hoa đang chiếu (khoá 1 màn/phòng) */
+const roomFireworkUntil = new Map<string, number>();
 let seq = 1;
 
 const DONATE_TEMPLATES: ((name: string, amt: string) => string)[] = [
@@ -148,6 +154,8 @@ function vendorName(room: string, npcId: string): string {
   return npcRoom(room).npcs.find((e) => e.def.id === npcId)?.def.name ?? 'Người bán';
 }
 const clean = (s: unknown, max: number) => String(s ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, max);
+/** Như clean nhưng gộp mọi khoảng trắng thành 1 dấu cách — lời nguyện đèn trời hiện trên 1 dòng feed. */
+const cleanLine = (s: unknown, max: number) => clean(String(s ?? '').replace(/\s+/g, ' '), max);
 const cleanColor = (c: unknown) => (/^#[0-9a-fA-F]{6}$/.test(String(c)) ? String(c) : '#d99a1e');
 const roomSessions = (room: string) => [...sessions.values()].filter((s) => s.room === room);
 const roomOk = (id: string) => ROOMS.some((r) => r.id === id);
@@ -535,6 +543,30 @@ io.on('connection', (socket) => {
     else if (kind === 'incense') await countStatSafe(s, 'incense');
   });
 
+  // ---- Đèn trời: 15 xu, +2 công đức, 60s/người, chỉ ngoài sân ----
+  socket.on('sky:release', async (wish: unknown, cb?: (r: { ok: boolean; coins?: number; merit?: number; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; coins?: number; merit?: number; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    const now = Date.now();
+    if (now - (s.last.sky ?? 0) < SKY_LANTERN_COOLDOWN_MS) return reply({ ok: false, error: 'Thả đèn trời từ từ thôi, thử lại sau nhé' });
+    if (isIndoors(s.state.x, s.state.z)) return reply({ ok: false, error: 'Ra sân chùa rồi hãy thả đèn' });
+    const paid = await db.spendCoins(s.pid, SKY_LANTERN_COST);
+    if (!paid) return reply({ ok: false, error: 'Không đủ xu' });
+    s.last.sky = now;
+    const l: SkyLantern = {
+      id: seq++, name: s.state.name,
+      wish: cleanLine(wish, SKY_LANTERN_WISH_MAX) || 'Cầu bình an',
+      x: s.state.x, z: s.state.z, t: now,
+    };
+    io.to(s.room).emit('sky:lantern', l);
+    await grantRewards(s, SKY_LANTERN_MERIT, 0);
+    await countStatSafe(s, 'lanterns');
+    const p = await db.getProfile(s.pid);
+    reply({ ok: true, coins: p?.coins ?? 0, merit: SKY_LANTERN_MERIT });
+    await pushProfile(s);
+  });
+
   /** Hoàn thành một bài kinh trong cửa sổ tụng kinh: cộng đức theo ACTION_RULES.chant. */
   socket.on('sutra:done', async (sutraId: string, cb?: (r: { ok: boolean; merit?: number; error?: string }) => void) => {
     const s = me();
@@ -798,6 +830,40 @@ io.on('connection', (socket) => {
     reply({ ok: true });
     await pushProfile(s);
     await pushQuests(s);
+  });
+
+  // ---- Pháo hoa: nhỏ 100 / lớn 300 / rồng phượng 1500 xu, chỉ ngoài sân, khoá 1 màn/phòng ----
+  socket.on('firework:launch', async (size: unknown, cb?: (r: { ok: boolean; coins?: number; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; coins?: number; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    if (size !== 'small' && size !== 'large' && size !== 'dragon') return reply({ ok: false, error: 'Loại pháo hoa không hợp lệ' });
+    const kind = size as FireworkSize;
+    const cfg = FIREWORKS[kind];
+    const lastKey = kind === 'small' ? 'fw:small' : kind === 'large' ? 'fw:large' : 'fw:dragon';
+    const now = Date.now();
+    if (now - (s.last[lastKey] ?? 0) < cfg.cooldownMs) return reply({ ok: false, error: 'Từ từ thôi, thử lại sau nhé' });
+    if ((roomFireworkUntil.get(s.room) ?? 0) > now) return reply({ ok: false, error: 'Đang có pháo hoa, chờ chút nhé' });
+    const until = now + cfg.lockMs;
+    roomFireworkUntil.set(s.room, until);
+    const unlock = () => { if (roomFireworkUntil.get(s.room) === until) roomFireworkUntil.delete(s.room); };
+    if (isIndoors(s.state.x, s.state.z)) { unlock(); return reply({ ok: false, error: 'Ra sân chùa rồi hãy bắn pháo hoa' }); }
+    const paid = await db.spendCoins(s.pid, cfg.cost);
+    if (!paid) { unlock(); return reply({ ok: false, error: 'Không đủ xu' }); }
+    s.last[lastKey] = now;
+    const show: FireworkShow = { id: seq++, name: s.state.name, size: kind, x: s.state.x, z: s.state.z, t: now };
+    io.to(s.room).emit('firework:show', show);
+    if (kind === 'dragon') {
+      const msg: ChatMessage = { id: seq++, name: '', text: `🎆 ${s.state.name} vừa bắn pháo hoa rồng phượng!`, t: now, sys: true };
+      const arr = roomChat.get(s.room) ?? [];
+      arr.push(msg);
+      if (arr.length > 100) arr.shift();
+      roomChat.set(s.room, arr);
+      io.to(s.room).emit('chat', msg);
+    }
+    const p = await db.getProfile(s.pid);
+    reply({ ok: true, coins: p?.coins ?? 0 });
+    await pushProfile(s);
   });
 
   socket.on('donate', async (amount: unknown, cb?: (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string }) => void) => {

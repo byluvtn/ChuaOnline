@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { MAP_HALF } from '../shared/types';
+import type { FireworkSize } from '../shared/types';
+import { FIREWORKS } from '../shared/game';
 import { fitModel, loadModel } from './models';
 import { applySkyPalette, paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
 import { glowTexture, grassTexture, petalTexture, signTexture, signTexture2Lines, stoneTexture } from './textures';
@@ -31,6 +33,10 @@ export interface World {
   spawnLantern(x: number, z: number): void;
   spawnIncense(x: number, z: number): void;
   spawnBurst(x: number, z: number, color?: number): void;
+  /** Đèn trời: bay thẳng lên từ (x,z), sống ~45s, mờ dần 5s cuối. */
+  spawnSkyLantern(x: number, z: number): void;
+  /** Pháo hoa: rocket bay lên rồi nổ thành cầu sprite; size quyết định số quả + nhịp. */
+  spawnFirework(x: number, z: number, size: FireworkSize): void;
   setMood(room: string): void;
   altar: THREE.Vector3;
   sun: THREE.DirectionalLight;
@@ -385,7 +391,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   })();
 
   // ---- Effects: floating lanterns, incense smoke, bursts ----
-  const floaters: { m: THREE.Object3D; vy: number; life: number; max: number; light?: THREE.Sprite }[] = [];
+  const floaters: { m: THREE.Object3D; vy: number; life: number; max: number; light?: THREE.Sprite; fade?: number }[] = [];
   const smoke: { m: THREE.Sprite; life: number; vx: number }[] = [];
   const burst: { m: THREE.Sprite; v: THREE.Vector3; life: number }[] = [];
   const smokeMat = new THREE.SpriteMaterial({ map: glowTexture(), color: 0xdddddd, transparent: true, opacity: 0.5, depthWrite: false });
@@ -421,6 +427,72 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       s.scale.setScalar(0.45); s.position.set(x, 1.5, z); scene.add(s);
       const a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 2;
       burst.push({ m: s, v: new THREE.Vector3(Math.cos(a) * sp, 2 + Math.random() * 2, Math.sin(a) * sp), life: 1.1 });
+    }
+  };
+
+  // ---- Đèn trời + pháo hoa ----
+  // Màu quả pháo, luân phiên theo thứ tự quả trong màn.
+  const FW_COLORS = [0xffd36b, 0xff5a4a, 0x7ddc6a, 0x6ab8d8, 0xc58cff];
+  // Màn có nhịp nổ >= 3s được coi là show lớn (rồng phượng) và có thêm màn kết.
+  const FINALE_MIN_GAP_MS = 3000;
+  const FINALE_SHELLS = 3;
+
+  /** Đèn trời: bay chậm (vy ~0,8), sống 45s, mờ dần 5s cuối. Tái dùng model + glow của đèn hồ. */
+  const spawnSkyLantern = (x: number, z: number) => {
+    const grp = new THREE.Group();
+    if (lanternModel) grp.add(lanternModel.clone(true));
+    else {
+      const mat = new THREE.MeshStandardMaterial({ color: 0xffa938, emissive: 0xff8c1a, emissiveIntensity: 1.8 });
+      grp.add(new THREE.Mesh(floatGeo, mat));
+      const top = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.2, 10), lamb(0xb85a18)); top.position.y = 0.4; grp.add(top);
+    }
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffb04a, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+    spr.scale.setScalar(2.6); grp.add(spr);
+    grp.position.set(x + (Math.random() - 0.5) * 1.4, 2.2, z + (Math.random() - 0.5) * 1.4);
+    scene.add(grp);
+    floaters.push({ m: grp, vy: 0.7 + Math.random() * 0.2, life: 45, max: 45, fade: 5, light: spr });
+  };
+
+  // Tàn pháo (sprite toả cầu) + rocket đang chờ/bay lên.
+  const sparks: { m: THREE.Sprite; v: THREE.Vector3; life: number }[] = [];
+  const rockets: { m: THREE.Sprite; x: number; z: number; top: number; vy: number; delay: number; color: number }[] = [];
+
+  /** Một quả nổ tại (x, y, z): 24-40 sprite toả hình cầu, tốc độ 4-9, trọng lực 6, sống 1,5-2,5s. */
+  const explodeShell = (x: number, y: number, z: number, color: number) => {
+    const n = 24 + Math.floor(Math.random() * 17);
+    for (let i = 0; i < n; i++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      s.scale.setScalar(0.5 + Math.random() * 0.35);
+      s.position.set(x, y, z);
+      scene.add(s);
+      const up = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2;
+      const rr = Math.sqrt(Math.max(0, 1 - up * up));
+      const sp = 4 + Math.random() * 5;
+      sparks.push({ m: s, v: new THREE.Vector3(rr * Math.cos(a) * sp, up * sp, rr * Math.sin(a) * sp), life: 1.5 + Math.random() });
+    }
+  };
+
+  /** Bắn 1 màn pháo hoa tại (x, z). Không phát âm thanh - main.ts lo phần âm khi nhận broadcast. */
+  const spawnFirework = (x: number, z: number, size: FireworkSize) => {
+    const cfg = FIREWORKS[size];
+    const shells = Math.max(1, Math.round(cfg.shells));
+    const gapMs = cfg.intervalMs;
+    const finale = cfg.intervalMs >= FINALE_MIN_GAP_MS ? FINALE_SHELLS : 0;
+    const lastAt = ((shells - 1) * gapMs) / 1000;
+    for (let i = 0; i < shells + finale; i++) {
+      const isFinale = i >= shells;
+      const delay = isFinale ? lastAt + 1 : (i * gapMs) / 1000;
+      const color = FW_COLORS[i % FW_COLORS.length];
+      const spread = isFinale ? 12 : 6;
+      const px = x + (Math.random() - 0.5) * spread;
+      const pz = z + (Math.random() - 0.5) * spread;
+      const y0 = 1.4, top = 25 + Math.random() * 10;
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }));
+      spr.scale.setScalar(0.7);
+      spr.position.set(px, y0, pz);
+      spr.visible = delay <= 0;
+      scene.add(spr);
+      rockets.push({ m: spr, x: px, z: pz, top, vy: (top - y0) / (0.9 + Math.random() * 0.25), delay, color });
     }
   };
   // always-on smoke from the urn
@@ -486,7 +558,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       f.m.position.x += Math.sin(t + i) * 0.25 * dt;
       f.m.rotation.y += dt * 0.5;
       f.life -= dt;
-      if (f.light) (f.light.material as THREE.SpriteMaterial).opacity = Math.min(0.9, f.life / 3) * (0.8 + Math.sin(t * 6 + i) * 0.2);
+      if (f.light) (f.light.material as THREE.SpriteMaterial).opacity = Math.min(0.9, f.life / (f.fade ?? 3)) * (0.8 + Math.sin(t * 6 + i) * 0.2);
       if (f.life <= 0) { scene.remove(f.m); floaters.splice(i, 1); }
     }
     for (let i = smoke.length - 1; i >= 0; i--) {
@@ -505,10 +577,32 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       (b.m.material as THREE.SpriteMaterial).opacity = Math.max(0, b.life);
       if (b.life <= 0) { scene.remove(b.m); (b.m.material as THREE.Material).dispose(); burst.splice(i, 1); }
     }
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.v.y -= 6 * dt;
+      s.m.position.addScaledVector(s.v, dt);
+      s.life -= dt;
+      (s.m.material as THREE.SpriteMaterial).opacity = Math.max(0, Math.min(1, s.life));
+      if (s.life <= 0) { scene.remove(s.m); (s.m.material as THREE.Material).dispose(); sparks.splice(i, 1); }
+    }
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      if (r.delay > 0) {
+        r.delay -= dt;
+        if (r.delay <= 0) r.m.visible = true;
+        continue;
+      }
+      r.m.position.y += r.vy * dt;
+      if (r.m.position.y >= r.top) {
+        explodeShell(r.x, r.top, r.z, r.color);
+        scene.remove(r.m); (r.m.material as THREE.Material).dispose();
+        rockets.splice(i, 1);
+      }
+    }
     // keep the shadow frustum centered on the player
     sun.target.position.set(focus.x, 0, focus.z);
     sun.position.set(focus.x - 26, 38, focus.z + 22);
   };
 
-  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard, setStele: temple.setStele, noticeBoard: temple.noticeBoard };
+  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, spawnSkyLantern, spawnFirework, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard, setStele: temple.setStele, noticeBoard: temple.noticeBoard };
 }

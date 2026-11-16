@@ -52,6 +52,27 @@ function tone(freq: number, dur: number, gain: number, type: OscillatorType = 's
 function bell(base: number, gain = 0.18, dur = 3.2) {
   [1, 2.76, 5.4, 8.93].forEach((m, i) => tone(base * m, dur / (1 + i * 0.7), gain / (1 + i * 1.3)));
 }
+function boom() {
+  const c = ensure();
+  const t0 = c.currentTime;
+  const dur = 0.7;
+  const buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+  const d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < d.length; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.5; }
+  const src = c.createBufferSource();
+  src.buffer = buf;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(900, t0);
+  lp.frequency.exponentialRampToValueAtTime(120, t0 + dur);
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.5, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  src.connect(lp).connect(g).connect(master!);
+  src.start(t0);
+  src.stop(t0 + dur);
+  tone(70, 0.5, 0.25, 'sine', 0, 40);
+}
 
 export const audio = {
   isMuted: () => muted,
@@ -68,13 +89,14 @@ export const audio = {
     applyBgm();
   },
   unlock() { ensure(); },
-  play(name: 'bow' | 'incense' | 'chant' | 'lantern' | 'coin' | 'levelup' | 'click' | 'moh') {
+  play(name: 'bow' | 'incense' | 'chant' | 'lantern' | 'coin' | 'levelup' | 'click' | 'moh' | 'firework') {
     if (muted) return;
     switch (name) {
       case 'bow': bell(196, 0.16, 3.6); break;
       case 'incense': tone(880, 1.4, 0.07, 'sine'); tone(1320, 1.8, 0.04, 'sine', 0.08); break;
       case 'chant': for (let i = 0; i < 6; i++) tone(520, 0.14, 0.22, 'triangle', i * 0.42, 260); break; // mõ
       case 'lantern': bell(330, 0.12, 2.4); tone(990, 1.2, 0.05, 'sine', 0.15); break;
+      case 'firework': boom(); break;
       case 'coin': tone(1320, 0.18, 0.09, 'square'); tone(1760, 0.3, 0.08, 'square', 0.09); break;
       case 'levelup': [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.9, 0.1, 'sine', i * 0.13)); bell(261, 0.1, 3); break;
       case 'moh': tone(380, 0.16, 0.34, 'triangle', 0, 190); tone(760, 0.07, 0.1, 'square'); tone(95, 0.22, 0.2, 'sine'); break; // gõ mõ

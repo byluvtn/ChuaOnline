@@ -10,6 +10,17 @@ export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: numbe
   beads: { merit: 0, cooldownMs: 2400 },
 };
 
+export const SKY_LANTERN_COST = 15;
+export const SKY_LANTERN_MERIT = 2;
+export const SKY_LANTERN_COOLDOWN_MS = 60_000;
+export const SKY_LANTERN_WISH_MAX = 60;
+
+export const FIREWORKS = {
+  small: { cost: 100, shells: 3, intervalMs: 800, cooldownMs: 30_000, lockMs: 6_000 },
+  large: { cost: 300, shells: 6, intervalMs: 700, cooldownMs: 30_000, lockMs: 12_000 },
+  dragon: { cost: 1500, shells: 10, intervalMs: 6000, cooldownMs: 300_000, lockMs: 65_000 },
+} as const;
+
 export type ShopCategory =
   | 'le_vat' | 'cay_phat' | 'ao_trang' | 'trang_hat' | 'bo_doan'
   | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh' | 'do_an' | 'hat_giong';

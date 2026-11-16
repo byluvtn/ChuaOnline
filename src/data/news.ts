@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 128;
+export const LATEST_NEWS_ID = 129;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Đèn trời & pháo hoa',
+    date: '2026-11-17',
+    items: [
+      'Mục mới Đèn trời & pháo hoa ở đầu panel Lễ hội: thả đèn trời kèm lời nguyện (tối đa 60 ký tự), giá 15 xu, +2 công đức; đèn bay lên từ chỗ bạn đứng, cả phòng cùng thấy.',
+      'Pháo hoa 3 cỡ: nhỏ 100 xu (3 quả), lớn 300 xu (6 quả), rồng phượng 1.500 xu (10 quả trong 1 phút + màn kết 3 quả cùng nổ, báo cả chùa bằng tin hệ thống).',
+      'Chỉ thả đèn và bắn pháo hoa ngoài sân — đang trong nhà hệ thống sẽ từ chối; đèn trời đẹp nhất buổi tối (phòng An Lạc).',
+      'Mỗi người thả đèn cách nhau 60 giây, pháo hoa cách nhau 30 giây (rồng phượng 5 phút); mỗi lúc chỉ có 1 màn pháo hoa trong 1 phòng.',
+    ],
+  },
   {
     title: 'Bịt kín khe hở giữa các tầng mái',
     date: '2026-11-17',

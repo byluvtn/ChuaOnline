@@ -26,7 +26,7 @@ import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, type Pt } from '../shared/roads';
 import {
   MAP_HALF, MAP_Z_MIN, OUTFIT_COLOR, levelOf, meritForLevel,
-  type ActionKind, type Anim, type AnimalState, type ChatMessage, type Lantern, type NpcAct, type Outfit, type PlayerState, type Profile,
+  type ActionKind, type Anim, type AnimalState, type ChatMessage, type FireworkShow, type Lantern, type NpcAct, type Outfit, type PlayerState, type Profile, type SkyLantern,
 } from '../shared/types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -442,7 +442,7 @@ function addChat(m: ChatMessage) {
   box.scrollTop = box.scrollHeight;
   if (!m.sys && m.sid && settings.showBubbles) remotes.get(m.sid)?.char.say(m.text);
 }
-function addLanternFeed(l: Lantern, fresh: boolean) {
+function addLanternFeed(l: Lantern, fresh: boolean, sky = false) {
   const list = $('lanternList');
   const d = document.createElement('div');
   d.className = 'item';
@@ -453,8 +453,10 @@ function addLanternFeed(l: Lantern, fresh: boolean) {
   list.prepend(d);
   while (list.childElementCount > 30) list.lastElementChild!.remove();
   if (fresh) {
-    const r = [...remotes.values()].find((x) => x.data.name === l.name);
-    world.spawnLantern(r?.char.root.position.x ?? 0, r?.char.root.position.z ?? 8);
+    if (!sky) {
+      const r = [...remotes.values()].find((x) => x.data.name === l.name);
+      world.spawnLantern(r?.char.root.position.x ?? 0, r?.char.root.position.z ?? 8);
+    }
     audio.play('lantern');
   }
 }
@@ -654,6 +656,11 @@ function connect() {
   });
   s.on('chat', addChat);
   s.on('lantern', (l: Lantern) => addLanternFeed(l, true));
+  s.on('sky:lantern', (l: SkyLantern) => {
+    world.spawnSkyLantern(l.x, l.z);
+    addLanternFeed({ id: l.id, name: l.name + ' · đèn trời', wish: l.wish, t: l.t }, true, true);
+  });
+  s.on('firework:show', (f: FireworkShow) => { world.spawnFirework(f.x, f.z, f.size); audio.play('firework'); });
   s.on('donation', (d: { name: string; amount: number; text: string }) => {
     enqueueDonate(d.text || `🙏 Cảm ơn phật tử ${d.name} đã đóng góp ${d.amount.toLocaleString('vi-VN')} xu giúp xây dựng chùa`);
     loadHonorThrottled();
@@ -765,7 +772,7 @@ addEventListener('pointerup', (e) => {
     if (boardHit) {
       const dist = Math.hypot(NOTICE_BOARD.x - me.char.root.position.x, NOTICE_BOARD.z - me.char.root.position.z);
       if (dist <= 3.5) {
-        openFestivals();
+        openFestivals(panelCtx());
         dragging = false;
         return;
       }
@@ -1533,7 +1540,7 @@ talkBtn.onclick = () => { const n = nearestTalkNpc(); if (n) openDialogue(n); };
 const donorBtn = $('donorBtn');
 donorBtn.onclick = () => openDonorsPanel(panelCtx());
 const noticeBtn = $('noticeBtn');
-noticeBtn.onclick = () => openFestivals();
+noticeBtn.onclick = () => openFestivals(panelCtx());
 // quest tracker: styled once here (no CSS file change); display is driven by updateTracker().
 const questTrackerEl = $('questTracker');
 questTrackerEl.hidden = false;

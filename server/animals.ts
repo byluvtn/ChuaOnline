@@ -50,6 +50,11 @@ const INDOOR_RECTS = [
   PHONG_CD_PLAT,
 ];
 
+export function isIndoors(x: number, z: number): boolean {
+  for (const p of INDOOR_RECTS) if (inRect(x, z, p, 1)) return true;
+  return false;
+}
+
 // ---- Keep-out for dogs/cats (walkers) ----
 // Rule: no destination and no path segment may lie inside
 //   (a) an INDOOR_RECT (house rectangle), except by passing through its door,

@@ -33,6 +33,12 @@ export interface PlayerState {
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }
 export interface Lantern { id: number; name: string; wish: string; t: number }
 
+/** Đèn trời: khác Lantern ở chỗ có toạ độ người thả để client tự dựng quả đèn bay lên. */
+export interface SkyLantern { id: number; name: string; wish: string; x: number; z: number; t: number }
+/** Cỡ pháo hoa — dùng chung server + client. */
+export type FireworkSize = 'small' | 'large' | 'dragon';
+export interface FireworkShow { id: number; name: string; size: FireworkSize; x: number; z: number; t: number }
+
 export interface Profile {
   name: string;
   outfit: Outfit;

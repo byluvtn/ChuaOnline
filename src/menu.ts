@@ -69,7 +69,7 @@ export function initMenu(ctx: MenuCtx): void {
   type Def = { id: string; icon: string; label: string; run?: () => void };
   const defs: Def[] = [
     { id: 'games', icon: 'game', label: 'Trò chơi', run: () => openGames(ctx) },
-    { id: 'fest', icon: 'festival', label: 'Lễ hội', run: openFestivals },
+    { id: 'fest', icon: 'festival', label: 'Lễ hội', run: () => openFestivals(ctx) },
     { id: 'checkin', icon: 'checkin', label: 'Điểm danh', run: () => openCheckin(ctx) },
     { id: 'beads', icon: 'beads', label: 'Lần hạt', run: () => openBeads(ctx) },
     { id: 'mail', icon: 'mail', label: 'Hòm thư', run: () => openMail(ctx) },
