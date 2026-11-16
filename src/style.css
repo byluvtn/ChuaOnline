@@ -112,7 +112,7 @@ textarea { height: 96px; resize: none; margin: 8px 0; }
 #lanternFeed .gold { margin-top: 8px; padding: 10px; font-size: 14px; }
 
 /* action buttons */
-#actions { right: 12px; bottom: 92px; display: flex; gap: 8px; }
+#actions { right: 12px; bottom: 92px; display: flex; flex-direction: column; gap: 8px; }
 .act { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: transform .15s var(--ease), background .15s; }
 .act { width: 78px; height: 78px; border-radius: 20px; border: 1px solid var(--glass-b); background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 8px 22px rgba(0,0,0,.3); overflow: hidden; }
 .act:hover { transform: translateY(-3px); background: rgba(90, 56, 26, .75); }
@@ -168,6 +168,17 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
 /* ---------- joystick ---------- */
 #joystick { left: 22px; bottom: 170px; width: 124px; height: 124px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,.1), rgba(255,255,255,.18)); border: 2px solid rgba(255,255,255,.32); touch-action: none; z-index: 8; backdrop-filter: blur(3px); }
 #stick { position: absolute; left: 36px; top: 36px; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff1be, #e0ae3a); box-shadow: 0 3px 10px rgba(0,0,0,.45); }
+
+/* Desktop (không phải touch): cột dọc, nút thừa quấn sang cột thứ 2 bên trái, không đè #menu / #topright.
+   Dự trữ phía trên = 250px để chừa đáy #lanternFeed (250px = top 150 + chiều cao rỗng 100); dự trữ đáy 92px => 92 + 250 = 342px */
+@media (min-width: 761px) and (min-height: 501px) {
+  #actions {
+    flex-wrap: wrap-reverse;
+    justify-content: flex-start;
+    align-content: flex-start;
+    max-height: calc(100dvh - 342px);
+  }
+}
 
 @media (max-width: 760px), (orientation: landscape) and (max-height: 500px) {
   .card { padding: 18px; border-radius: 22px; }

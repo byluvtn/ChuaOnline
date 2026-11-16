@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 111;
+export const LATEST_NEWS_ID = 112;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hàng nút hành động xếp cột dọc',
+    date: '2026-11-16',
+    items: [
+      'Trên máy tính, hàng nút hành động (Lạy Phật, Thắp hương, Tụng kinh...) xếp thành cột dọc bên phải thay vì hàng ngang.',
+      'Cột nút không còn so le với hàng menu dưới cùng; nút ngữ cảnh, nút Camera và nút Quản trị đều vừa cột.',
+      'Trên điện thoại không đổi gì; màn hình máy tính thấp thì nút thừa tự quấn sang cột thứ hai bên trái.',
+    ],
+  },
   {
     title: 'Sửa râu Sư Ông rủ rõ trước áo',
     date: '2026-11-16',
