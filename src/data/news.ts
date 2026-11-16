@@ -4,9 +4,17 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 115;
+export const LATEST_NEWS_ID = 116;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Mèo và chó không còn đi xuyên bồ đoàn',
+    date: '2026-11-16',
+    items: [
+      'Mèo Mướp và các chú chó giờ đi vòng qua bồ đoàn thiền trong Thiền Đường, Chính Điện và ngoài sân, không còn đứng chồng lên gối nữa.',
+      'Chó mèo đi lạc (nhiệm vụ tìm thú lạc) giờ đứng đợi ở chỗ ngoài trời, dễ tới được, không còn lạc vào trong điện hay trên tháp.',
+    ],
+  },
   {
     title: 'Bậc thềm Chính Điện đồng màu đá, thú không còn đi xuyên bậc',
     date: '2026-11-16',
