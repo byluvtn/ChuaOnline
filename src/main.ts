@@ -1314,7 +1314,6 @@ const SHOP_VENDOR_GOODS: Record<string, { item: string; label: string; price: nu
   npc38: [
     { item: 'hat_soi', label: 'Hạt sồi', price: 10 },
     { item: 'hat_thong', label: 'Hạt thông', price: 12 },
-    { item: 'hat_anh_dao', label: 'Hạt anh đào', price: 15 },
     { item: 'hat_bo_de', label: 'Hạt bồ đề', price: 20 },
   ],
 };
@@ -2142,7 +2141,7 @@ function openGardenPanel() {
           : 'Cần tưới';
         row.append(
           h('div', {},
-            h('div', {}, `Luống ${def.id} — ${(st.quality === 'good' ? GARDEN_GOOD_SEEDS : GARDEN_SEEDS)[st.species].name} • ${GARDEN_STAGE_NAME[st.stage]} • ${status} (đã tưới ${st.waters}/${st.quality === 'good' ? 2 : 3})`),
+            h('div', {}, `Luống ${def.id} — ${((st.quality === 'good' ? GARDEN_GOOD_SEEDS[st.species] : GARDEN_SEEDS[st.species]) ?? (st.quality === 'good' ? GARDEN_GOOD_SEEDS.soi : GARDEN_SEEDS.soi)).name} • ${GARDEN_STAGE_NAME[st.stage]} • ${status} (đã tưới ${st.waters}/${st.quality === 'good' ? 2 : 3})`),
             h('progress', { max: 100, value: Math.round(st.progress * 100) })),
           h('button', {
             disabled: st.harvested || (!st.harvestable && st.waterCooldownMs > 0 && !st.wilted),

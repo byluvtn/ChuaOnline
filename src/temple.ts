@@ -1543,13 +1543,13 @@ export function buildTemple(c: TempleCtx) {
     hedgePts.forEach((p, i) => { hp.set(p.x, 0.5, p.z); hm.compose(hp, hq, hs); hedgeIM.setMatrixAt(i, hm); });
     hedgeIM.instanceMatrix.needsUpdate = true;
     psGroup.add(hedgeIM);
-    const psTrunkM = lamb(0x6b4a2b), psCanopyM = lamb(0x3f8a3e, { flatShading: true }), psBlossomM = lamb(0xf4a3bc, { flatShading: true, emissive: 0x2b0f18 });
-    const psTrees: [number, number, number][] = [[hx0 + 3.5, hz0 + 3, 1.1], [hx1 - 3.5, hz0 + 3, 1.2], [hx1 - 3.5, hz1 - 3, 1.0], [hx0 + 4.5, hz1 - 3, 0.95]];
-    psTrees.forEach(([x, z, s], i) => {
+    const psTrunkM = lamb(0x6b4a2b), psCanopyM = lamb(0x3f8a3e, { flatShading: true });
+    const psTrees: [number, number, number][] = [[hx0 + 3.5, hz0 + 3, 1.1], [hx1 - 3.5, hz1 - 3, 1.0], [hx0 + 4.5, hz1 - 3, 0.95]];
+    psTrees.forEach(([x, z, s]) => {
       const t = new THREE.Group();
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 5.2, 8), psTrunkM); trunk.position.y = 2.6; trunk.castShadow = true; t.add(trunk);
       for (let k = 0; k < 3; k++) {
-        const cn = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), i === 1 ? psBlossomM : psCanopyM);
+        const cn = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), psCanopyM);
         cn.scale.setScalar(1.5 - k * 0.22); cn.position.set((k - 1) * 0.5 * (k % 2 ? 1 : -1), 5.9 + k * 0.7, k * 0.2 - 0.2); cn.castShadow = true; t.add(cn);
       }
       t.position.set(x, 0, z); t.scale.setScalar(s); scene.add(t);

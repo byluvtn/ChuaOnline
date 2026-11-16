@@ -98,12 +98,10 @@ export const ITEMS: ShopItem[] = [
   // ---- Hạt giống (chỉ bán ở npc38 trong Vườn Cây, KHÔNG hiện trong shop trung tâm)
   { id: 'hat_soi', name: 'Hạt sồi', desc: 'Gieo ở Vườn Cây để trồng cây sồi.', price: 10, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
   { id: 'hat_thong', name: 'Hạt thông', desc: 'Gieo ở Vườn Cây để trồng cây thông.', price: 12, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
-  { id: 'hat_anh_dao', name: 'Hạt anh đào', desc: 'Gieo ở Vườn Cây để trồng cây anh đào.', price: 15, kind: 'consumable', icon: '🌸', category: 'hat_giong' },
   { id: 'hat_bo_de', name: 'Hạt bồ đề', desc: 'Gieo ở Vườn Cây để trồng cây bồ đề.', price: 20, kind: 'consumable', icon: '🌱', category: 'hat_giong' },
   // ---- Hạt giống TỐT (chỉ từ thu hoạch, KHÔNG bán ở npc38, KHÔNG bán ở shop trung tâm)
   { id: 'hat_soi_tot', name: 'Hạt Sồi tốt', desc: 'Hạt sồi tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
   { id: 'hat_thong_tot', name: 'Hạt Thông tốt', desc: 'Hạt thông tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
-  { id: 'hat_anh_dao_tot', name: 'Hạt Anh Đào tốt', desc: 'Hạt anh đào tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
   { id: 'hat_bo_de_tot', name: 'Hạt Bồ Đề tốt', desc: 'Hạt bồ đề tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
@@ -337,7 +335,7 @@ export function dqTodayIds(d = new Date()): string[] {
   return [0, 1, 2].map((i) => DQ_POOL[(start + i) % DQ_POOL.length]);
 }
 
-export type GardenSpecies = 'soi' | 'thong' | 'anh_dao' | 'bo_de';
+export type GardenSpecies = 'soi' | 'thong' | 'bo_de';
 
 /** Chất lượng hạt giống: thường (mua ở npc38) hoặc tốt (chỉ từ thu hoạch). */
 export type GardenQuality = 'normal' | 'good';
@@ -346,7 +344,6 @@ export type GardenQuality = 'normal' | 'good';
 export const GARDEN_SEEDS: Record<GardenSpecies, { item: string; name: string; price: number }> = {
   soi: { item: 'hat_soi', name: 'Sồi', price: 10 },
   thong: { item: 'hat_thong', name: 'Thông', price: 12 },
-  anh_dao: { item: 'hat_anh_dao', name: 'Anh Đào', price: 15 },
   bo_de: { item: 'hat_bo_de', name: 'Bồ Đề', price: 20 },
 };
 
@@ -354,7 +351,6 @@ export const GARDEN_SEEDS: Record<GardenSpecies, { item: string; name: string; p
 export const GARDEN_GOOD_SEEDS: Record<GardenSpecies, { item: string; name: string }> = {
   soi: { item: 'hat_soi_tot', name: 'Sồi tốt' },
   thong: { item: 'hat_thong_tot', name: 'Thông tốt' },
-  anh_dao: { item: 'hat_anh_dao_tot', name: 'Anh Đào tốt' },
   bo_de: { item: 'hat_bo_de_tot', name: 'Bồ Đề tốt' },
 };
 

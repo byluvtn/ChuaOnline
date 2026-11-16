@@ -249,6 +249,13 @@ try { await db.execute('ALTER TABLE players ADD COLUMN is_banned INTEGER NOT NUL
 try { await db.execute('ALTER TABLE players ADD COLUMN title TEXT'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN bio TEXT'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN age INTEGER'); } catch { /* cột đã tồn tại */ }
+try { await db.execute(`UPDATE garden_plots SET species = 'soi' WHERE species = 'anh_dao'`); } catch { /* migration anh_dao */ }
+try { await db.execute(`UPDATE inventory SET qty = qty + (SELECT qty FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_anh_dao') WHERE item_id = 'hat_soi' AND EXISTS (SELECT 1 FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_anh_dao')`); } catch { /* migration anh_dao */ }
+try { await db.execute(`DELETE FROM inventory WHERE item_id = 'hat_anh_dao' AND EXISTS (SELECT 1 FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_soi')`); } catch { /* migration anh_dao */ }
+try { await db.execute(`UPDATE inventory SET item_id = 'hat_soi' WHERE item_id = 'hat_anh_dao'`); } catch { /* migration anh_dao */ }
+try { await db.execute(`UPDATE inventory SET qty = qty + (SELECT qty FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_anh_dao_tot') WHERE item_id = 'hat_soi_tot' AND EXISTS (SELECT 1 FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_anh_dao_tot')`); } catch { /* migration anh_dao */ }
+try { await db.execute(`DELETE FROM inventory WHERE item_id = 'hat_anh_dao_tot' AND EXISTS (SELECT 1 FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_soi_tot')`); } catch { /* migration anh_dao */ }
+try { await db.execute(`UPDATE inventory SET item_id = 'hat_soi_tot' WHERE item_id = 'hat_anh_dao_tot'`); } catch { /* migration anh_dao */ }
 try {
   const fk = await db.execute('PRAGMA foreign_keys');
   console.log(`[db] PRAGMA foreign_keys = ${JSON.stringify(fk.rows[0] ?? null)}`);

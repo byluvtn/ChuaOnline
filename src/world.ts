@@ -187,7 +187,6 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   const trunkM = lamb(0x6b4a2b);
   const canopyG = new THREE.IcosahedronGeometry(1, 1);
   const canopyMs = [lamb(0x3f8a3e, { flatShading: true }), lamb(0x4e9c45, { flatShading: true }), lamb(0x2f7a40, { flatShading: true })];
-  const blossomM = lamb(0xf4a3bc, { flatShading: true, emissive: 0x2b0f18 });
   const treeSpots: { x: number; z: number; s: number; v: number }[] = [];
   for (let i = 0; i < 400 && treeSpots.length < 90; i++) {
     const x = (rngSeed(i) - 0.5) * 2 * (MAP_HALF + 24), z = (rngSeed(i + 100) - 0.5) * 2 * (MAP_HALF + 24);
@@ -202,9 +201,10 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     treeSpots.push({ x, z, s: 0.85 + rngSeed(i + 7) * 0.9, v: i % 4 });
   }
   treeSpots.forEach(({ x, z, s, v }) => {
+    if (v === 3) return;
     const t = new THREE.Group();
     const trunk = new THREE.Mesh(trunkG, trunkM); trunk.position.y = 1.1; trunk.castShadow = true; t.add(trunk);
-    const mat = v === 3 ? blossomM : canopyMs[v % 3];
+    const mat = canopyMs[v % 3];
     for (let k = 0; k < 3; k++) {
       const c = new THREE.Mesh(canopyG, mat);
       c.scale.setScalar(1.5 - k * 0.22);

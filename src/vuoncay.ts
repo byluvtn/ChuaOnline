@@ -238,12 +238,11 @@ const STAGE_FILE: Record<GardenSpecies, [string, string]> = {
   // [file giai đoạn 2 (non, 1.4 m), file giai đoạn 3–4 (nhỡ 2.4 m / lớn 3.5 m)]
   soi: ['oak-sapling', 'oak-tree'],
   thong: ['pine-sapling', 'pine-tree'],
-  anh_dao: ['cherry_tree', 'cherry_tree'],
   bo_de: ['oak-sapling', 'oak-tree'],
 };
 const STAGE_HEIGHT = [0, 0.35, 1.4, 2.4, 3.5];
 const SPROUT_LEAF: Record<GardenSpecies, number> = {
-  soi: 0x4e9c45, thong: 0x2f7a40, anh_dao: 0xf4a3bc, bo_de: 0x9ab84a,
+  soi: 0x4e9c45, thong: 0x2f7a40, bo_de: 0x9ab84a,
 };
 
 function treeStatus(st: GardenPlotState): string {
@@ -377,12 +376,12 @@ async function renderGardenTreesNow(states: GardenPlotState[]): Promise<void> {
       if (!src) continue;
       model = src.clone(true);
       const leafColor = st.wilted ? 0x8a6a3a : (st.species === 'bo_de' ? 0x9ab84a : null);
-      // Héo nâu lá cho cây dùng GLB Avramania; anh đào giữ nguyên (3 material riêng).
-      if (leafColor !== null && st.species !== 'anh_dao') recolorLeaves(model, leafColor);
+      if (leafColor !== null) recolorLeaves(model, leafColor);
       model = fitModel(model, height);
     }
     wrap.add(model);
-    const label = makeLabel(`${st.quality === 'good' ? '★ ' + GARDEN_GOOD_SEEDS[st.species].name : GARDEN_SEEDS[st.species].name} • ${treeStatus(st)}`);
+    const seedName = st.quality === 'good' ? (GARDEN_GOOD_SEEDS[st.species] ?? GARDEN_GOOD_SEEDS.soi).name : (GARDEN_SEEDS[st.species] ?? GARDEN_SEEDS.soi).name;
+    const label = makeLabel(`${st.quality === 'good' ? '★ ' + seedName : seedName} • ${treeStatus(st)}`);
     label.position.set(0, height + 0.7, 0);
     wrap.add(label);
     treeGroup.add(wrap);

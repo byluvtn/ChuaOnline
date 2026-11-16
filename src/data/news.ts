@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 126;
+export const LATEST_NEWS_ID = 127;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Xóa hết cây anh đào hồng và tre cắm Bảo Tháp',
+    date: '2026-11-17',
+    items: [
+      'Đã xóa hết cây anh đào hồng trong chùa: cây rải rác quanh khuôn viên, 4 cây bên hai bồn hoa bờ hồ sen, cây bên cầu sen cạnh bảng Vinh Danh và cây ở Vườn Phóng Sinh — không còn cây hồng nào.',
+      'Đã bỏ 6 khóm tre dọc tường Bắc vườn Thiền cắm xuyên mái Bảo Tháp; tre ở các chỗ khác vẫn giữ nguyên.',
+      'Quét sân (Tiểu Quét Sân, Sư Ông) vẫn quét 3 chỗ cũ dưới cây sồi quảng trường — chỉ đổi lời thoại từ cây anh đào sang cây sồi, điểm quét không đổi.',
+      'Hạt anh đào không còn bán ở Tiểu Trồng Cây; cây anh đào đã trồng trong vườn chuyển thành cây sồi, hạt anh đào trong Túi đồ chuyển thành hạt sồi.',
+    ],
+  },
   {
     title: 'Sửa hình dáng râu Sư Ông: hẹp, rủ tự nhiên, liền cằm',
     date: '2026-11-17',

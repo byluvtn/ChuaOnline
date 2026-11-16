@@ -92,8 +92,8 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questDone: 'Tốt lắm, con làm chu đáo lắm. Thầy mừng cho con, cứ giữ như vậy mà tu tập.',
     questLines: {
       dq_sweep: {
-        offer: 'Sân chùa lá rụng nhiều quá, thí chủ giúp thầy quét ba chỗ dưới cây anh đào nhé.',
-        reminder: 'Sân còn lá ở mấy chỗ dưới cây anh đào đấy, thí chủ quét nốt giúp thầy nhé.',
+        offer: 'Sân chùa lá rụng nhiều quá, thí chủ giúp thầy quét ba chỗ dưới cây sồi nhé.',
+        reminder: 'Sân còn lá ở mấy chỗ dưới cây sồi đấy, thí chủ quét nốt giúp thầy nhé.',
         done: 'Sân sạch rồi, cảm ơn con nhiều lắm.',
       },
       dq_bow: {
@@ -152,17 +152,17 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
       'Thầy đi dạo tiếp đây, thí chủ cứ tự nhiên nhé.',
     ],
   },
-  // npc2 — Tiểu Quét Sân. Giao Q1: quét 3 điểm dưới 3 cây anh đào quảng trường.
+  // npc2 — Tiểu Quét Sân. Giao Q1: quét 3 điểm dưới 3 cây sồi quảng trường.
   npc2: {
     name: 'Tiểu Quét Sân',
     role: 'Tiểu quét sân chùa',
     greetings: [
       { time: 'morning', text: 'Chào thí chủ! Con đang quét dở, sân lá rụng nhiều quá.' },
       { time: 'noon', text: 'Trưa nắng rồi mà lá vẫn rụng, con quét mãi không hết.' },
-      { time: 'afternoon', text: 'Chào thí chủ! Chiều nay gió to, lá anh đào bay đầy sân.' },
+      { time: 'afternoon', text: 'Chào thí chủ! Chiều nay gió to, lá bay đầy sân.' },
     ],
-    questOffer: 'Sân chùa lá rụng nhiều quá, một mình con quét không xuể. Thí chủ giúp con quét ba chỗ dưới cây anh đào nhé, chổi con để sẵn rồi.',
-    questReminder: 'Thí chủ quét được mấy chỗ rồi? Còn đống lá dưới cây anh đào kia nữa nhé.',
+    questOffer: 'Sân chùa lá rụng nhiều quá, một mình con quét không xuể. Thí chủ giúp con quét ba chỗ dưới cây sồi nhé, chổi con để sẵn rồi.',
+    questReminder: 'Thí chủ quét được mấy chỗ rồi? Còn đống lá dưới cây sồi kia nữa nhé.',
     questDone: 'Sân sạch bong rồi! Cảm ơn thí chủ nhiều lắm.',
     questLines: {
       nq_find_lost_pet: {
@@ -173,7 +173,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     },
     smallTalk: [
       'Con quét sân từ 5 giờ sáng, giờ tay quen chổi lắm rồi.',
-      'Mùa này lá anh đào rụng đẹp ơi là đẹp, mà quét thì mệt ơi là mệt.',
+      'Mùa này lá rụng đẹp ơi là đẹp, mà quét thì mệt ơi là mệt.',
       'Thí chủ cẩn thận trơn, con vừa tưới cây xong.',
     ],
     farewell: [
@@ -895,7 +895,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         done: 'Thu hoạch tốt lắm, vừa có công đức vừa có hạt mới để gieo tiếp.',
       },
     },
-    shopGreeting: 'Tiểu có hạt sồi 10 xu, hạt thông 12 xu, hạt anh đào 15 xu, hạt bồ đề 20 xu. Thí chủ mua hạt rồi gieo vào luống trống trong vườn nhé.',
+    shopGreeting: 'Tiểu có hạt sồi 10 xu, hạt thông 12 xu, hạt bồ đề 20 xu. Thí chủ mua hạt rồi gieo vào luống trống trong vườn nhé.',
     smallTalk: [
       'Mỗi giai đoạn cây lớn mất 5 phút sau khi tưới, tưới đều là khoảng 20 phút cây lớn hẳn.',
       'Cây quá 24 giờ không tưới thì héo, quá 48 giờ thì biến mất, thí chủ nhớ tưới mỗi ngày.',

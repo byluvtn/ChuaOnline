@@ -39,7 +39,6 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('stone_lantern', 28, -30, 0, 2.15, null, 0.3),
   p('pagoda', 53, -66, 0, 5.1, null, 1.3),
   p('zen_sand_garden', -34, -26, 0.2, null, 2.0, null),
-  p('castle-cherry-tree', -8, 30, 0.6, 7.2, null, 0.4),
   p('broadleaf-oak', 42, 39, 2.1, 9.1, null, 0.5),
   p('oak_nt', 10, 28, 0.9, 8.9, null, 0.8),
   p('swing-oak', -48, -15, 0, 9.0, null, 0.4),

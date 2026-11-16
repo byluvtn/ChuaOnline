@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LAKE, WALL, PLAZA, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS } from './layout';
+import { LAKE, WALL, PLAZA, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS, BAO_THAP } from './layout';
 import { stoneTexture, vietnameseColumnTexture } from './textures';
 import { loadModel } from './models';
 
@@ -384,7 +384,11 @@ export function buildZenGarden(g: GardenCtx) {
     g.colliders.push({ x, z, r: 0.4 });
   };
   let sd = 0;
-  for (let x = -45; x <= -25; x += 1.7) clump(x, -40 + ((sd++ % 3) - 1) * 0.25, sd);
+  for (let x = -45; x <= -25; x += 1.7) {
+    const z = -40 + ((sd++ % 3) - 1) * 0.25;
+    if (Math.hypot(x - BAO_THAP.x, z - BAO_THAP.z) < 6) continue;
+    clump(x, z, sd);
+  }
   for (let z = -38.3; z <= -33; z += 1.7) clump(-44 + ((sd++ % 3) - 1) * 0.25, z, sd);
   for (const bx of [-44, -42, -40]) for (let z = -20; z <= 3; z += 1.9) clump(bx + ((sd++ % 3) - 1) * 0.3, z + ((sd % 2) - 0.5) * 0.3, sd);
 
@@ -460,13 +464,12 @@ export function buildZenGarden(g: GardenCtx) {
   g.addZone(cx, cz, 9, 'vuonThien');
 }
 
-/** Khu 2 — hai bồn hoa cong ôm bờ hồ (Đông + Tây, đối xứng): đất, viền cuội, thảm hoa, bụi cây, cây anh đào, ghế gỗ. */
+/** Khu 2 — hai bồn hoa cong ôm bờ hồ (Đông + Tây, đối xứng): đất, viền cuội, thảm hoa, bụi cây, ghế gỗ. */
 export function buildFlowerBeds(g: GardenCtx) {
   const grp = new THREE.Group(); grp.name = 'flower-beds'; g.scene.add(grp);
   const soilM = g.lamb(0x6b4a2e, { roughness: 1 });
   const pebM = g.lamb(0xbdb5a6, { flatShading: true });
   const bushM = g.lamb(0x3f8a3e, { flatShading: true });
-  const trunkM = g.lamb(0x6b4a2b), blossomM = g.lamb(0xf6b8c1, { flatShading: true, emissive: 0x2b0f18 });
   const flowerM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, emissive: 0x1a0c10 });
   const palette = [0xf4978e, 0xf2c14e, 0x9b7ede].map((c) => new THREE.Color(c));
   const o = new THREE.Object3D();
@@ -475,7 +478,6 @@ export function buildFlowerBeds(g: GardenCtx) {
   const pebbles = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), pebM, FLOWER_BEDS.length * nPeb);
   let fi = 0, pi = 0;
   const bushes: [number, number, number][] = [[-3, 0.6, 0.7], [-0.5, -2.0, 0.55], [-0.8, 2.1, 0.6], [1.2, 0, 0.5]];
-  const trees: [number, number][] = [[3, -2.4], [3, 2.4]];
   for (const bed of FLOWER_BEDS) {
     const side = Math.sign(bed.x);
     const soil = new THREE.Mesh(new THREE.CircleGeometry(1, 56), soilM);
@@ -487,7 +489,6 @@ export function buildFlowerBeds(g: GardenCtx) {
     }
     const keep: [number, number, number][] = [
       ...bushes.map(([dx, dz, r]): [number, number, number] => [bed.x + dx * side, bed.z + dz, r + 0.25]),
-      ...trees.map(([dx, dz]): [number, number, number] => [bed.x + dx * side, bed.z + dz, 1.0]),
     ];
     for (let i = 0; i < nFl; i++) {
       const r = Math.sqrt((i + 0.5) / nFl) * 0.93, ang = i * 2.39996;
@@ -499,17 +500,6 @@ export function buildFlowerBeds(g: GardenCtx) {
     for (const [dx, dz, r] of bushes) {
       const b = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), bushM);
       b.scale.y = 0.85; b.position.set(bed.x + dx * side, GY + r * 0.7, bed.z + dz); b.castShadow = b.receiveShadow = true; grp.add(b);
-    }
-    for (const [dx, dz] of trees) {
-      const x = bed.x + dx * side, z = bed.z + dz;
-      const t = new THREE.Group();
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 5.3, 8), trunkM); tr.position.y = 2.65; tr.castShadow = true; t.add(tr);
-      for (let k = 0; k < 3; k++) {
-        const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), blossomM);
-        cr.scale.setScalar(1.35 - k * 0.2); cr.position.set((k - 1) * 0.45 * (k % 2 ? 1 : -1), 5.7 + k * 0.6, k * 0.2 - 0.2); cr.castShadow = true; t.add(cr);
-      }
-      t.position.set(x, GY, z); t.rotation.y = x + z; grp.add(t);
-      g.colliders.push({ x, z, r: 0.35 });
     }
     for (const sz of [-1, 1]) {
       const bx = side * 13.6, bz = bed.z + sz * (bed.b + 1.3);
