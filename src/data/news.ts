@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 113;
+export const LATEST_NEWS_ID = 114;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thêm chó Trắng và chó Nâu, tạm biệt chó Đen',
+    date: '2026-11-16',
+    items: [
+      'Chó Đen (Munchkin) không còn trong chùa nữa.',
+      'Chó Trắng (giống Collie, lông trắng kem) và chó Nâu (giống Labrador, lông nâu sô-cô-la) gia nhập sân chùa, đi lại quanh sân và vườn như 2 chó còn lại.',
+      'Cho chó mèo ăn (Q23) không đổi; cả 4 chó đều cho ăn được.',
+      'Tìm chó mèo đi lạc (Q24) không đổi; Vàng và Mướp vẫn là 2 con hay đi lạc.',
+    ],
+  },
   {
     title: 'Sửa dẫn đường tới người trên cầu và nút Nhận thưởng',
     date: '2026-11-16',
