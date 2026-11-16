@@ -394,7 +394,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     };
     const hasCane = !!opts?.cane; // có gậy: râu dài treo ở neo cằm, bù góc cúi đầu để không chui vào áo
     const beard = new THREE.Group();
-    if (hasCane) { beard.position.set(0, -0.42, 0.56); beard.rotation.x = -0.45; head.add(beard); beardGroup = beard; }
+    if (hasCane) { beard.position.set(0, -0.40, 0.66); beard.rotation.x = -0.45; head.add(beard); beardGroup = beard; }
     for (const sd of [-1, 1]) {
       const mo = blob(sd * 0.08, -0.165, 0.5, 0.1, 0.035, 0.05);
       mo.rotation.set(0, sd * 0.35, -sd * 0.3);
@@ -405,16 +405,16 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
         // forward still (+0.06 vs the old z) because the cone's widest part is its
         // TOP and its back edge was the surface still touching the robe (measured
         // gap -0.04 at y ~1.0 after the blob shift alone). Tip stays in range.
-        beard.add(blob(sd * 0.25, -0.03, -0.01, 0.09, 0.15, 0.09));
-        beard.add(taper(sd * 0.25, -0.20, -0.01, 0.09, 0.2, 0.09));
+        beard.add(blob(sd * 0.25, -0.03, 0.05, 0.09, 0.15, 0.09));
+        beard.add(taper(sd * 0.25, -0.20, 0.05, 0.09, 0.2, 0.09));
       } else {
         blob(sd * 0.25, -0.45, 0.39, 0.09, 0.15, 0.09);
         taper(sd * 0.25, -0.62, 0.39, 0.09, 0.2, 0.09);
       }
     }
     if (hasCane) {
-      beard.add(blob(0, -0.08, 0.00, 0.23, 0.15, 0.085));
-      beard.add(taper(0, -0.26, 0.00, 0.23, 0.36, 0.085));
+      beard.add(blob(0, -0.08, 0.06, 0.23, 0.15, 0.085));
+      beard.add(taper(0, -0.26, 0.06, 0.23, 0.36, 0.085));
     } else {
       blob(0, -0.5, 0.4, 0.23, 0.15, 0.085);
       taper(0, -0.68, 0.4, 0.23, 0.36, 0.085);
@@ -782,10 +782,11 @@ function fadeQ(cur: THREE.Quaternion, old: THREE.Quaternion, k: number) { _fq.co
 function fadeV(cur: THREE.Vector3, old: THREE.Vector3, k: number) { _fv.copy(cur); cur.copy(old).lerp(_fv, k); }
 export const BEADS_MS = 2400;
 // Beard world tilt for cane abbots (Sư Ông): the beard hangs at this fixed world
-// angle (just forward of vertical) in every pose, instead of swinging with the
-// head bow (which glued it to the robe when hunched and flung it forward when
-// sitting). Tuned by raycast: idle/walk/chant min gap +0.02..+0.03, sit tip 0.19.
-const BEARD_WORLD_TILT = 0.17;
+// angle (clearly forward of vertical) in every pose, instead of swinging with the
+// head bow. v2: 0.17 -> 0.36 and anchor moved forward, because 0.17 left only a
+// ~2.5 cm gap (looked glued to the robe from a front-top view). (A sweep-only
+// extra tilt was tried and removed: it swung the beard backwards into the robe.)
+const BEARD_WORLD_TILT = 0.36;
 
 /** Procedural animation. t = seconds. */
 export function animateCharacter(c: Character, anim: Anim | string, t: number) {

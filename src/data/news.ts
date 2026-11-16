@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 110;
+export const LATEST_NEWS_ID = 111;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa râu Sư Ông rủ rõ trước áo',
+    date: '2026-11-16',
+    items: [
+      'Râu Sư Ông giờ rủ rõ phía trước áo, không còn cắm vào ngực áo.',
+      'Đã sửa cả lúc quét sân: râu không còn chìm vào áo khi vung chổi.',
+      'Râu hai Sư Thầy còn lại cũng được kiểm tra, không tệ đi.',
+    ],
+  },
   {
     title: 'Sửa lỗi kẹt khi đi vào Vườn Tây',
     date: '2026-11-16',
