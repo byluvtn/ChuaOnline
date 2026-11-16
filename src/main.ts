@@ -6,7 +6,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { clampToCompound, resolveBridge } from './layout';
+import { clampToCompound, resolveBridge, LAKE, BRIDGE, inLake } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -173,7 +173,39 @@ renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
 const world = createWorld(renderer);
 initAnimals(world.scene, () => settings.showNames);
-const pathfinder = createPathfinder(world.colliders);
+
+/** Vòng collider viền hồ — CHỈ dành cho pathfinder (không vào world.colliders). */
+function lakeRingColliders() {
+  const PAD = 0.9;          // đệm ngoài mép hồ
+  const R = 0.9;            // bán kính mỗi collider con
+  const STEP = 1.1;         // khoảng cách tâm tối đa (<= 1.2 m để segmentClear không lọt khe)
+  const a = LAKE.a + PAD, b = LAKE.b + PAD;
+  // Chu vi xấp xỉ Ramanujan → số điểm
+  const h = ((a - b) * (a - b)) / ((a + b) * (a + b));
+  const perim = Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
+  const n = Math.max(24, Math.ceil(perim / STEP));
+  const out: { x: number; z: number; r: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i / n) * Math.PI * 2;
+    const x = LAKE.x + Math.cos(t) * a;
+    const z = LAKE.z + Math.sin(t) * b;
+    // Chừa khe hành lang cầu: chỉ bỏ điểm sát hai đầu cầu, không bỏ cả dải theo z
+    if (Math.abs(x - BRIDGE.x) < 2 && z >= BRIDGE.z0 - 1 && z <= BRIDGE.z1 + 1) continue;
+    out.push({ x, z, r: R });
+  }
+  return out;
+}
+
+const pathfinder = createPathfinder(
+  [...world.colliders, ...lakeRingColliders()],
+  {
+    deck: BRIDGE,
+    // loại điểm nằm trong hồ mà không thuộc mặt cầu (để escapePoint không chọn điểm trong nước)
+    avoid: (p) =>
+      inLake(p.x, p.z) &&
+      !(Math.abs(p.x - BRIDGE.x) < BRIDGE.hw && p.z >= BRIDGE.z0 && p.z <= BRIDGE.z1),
+  },
+);
 const post = createPost(renderer, world.scene, camera, isTouch);
 const prewarm = () => {
   const seen = new Set<THREE.Texture>();
@@ -1387,7 +1419,7 @@ function openDialogue(npcId: string): void {
           body.appendChild(h('p', {}, lines.done));
           body.appendChild(h('div', { class: 'qrow' },
             h('button', {
-              onclick: () => { sock.emit('quest:claim', q.id); },
+              onclick: () => { sock.emit('quest:claim', q.id, failToast); },
             }, `Nhận thưởng +${def?.coins ?? 0} xu · +${def?.merit ?? 0} công đức`)));
         } else if (kind === 'deliver') {
           body.appendChild(h('p', {}, lines.done));

@@ -502,8 +502,9 @@ function questRows(list: QuestState[], ctx: PanelCtx) {
       h('progress', { max: q.target, value: q.progress }));
     if (isNpc && giverName) info.append(h('div', { class: 'hint', style: 'margin:0' }, `Người giao: ${giverName}`));
     if (q.id.startsWith('dq_')) info.append(h('div', { class: 'hint', style: 'margin:0' }, 'Việc mới lúc 0h'));
+    // Có ack để lỗi từ server (vd: đứng quá xa người giao) hiện qua toast
     const row = h('div', { class: 'qrow' }, info,
-      h('button', { disabled: !done || q.claimed || undefined, onclick: () => ctx.socket.emit('quest:claim', q.id) }, q.claimed ? 'Đã nhận' : 'Nhận'));
+      h('button', { disabled: !done || q.claimed || undefined, onclick: () => ctx.socket.emit('quest:claim', q.id, (r: { ok?: boolean; error?: string }) => { if (r && r.ok === false) ctx.toast(r.error ?? 'Lỗi'); }) }, q.claimed ? 'Đã nhận' : 'Nhận'));
     if (isNpc && !q.claimed) {
       row.append(h('button', { class: 'ghost', onclick: () => { closePanel(); ctx.guideTo(q.id); } }, 'Dẫn đường'));
     }

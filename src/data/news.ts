@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 112;
+export const LATEST_NEWS_ID = 113;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa dẫn đường tới người trên cầu và nút Nhận thưởng',
+    date: '2026-11-16',
+    items: [
+      'Dẫn đường tới người đang đứng trên cầu giờ đi vòng qua lối lên cầu thay vì cắt qua hồ sen, nên không còn bị kẹt ở bờ hồ.',
+      'Các điểm quét trên cầu và mọi tuyến dẫn đường khác vẫn hoạt động bình thường.',
+      'Nút Nhận thưởng giờ báo rõ "Bạn đứng quá xa người giao" khi người giao đã đi xa, thay vì không phản hồi gì.',
+    ],
+  },
   {
     title: 'Hàng nút hành động xếp cột dọc',
     date: '2026-11-16',

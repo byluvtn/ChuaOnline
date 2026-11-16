@@ -947,14 +947,15 @@ io.on('connection', (socket) => {
     cb?.({ ok: true, states, merit: GARDEN_HARVEST_MERIT, coins, seeds, goodSeeds });
   });
 
-  socket.on('quest:claim', async (qid: string) => {
+  socket.on('quest:claim', async (qid: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
     const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
-    if (!s || !q) return;
+    if (!s || !q) return reply({ ok: false, error: 'Nhiệm vụ không hợp lệ' });
     if (isNpcQuest(q)) {
       const giver = (q as any).giver as string | undefined;
       const pos = giver ? npcPos(s, giver) : undefined;
-      if (!pos || distTo(s, pos.x, pos.z) > 3) return;
+      if (!pos || distTo(s, pos.x, pos.z) > 3) return reply({ ok: false, error: 'Bạn đứng quá xa người giao' });
     }
     if (await db.claimQuest(pid, q.id, q.target)) {
       await db.addRewards(pid, q.merit, q.coins);
@@ -963,7 +964,9 @@ io.on('connection', (socket) => {
       await maybeAwardTitles(s);
       await pushQuests(s);
       refreshQuestGuard(s.room).catch(() => {});
+      return reply({ ok: true });
     }
+    return reply({ ok: false, error: 'Chưa thể nhận thưởng lúc này' });
   });
 
   socket.on('title:select', async (titleId: unknown, cb?: (r: { ok: boolean; error?: string; title?: string }) => void) => {

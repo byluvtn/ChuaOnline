@@ -33,7 +33,7 @@ function expandColliders(colliders: Collider[]): Collider[] {
   return out;
 }
 
-export function createPathfinder(colliders: Collider[]): Pathfinder {
+export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: number; z0: number; z1: number; hw: number }; avoid?: (p: Pt) => boolean }): Pathfinder {
   // Mở rộng line-collider TRƯỚC khi dùng colliders.length cho stamp và grid.
   colliders = expandColliders(colliders);
 
@@ -361,8 +361,9 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
     };
     let out = buildChain(B);
 
+    const endsAt = (q: Pt) => out.length > 0 && Math.hypot(out[out.length - 1].x - q.x, out[out.length - 1].z - q.z) < 0.05;
     if (segmentClear(pts[B].x, pts[B].z, to.x, to.z)) {
-      out.push({ x: to.x, z: to.z });
+      if (!endsAt(to)) out.push({ x: to.x, z: to.z }); // tránh trùng khi B chính là `to`
     } else {
       // Target inside a house: go through the nearest door (within 8 m) instead of stopping outside the wall.
       let door: { id: string; x: number; z: number } | null = null;
@@ -385,8 +386,9 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
         }
         if (segmentClear(pts[B2].x, pts[B2].z, door.x, door.z)) {
           out = buildChain(B2);
-          out.push({ x: door.x, z: door.z });
-          if (segmentClear(door.x, door.z, to.x, to.z)) out.push({ x: to.x, z: to.z });
+          const endsAt2 = (q: Pt) => out.length > 0 && Math.hypot(out[out.length - 1].x - q.x, out[out.length - 1].z - q.z) < 0.05;
+          if (!endsAt2(door)) out.push({ x: door.x, z: door.z });
+          if (segmentClear(door.x, door.z, to.x, to.z) && !endsAt2(to)) out.push({ x: to.x, z: to.z });
           viaDoor = true;
         }
       }
@@ -403,6 +405,7 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
   // cua bat ky collider nao. Luoi hash luu collider theo bbox phinh CLEARANCE
   // (0,55 > 0,40) nen chi can kiem o cell chua diem.
   function pointStandable(p: Pt): boolean {
+    if (opts?.avoid?.(p)) return false; // điểm bị cấm (vd: trong nước) thì không đứng được
     const cell = grid.get(key(Math.floor(p.x / CELL), Math.floor(p.z / CELL)));
     if (!cell) return true;
     for (const i of cell) {
@@ -431,6 +434,33 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
   }
 
   function findPath(from: Pt, to: Pt): Pt[] {
+    // Dich nam tren mat cau (ben trong vong collider vien ho): di qua loi len
+    // cau gan phia xuat phat hon (bridgeN / bridgeS) roi di thang len cau toi dich.
+    if (opts?.deck) {
+      const dk = opts.deck;
+      const onDeck = (p: Pt) =>
+        Math.abs(p.x - dk.x) < dk.hw && p.z >= dk.z0 && p.z <= dk.z1;
+      if (onDeck(to) && !onDeck(from)) {
+        const mid = (dk.z0 + dk.z1) / 2;
+        const entry: Pt = from.z < mid
+          ? { x: dk.x, z: dk.z0 - 0.4 }   // bridgeN (0, 13.8)
+          : { x: dk.x, z: dk.z1 + 0.4 };  // bridgeS (0, 30.2)
+        lastFallback = false;
+        const head = findPath(from, entry);
+        lastFallback = false;
+        const last = head[head.length - 1];
+        const tail = last && Math.hypot(last.x - to.x, last.z - to.z) < 0.05
+          ? [] : [{ x: to.x, z: to.z }];
+        // lọc waypoint liên tiếp trùng nhau (< 0.05 m)
+        const merged: Pt[] = [];
+        for (const w of [...head, ...tail]) {
+          const prev = merged[merged.length - 1];
+          if (prev && Math.hypot(prev.x - w.x, prev.z - w.z) < 0.05) continue;
+          merged.push(w);
+        }
+        return merged;
+      }
+    }
     const direct = Math.hypot(to.x - from.x, to.z - from.z);
     // Xuat phat trong vat can: thoat ra diem dung duoc gan nhat truoc khi
     // dinh tuyen — neu khong collide() day qua day lai giua cac vat can
