@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 116;
+export const LATEST_NEWS_ID = 117;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Quản trị tự thêm xu và công đức cho bản thân',
+    date: '2026-11-17',
+    items: [
+      'Quản trị viên có thêm mục Bản thân trong tab Người chơi của bảng Quản trị: xem số xu và công đức hiện tại rồi thêm cho chính mình.',
+      'Mỗi lần thêm tối đa 1.000.000 xu hoặc 1.000.000 công đức; số dư cập nhật ngay, không cần tải lại.',
+      'Mỗi lần tự thêm đều ghi vào Nhật ký quản trị trong tab Thống kê.',
+      'Chỉ quản trị viên mới thấy mục này.',
+    ],
+  },
   {
     title: 'Mèo và chó không còn đi xuyên bồ đoàn',
     date: '2026-11-16',

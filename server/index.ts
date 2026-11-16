@@ -1191,6 +1191,30 @@ io.on('connection', (socket) => {
     reply({ ok: true, merit: after?.merit ?? 0, coins: after?.coins ?? 0 });
   });
 
+  socket.on('admin:selfgrant', async (payload: unknown, cb?: (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!s || !(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    const p = (payload && typeof payload === 'object' ? payload : {}) as { merit?: unknown; coins?: unknown };
+    const merit = Number(p.merit);
+    const coins = Number(p.coins);
+    if (!Number.isInteger(merit) || merit < 0 || merit > 1000000) return reply({ ok: false, error: 'Công đức không hợp lệ' });
+    if (!Number.isInteger(coins) || coins < 0 || coins > 1000000) return reply({ ok: false, error: 'Số xu không hợp lệ' });
+    if (merit === 0 && coins === 0) return reply({ ok: false, error: 'Cần thêm ít nhất công đức hoặc xu' });
+    await db.addRewards(s.pid, merit, coins);
+    await db.logAdminGrant(s.pid, s.pid, merit, coins);
+    await pushProfile(s);
+    const after = await db.getProfile(s.pid);
+    reply({ ok: true, merit: after?.merit ?? 0, coins: after?.coins ?? 0 });
+  });
+
+  socket.on('admin:log', async (cb?: (r: { ok: boolean; rows?: db.AdminLogRow[]; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; rows?: db.AdminLogRow[]; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    reply({ ok: true, rows: await db.listAdminLog(20) });
+  });
+
   socket.on('admin:ban', async (payload: unknown, cb?: (r: { ok: boolean; banned?: boolean; error?: string }) => void) => {
     const reply = (r: { ok: boolean; banned?: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
     const s = me();

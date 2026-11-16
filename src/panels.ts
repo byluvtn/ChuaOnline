@@ -196,6 +196,7 @@ interface AdminPlayerRow {
 type AdminTab = 'players' | 'broadcast' | 'teleport' | 'stats';
 
 const ADMIN_GRANT_MAX = 100000;
+const ADMIN_SELF_GRANT_MAX = 1000000;
 
 export function openAdminPanel(ctx: PanelCtx) {
   openCustomPanel('Quản trị', (body) => {
@@ -231,9 +232,49 @@ export function openAdminPanel(ctx: PanelCtx) {
       if (!Number.isInteger(n) || n < 0 || n > ADMIN_GRANT_MAX) return null;
       return n;
     };
+    const parseSelfAmount = (raw: string): number | null => {
+      const s = raw.trim();
+      if (s === '') return 0;
+      const n = Number(s);
+      if (!Number.isInteger(n) || n < 0 || n > ADMIN_SELF_GRANT_MAX) return null;
+      return n;
+    };
 
     const drawPlayers = () => {
       content.replaceChildren();
+      const me = ctx.profile();
+      const meritVal = h('b', {}, (me?.merit ?? 0).toLocaleString('vi-VN'));
+      const coinsVal = h('b', {}, (me?.coins ?? 0).toLocaleString('vi-VN'));
+      const selfCoinsIn = h('input', {
+        type: 'number', min: '0', step: '1', placeholder: 'Xu', style: 'width:64px',
+      }) as HTMLInputElement;
+      const selfMeritIn = h('input', {
+        type: 'number', min: '0', step: '1', placeholder: 'Công đức', style: 'width:64px',
+      }) as HTMLInputElement;
+      const selfBtn = h('button', {}, 'Thêm cho bản thân') as HTMLButtonElement;
+      selfBtn.onclick = () => {
+        const coins = parseSelfAmount(selfCoinsIn.value);
+        const merit = parseSelfAmount(selfMeritIn.value);
+        if (coins === null || merit === null) { ctx.toast('Số không hợp lệ (0 - 1.000.000)'); return; }
+        if (coins === 0 && merit === 0) { ctx.toast('Nhập số xu hoặc công đức cần thêm'); return; }
+        selfBtn.disabled = true;
+        ctx.socket.emit('admin:selfgrant', { merit, coins }, (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => {
+          selfBtn.disabled = false;
+          if (!r?.ok) { ctx.toast(r?.error ?? 'Lỗi'); return; }
+          ctx.toast(`Đã thêm ${coins} xu, ${merit} công đức cho bản thân`);
+          meritVal.textContent = (r.merit ?? 0).toLocaleString('vi-VN');
+          coinsVal.textContent = (r.coins ?? 0).toLocaleString('vi-VN');
+          selfCoinsIn.value = '';
+          selfMeritIn.value = '';
+          if (alive && tab === 'players') load();
+        });
+      };
+      content.append(
+        h('div', { class: 'row' }, h('span', {}, 'Công đức của bạn'), meritVal),
+        h('div', { class: 'row' }, h('span', {}, 'Xu của bạn'), coinsVal),
+        h('div', { class: 'qrow' }, selfCoinsIn, selfMeritIn, selfBtn),
+        h('p', { class: 'hint' }, 'Chỉ quản trị viên thấy mục này.'),
+      );
       const searchInput = h('input', {
         type: 'text',
         placeholder: 'Tìm tên đăng nhập hoặc pháp danh',
@@ -410,12 +451,36 @@ export function openAdminPanel(ctx: PanelCtx) {
         const fmt = (n?: number) => (n ?? 0).toLocaleString('vi-VN');
         const row = (label: string, value: string) =>
           h('div', { class: 'row' }, h('span', {}, label), h('b', {}, value));
+        const logBox = h('div', {}, 'Đang tải nhật ký...');
         content.replaceChildren(
           row('Đang online', fmt(res.online)),
           row('Tổng người chơi', fmt(res.totalPlayers)),
           row('Người mới hôm nay', fmt(res.newToday)),
           row('Tổng quyên góp', fmt(res.totalDonated) + ' xu'),
+          h('b', {}, 'Nhật ký quản trị'),
+          logBox,
         );
+        ctx.socket.emit('admin:log', (logRes: { ok: boolean; rows?: { id: number; adminName: string; targetName: string; merit: number; coins: number; createdAt: number }[]; error?: string }) => {
+          if (!alive || tab !== 'stats') return;
+          if (!logRes?.ok) {
+            logBox.replaceChildren(h('p', { class: 'hint' }, 'Không tải được nhật ký'));
+            return;
+          }
+          const rows = logRes.rows ?? [];
+          if (rows.length === 0) {
+            logBox.replaceChildren(h('p', { class: 'hint' }, 'Chưa có lần tự tặng nào.'));
+            return;
+          }
+          logBox.replaceChildren(...rows.map((r) => {
+            const parts: string[] = [];
+            if (r.coins > 0) parts.push(`+${r.coins} xu`);
+            if (r.merit > 0) parts.push(`+${r.merit} công đức`);
+            return h('div', { class: 'row' },
+              h('span', {}, `${r.adminName} tự tặng ${parts.join(', ')} cho bản thân`),
+              h('span', {}, new Date(r.createdAt).toLocaleString('vi-VN')),
+            );
+          }));
+        });
       });
     };
 

@@ -233,6 +233,14 @@ CREATE TABLE IF NOT EXISTS feedback (
   contact TEXT NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS admin_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id INTEGER NOT NULL,
+  target_id INTEGER NOT NULL,
+  merit INTEGER NOT NULL DEFAULT 0,
+  coins INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_merit ON players(merit DESC);
 CREATE INDEX IF NOT EXISTS idx_weekly ON players(week_key, weekly_merit DESC);
 `));
@@ -395,6 +403,37 @@ export async function listPlayers(query: string, limit = 30): Promise<AdminPlaye
     coins: Number(r.coins),
     is_admin: Number(r.is_admin),
     is_banned: Number(r.is_banned),
+  }));
+}
+
+export interface AdminLogRow { id: number; adminName: string; targetName: string; merit: number; coins: number; createdAt: number }
+
+export async function logAdminGrant(adminId: number, targetId: number, merit: number, coins: number) {
+  await db.execute({
+    sql: 'INSERT INTO admin_log (admin_id, target_id, merit, coins, created_at) VALUES (?,?,?,?,?)',
+    args: [adminId, targetId, merit, coins, now()],
+  });
+}
+
+export async function listAdminLog(limit = 20): Promise<AdminLogRow[]> {
+  const lim = Math.max(1, Math.min(50, Math.floor(Number(limit)) || 20));
+  const res = await db.execute({
+    sql: `SELECT l.id, l.merit, l.coins, l.created_at,
+            COALESCE(a.username, a.name, 'Người chơi') AS admin_name,
+            COALESCE(t.username, t.name, 'Người chơi') AS target_name
+          FROM admin_log l
+          LEFT JOIN players a ON a.id = l.admin_id
+          LEFT JOIN players t ON t.id = l.target_id
+          ORDER BY l.id DESC LIMIT ?`,
+    args: [lim],
+  });
+  return (res.rows as unknown as { id: number; merit: number; coins: number; created_at: number; admin_name: string; target_name: string }[]).map((r) => ({
+    id: Number(r.id),
+    adminName: String(r.admin_name ?? 'Người chơi'),
+    targetName: String(r.target_name ?? 'Người chơi'),
+    merit: Number(r.merit),
+    coins: Number(r.coins),
+    createdAt: Number(r.created_at),
   }));
 }
 
