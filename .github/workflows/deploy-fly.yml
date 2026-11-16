@@ -1,0 +1,31 @@
+# Deploy ChuaOnline to Fly.io on every push to main (mirrors the old Render auto-deploy).
+# Needs repo secret FLY_API_TOKEN (a Fly deploy token: `fly tokens create deploy`).
+name: Deploy to Fly.io
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fly.toml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'server/**'
+      - 'shared/**'
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'tsconfig.json'
+  workflow_dispatch:
+jobs:
+  deploy:
+    name: Deploy to Fly.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
