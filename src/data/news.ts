@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 109;
+export const LATEST_NEWS_ID = 110;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa lỗi kẹt khi đi vào Vườn Tây',
+    date: '2026-11-16',
+    items: [
+      'Đi vào Vườn Tây từ mọi hướng giờ không còn bị kẹt ở hàng rào hay luống cây.',
+      'Đã sửa đường dẫn trong vườn: đi qua cổng rồi theo lối sỏi giữa các luống.',
+      'Các luống cây vẫn có hàng rào chắn như cũ, không đi xuyên qua cây đang trồng.',
+    ],
+  },
   {
     title: 'Sửa bảng giới thiệu Đại Hùng Bảo Điện',
     date: '2026-11-16',

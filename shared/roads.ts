@@ -82,6 +82,17 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'gateW', x: -10.6, z: 40.7 },
   { id: 'vuonCayE', x: -37.8, z: 28.4 },
   { id: 'vuonCay', x: -48, z: 24.5 },
+  // Vườn Tây: vào trong qua cổng Nam (vuonCayIn), theo hành lang nam tới dải
+  // đông rồi vào lối sỏi giữa hai hàng luống (vuonCayLane).
+  { id: 'vuonCayIn', x: -48, z: 22 },
+  { id: 'vuonCayE2', x: -42, z: 22 },
+  { id: 'vuonCayLane', x: -42, z: 18 },
+  // Vườn Tây: node NGOÀI hàng rào để đi vào từ phía bắc/tây mà không xuyên
+  // rào — trước đây nearestNode() rơi về node trong vườn (vuonCayLane) vì
+  // không node nào nhìn thấy được, đường bộ "ngắn" xuyên thẳng qua rào.
+  { id: 'vuonCayNW', x: -58, z: 6 },
+  { id: 'vuonCayN', x: -48, z: 6 },
+  { id: 'vuonCayNE', x: -38, z: 6 },
   { id: 'psPier', x: 30, z: -31 },
   { id: 'thienDuong', x: -39.5, z: -27.5 },
   { id: 'zenGarden', x: -35.75, z: -27.25 }, // trên mặt cát, cách khung ≥ 1 m, xa 3 đá thiền
@@ -181,6 +192,8 @@ export const ROAD_EDGES: [string, string][] = [
   // Vườn Tây qua lối đông: gate -> gateW -> vuonCayE -> vuonCay (cạnh cũ
   // vuonCay->phongCDDoor đã xóa: đoạn thẳng xuyên hàng cây nên build loại bỏ).
   ['gate', 'gateW'], ['gateW', 'vuonCayE'], ['vuonCayE', 'vuonCay'],
+  ['vuonCay', 'vuonCayIn'], ['vuonCayIn', 'vuonCayE2'], ['vuonCayE2', 'vuonCayLane'],
+  ['vuonCayNW', 'vuonCayN'], ['vuonCayN', 'vuonCayNE'], ['vuonCayNE', 'vuonCayE'],
   // Zen garden east hedge gap: hallFront -> east side -> gap -> baoThap / zenIn
   ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
   ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],

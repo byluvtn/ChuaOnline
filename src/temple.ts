@@ -281,7 +281,7 @@ export function buildTemple(c: TempleCtx) {
   zones.push({ x: BELL.x, z: BELL.z, r: 7, id: 'chuong' });
   zones.push({ x: 30, z: -31, r: 3.5, id: 'phongSinh' });
   zones.push({ id: 'omikuji', x: 24, z: -24, r: 3 });
-  zones.push({ id: 'vuoncay', x: -48, z: 17, r: 8 });
+  zones.push({ id: 'vuoncay', x: -48, z: 18, r: 8 });
 
   // ---- drum tower (đối xứng tháp chuông) ----
   const drumTower = tower(DRUM.x, DRUM.z, -Math.PI / 2, 'THÁP TRỐNG', 'trong');

@@ -1,6 +1,6 @@
 import { ROAD_NODES, ROAD_EDGES, HOUSE_DOORS, type Pt } from './roads';
 
-export type Collider = { x: number; z: number; r: number };
+export type Collider = { x: number; z: number; r: number; x2?: number; z2?: number };
 export interface Pathfinder {
   findPath(from: Pt, to: Pt): Pt[];
   segmentClear(ax: number, az: number, bx: number, bz: number): boolean;
@@ -11,7 +11,32 @@ export interface Pathfinder {
 const CLEARANCE = 0.4 + 0.15;
 const CELL = 4;
 
+// Line-collider (hàng rào, viền luống) có dạng {x,z,r,x2,z2}. Pathfinder chỉ
+// hiểu hình tròn, nên mở rộng mỗi đoạn thẳng thành chuỗi hình tròn con cách
+// nhau <= 0.5 m (cùng bán kính r) để pathfinder "thấy" cả đoạn thẳng,
+// giống cách collide() trong main.ts xử lý line-collider.
+function expandColliders(colliders: Collider[]): Collider[] {
+  const out: Collider[] = [];
+  for (const c of colliders) {
+    if (c.x2 === undefined || c.z2 === undefined) {
+      out.push(c);
+      continue;
+    }
+    const dx = c.x2 - c.x, dz = c.z2 - c.z;
+    const len = Math.hypot(dx, dz);
+    const n = Math.max(1, Math.ceil(len / 0.5));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      out.push({ x: c.x + dx * t, z: c.z + dz * t, r: c.r });
+    }
+  }
+  return out;
+}
+
 export function createPathfinder(colliders: Collider[]): Pathfinder {
+  // Mở rộng line-collider TRƯỚC khi dùng colliders.length cho stamp và grid.
+  colliders = expandColliders(colliders);
+
   // Spatial hash: each collider is stored in every cell touched by its inflated bbox.
   const grid = new Map<number, number[]>();
   const key = (cx: number, cz: number) => (cx + 4096) * 8192 + (cz + 4096);
@@ -211,12 +236,18 @@ export function createPathfinder(colliders: Collider[]): Pathfinder {
           const t = len2 < 1e-6 ? 0 : Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.z - a.z) * dz) / len2));
           if (Math.hypot(c.x - (a.x + dx * t), c.z - (a.z + dz * t)) < c.r + CLEARANCE) {
             out.push(i);
-            if (out.length > max) return out;
           }
         }
       }
     }
-    return out;
+    // Xếp theo tham số chiếu t (gần a nhất lên đầu) RỒI mới cắt max.
+    // Trước đây hàm trả sớm khi đủ max theo thứ tự duyệt cell, nên bl[0] sau
+    // khi sort ở tangentDetour có thể KHÔNG phải vật cản gần nhất — với nhiều
+    // hình tròn con từ line-collider, nhánh "tOf > 0.9 thì đi thẳng" đã bắn
+    // nhầm (VD từ (0,43.5) tới (-48,18) trả đường thẳng xuyên hàng rào Đông).
+    const tOf2 = (i: number) => (len2 < 1e-6 ? 0 : ((colliders[i].x - a.x) * dx + (colliders[i].z - a.z) * dz) / len2);
+    out.sort((i, j) => tOf2(i) - tOf2(j));
+    return out.slice(0, max);
   }
 
   // Di vong cuc bo quanh vat can nho: di tiep tuyen voi vong tron phinh

@@ -972,15 +972,48 @@ function routeLength(ax: number, az: number, bx: number, bz: number): number {
   return len;
 }
 
-/** Collider nằm trên đoạn thẳng a->b (cùng ngưỡng với pathfinder: r + 0.55). */
+/** Collider nằm trên đoạn thẳng a->b (cùng ngưỡng với pathfinder: r + 0.55), kể cả line-collider. */
 function segmentBlockers(ax: number, az: number, bx: number, bz: number): { x: number; z: number; r: number }[] {
   const out: { x: number; z: number; r: number }[] = [];
   const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
   for (const c of world.colliders) {
+    const lc = c as typeof c & { x2?: number; z2?: number };
+    if (lc.x2 !== undefined && lc.z2 !== undefined) {
+      // Line-collider: khoảng cách đoạn-đoạn 2D giữa a->b và (x,z)->(x2,z2).
+      if (segSegDist(ax, az, bx, bz, lc.x, lc.z, lc.x2, lc.z2) < c.r + 0.55) out.push(c);
+      continue;
+    }
     const t = Math.max(0, Math.min(1, ((c.x - ax) * dx + (c.z - az) * dz) / l2));
     if (Math.hypot(ax + t * dx - c.x, az + t * dz - c.z) < c.r + 0.55) out.push(c);
   }
   return out;
+}
+
+/** Khoảng cách ngắn nhất giữa hai đoạn thẳng 2D (p1->p2) và (q1->q2). */
+function segSegDist(
+  p1x: number, p1z: number, p2x: number, p2z: number,
+  q1x: number, q1z: number, q2x: number, q2z: number,
+): number {
+  const ptSeg = (px: number, pz: number, ax: number, az: number, bx: number, bz: number): number => {
+    const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2));
+    return Math.hypot(ax + t * dx - px, az + t * dz - pz);
+  };
+  // Hai đoạn cắt nhau thì khoảng cách = 0.
+  const d1x = p2x - p1x, d1z = p2z - p1z, d2x = q2x - q1x, d2z = q2z - q1z;
+  const den = d1x * d2z - d1z * d2x;
+  if (Math.abs(den) > 1e-9) {
+    const s = ((q1x - p1x) * d2z - (q1z - p1z) * d2x) / den;
+    const u = ((q1x - p1x) * d1z - (q1z - p1z) * d1x) / den;
+    if (s >= 0 && s <= 1 && u >= 0 && u <= 1) return 0;
+  }
+  // Không cắt: khoảng cách nhỏ nhất đạt tại một trong bốn đầu mút.
+  return Math.min(
+    ptSeg(p1x, p1z, q1x, q1z, q2x, q2z),
+    ptSeg(p2x, p2z, q1x, q1z, q2x, q2z),
+    ptSeg(q1x, q1z, p1x, p1z, p2x, p2z),
+    ptSeg(q2x, q2z, p1x, p1z, p2x, p2z),
+  );
 }
 
 /** Đường vòng dài > 2 lần đường thẳng và đoạn thẳng chỉ bị chặn bởi <= 3 vật nhỏ (r <= 1.0): đi thẳng. */
