@@ -776,15 +776,42 @@ joyEl.addEventListener('pointercancel', joyEnd);
 
 // Joystick có thể kéo tới vị trí tuỳ ý bằng tay nắm ở góc; vị trí được nhớ giữa các lần mở game.
 const JOY_POS_KEY = 'co:joyPos';
-const clampJoy = (x: number, y: number) => {
-  const vw = visualViewport?.width ?? innerWidth, vh = visualViewport?.height ?? innerHeight;
+const JOY_GRIP_OVERHANG = 10; // tay nắm thò ra ngoài top: -10px
+const JOY_TOP_SAFE = 36; // chừa chỗ cho banner đỏ (30px) + lề
+// Kích thước viewport đáng tin; trả null khi đang ở trạng thái suy biến lúc xoay màn hình.
+const viewportSize = (): { vw: number; vh: number } | null => {
+  const vw = visualViewport?.width || innerWidth, vh = visualViewport?.height || innerHeight;
   const w = joyEl.offsetWidth || 124, h = joyEl.offsetHeight || 124;
-  return { x: Math.max(6, Math.min(vw - w - 6, x)), y: Math.max(6, Math.min(vh - h - 6, y)) };
+  if (!Number.isFinite(vw) || !Number.isFinite(vh) || vw < w + 12 || vh < h + JOY_TOP_SAFE + 12) return null;
+  return { vw, vh };
 };
+const clampJoy = (x: number, y: number) => {
+  const vp = viewportSize();
+  if (!vp) return { x, y };
+  const w = joyEl.offsetWidth || 124, h = joyEl.offsetHeight || 124;
+  const minY = JOY_TOP_SAFE + JOY_GRIP_OVERHANG;
+  const maxY = Math.max(minY, vp.vh - h - 6);
+  const maxX = Math.max(6, vp.vw - w - 6);
+  return { x: Math.max(6, Math.min(maxX, x)), y: Math.max(minY, Math.min(maxY, y)) };
+};
+const resetJoy = () => { joyEl.style.left = joyEl.style.top = joyEl.style.bottom = ''; };
 const placeJoy = (x: number, y: number) => {
   const p = clampJoy(x, y);
   joyEl.style.left = `${p.x}px`; joyEl.style.top = `${p.y}px`; joyEl.style.bottom = 'auto';
   return p;
+};
+// Joystick đang ở nửa trên màn hình => coi là bị kẹt, cần tự chữa.
+const joyStuckTop = () => {
+  const vp = viewportSize();
+  if (!vp) return false;
+  return joyEl.getBoundingClientRect().top < vp.vh * 0.25;
+};
+const saveJoy = () => {
+  const vp = viewportSize();
+  if (!vp) return;
+  const r = joyEl.getBoundingClientRect();
+  const fx = (r.left + r.width / 2) / vp.vw, fy = (r.top + r.height / 2) / vp.vh;
+  try { localStorage.setItem(JOY_POS_KEY, JSON.stringify({ fx: +fx.toFixed(4), fy: +fy.toFixed(4) })); } catch { /* storage blocked */ }
 };
 if (isTouch) {
   const grip = document.createElement('div');
@@ -811,9 +838,8 @@ if (isTouch) {
     if (!drag || e.pointerId !== drag.id) return;
     const { sx, sy } = drag;
     drag = null; joyEl.classList.remove('moving');
-    const r = joyEl.getBoundingClientRect();
-    if (r.top >= innerHeight * 0.25) {
-      try { localStorage.setItem(JOY_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch { /* storage blocked */ }
+    if (!joyStuckTop()) {
+      saveJoy();
     } else {
       placeJoy(sx, sy);
     }
@@ -821,22 +847,47 @@ if (isTouch) {
   grip.addEventListener('pointerup', gripEnd);
   grip.addEventListener('pointercancel', gripEnd);
   grip.addEventListener('dblclick', () => {
-    joyEl.style.left = joyEl.style.top = joyEl.style.bottom = '';
+    resetJoy();
     try { localStorage.removeItem(JOY_POS_KEY); } catch { /* storage blocked */ }
   });
   const restoreJoy = () => {
+    const vp = viewportSize();
+    if (!vp) return; // viewport chưa ổn định, chờ lần resize sau
     try {
       const s = JSON.parse(localStorage.getItem(JOY_POS_KEY) ?? 'null');
-      if (s && Number.isFinite(s.x) && Number.isFinite(s.y) && s.y >= innerHeight * 0.25 && s.x >= 0 && s.y >= 0 && s.x < innerWidth && s.y < innerHeight) {
-        placeJoy(s.x, s.y);
-      } else {
+      const w = joyEl.offsetWidth || 124, h = joyEl.offsetHeight || 124;
+      let x = NaN, y = NaN;
+      if (s && Number.isFinite(s.fx) && Number.isFinite(s.fy) && s.fx >= 0 && s.fx <= 1 && s.fy >= 0 && s.fy <= 1) {
+        // Dạng mới: tỉ lệ theo viewport (tâm joystick)
+        x = s.fx * vp.vw - w / 2; y = s.fy * vp.vh - h / 2;
+      } else if (s && Number.isFinite(s.x) && Number.isFinite(s.y)) {
+        // Dạng cũ: px tuyệt đối — vẫn đọc được để không mất vị trí của người chơi
+        x = s.x; y = s.y;
+      }
+      if (Number.isFinite(x) && Number.isFinite(y)) {
+        const p = placeJoy(x, y);
+        if (p.y < vp.vh * 0.25) { resetJoy(); localStorage.removeItem(JOY_POS_KEY); }
+      } else if (s) {
         localStorage.removeItem(JOY_POS_KEY);
       }
     } catch { /* ignore */ }
   };
   restoreJoy();
-  const reclamp = () => { if (joyEl.style.top) { const r = joyEl.getBoundingClientRect(); placeJoy(r.left, r.top); } };
+  let reclampTimer = 0;
+  const reclamp = () => {
+    clearTimeout(reclampTimer);
+    // Debounce: đợi viewport hết dao động khi xoay màn hình rồi mới tính lại.
+    reclampTimer = window.setTimeout(() => {
+      if (joyEl.classList.contains('moving')) return; // đang kéo tay nắm, đừng giật về vị trí đã lưu
+      if (!viewportSize()) return; // viewport suy biến, bỏ qua
+      if (!joyEl.style.top) return; // đang dùng vị trí mặc định của CSS
+      if (joyStuckTop()) { resetJoy(); return; } // tự chữa: kẹt ở trên => về góc dưới-trái
+      // Giữ đúng tỉ lệ vị trí giữa hai hướng màn hình
+      restoreJoy();
+    }, 150);
+  };
   addEventListener('resize', reclamp);
+  addEventListener('orientationchange', reclamp);
   visualViewport?.addEventListener('resize', reclamp);
 }
 

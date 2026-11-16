@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 107;
+export const LATEST_NEWS_ID = 108;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Sửa nút di chuyển khi xoay ngang màn hình',
+    date: '2026-11-16',
+    items: [
+      'Xoay ngang hay xoay dọc điện thoại, nút di chuyển không còn nhảy lên góc trên nữa.',
+      'Tay nắm để kéo nút di chuyển luôn nằm trong màn hình và dễ dàng tóm được.',
+      'Vị trí nút di chuyển bạn đã đặt được giữ nguyên ở cả hai hướng màn hình.',
+    ],
+  },
   {
     title: 'Bảng quản trị cho quản trị viên',
     date: '2026-11-16',
