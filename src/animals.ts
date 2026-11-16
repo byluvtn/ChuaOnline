@@ -38,12 +38,12 @@ const SPECS: Spec[] = [
   { id: 'owl1', kind: 'owl', file: 'animal-owl' },
   { id: 'owl2', kind: 'owl', file: 'animal-owl' },
   { id: 'owl3', kind: 'owl', file: 'animal-owl' },
-  { id: 'parrot', kind: 'parrot', file: 'american-robin', clipMap: ROBIN_CLIPS },
-  { id: 'chick', kind: 'chick', file: 'american-robin', clipMap: ROBIN_CLIPS },
-  { id: 'parrot2', kind: 'parrot', file: 'american-robin', clipMap: ROBIN_CLIPS },
-  { id: 'parrot3', kind: 'parrot', file: 'american-robin', clipMap: ROBIN_CLIPS },
-  { id: 'chick2', kind: 'chick', file: 'american-robin', clipMap: ROBIN_CLIPS },
-  { id: 'chick3', kind: 'chick', file: 'american-robin', clipMap: ROBIN_CLIPS },
+  { id: 'parrot', kind: 'parrot', file: 'american-robin', scale: 3, clipMap: ROBIN_CLIPS },
+  { id: 'chick', kind: 'chick', file: 'american-robin', scale: 3, clipMap: ROBIN_CLIPS },
+  { id: 'parrot2', kind: 'parrot', file: 'american-robin', scale: 3, clipMap: ROBIN_CLIPS },
+  { id: 'parrot3', kind: 'parrot', file: 'american-robin', scale: 3, clipMap: ROBIN_CLIPS },
+  { id: 'chick2', kind: 'chick', file: 'american-robin', scale: 3, clipMap: ROBIN_CLIPS },
+  { id: 'chick3', kind: 'chick', file: 'american-robin', scale: 3, clipMap: ROBIN_CLIPS },
 ];
 
 const LABEL_Y = 1.0;

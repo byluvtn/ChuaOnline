@@ -3,7 +3,7 @@ import { routeFrom, nearestNode, ROAD_NODES, HOUSE_DOORS } from '../shared/roads
 import {
   HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
   NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
-  PHONG_CD_PLAT, BAO_THAP, DECK,
+  PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, BRIDGE,
 } from '../src/layout.js';
 
 type P = { x: number; z: number };
@@ -133,13 +133,57 @@ function keepOut(x: number, z: number): boolean {
 }
 
 /** Walkable destination near p: re-roll jitter (max 10), fallback road node, then PLAZA. */
+function inLakeOffBridge(x: number, z: number): boolean {
+  const onBridge = Math.abs(x - BRIDGE.x) < BRIDGE.hw && z >= BRIDGE.z0 && z <= BRIDGE.z1;
+  return inLake(x, z) && !onBridge;
+}
+
+function segClipsLake(a: P, b: P): boolean {
+  const len = Math.hypot(b.x - a.x, b.z - a.z);
+  const n = Math.max(1, Math.ceil(len / 0.25));
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
+    // pad 0.3: trigger the detour before the leg actually touches the water;
+    // points on the bridge strip are allowed.
+    const onBridge = Math.abs(x - BRIDGE.x) < BRIDGE.hw && z >= BRIDGE.z0 && z <= BRIDGE.z1;
+    if (!onBridge && inLake(x, z, 0.3)) return true;
+  }
+  return false;
+}
+
+function lakeDetour(cur: P, tgt: P): P[] {
+  const north = (p: P) => p.z < LAKE.z;
+  const onBridgePt = (p: P) => Math.abs(p.x - BRIDGE.x) < BRIDGE.hw && p.z >= BRIDGE.z0 && p.z <= BRIDGE.z1;
+  // Beside the lake (mid-latitude, off the bridge): retreat straight north/south
+  // at fixed x to the bridge-end latitude — moving away from the lake centre at
+  // fixed x never enters the ellipse.
+  const beside = cur.z > LAKE.z - LAKE.b && cur.z < LAKE.z + LAKE.b && !onBridgePt(cur);
+  if (beside) {
+    const retreat: P = { x: cur.x, z: north(cur) ? BRIDGE.z0 : BRIDGE.z1 };
+    return [retreat, ...lakeDetour(retreat, tgt)];
+  }
+  // Either endpoint near the bridge axis: cross on the bridge.
+  if (Math.abs(cur.x - BRIDGE.x) < 2 || Math.abs(tgt.x - BRIDGE.x) < 2) {
+    const enter: P = { x: BRIDGE.x, z: north(cur) ? BRIDGE.z0 : BRIDGE.z1 };
+    if (north(cur) === north(tgt)) return [enter];
+    const exit: P = { x: BRIDGE.x, z: north(tgt) ? BRIDGE.z0 : BRIDGE.z1 };
+    return [enter, exit];
+  }
+  // Off-axis on both ends: around the tip on tgt's side, at both latitudes.
+  const sideX = tgt.x < BRIDGE.x ? -(LAKE.a + 0.5) : LAKE.a + 0.5;
+  const corner: P = { x: sideX, z: north(cur) ? BRIDGE.z0 : BRIDGE.z1 };
+  if (north(cur) === north(tgt)) return [corner];
+  return [corner, { x: sideX, z: north(tgt) ? BRIDGE.z0 : BRIDGE.z1 }];
+}
+
 function walkerJitter(p: P, r: number): P {
   for (let i = 0; i < 10; i++) {
     const q = jitter(p, r);
-    if (!keepOut(q.x, q.z)) return q;
+    if (!keepOut(q.x, q.z) && !inLakeOffBridge(q.x, q.z)) return q;
   }
   const n = nodePt(nearestNode(p));
-  return keepOut(n.x, n.z) ? { x: PLAZA.x, z: PLAZA.z } : n;
+  return keepOut(n.x, n.z) || inLakeOffBridge(n.x, n.z) ? { x: PLAZA.x, z: PLAZA.z } : n;
 }
 
 /** Corner of rect r (expanded by eps) nearest to point p, going around the rect. */
@@ -281,6 +325,13 @@ function sanitizePath(from: P, path: P[]): P[] {
         const via = freeVia(hit.c, nx, nz, sgn);
         out.push(via); cur = via; continue;
       }
+      // 4) lake: cross only on the bridge, or around a tip — never through the water.
+      if (segClipsLake(cur, tgt)) {
+        const vias = lakeDetour(cur, tgt);
+        for (const v of vias) out.push(v);
+        cur = vias[vias.length - 1];
+        continue;
+      }
       break;
     }
     out.push(tgt); cur = tgt;
@@ -300,7 +351,10 @@ function indoors(x: number, z: number): boolean {
 function outdoorJitter(p: P, r: number): P {
   for (let i = 0; i < 10; i++) {
     const q = jitter(p, r);
-    if (!indoors(q.x, q.z)) return q;
+    if (indoors(q.x, q.z)) continue;
+    if (keepOut(q.x, q.z)) continue;
+    if (inLakeOffBridge(q.x, q.z)) continue;
+    return q;
   }
   return { x: 0, z: 6 };
 }
@@ -392,11 +446,24 @@ function tickOwl(a: A, dt: number) {
 function tickWalker(a: A, dt: number) {
   const s = a.s;
   if (a.feedTo) {
-    const d = step(a, a.feedTo.x, a.feedTo.z, a.speed * dt);
     set(a, 'walk');
-    if (d < Math.max(0.3, a.speed * dt)) {
+    if (!a.path || a.path.length === 0) {
+      a.path = sanitizePath(a.s, [{ x: a.feedTo.x, z: a.feedTo.z }]);
+    }
+    const target = a.path[0];
+    if (!target) {
       a.feedTo = undefined;
       a.eatT = a.feedEat ?? 8;
+      return;
+    }
+    const d = step(a, target.x, target.z, a.speed * dt);
+    const arrive = Math.max(0.3, a.speed * dt);
+    if (d < arrive) {
+      a.path.shift();
+      if (a.path.length === 0) {
+        a.feedTo = undefined;
+        a.eatT = a.feedEat ?? 8;
+      }
     }
     return;
   }
@@ -413,7 +480,7 @@ function tickWalker(a: A, dt: number) {
   if (a.cat && Math.random() < 0.4) { set(a, Math.random() < 0.5 ? 'sit' : 'sleep'); a.wait = rnd(10, 30); return; }
   // Keep-out: destination via walkerJitter, then sanitizePath (doors/corners/zafu rings).
   a.path = a.home
-    ? [outdoorJitter(a.home, 3)]
+    ? sanitizePath(a.s, [outdoorJitter(a.home, 3)])
     : route(s, pick(a.cat ? CAT_SPOTS : SAFE));
   a.wait = rnd(3, 8);
 }

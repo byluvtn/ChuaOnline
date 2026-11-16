@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 123;
+export const LATEST_NEWS_ID = 124;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chim to hơn và không xuyên vật thể',
+    date: '2026-11-17',
+    items: [
+      'Đàn chim trong sân chùa (6 con) to gấp 3 lần: cao khoảng 0,46 m, nhìn rõ hình dáng từ khoảng cách chơi bình thường thay vì nhỏ như kiến.',
+      'Chim không còn đi xuyên bồ đoàn và sàn thiền: đường đi của đàn chim giờ tránh nhà, sàn thiền và bồ đoàn như chó mèo.',
+      'Chim không còn lội qua hồ khi được cho ăn: điểm cho ăn và đường đi tránh mặt hồ, chỉ đi trên cầu khi qua hồ.',
+      'Chó mèo, cú và nhiệm vụ cho chim ăn không đổi.',
+    ],
+  },
   {
     title: 'Hồ sơ & danh hiệu',
     date: '2026-11-17',
