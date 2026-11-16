@@ -1,4 +1,4 @@
-import { createClient } from '@libsql/client';
+import { createClient, type InStatement } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
@@ -12,19 +12,95 @@ if (!process.env.TURSO_DATABASE_URL) {
     console.warn(`[db] cannot create dir for ${localFile}: ${(err as Error).message}`);
   }
 }
-export const db = createClient({
+const rawDb = createClient({
   url: process.env.TURSO_DATABASE_URL ?? (process.env.DB_FILE ? `file:${process.env.DB_FILE}` : 'file:data/chuaonline.db'),
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 console.log(`[db] mode: ${process.env.TURSO_DATABASE_URL ? 'turso' : 'local file'}`);
-// Chịu đựng ghi đồng thời: khi 2 handler cùng ghi (2 người chơi tưới/thu hoạch cùng lúc),
-// SQLite local mặc định báo SQLITE_BUSY ngay và socket handler không bắt sẽ làm chết server.
-// Cho phép chờ khóa tối đa 5 s. Chỉ áp dụng cho file local (Turso remote không hỗ trợ PRAGMA này).
+
+// --- Retry cho lỗi mạng thoáng qua (Turso remote qua undici fetch) ---
+// Turso thỉnh thoảng đóng socket keep-alive giữa chừng → undici báo `fetch failed`
+// (UND_ERR_SOCKET) dù câu lệnh không sai. Lỗi này phải được thử lại, không được để
+// nó lan thành unhandled rejection rồi giết cả process (xem server/index.ts safeHandler).
+const TRANSIENT_PATTERNS = [
+  'fetch failed', 'und_err_socket', 'und_err_connect_timeout', 'econnreset',
+  'econnrefused', 'etimedout', 'epipe', 'enotfound', 'eai_again',
+  'other side closed', 'socketerror', 'socket hang up',
+];
+
+export function isTransientDbError(e: unknown, depth = 0): boolean {
+  if (e == null || depth > 5) return false;
+  const err = e as { message?: unknown; code?: unknown; cause?: unknown };
+  const text = `${typeof err.message === 'string' ? err.message : ''} ${typeof err.code === 'string' ? err.code : ''}`.toLowerCase();
+  // Lỗi SQL không bao giờ là transient (BUSY đã có đường xử lý riêng ở garden.ts).
+  if (text.includes('sqlite_constraint') || text.includes('sqlite_busy')) return false;
+  if (TRANSIENT_PATTERNS.some((p) => text.includes(p))) return true;
+  return isTransientDbError(err.cause, depth + 1);
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+// Đọc / idempotent: tối đa 3 lần (thêm 2 lần retry), chờ 150 ms rồi 400 ms.
+export async function withDbRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const waits = [150, 400];
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!isTransientDbError(e) || attempt > waits.length) throw e;
+      console.warn(`[db] retry ${label} lần ${attempt + 1}/3: ${errMsg(e)}`);
+      await sleep(waits[attempt - 1]);
+    }
+  }
+}
+
+// Cứng hoá lúc khởi động: tối đa 5 lần, backoff 500 ms -> 1 s -> 2 s -> 4 s.
+async function bootRetry<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const waits = [500, 1000, 2000, 4000];
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (!isTransientDbError(e) || attempt > waits.length) throw e;
+      console.warn(`[db] boot retry ${label} lần ${attempt + 1}/5: ${errMsg(e)}`);
+      await sleep(waits[attempt - 1]);
+    }
+  }
+}
+
+const isReadSql = (sql: string) => /^\s*(select|with|pragma)\b/i.test(sql);
+
+type ExecArg = InStatement | string;
+
+function sqlLabel(stmt: ExecArg): string {
+  const sql = typeof stmt === 'string' ? stmt : stmt.sql;
+  return sql.trim().replace(/\s+/g, ' ').slice(0, 40);
+}
+
+// Chỉ 3 method codebase dùng. execute: retry câu ĐỌC; câu GHI không retry (tránh ghi trùng).
+export const db = {
+  execute(stmt: ExecArg) {
+    const sql = typeof stmt === 'string' ? stmt : stmt.sql;
+    if (isReadSql(sql)) return withDbRetry(sqlLabel(stmt), () => rawDb.execute(stmt));
+    return rawDb.execute(stmt);
+  },
+  executeMultiple(sql: string) {
+    return withDbRetry('executeMultiple schema', () => rawDb.executeMultiple(sql));
+  },
+  // Không retry: commit mập mờ không được chạy lại cả transaction.
+  transaction: rawDb.transaction.bind(rawDb) as typeof rawDb.transaction,
+};
+
+// Chịu đựng ghi đồng thời (SQLite local). Turso remote không hỗ trợ PRAGMA này.
 if (!process.env.TURSO_DATABASE_URL) {
   await db.execute({ sql: 'PRAGMA busy_timeout = 5000' });
 }
 
-await db.executeMultiple(`
+await bootRetry('executeMultiple schema', () => rawDb.executeMultiple(`
 CREATE TABLE IF NOT EXISTS players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE COLLATE NOCASE,
@@ -80,7 +156,7 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 CREATE INDEX IF NOT EXISTS idx_merit ON players(merit DESC);
 CREATE INDEX IF NOT EXISTS idx_weekly ON players(week_key, weekly_merit DESC);
-`);
+`));
 try { await db.execute('ALTER TABLE players ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN title TEXT'); } catch { /* cột đã tồn tại */ }
@@ -96,7 +172,7 @@ export async function syncAdmins() {
   await db.execute('UPDATE players SET is_admin = 0');
   for (const n of names) await db.execute({ sql: 'UPDATE players SET is_admin = 1 WHERE username = ?', args: [n] });
 }
-await syncAdmins();
+await bootRetry('syncAdmins', () => syncAdmins());
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const now = () => Date.now();
@@ -702,7 +778,7 @@ export async function grantLaunchMail(): Promise<number> {
     tx.close();
   }
 }
-console.log(`[db] mail launch grant: ${await grantLaunchMail()} thư`);
+console.log(`[db] mail launch grant: ${await bootRetry('grantLaunchMail', () => grantLaunchMail())} thư`);
 
   await db.execute(`CREATE TABLE IF NOT EXISTS donations (
     player_id INTEGER PRIMARY KEY,

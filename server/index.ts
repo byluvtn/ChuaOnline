@@ -19,6 +19,17 @@ import { PHONG_CD } from '../src/layout.js';
 import { FORTUNES, type FortuneAck } from '../src/data/fortunes.js';
 import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost, flockCenter, feedFlock } from './animals.js';
 
+// Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
+// unhandledRejection: chỉ log và tiếp tục chạy (game server phải sống vì người chơi).
+// uncaughtException: trạng thái không xác định -> log rồi exit(1), Fly sẽ restart máy.
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('[fatal] unhandledRejection:', reason instanceof Error ? (reason.stack ?? reason.message) : reason);
+});
+process.on('uncaughtException', (err: Error) => {
+  console.error('[fatal] uncaughtException:', err?.stack ?? err);
+  process.exit(1);
+});
+
 const PORT = Number(process.env.PORT ?? 3001);
 const DIST = resolve('dist');
 
@@ -344,8 +355,33 @@ async function requireAdmin(s: Session | undefined): Promise<boolean> {
   return await db.isAdmin(s.pid);
 }
 
+/** Bọc một socket listener: mọi lỗi throw/reject đều được bắt, log, và trả ack lỗi
+ * đúng shape cho client (không bao giờ để thành unhandled rejection giết process).
+ * Handler không có ack thì chỉ log. Ack lỗi của chính nó cũng không được làm chết process. */
+function safeHandler(event: string, fn: (...args: any[]) => unknown) {
+  return async function (this: unknown, ...args: any[]) {
+    try {
+      await fn.apply(this, args);
+    } catch (e) {
+      console.warn(`[socket] ${event} lỗi: ${e instanceof Error ? e.message : String(e)}`);
+      const ack = args[args.length - 1];
+      if (typeof ack === 'function') {
+        try {
+          if (event === 'rank:get') ack({ weekly: [], all: [] });
+          else if (event === 'donors:get') ack([]);
+          else ack({ ok: false, error: 'Lỗi máy chủ, thử lại sau' });
+        } catch { /* ack lỗi cũng không được làm chết process */ }
+      }
+    }
+  };
+}
+
 io.on('connection', (socket) => {
   const pid: number = socket.data.pid;
+  // Mọi listener đăng ký sau đây tự động đi qua safeHandler (file không dùng socket.once/off).
+  const origOn = socket.on.bind(socket);
+  (socket as any).on = (event: string, listener: (...args: any[]) => unknown) =>
+    origOn(event as any, safeHandler(event, listener) as any);
   // one live connection per account
   for (const [id, other] of sessions) {
     if (other.pid === pid) { saveTombstone(other); other.socket.emit('kicked'); other.socket.disconnect(true); sessions.delete(id); }
