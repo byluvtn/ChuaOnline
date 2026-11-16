@@ -516,6 +516,16 @@ export function earnedTitles(i: TitleInput): string[] {
     }
   }).map((t) => t.id);
 }
+/** Giá trị hiện tại của người chơi cho một danh hiệu (để panel hiện tiến độ). */
+export function titleProgress(t: TitleRule, i: TitleInput): number {
+  switch (t.kind) {
+    case 'level': return i.level;
+    case 'quests': return i.questsDone;
+    case 'donated': return i.donated;
+    case 'stat': return t.stat !== undefined ? i.stats[t.stat] : 0;
+  }
+  return 0;
+}
 export const titleName = (id: string): string => TITLES.find((t) => t.id === id)?.name ?? id;
 /** Danh hiệu cao nhất = id cuối cùng theo thứ tự TITLES; earned đã theo thứ tự đó. */
 export const defaultTitle = (earned: string[]): string | null => (earned.length ? earned[earned.length - 1] : null);

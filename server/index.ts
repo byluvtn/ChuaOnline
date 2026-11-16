@@ -982,6 +982,25 @@ io.on('connection', (socket) => {
     reply({ ok: true, title: titleId });
   });
 
+  socket.on('profile:save', async (payload: unknown, cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return reply({ ok: false, error: 'Dữ liệu không hợp lệ' });
+    const p = payload as { bio?: unknown; age?: unknown };
+    const rawBio = p.bio ?? null;
+    if (rawBio !== null && typeof rawBio !== 'string') return reply({ ok: false, error: 'Dữ liệu không hợp lệ' });
+    let bio: string | null = typeof rawBio === 'string' ? rawBio.trim() : null;
+    if (bio === '') bio = null;
+    if (bio !== null && bio.length > 200) return reply({ ok: false, error: 'Tiểu sử tối đa 200 ký tự' });
+    const rawAge = p.age ?? null;
+    if (rawAge !== null && (typeof rawAge !== 'number' || !Number.isInteger(rawAge) || rawAge < 1 || rawAge > 120)) return reply({ ok: false, error: 'Tuổi phải từ 1 đến 120' });
+    const age: number | null = rawAge === null ? null : (rawAge as number);
+    await db.saveProfile(s.pid, bio, age);
+    await pushProfile(s);
+    reply({ ok: true });
+  });
+
   // Mini-game rewards: amounts/caps are decided here only; the client just says which game finished.
   const MINIGAMES = {
     moh: { merit: 3, coins: 2, cap: 10 },

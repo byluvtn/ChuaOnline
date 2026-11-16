@@ -4,6 +4,7 @@ import type { MenuCtx } from '../menu';
 
 let cache: StatsState | null = null;
 let onChange: (() => void) | null = null;
+export function getStatsCache(): StatsState | null { return cache; }
 
 export function initStats(ctx: MenuCtx) {
   ctx.socket.on('stats', (s: StatsState) => { cache = s; onChange?.(); });

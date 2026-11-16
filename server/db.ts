@@ -247,6 +247,8 @@ CREATE INDEX IF NOT EXISTS idx_weekly ON players(week_key, weekly_merit DESC);
 try { await db.execute('ALTER TABLE players ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN title TEXT'); } catch { /* cột đã tồn tại */ }
+try { await db.execute('ALTER TABLE players ADD COLUMN bio TEXT'); } catch { /* cột đã tồn tại */ }
+try { await db.execute('ALTER TABLE players ADD COLUMN age INTEGER'); } catch { /* cột đã tồn tại */ }
 try {
   const fk = await db.execute('PRAGMA foreign_keys');
   console.log(`[db] PRAGMA foreign_keys = ${JSON.stringify(fk.rows[0] ?? null)}`);
@@ -342,20 +344,26 @@ export async function logoutToken(token: string) {
 }
 
 // ---- profile ----
-interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null; is_admin: number; title: string | null }
+interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null; is_admin: number; title: string | null; bio: string | null; age: number | null }
 export async function getProfile(id: number): Promise<Profile | null> {
-  const r = (await db.execute({ sql: 'SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin, title FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as Row | undefined;
+  const r = (await db.execute({ sql: 'SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin, title, bio, age FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as Row | undefined;
   if (!r) return null;
   const inv: Record<string, number> = {};
   for (const i of (await db.execute({ sql: 'SELECT item_id, qty FROM inventory WHERE player_id = ? AND qty > 0', args: [id] })).rows as unknown as { item_id: string; qty: number }[]) inv[i.item_id] = Number(i.qty);
   const merit = Number(r.merit);
   const [stats, questsDone, donated] = await Promise.all([getStats(id), countQuestsDone(id), donatedTotal(id)]);
   const titles = earnedTitles({ level: levelOf(merit), questsDone, donated, stats });
-  return { name: r.name, outfit: r.outfit, color: r.color, merit, coins: Number(r.coins), accessory: r.accessory, username: r.username, inventory: inv, admin: Number(r.is_admin) === 1, titles, title: r.title ?? null };
+  const bio = typeof r.bio === 'string' && r.bio.length > 0 ? r.bio : null;
+  const age = r.age === null || r.age === undefined ? null : Number(r.age);
+  return { name: r.name, outfit: r.outfit, color: r.color, merit, coins: Number(r.coins), accessory: r.accessory, username: r.username, inventory: inv, admin: Number(r.is_admin) === 1, titles, title: r.title ?? null, bio, age, questsDone, donated };
 }
 
 export async function saveLook(id: number, name: string, outfit: Outfit, color: string) {
   await db.execute({ sql: 'UPDATE players SET name = ?, outfit = ?, color = ? WHERE id = ?', args: [name, outfit, color, id] });
+}
+
+export async function saveProfile(pid: number, bio: string | null, age: number | null) {
+  await db.execute({ sql: 'UPDATE players SET bio = ?, age = ? WHERE id = ?', args: [bio, age, pid] });
 }
 
 export async function addRewards(id: number, merit: number, coins: number) {

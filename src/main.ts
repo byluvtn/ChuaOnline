@@ -708,7 +708,9 @@ const panelCtx = () => ({
   onDonated: () => loadHonor(),
   teleport: (x: number, z: number) => teleportTo(x, z),
 });
+import { openProfilePanel } from './features/profile';
 $('panelClose').onclick = closePanel;
+$('profile').onclick = () => openProfilePanel(panelCtx());
 $('panel').addEventListener('pointerdown', (e) => { if (e.target === $('panel')) closePanel(); });
 async function logout() {
   if (!profile?.username && !confirm('Bạn đang chơi khách. Thoát sẽ mất tiến trình trên thiết bị này nếu chưa đăng ký. Tiếp tục?')) return;

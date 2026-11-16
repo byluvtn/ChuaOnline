@@ -45,7 +45,18 @@ export interface Profile {
   admin?: boolean;
   titles: string[];
   title: string | null;
+  /** tiểu sử, tối đa 200 ký tự, có thể để trống */
+  bio: string | null;
+  /** tuổi, số nguyên 1-120 hoặc null */
+  age: number | null;
+  /** số nhiệm vụ khác nhau đã hoàn thành */
+  questsDone: number;
+  /** tổng xu đã đóng góp */
+  donated: number;
 }
+
+export interface ProfileSave { bio: string | null; age: number | null }
+export interface ProfileSaveAck { ok: boolean; error?: string }
 
 export const MAP_HALF = 68;
 export const MAP_Z_MIN = -82;

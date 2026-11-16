@@ -4,9 +4,18 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 122;
+export const LATEST_NEWS_ID = 123;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hồ sơ & danh hiệu',
+    date: '2026-11-17',
+    items: [
+      'Bấm vào tên nhân vật ở góc trên-trái để mở panel Hồ sơ & danh hiệu: ghi tiểu sử và tuổi của bạn rồi bấm Lưu hồ sơ (lưu trên máy chủ, lần vào sau vẫn còn).',
+      'Panel liệt kê 24 danh hiệu tu tập kèm tiến độ từng cái (cấp, nhiệm vụ, đóng góp, lạy Phật, tụng kinh, thả đèn...); đủ điều kiện là nhận được, ai cũng nhận được, không giới hạn suất.',
+      'Bấm Mang danh hiệu để hiện danh hiệu trên đầu nhân vật cho mọi người cùng thấy; chỉ mang một cái, đổi lúc nào cũng được.',
+    ],
+  },
   {
     title: 'Sư Ông ngồi đúng lên ghế bồ đề',
     date: '2026-11-17',
