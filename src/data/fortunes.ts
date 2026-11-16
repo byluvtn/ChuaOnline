@@ -1,5 +1,6 @@
 export interface Fortune {
   grade: string;
+  general: string;
   poem: string[];
   career: string;
   love: string;
@@ -18,6 +19,7 @@ export interface FortuneAck {
 export const FORTUNES: Fortune[] = [
   {
     grade: 'Thượng thượng',
+    general: 'Mây tan trăng sáng, vận trình hanh thông, lòng ngay dạ thẳng thì việc gì cũng có quý nhân nâng đỡ, đường đời rộng mở.',
     poem: [
       'Mây tan trăng sáng giữa trời',
       'Lòng ngay một dạ, đường đời rộng thênh',
@@ -31,6 +33,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Vận khá ổn định, đi chậm mà chắc sẽ tới nơi. Giữ nếp đều đặn, chia nhỏ việc lớn thì năm tháng sẽ đền đáp.',
     poem: [
       'Gió nhẹ đưa thuyền qua sông',
       'Chậm mà chắc, dạ vững lòng an',
@@ -44,6 +47,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Vận còn nhiều trắc trở như mưa dầm che lối. Hãy giữ tâm tĩnh lặng, thận trọng lời nói, kiên nhẫn chờ nắng lên.',
     poem: [
       'Mưa dầm che khuất lối đi',
       'Giữ tâm tĩnh lặng, sóng kia sẽ tàn',
@@ -58,6 +62,7 @@ export const FORTUNES: Fortune[] = [
   // ===== Thượng thượng (10 quẻ) =====
   {
     grade: 'Thượng thượng',
+    general: 'Sen vàng nở rộ, vận may đang đến gần. Cứ giữ lòng chân thành, công sức bỏ ra sẽ được đền đáp và bình yên theo cùng.',
     poem: [
       'Sen vàng nở rộ bên hồ',
       'Hương thơm lan tỏa, lòng người nhẹ êm',
@@ -71,6 +76,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Như núi cao đón bình minh, vận trình vững vàng và thuận lợi. Cứ bước đều, việc đang làm sẽ về đích trọn vẹn.',
     poem: [
       'Núi cao mây trắng bồng bềnh',
       'Bước chân vững chãi, ánh bình minh dâng',
@@ -84,6 +90,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Đèn hoa đêm rằm báo tin mừng sắp tới. Vận đang lên, niềm vui và cơ hội tốt đến từ những cuộc gặp bất ngờ.',
     poem: [
       'Đèn hoa thắp sáng đêm rằm',
       'Ánh vàng ấm áp, lòng thầm vui say',
@@ -97,6 +104,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Phúc lành đang về như tiếng chuông chiều. Chăm chỉ lâu nay sắp có kết quả, nhà yên cửa ấm, lòng người thảnh thơi.',
     poem: [
       'Trăng treo đầu ngọn tre xanh',
       'Gió đưa hương lúa về quanh mái nhà',
@@ -110,6 +118,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Mặt hồ phẳng lặng soi lòng trong sáng, bốn phương thuận hòa. Gặp bạn hiền, hợp tác tốt, mọi việc dần trở nên gần gũi và dễ dàng.',
     poem: [
       'Hồ thu phẳng lặng như gương',
       'Soi lòng trong sáng, bốn phương thuận hòa',
@@ -123,6 +132,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Cầu vồng sau mưa, vận trình quang đãng. Điều đã gieo nay đơm hoa kết trái, những việc nhỏ hằng ngày mang lại niềm vui lớn.',
     poem: [
       'Cầu vồng bắc ngang trời xanh',
       'Mưa tan nắng ấm, trong lành muôn nơi',
@@ -136,6 +146,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Sao sáng đầu non báo vận đang lên. Có cơ hội tiến thêm một bước, niềm vui chợt đến nếu bạn cứ sống thật và giữ nếp lành.',
     poem: [
       'Sao khuya lấp lánh đầu non',
       'Đường lên đỉnh núi, bước son nhẹ nhàng',
@@ -149,6 +160,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Nắng mai ấm áp, lòng nhân ban phúc. Tử tế với người sẽ được người tin yêu, và bình an theo bạn về tận nhà.',
     poem: [
       'Nắng mai rải ánh vàng tươi',
       'Mái chùa rêu phủ, nụ cười nở hoa',
@@ -162,6 +174,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Việc hay đang đến từng chút một. Giữ nhịp đều, lòng vững bền thì mọi chuyện càng thêm suôn sẻ và yên ổn.',
     poem: [
       'Nhành liễu rủ bóng bên hiên',
       'Gió chiều mang tiếng chuông thiền vọng xa',
@@ -175,6 +188,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Thượng thượng',
+    general: 'Hạc trắng giữa trời xanh, tâm không vướng bụi nên đi đâu cũng được người mến. Sống ngay thẳng thì vận lành theo suốt.',
     poem: [
       'Hạc trắng bay giữa trời xanh',
       'Cánh chim nhẹ lướt, an lành muôn nơi',
@@ -189,6 +203,7 @@ export const FORTUNES: Fortune[] = [
   // ===== Trung bình (12 quẻ) =====
   {
     grade: 'Trung bình',
+    general: 'Thuyền còn neo bến, chờ con nước lớn mới ra khơi. Vận ở mức vừa phải, đừng gấp gáp, đến thời việc sẽ tự thành.',
     poem: [
       'Thuyền neo bến vắng chiều hôm',
       'Chờ con nước lớn, đưa thuyền ra khơi',
@@ -202,6 +217,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Đường quê quanh co nhưng có hoa bên rào. Vận bình thường, đi chậm và nhường nhịn thì ngày mai tự nhiên êm ả.',
     poem: [
       'Đường quê quanh co lối nhỏ',
       'Đi chậm mới thấy hoa bên bờ rào',
@@ -215,6 +231,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Sương sớm còn giăng, phải chờ nắng lên mới rõ đường. Vận chưa sáng tỏ, kiên nhẫn từng bước sẽ gặp niềm vui.',
     poem: [
       'Sương giăng đầu ngõ sớm mai',
       'Chờ nắng lên rồi mới thấy rõ đường',
@@ -228,6 +245,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Trăng khuyết rồi sẽ tròn, tre mềm mà không gãy. Vận chưa trọn vẹn nhưng đang hoàn thiện dần, linh hoạt sẽ qua thử thách.',
     poem: [
       'Trăng khuyết một nửa trên cao',
       'Nửa kia còn đợi ngày sau tròn đầy',
@@ -241,6 +259,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Như hái từng lá chè, vận đến từ sự tích góp. Làm chắc từng việc nhỏ, rồi mọi thứ sẽ tròn đẹp theo thời gian.',
     poem: [
       'Đồi chè xanh ngát chiều thu',
       'Hái từng lá nhỏ, kiên tâm dệt đầy',
@@ -254,6 +273,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Đứng giữa ngã ba, vận đòi hỏi dừng lại suy xét. Bình tĩnh nghe ý người tin cậy, đường đi sẽ hiện ra rõ ràng hơn.',
     poem: [
       'Ngã ba đường vắng chiều tà',
       'Dừng chân suy nghĩ, chọn đường thong dong',
@@ -267,6 +287,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Đá xanh rêu phủ, nước chảy mòn đá. Vận cần sự bền chí, ai kiên trì giữ nếp lâu dài sẽ có ngày gặt thành quả.',
     poem: [
       'Đá xanh phủ rêu bên thềm',
       'Thời gian lặng lẽ, vững bền như xưa',
@@ -280,6 +301,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Lúa chưa vàng, cần thêm vài buổi nắng. Vận sắp chín, chớ vội vàng, chờ thêm chút nữa mọi điều sẽ thông suốt.',
     poem: [
       'Cánh đồng lúa chín chưa vàng',
       'Nắng thêm vài buổi, mùa màng sẽ đơm',
@@ -293,6 +315,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Qua cầu tre cần thong thả, vận ổn nếu bước cẩn thận. Tâm yên thì thân nhẹ, đi chậm sẽ tránh được vấp váp.',
     poem: [
       'Cầu tre bắc ngang dòng sông',
       'Bước qua thong thả, lòng không vội vàng',
@@ -306,6 +329,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Lá rơi sân chùa, quét rồi lại đầy, việc đời cứ lặp lại. Giữ đều tay, làm xong từng việc thì lòng được thảnh thơi.',
     poem: [
       'Lá vàng rơi xuống sân chùa',
       'Quét đi rồi lại nhẹ nhàng đầy thêm',
@@ -319,6 +343,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Nụ sen đầu hạ còn e ấp. Vận đang âm thầm tích lũy, cứ xây nền vững và chờ ngày hé nở một cách tự nhiên.',
     poem: [
       'Hồ sen đầu hạ mới nhú',
       'Nụ xanh e ấp, chờ ngày hé môi',
@@ -332,6 +357,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Trung bình',
+    general: 'Chiều xuống khói bếp ấm, vận cần một chặng nghỉ chân. Nghỉ cho lại sức, sáng mai đi tiếp sẽ nhẹ nhàng hơn.',
     poem: [
       'Chiều xuống trên nếp nhà tranh',
       'Khói bếp lam chiều, ấm lòng người xa',
@@ -346,6 +372,7 @@ export const FORTUNES: Fortune[] = [
   // ===== Hạ hạ (8 quẻ) =====
   {
     grade: 'Hạ hạ',
+    general: 'Sương mù phủ đèo nên bước chậm hơn thường lệ. Vận hơi trì trệ, nhưng giữ lòng bình thản thì nắng sẽ qua ngọn đồi.',
     poem: [
       'Sương mù phủ kín đường đèo',
       'Chậm chân từng bước, mây theo gió tàn',
@@ -359,6 +386,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Gió nghịch cuốn lá, vận có chút va chạm nhỏ. Giữ lòng hiền hòa, đi chậm và đáp nhẹ nhàng thì gió lành sẽ tới.',
     poem: [
       'Gió nghịch đưa lá cuốn bay',
       'Cúi đầu đi chậm, tay vịn lan can',
@@ -372,6 +400,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Đèn nhỏ leo lét giữa đêm dài nhưng vẫn bền lửa. Vận có phần vất vả, giữ vững tâm thì bình minh sẽ sáng lên.',
     poem: [
       'Đêm dài đèn nhỏ leo lét',
       'Dầu ít mà lửa vẫn bền thâu đêm',
@@ -385,6 +414,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Nước sông đục sau mưa, để yên sẽ lắng trong. Vận chưa nên quyết vội, chờ lòng và việc đều lắng rồi hãy bước tiếp.',
     poem: [
       'Dòng sông đục sau cơn mưa',
       'Để yên một buổi, phù sa lắng dần',
@@ -398,6 +428,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Bậc đá rêu trơn, vận cần cẩn trọng từng bước. Đi chậm, kiểm tra kỹ thì vẫn tới đích và càng vững lòng hơn.',
     poem: [
       'Bậc đá rêu trơn lối lên',
       'Bước chân cẩn trọng, tay nâng chiếc gậy',
@@ -411,6 +442,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Mây xám phủ đồi, mái hiên đủ cho người trú chân. Vận tạm chững lại, hãy ngồi yên lắng lòng, tranh thủ bồi đắp bản thân.',
     poem: [
       'Mây xám kéo ngang đỉnh đồi',
       'Mái hiên đủ rộng cho người trú chân',
@@ -424,6 +456,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Cành khô đợi qua mùa đông, chồi non vẫn ẩn kín chờ xuân. Vận chưa tới lúc, giữ lòng hiền hòa, nắng ấm sẽ đến.',
     poem: [
       'Cành khô đợi hết mùa đông',
       'Chồi non ẩn kín, chờ xuân gọi về',
@@ -437,6 +470,7 @@ export const FORTUNES: Fortune[] = [
   },
   {
     grade: 'Hạ hạ',
+    general: 'Thuyền nhỏ chèo ngược gió, vất vả nhưng không lạc. Vận còn ngược chiều, kiên tâm từng nhịp thì bến bờ sẽ gần.',
     poem: [
       'Thuyền nhỏ ngược dòng gió xuôi',
       'Mái chèo khẽ động, từng nhịp từng nhịp',

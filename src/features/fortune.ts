@@ -6,7 +6,7 @@ import { iconSvg } from '../icons';
 const validN = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < FORTUNES.length;
 const textOf = (n: number) => {
   const f = FORTUNES[n];
-  return `Quẻ số ${n + 1} – ${f.grade}\n${f.poem.join('\n')}\nSự nghiệp: ${f.career}\nTình duyên: ${f.love}\nSức khỏe: ${f.health}\nTài lộc: ${f.wealth}\n(Chùa Online, chỉ để giải trí và suy ngẫm)`;
+  return `Quẻ số ${n + 1} – ${f.grade}\n${f.poem.join('\n')}\nLời giải: ${f.general}\nCông việc: ${f.career}\nGia đạo – Tình duyên: ${f.love}\nSức khỏe: ${f.health}\nTài lộc: ${f.wealth}\n(Chùa Online, chỉ để giải trí và suy ngẫm)`;
 };
 
 export function openFortune(ctx: { socket: Socket; toast: (t: string) => void }) {
@@ -20,7 +20,8 @@ export function openFortune(ctx: { socket: Socket; toast: (t: string) => void })
         h('div', { class: 'fcard' },
           h('small', {}, `Quẻ số ${n + 1}`), h('h3', {}, f.grade),
           h('div', { class: 'poem' }, ...f.poem.map((l) => h('p', {}, l)))),
-        row('Sự nghiệp', f.career), row('Tình duyên', f.love), row('Sức khỏe', f.health), row('Tài lộc', f.wealth),
+        row('Lời giải', f.general), row('Công việc', f.career), row('Gia đạo – Tình duyên', f.love),
+        row('Sức khỏe', f.health), row('Tài lộc', f.wealth),
         h('button', { class: 'gold', onclick: async () => {
           try { await navigator.clipboard.writeText(textOf(n)); ctx.toast('Đã sao chép quẻ xăm'); } catch { ctx.toast('Không thể sao chép'); }
         } }, 'Sao chép / chia sẻ'),

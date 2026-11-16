@@ -4,9 +4,19 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 124;
+export const LATEST_NEWS_ID = 125;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thẻ quẻ có thêm mục Lời giải',
+    date: '2026-11-17',
+    items: [
+      'Thẻ quẻ sau khi xin xăm nay có thêm mục Lời giải ở đầu: diễn giải tổng quát vận trình của quẻ bạn rút được, viết riêng cho từng quẻ.',
+      'Các mục đổi tên cho rõ: Công việc, Gia đạo – Tình duyên, Sức khỏe; dòng Tài lộc vẫn giữ nguyên.',
+      'Mở lại panel trong ngày vẫn hiện đúng quẻ đã rút buổi sáng — mỗi ngày chỉ xin một quẻ.',
+      'Nút Sao chép / chia sẻ giờ chép cả mục Lời giải vào đoạn text quẻ.',
+    ],
+  },
   {
     title: 'Chim to hơn và không xuyên vật thể',
     date: '2026-11-17',
