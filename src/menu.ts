@@ -182,9 +182,5 @@ export function initMenu(ctx: MenuCtx): void {
     if (changed === 'sound') audio.setMuted(!s.sound);
   });
 
-  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
-    if (document.readyState === 'complete') navigator.serviceWorker.register('/sw.js').catch(() => {});
-  }
   hydrateIcons(bar);
 }

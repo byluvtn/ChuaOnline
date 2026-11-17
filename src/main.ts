@@ -43,6 +43,12 @@ coarseMq.addEventListener('change', syncTouch);
 window.addEventListener('orientationchange', syncTouch);
 hydrateIcons();
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  const registerSW = () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); };
+  if (document.readyState === 'complete') registerSW();
+  else window.addEventListener('load', registerSW);
+}
+
 const COLORS = ['#d9a62b', '#778c96', '#72818e', '#bc7672', '#c0561f', '#e8821e', '#7a6130', '#5b6377', '#2f5aa8', '#a3343f', '#3b8a52', '#c27d1e', '#7a3f8f', '#e3b341', '#d99a1e', '#8fb0c4', '#5a3a22', '#6f93b5'];
 const NAMES = ['Chân Hạnh', 'Thiện Tâm', 'Minh Đạt', 'Từ Bi', 'An Nhiên', 'Tịnh Hòa', 'Diệu Hạnh', 'Giác Ngộ', 'Hỷ Xả'];
 const randName = () => `${NAMES[Math.floor(Math.random() * NAMES.length)]} ${Math.floor(Math.random() * 99) + 1}`;
