@@ -1258,7 +1258,7 @@ io.on('connection', (socket) => {
   socket.on('admin:grant', async (payload: unknown, cb?: (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => void) => {
     const reply = (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => { if (typeof cb === 'function') cb(r); };
     const s = me();
-    if (!(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
+    if (!s || !(await requireAdmin(s))) return reply({ ok: false, error: 'Không có quyền quản trị' });
     const p = (payload && typeof payload === 'object' ? payload : {}) as { userId?: unknown; merit?: unknown; coins?: unknown };
     const userId = Number(p.userId);
     const merit = Number(p.merit);
