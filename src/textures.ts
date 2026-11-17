@@ -1,5 +1,10 @@
 import * as THREE from 'three';
 
+/** Font chữ chung cho canvas: Be Vietnam Pro trước (webfont), rồi font hệ thống. */
+export const FONT_SANS = '"Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", sans-serif';
+/** Font serif cổ điển cho biển/bia: Georgia có trên cả Mac lẫn Windows. */
+export const FONT_SERIF = 'Georgia, "Times New Roman", serif';
+
 function canvasTex(size: number, draw: (g: CanvasRenderingContext2D, s: number) => void, repeat?: [number, number]) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
@@ -10,6 +15,49 @@ function canvasTex(size: number, draw: (g: CanvasRenderingContext2D, s: number) 
   if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); }
   return t;
 }
+
+type TextRedraw = { c: HTMLCanvasElement; t: THREE.CanvasTexture; draw: (g: CanvasRenderingContext2D) => void };
+const textRedraws: TextRedraw[] = [];
+let fontsRedrawDone = false;
+function scheduleFontRedraw(entry: TextRedraw) {
+  if (fontsRedrawDone) return;
+  textRedraws.push(entry);
+  if (textRedraws.length > 1) return; // chỉ đặt lịch một lần
+  const fonts = (globalThis as any).document?.fonts as
+    | { load?: (font: string) => Promise<unknown[]>; ready?: Promise<unknown> }
+    | undefined;
+  if (!fonts?.load) return;
+  Promise.all([
+    fonts.load('600 32px "Be Vietnam Pro"'),
+    fonts.load('700 32px "Be Vietnam Pro"'),
+  ]).then(() => {
+    fontsRedrawDone = true;
+    for (const e of textRedraws) {
+      const g = e.c.getContext('2d');
+      if (!g) continue;
+      g.save();
+      g.clearRect(0, 0, e.c.width, e.c.height);
+      e.draw(g);
+      g.restore();
+      e.t.needsUpdate = true;
+    }
+    textRedraws.length = 0;
+  }).catch(() => { /* font không nạp được: giữ bản vẽ bằng font dự phòng */ });
+}
+
+/** Canvas texture có chữ: vẽ ngay bằng font hiện có, vẽ lại một lần khi webfont về. */
+function textTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, anisotropy?: number): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d')!;
+  draw(g);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  if (anisotropy) t.anisotropy = anisotropy;
+  scheduleFontRedraw({ c, t, draw });
+  return t;
+}
+
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 export function grassTexture(repeat: [number, number]) {
@@ -108,44 +156,36 @@ export function shadowBlobTexture() {
 }
 
 export function signTexture(text: string) {
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 128;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#5a1a12'; g.fillRect(0, 0, 512, 128);
-  g.strokeStyle = '#e8b64a'; g.lineWidth = 6; g.strokeRect(8, 8, 496, 112);
-  g.fillStyle = '#f4d27a';
-  let fs = 58;
-  g.font = `700 ${fs}px "Times New Roman", serif`;
-  const tw = g.measureText(text).width;
-  if (tw > 440) { fs = Math.floor(fs * 440 / tw); g.font = `700 ${fs}px "Times New Roman", serif`; }
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 256, 68);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  return textTexture(512, 128, (g) => {
+    g.fillStyle = '#5a1a12'; g.fillRect(0, 0, 512, 128);
+    g.strokeStyle = '#e8b64a'; g.lineWidth = 6; g.strokeRect(8, 8, 496, 112);
+    g.fillStyle = '#f4d27a';
+    let fs = 58;
+    g.font = `700 ${fs}px ${FONT_SERIF}`;
+    const tw = g.measureText(text).width;
+    if (tw > 440) { fs = Math.floor(fs * 440 / tw); g.font = `700 ${fs}px ${FONT_SERIF}`; }
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 256, 68);
+  });
 }
 
 export function signTexture2Lines(title: string, sub: string) {
-  const c = document.createElement('canvas');
-  c.width = 1024; c.height = 256;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#5a1a12'; g.fillRect(0, 0, 1024, 256);
-  g.strokeStyle = '#e8b64a'; g.lineWidth = 10; g.strokeRect(14, 14, 996, 228);
-  g.fillStyle = '#f4d27a';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  const maxW = 900;
-  let fs1 = 100;
-  g.font = `700 ${fs1}px "Times New Roman", serif`;
-  const w1 = g.measureText(title).width;
-  if (w1 > maxW) { fs1 = Math.floor(fs1 * maxW / w1); g.font = `700 ${fs1}px "Times New Roman", serif`; }
-  g.fillText(title, 512, 98);
-  let fs2 = 64;
-  g.font = `700 ${fs2}px "Times New Roman", serif`;
-  const w2 = g.measureText(sub).width;
-  if (w2 > maxW) { fs2 = Math.floor(fs2 * maxW / w2); g.font = `700 ${fs2}px "Times New Roman", serif`; }
-  g.fillText(sub, 512, 190);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  return textTexture(1024, 256, (g) => {
+    g.fillStyle = '#5a1a12'; g.fillRect(0, 0, 1024, 256);
+    g.strokeStyle = '#e8b64a'; g.lineWidth = 10; g.strokeRect(14, 14, 996, 228);
+    g.fillStyle = '#f4d27a';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const maxW = 900;
+    let fs1 = 100;
+    g.font = `700 ${fs1}px ${FONT_SERIF}`;
+    const w1 = g.measureText(title).width;
+    if (w1 > maxW) { fs1 = Math.floor(fs1 * maxW / w1); g.font = `700 ${fs1}px ${FONT_SERIF}`; }
+    g.fillText(title, 512, 98);
+    let fs2 = 64;
+    g.font = `700 ${fs2}px ${FONT_SERIF}`;
+    const w2 = g.measureText(sub).width;
+    if (w2 > maxW) { fs2 = Math.floor(fs2 * maxW / w2); g.font = `700 ${fs2}px ${FONT_SERIF}`; }
+    g.fillText(sub, 512, 190);
+  });
 }
 
 export interface HonorRow { name: string; coins: number; merit: number }
@@ -153,46 +193,41 @@ export interface HonorRow { name: string; coins: number; merit: number }
 /** Mặt bảng vinh danh 1024x424. rows = null: đang tải; rows rỗng: chưa có ai. */
 export function honorBoardTexture(rows: HonorRow[] | null) {
   const W = 1024, H = 424;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const g = c.getContext('2d')!;
-  const font = (px: number) => `700 ${px}px "Times New Roman", serif`;
-  g.fillStyle = '#3b1f12'; g.fillRect(0, 0, W, H);
-  g.strokeStyle = '#e8b64a'; g.lineWidth = 4; g.strokeRect(6, 6, W - 12, H - 12);
-  g.textBaseline = 'middle';
+  return textTexture(W, H, (g) => {
+    const font = (px: number) => `700 ${px}px ${FONT_SERIF}`;
+    g.fillStyle = '#3b1f12'; g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#e8b64a'; g.lineWidth = 4; g.strokeRect(6, 6, W - 12, H - 12);
+    g.textBaseline = 'middle';
 
-  if (!rows || rows.length === 0) {
-    g.fillStyle = '#f4d27a'; g.font = font(40); g.textAlign = 'center';
-    g.fillText(rows ? 'Chưa có phật tử nào đóng góp' : 'Đang tải…', W / 2, H / 2);
-  } else {
-    const RANK_X = 66, NAME_X = 84, XU_X = 750, MERIT_X = 985;
-    const top = 14, headH = 40, rowH = 36;
-    const headY = top + headH / 2;
-    g.fillStyle = '#c9a45a'; g.font = font(26);
-    g.textAlign = 'left'; g.fillText('Hạng · Phật tử', 30, headY);
-    g.textAlign = 'right';
-    g.fillText('Xu', XU_X, headY);
-    g.fillText('Công đức', MERIT_X, headY);
-    g.strokeStyle = 'rgba(232,182,74,.5)'; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(24, top + headH); g.lineTo(W - 24, top + headH); g.stroke();
-
-    const medal = ['#ffd45a', '#e6e6e6', '#e0a070'];
-    rows.slice(0, 10).forEach((r, i) => {
-      const y = top + headH + rowH * i + rowH / 2;
-      const chars = Array.from(r.name);
-      const name = chars.length > 14 ? chars.slice(0, 14).join('') + '…' : r.name;
-      g.fillStyle = medal[i] ?? '#f4d27a'; g.font = font(30);
-      g.textAlign = 'right'; g.fillText(`${i + 1}.`, RANK_X, y);
-      g.textAlign = 'left'; g.fillText(name, NAME_X, y, 456);
+    if (!rows || rows.length === 0) {
+      g.fillStyle = '#f4d27a'; g.font = font(40); g.textAlign = 'center';
+      g.fillText(rows ? 'Chưa có phật tử nào đóng góp' : 'Đang tải…', W / 2, H / 2);
+    } else {
+      const RANK_X = 66, NAME_X = 84, XU_X = 750, MERIT_X = 985;
+      const top = 14, headH = 40, rowH = 36;
+      const headY = top + headH / 2;
+      g.fillStyle = '#c9a45a'; g.font = font(26);
+      g.textAlign = 'left'; g.fillText('Hạng · Phật tử', 30, headY);
       g.textAlign = 'right';
-      g.fillText(r.coins.toLocaleString('vi-VN'), XU_X, y, 190);
-      g.fillText(r.merit.toLocaleString('vi-VN'), MERIT_X, y, 215);
-    });
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
+      g.fillText('Xu', XU_X, headY);
+      g.fillText('Công đức', MERIT_X, headY);
+      g.strokeStyle = 'rgba(232,182,74,.5)'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(24, top + headH); g.lineTo(W - 24, top + headH); g.stroke();
+
+      const medal = ['#ffd45a', '#e6e6e6', '#e0a070'];
+      rows.slice(0, 10).forEach((r, i) => {
+        const y = top + headH + rowH * i + rowH / 2;
+        const chars = Array.from(r.name);
+        const name = chars.length > 14 ? chars.slice(0, 14).join('') + '…' : r.name;
+        g.fillStyle = medal[i] ?? '#f4d27a'; g.font = font(30);
+        g.textAlign = 'right'; g.fillText(`${i + 1}.`, RANK_X, y);
+        g.textAlign = 'left'; g.fillText(name, NAME_X, y, 456);
+        g.textAlign = 'right';
+        g.fillText(r.coins.toLocaleString('vi-VN'), XU_X, y, 190);
+        g.fillText(r.merit.toLocaleString('vi-VN'), MERIT_X, y, 215);
+      });
+    }
+  }, 4);
 }
 
 /* ------------------------------------------------------------------ *
@@ -262,65 +297,52 @@ export function faceTexture(kind: 'buddha' | 'guanyin') {
 /** Bảng chữ tiếng Việt (câu đối) — vàng trên nền sơn son, thay cho chữ Hán cũ.
  *  Câu dài được ngắt dòng theo từ và xếp dọc từ trên xuống cho dễ đọc trên cột hẹp. */
 export function vietnameseColumnTexture(text: string, w = 160, h = 900, opts: { title?: string } = {}) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const g = c.getContext('2d')!;
+  return textTexture(w, h, (g) => {
+    const gr = g.createLinearGradient(0, 0, w, 0);
+    gr.addColorStop(0, '#5a0e0a'); gr.addColorStop(0.5, '#7d1a12'); gr.addColorStop(1, '#5a0e0a');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#e8b64a'; g.lineWidth = Math.max(3, w * 0.03); g.strokeRect(w * 0.04, w * 0.04, w * 0.92, h - w * 0.08);
+    g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = Math.max(1, w * 0.012);
+    g.strokeRect(w * 0.09, w * 0.09, w * 0.82, h - w * 0.18);
 
-  const gr = g.createLinearGradient(0, 0, w, 0);
-  gr.addColorStop(0, '#5a0e0a'); gr.addColorStop(0.5, '#7d1a12'); gr.addColorStop(1, '#5a0e0a');
-  g.fillStyle = gr; g.fillRect(0, 0, w, h);
-  g.strokeStyle = '#e8b64a'; g.lineWidth = Math.max(3, w * 0.03); g.strokeRect(w * 0.04, w * 0.04, w * 0.92, h - w * 0.08);
-  g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = Math.max(1, w * 0.012);
-  g.strokeRect(w * 0.09, w * 0.09, w * 0.82, h - w * 0.18);
+    const padX = w * 0.14, maxW = w - padX * 2;
+    const words = text.split(/\s+/).filter(Boolean);
+    const padY = w * 0.14 + (opts.title ? h * 0.07 : 0);
+    const lineH = (h - padY * 2) / Math.max(1, words.length);
+    let font = Math.min(Math.round(lineH * 0.72), Math.round(w * 0.5));
+    g.font = `600 ${font}px ${FONT_SANS}`;
+    const widest = () => Math.max(...words.map((wd) => g.measureText(wd).width));
+    while (widest() > maxW && font > 8) { font -= 1; g.font = `600 ${font}px ${FONT_SANS}`; }
+    g.fillStyle = '#f6d67c';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.shadowColor = 'rgba(0,0,0,.55)';
+    g.shadowBlur = 3;
+    const y0 = padY + lineH / 2;
+    words.forEach((wd, i) => g.fillText(wd, w / 2, y0 + i * lineH, maxW));
 
-  const padX = w * 0.14, maxW = w - padX * 2;
-  const family = '"Segoe UI", "Be Vietnam Pro", system-ui, sans-serif';
-  const words = text.split(/\s+/).filter(Boolean);
-  const padY = w * 0.14 + (opts.title ? h * 0.07 : 0);
-  const lineH = (h - padY * 2) / Math.max(1, words.length);
-  let font = Math.min(Math.round(lineH * 0.72), Math.round(w * 0.5));
-  g.font = `600 ${font}px ${family}`;
-  const widest = () => Math.max(...words.map((wd) => g.measureText(wd).width));
-  while (widest() > maxW && font > 8) { font -= 1; g.font = `600 ${font}px ${family}`; }
-  g.fillStyle = '#f6d67c';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.shadowColor = 'rgba(0,0,0,.55)';
-  g.shadowBlur = 3;
-  const y0 = padY + lineH / 2;
-  words.forEach((wd, i) => g.fillText(wd, w / 2, y0 + i * lineH, maxW));
-
-  if (opts.title) {
-    g.fillStyle = '#e8b64a';
-    g.font = `700 ${Math.round(font * 1.15)}px ${family}`;
-    g.fillText(opts.title, w / 2, h * 0.06 + font * 0.6, maxW);
-  }
-
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
-  return t;
+    if (opts.title) {
+      g.fillStyle = '#e8b64a';
+      g.font = `700 ${Math.round(font * 1.15)}px ${FONT_SANS}`;
+      g.fillText(opts.title, w / 2, h * 0.06 + font * 0.6, maxW);
+    }
+  }, 8);
 }
 
 /** Hoành phi tiếng Việt: chữ vàng trên nền sơn mài đen, viền chỉ vàng. */
 export function vietnamesePlaqueTexture(text: string, w = 1024, h = 256) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#1b0d08'; g.fillRect(0, 0, w, h);
-  g.strokeStyle = '#e8b64a'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
-  g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = 3; g.strokeRect(24, 24, w - 48, h - 48);
-  const family = '"Segoe UI", "Be Vietnam Pro", system-ui, sans-serif';
-  let font = Math.round(h * 0.46);
-  g.font = `700 ${font}px ${family}`;
-  while (g.measureText(text).width > w - 140 && font > 12) { font -= 2; g.font = `700 ${font}px ${family}`; }
-  g.fillStyle = '#f6d67c';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 4;
-  g.fillText(text, w / 2, h / 2 + 4, w - 140);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  return t;
+  return textTexture(w, h, (g) => {
+    g.fillStyle = '#1b0d08'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#e8b64a'; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
+    g.strokeStyle = 'rgba(232,182,74,.45)'; g.lineWidth = 3; g.strokeRect(24, 24, w - 48, h - 48);
+    let font = Math.round(h * 0.46);
+    g.font = `700 ${font}px ${FONT_SANS}`;
+    while (g.measureText(text).width > w - 140 && font > 12) { font -= 2; g.font = `700 ${font}px ${FONT_SANS}`; }
+    g.fillStyle = '#f6d67c';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 4;
+    g.fillText(text, w / 2, h / 2 + 4, w - 140);
+  }, 8);
 }
 
 export interface SteleData { name: string; merit: number; weekLabel: string }
@@ -328,96 +350,86 @@ export interface SteleData { name: string; merit: number; weekLabel: string }
 /** Mặt bia công đức tuần: canvas dọc 320×540, tiêu đề trên, tên giữa, tuần + công đức dưới. */
 export function steleTexture(data: SteleData | null) {
   const W = 320, H = 540;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const g = c.getContext('2d')!;
-  const grad = g.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#cfc8b6');
-  grad.addColorStop(1, '#b9b19e');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, W, H);
-  for (let i = 0; i < 1800; i++) {
-    g.fillStyle = Math.random() < 0.5 ? 'rgba(60,55,45,0.07)' : 'rgba(255,255,245,0.08)';
-    g.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 2, 1 + Math.random() * 2);
-  }
-  g.strokeStyle = 'rgba(55,48,38,0.75)';
-  g.lineWidth = 3;
-  g.strokeRect(14, 14, W - 28, H - 28);
-  g.lineWidth = 1.5;
-  g.strokeRect(24, 24, W - 48, H - 48);
-
-  const engrave = (text: string, x: number, y: number) => {
-    g.fillStyle = 'rgba(255,255,245,0.55)';
-    g.fillText(text, x + 1, y + 1);
-    g.fillStyle = '#3a3226';
-    g.fillText(text, x, y);
-  };
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-
-  g.font = 'bold 30px serif';
-  engrave('BIA CÔNG ĐỨC', W / 2, 78);
-  g.font = 'bold 22px serif';
-  engrave('TUẦN', W / 2, 114);
-  g.strokeStyle = 'rgba(55,48,38,0.6)';
-  g.lineWidth = 2;
-  g.beginPath(); g.moveTo(60, 142); g.lineTo(W - 60, 142); g.stroke();
-
-  if (!data) {
-    g.font = 'bold 30px serif';
-    engrave('CHƯA CÓ', W / 2, 250);
-    engrave('CÔNG ĐỨC', W / 2, 295);
-    engrave('TUẦN NÀY', W / 2, 340);
-  } else {
-    let size = 46;
-    const maxW = W - 80;
-    g.font = `bold ${size}px serif`;
-    while (g.measureText(data.name).width > maxW && size > 16) {
-      size -= 2;
-      g.font = `bold ${size}px serif`;
+  return textTexture(W, H, (g) => {
+    const grad = g.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#cfc8b6');
+    grad.addColorStop(1, '#b9b19e');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 1800; i++) {
+      g.fillStyle = Math.random() < 0.5 ? 'rgba(60,55,45,0.07)' : 'rgba(255,255,245,0.08)';
+      g.fillRect(Math.random() * W, Math.random() * H, 1 + Math.random() * 2, 1 + Math.random() * 2);
     }
-    engrave(data.name, W / 2, 285);
-    g.beginPath(); g.moveTo(60, 400); g.lineTo(W - 60, 400); g.stroke();
-    g.font = 'bold 26px serif';
-    engrave(data.weekLabel, W / 2, 440);
-    g.font = 'bold 28px serif';
-    engrave(`${data.merit.toLocaleString('vi-VN')} công đức`, W / 2, 485);
-  }
+    g.strokeStyle = 'rgba(55,48,38,0.75)';
+    g.lineWidth = 3;
+    g.strokeRect(14, 14, W - 28, H - 28);
+    g.lineWidth = 1.5;
+    g.strokeRect(24, 24, W - 48, H - 48);
 
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  return t;
+    const engrave = (text: string, x: number, y: number) => {
+      g.fillStyle = 'rgba(255,255,245,0.55)';
+      g.fillText(text, x + 1, y + 1);
+      g.fillStyle = '#3a3226';
+      g.fillText(text, x, y);
+    };
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+
+    g.font = `bold 30px ${FONT_SERIF}`;
+    engrave('BIA CÔNG ĐỨC', W / 2, 78);
+    g.font = `bold 22px ${FONT_SERIF}`;
+    engrave('TUẦN', W / 2, 114);
+    g.strokeStyle = 'rgba(55,48,38,0.6)';
+    g.lineWidth = 2;
+    g.beginPath(); g.moveTo(60, 142); g.lineTo(W - 60, 142); g.stroke();
+
+    if (!data) {
+      g.font = `bold 30px ${FONT_SERIF}`;
+      engrave('CHƯA CÓ', W / 2, 250);
+      engrave('CÔNG ĐỨC', W / 2, 295);
+      engrave('TUẦN NÀY', W / 2, 340);
+    } else {
+      let size = 46;
+      const maxW = W - 80;
+      g.font = `bold ${size}px ${FONT_SERIF}`;
+      while (g.measureText(data.name).width > maxW && size > 16) {
+        size -= 2;
+        g.font = `bold ${size}px ${FONT_SERIF}`;
+      }
+      engrave(data.name, W / 2, 285);
+      g.beginPath(); g.moveTo(60, 400); g.lineTo(W - 60, 400); g.stroke();
+      g.font = `bold 26px ${FONT_SERIF}`;
+      engrave(data.weekLabel, W / 2, 440);
+      g.font = `bold 28px ${FONT_SERIF}`;
+      engrave(`${data.merit.toLocaleString('vi-VN')} công đức`, W / 2, 485);
+    }
+  }, 8);
 }
 
 /** Thân cột kinh: đá sáng, chữ Việt in hoa xếp dọc (mỗi từ một dòng), khắc chìm tông tối. */
 export function sutraPillarTexture(text: string, w = 192, h = 1120) {
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#d6cbb6'; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 420; i++) {
-    g.fillStyle = `rgba(${rnd(0, 1) > 0.5 ? '255,255,255' : '60,50,36'},${rnd(0.03, 0.09)})`;
-    g.fillRect(rnd(0, w), rnd(0, h), rnd(1, 4), rnd(1, 4));
-  }
-  g.strokeStyle = 'rgba(70,58,40,.5)'; g.lineWidth = 3; g.strokeRect(10, 10, w - 20, h - 20);
-  g.strokeStyle = 'rgba(70,58,40,.3)'; g.lineWidth = 1.5; g.strokeRect(20, 20, w - 40, h - 40);
-  const words = text.toUpperCase().split(/\s+/).filter(Boolean);
-  const family = '"Segoe UI", "Be Vietnam Pro", system-ui, sans-serif';
-  const padY = 70, maxW = w - 60;
-  let font = 96;
-  g.font = `700 ${font}px ${family}`;
-  while (Math.max(...words.map((wd) => g.measureText(wd).width)) > maxW && font > 10) { font -= 2; g.font = `700 ${font}px ${family}`; }
-  const lineH = Math.min(font * 1.7, (h - padY * 2) / Math.max(1, words.length));
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  const y0 = h / 2 - (lineH * (words.length - 1)) / 2;
-  words.forEach((wd, i) => {
-    const y = y0 + i * lineH;
-    g.fillStyle = 'rgba(255,255,255,.55)'; g.fillText(wd, w / 2 + 2, y + 2);
-    g.fillStyle = '#4a3f2e'; g.fillText(wd, w / 2, y);
-  });
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
-  return t;
+  return textTexture(w, h, (g) => {
+    g.fillStyle = '#d6cbb6'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 420; i++) {
+      g.fillStyle = `rgba(${rnd(0, 1) > 0.5 ? '255,255,255' : '60,50,36'},${rnd(0.03, 0.09)})`;
+      g.fillRect(rnd(0, w), rnd(0, h), rnd(1, 4), rnd(1, 4));
+    }
+    g.strokeStyle = 'rgba(70,58,40,.5)'; g.lineWidth = 3; g.strokeRect(10, 10, w - 20, h - 20);
+    g.strokeStyle = 'rgba(70,58,40,.3)'; g.lineWidth = 1.5; g.strokeRect(20, 20, w - 40, h - 40);
+    const words = text.toUpperCase().split(/\s+/).filter(Boolean);
+    const padY = 70, maxW = w - 60;
+    let font = 96;
+    g.font = `700 ${font}px ${FONT_SANS}`;
+    while (Math.max(...words.map((wd) => g.measureText(wd).width)) > maxW && font > 10) { font -= 2; g.font = `700 ${font}px ${FONT_SANS}`; }
+    const lineH = Math.min(font * 1.7, (h - padY * 2) / Math.max(1, words.length));
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const y0 = h / 2 - (lineH * (words.length - 1)) / 2;
+    words.forEach((wd, i) => {
+      const y = y0 + i * lineH;
+      g.fillStyle = 'rgba(255,255,255,.55)'; g.fillText(wd, w / 2 + 2, y + 2);
+      g.fillStyle = '#4a3f2e'; g.fillText(wd, w / 2, y);
+    });
+  }, 8);
 }
 
 export function woodTexture(repeat: [number, number]) {
