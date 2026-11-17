@@ -390,7 +390,6 @@ export function buildAoLamNonLaV3(): THREE.Group {
   const mat = (c: number, side: THREE.Side = THREE.FrontSide) =>
     new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, side });
   const lam = mat(0x778c96), trang = mat(0xf5f0ea), quan = mat(0x5a6a72);
-  const rom = mat(0xd9c27a, THREE.DoubleSide);
   const add = (p: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0) => {
     const mesh = new THREE.Mesh(geo, m);
     mesh.position.set(x, y, z);
@@ -473,7 +472,25 @@ export function buildAoLamNonLaV3(): THREE.Group {
   g.userData.forePivots = forePivots;
   g.userData.shinPivots = shinPivots;
 
-  // Nón lá (tháo riêng: g.getObjectByName('nonLa')): vành r 0.62, chóp cao 0.27.
+  // Nón lá (tháo riêng: g.getObjectByName('nonLa')).
+  const nonLa = buildNonLa();
+  g.add(nonLa);
+
+  return g;
+}
+
+/** Nón lá tháo rời (group 'nonLa'): vành r 0.62, chóp cao 0.27, chóp xoay quanh y 2.16. */
+export function buildNonLa(): THREE.Group {
+  const mat = (c: number, side: THREE.Side = THREE.FrontSide) =>
+    new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, side });
+  const rom = mat(0xd9c27a, THREE.DoubleSide);
+  const add = (p: THREE.Object3D, geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0) => {
+    const mesh = new THREE.Mesh(geo, m);
+    mesh.position.set(x, y, z);
+    p.add(mesh);
+    return mesh;
+  };
+
   const nonLa = new THREE.Group();
   nonLa.name = 'nonLa';
   const chop = new THREE.Group(); // xoay quanh y 2.16
@@ -489,9 +506,8 @@ export function buildAoLamNonLaV3(): THREE.Group {
     add(nonLa, new THREE.CylinderGeometry(0.008, 0.008, 0.578, 6), day, s * 0.57, 1.8775, 0).rotation.z = -s * 0.104;
   }
   add(nonLa, new THREE.TorusGeometry(0.54, 0.008, 6, 24, Math.PI), day, 0, 1.59, 0).rotation.z = Math.PI;
-  g.add(nonLa);
 
-  return g;
+  return nonLa;
 }
 
 // ---------------------------------------------------------------------------

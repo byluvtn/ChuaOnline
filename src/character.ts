@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Anim, Outfit } from '../shared/types';
 import { shadowBlobTexture } from './textures';
 import { geo, outlined, toon } from './toon';
-import { buildAoDaiHongSenV3, buildAoDaiVangNhatV3, buildBaBaNauV3, buildBaBaTimV3, buildAoLamNonLaV3, buildKhanDongV3 } from './clothing';
+import { buildAoDaiHongSenV3, buildAoDaiVangNhatV3, buildBaBaNauV3, buildBaBaTimV3, buildAoLamNonLaV3, buildNonLa, buildKhanDongV3 } from './clothing';
 
 interface FadeFrom {
   t0: number;
@@ -624,11 +624,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       return;
     }
     if (id === 'non_la') {
-      const built = buildAoLamNonLaV3();
-      const nl = built.getObjectByName('nonLa');
-      if (!nl) { disposeGarment(built); throw new Error('non_la: khong tim thay group nonLa'); }
-      built.remove(nl);
-      disposeGarment(built);
+      const nl = buildNonLa();
       body.add(nl);
       accGroup = nl as THREE.Group;
       accOwned = true;
@@ -700,7 +696,15 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       const g = B.canvas.getContext('2d')!;
       const font = '700 30px system-ui, "Segoe UI", sans-serif';
       g.font = font;
-      const words = text.split(/\s+/);
+      const words: string[] = [];
+      for (const w of text.split(/\s+/)) {
+        if (g.measureText(w).width <= 380) { words.push(w); continue; }
+        let seg = '';
+        for (const ch of Array.from(w)) {
+          if (seg && g.measureText(seg + ch).width > 380) { words.push(seg); seg = ch; } else seg += ch;
+        }
+        if (seg) words.push(seg);
+      }
       const lines: string[] = [];
       let cur = '';
       for (const w of words) {

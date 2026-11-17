@@ -56,10 +56,26 @@ export function stoneTexture(base: [number, number, number], repeat: [number, nu
   }, repeat);
 }
 
+/** Đổi màu CSS sang 'rgba(r,g,b,a)' với alpha cho trước. Hỗ trợ '#rgb', '#rrggbb', 'rgb(...)', 'rgba(...)'. */
+function withAlpha(color: string, a: number): string {
+  const c = color.trim();
+  if (c.startsWith('#')) {
+    let h = c.slice(1);
+    if (h.length === 3 || h.length === 4) h = h.split('').map((x) => x + x).join('');
+    if (/^[0-9a-f]{6}/i.test(h)) {
+      const n = parseInt(h.slice(0, 6), 16);
+      return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    }
+  }
+  const m = c.match(/^rgba?\(\s*([^,)\s]+)\s*,\s*([^,)\s]+)\s*,\s*([^,)\s]+)/i);
+  if (m) return `rgba(${m[1]},${m[2]},${m[3]},${a})`;
+  return c;
+}
+
 export function softDot(color = '#ffffff') {
   return canvasTex(64, (g, s) => {
     const gr = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-    gr.addColorStop(0, color); gr.addColorStop(.35, color.replace(')', ',.45)').replace('rgb', 'rgba'));
+    gr.addColorStop(0, color); gr.addColorStop(.35, withAlpha(color, .45));
     gr.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = gr; g.fillRect(0, 0, s, s);
   });
@@ -184,7 +200,10 @@ export function honorBoardTexture(rows: HonorRow[] | null) {
  * Trả về texture trong suốt, chỉ chứa nét (mắt cong, miệng, má hồng) để
  * dán lên một chỏm cầu cùng bán kính với đầu tượng.
  * ------------------------------------------------------------------ */
+const faceTexCache = new Map<'buddha' | 'guanyin', THREE.CanvasTexture>();
 export function faceTexture(kind: 'buddha' | 'guanyin') {
+  const hit = faceTexCache.get(kind);
+  if (hit) return hit;
   const S = 512;
   const c = document.createElement('canvas');
   c.width = c.height = S;
@@ -236,6 +255,7 @@ export function faceTexture(kind: 'buddha' | 'guanyin') {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
+  faceTexCache.set(kind, t);
   return t;
 }
 

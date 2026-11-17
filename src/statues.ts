@@ -158,14 +158,20 @@ function addGlow(g: THREE.Group, x: number, y: number, z: number, size: number, 
 // ---------------------------------------------------------------- đầu chibi + khuôn mặt CanvasTexture
 const HEAD_R = 0.65;
 
+const faceMatCache = new Map<'buddha' | 'guanyin', THREE.MeshStandardMaterial>();
+
 /** Mặt phẳng vẽ 2D (mắt cong, miệng cười, má hồng) dán lên chỏm cầu bọc sát đầu. */
 function faceDecal(parent: THREE.Object3D, kind: 'buddha' | 'guanyin') {
   const half = 0.78;
   const g = geo('face-cap', () => new THREE.SphereGeometry(HEAD_R + 0.006, 40, 28, Math.PI / 2 - half, half * 2, Math.PI / 2 - half, half * 2));
-  const m = new THREE.MeshStandardMaterial({
-    map: faceTexture(kind), transparent: true, roughness: 0.6, metalness: 0,
-    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
-  });
+  let m = faceMatCache.get(kind);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({
+      map: faceTexture(kind), transparent: true, roughness: 0.6, metalness: 0,
+      depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    });
+    faceMatCache.set(kind, m);
+  }
   const o = add(parent, g, m, { cast: false, name: 'face' });
   o.renderOrder = 2;
   return o;
