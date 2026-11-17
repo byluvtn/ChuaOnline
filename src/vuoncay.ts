@@ -316,17 +316,22 @@ function takePending(): GardenPlotState[] | null {
   const p = pendingStates; pendingStates = null; return p;
 }
 
-/** Vẽ lại toàn bộ cây theo trạng thái mới nhất. Key 3D không gồm progress nên
- *  poll định kỳ không dựng lại cây. Yêu cầu đến lúc đang load GLB được xếp hàng
- *  (pendingStates) và chạy sau với states MỚI NHẤT. */
+/** Vẽ lại toàn bộ cây theo trạng thái mới nhất. Key 3D gồm các field được vẽ (plot,
+ *  species, stage, quality, wilted, harvested) + `progress > 0` (nhãn chỉ phân biệt
+ *  "Đang lớn"/"Cần tưới" qua ngưỡng này; progress thô thay đổi liên tục nên không
+ *  đưa vào key để poll định kỳ không dựng lại cây). Yêu cầu đến lúc đang load GLB
+ *  được xếp hàng (pendingStates) và chạy sau với states MỚI NHẤT. */
 export async function renderGardenTrees(states: GardenPlotState[]): Promise<void> {
   if (treeRenderBusy) { pendingStates = states; return; }
   treeRenderBusy = true;
   try {
     let next: GardenPlotState[] | null = states;
     while (next) {
-      const key = JSON.stringify(next.map((s) => [s.plot, s.species, s.stage, s.quality, s.wilted, s.wateredToday, s.harvestable, s.harvested]));
-      if (key !== lastTreeKey) { await renderGardenTreesNow(next); lastTreeKey = key; }
+      const key = JSON.stringify(next.map((s) => [s.plot, s.species, s.stage, s.quality, s.wilted, s.progress > 0, s.harvested]));
+      if (key !== lastTreeKey) {
+        // Chỉ lưu key khi mọi cây đều dựng được; cây lỗi GLB sẽ được thử tải lại ở lần poll sau.
+        if (await renderGardenTreesNow(next)) lastTreeKey = key;
+      }
       next = takePending();
     }
   } finally {
@@ -334,8 +339,8 @@ export async function renderGardenTrees(states: GardenPlotState[]): Promise<void
   }
 }
 
-async function renderGardenTreesNow(states: GardenPlotState[]): Promise<void> {
-  if (!dynScene) return;
+async function renderGardenTreesNow(states: GardenPlotState[]): Promise<boolean> {
+  if (!dynScene) return false;
   // Dọn cây cũ: dispose sprite texture/material + mesh tự tạo (userData.own).
   // KHÔNG dispose geometry/material của bản clone GLB (chia sẻ với cache loadModel).
   treeGroup.traverse((o) => {
@@ -359,6 +364,7 @@ async function renderGardenTreesNow(states: GardenPlotState[]): Promise<void> {
   }
   treeCols.length = 0;
 
+  let ok = true;
   for (const st of states) {
     if (!st.species) continue;
     const def = GARDEN_PLOTS.find((p) => p.id === st.plot);
@@ -373,7 +379,7 @@ async function renderGardenTreesNow(states: GardenPlotState[]): Promise<void> {
       const [sap, tree] = STAGE_FILE[st.species];
       const file = st.stage === 2 ? sap : tree;
       const src = await loadModel(file);
-      if (!src) continue;
+      if (!src) { ok = false; continue; }
       model = src.clone(true);
       const leafColor = st.wilted ? 0x8a6a3a : (st.species === 'bo_de' ? 0x9ab84a : null);
       if (leafColor !== null) recolorLeaves(model, leafColor);
@@ -392,5 +398,6 @@ async function renderGardenTreesNow(states: GardenPlotState[]): Promise<void> {
     }
   }
   if (!treeGroup.parent) dynScene.add(treeGroup);
+  return ok;
 }
 

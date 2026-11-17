@@ -64,7 +64,11 @@ const SYMBOLS = [
 ];
 function openMemory(ctx: MenuCtx) {
   openCustomPanel('Lật thẻ biểu tượng', (body) => {
-    const deck = [...SYMBOLS, ...SYMBOLS].map((s, k) => ({ ...s, k })).sort(() => Math.random() - 0.5);
+    const deck = [...SYMBOLS, ...SYMBOLS].map((s, k) => ({ ...s, k }));
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
     const grid = h('div', { class: 'mem' });
     const status = h('div', { class: 'hint' }, 'Lượt: 0');
     let open: HTMLElement[] = [], moves = 0, matched = 0, lock = false;

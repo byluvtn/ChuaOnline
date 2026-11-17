@@ -47,10 +47,7 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('willow-sketchfab-S', -14, 30, 0.4, 13, null, 1.0),
 ];
 
-export const GARDEN_COLLIDERS: { x: number; z: number; r: number }[] = [
-  ...GARDEN_PLACEMENTS
-    .filter((g) => g.colliderR !== null)
-    .map((g) => ({ x: g.x, z: g.z, r: g.colliderR as number })),
+const ZEN_STONES: { x: number; z: number; r: number }[] = [
   // Đá thiền vườn cát (vườn cát GLB không có collider, chỉ đá)
   { x: -34, z: -26, r: 0.65 },
   { x: -33.3, z: -25.6, r: 0.45 },
@@ -120,8 +117,9 @@ export function buildGarden(
   scene: THREE.Scene,
   colliders: { x: number; z: number; r: number }[],
 ): void {
-  // Synchronous: the pathfinder is built right after createWorld returns.
-  for (const c of GARDEN_COLLIDERS) colliders.push({ x: c.x, z: c.z, r: c.r });
+  // Collider vườn chỉ được thêm khi GLB tương ứng đã tải xong, nên GLB lỗi không để lại tường vô hình.
+  // Đánh đổi: pathfinder dựng ngay sau createWorld nên không gồm các collider này (giống collider
+  // cây vườn dynColliders thêm lúc chạy); collide() vẫn chặn di chuyển.
 
   const names = Array.from(new Set(GARDEN_PLACEMENTS.map((g) => g.name)));
   for (const name of names) {
@@ -134,7 +132,9 @@ export function buildGarden(
         for (const g of GARDEN_PLACEMENTS) {
           if (g.name !== name) continue;
           scene.add(buildInstance(base, g));
+          if (g.colliderR !== null) colliders.push({ x: g.x, z: g.z, r: g.colliderR });
         }
+        if (name === 'zen_sand_garden') for (const s of ZEN_STONES) colliders.push({ x: s.x, z: s.z, r: s.r });
       })
       .catch(() => {
         console.warn(name + '.glb khong tai duoc');

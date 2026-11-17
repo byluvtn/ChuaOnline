@@ -198,28 +198,35 @@ function play(e: Ent, anim: AnimalAnim): void {
 export function initAnimals(scene: THREE.Scene, showNames?: () => boolean): void {
   if (showNames) namesOn = showNames;
   const files = [...new Set(SPECS.map((s) => s.file))];
-  Promise.all(files.map((f) => loadGltf(f))).then((list) => {
-    const gltfs = new Map(files.map((f, i) => [f, list[i]]));
-    for (const sp of SPECS) {
-      const gltf = gltfs.get(sp.file);
-      if (!gltf || ents.has(sp.id)) continue;
-      const root = new THREE.Group();
-      const model = SkeletonUtils.clone(gltf.scene);
-      if (sp.tint) applyTint(model, sp.tint);
-      if (sp.scale) model.scale.setScalar(sp.scale);
-      root.add(model);
-      root.visible = false;
-      const clips = new Map<string, THREE.AnimationClip>();
-      for (const c of gltf.animations) clips.set(c.name, c);
-      let label: THREE.Sprite | null = null;
-      if (sp.name) {
-        label = makeLabel(sp.name, sp.labelY);
-        root.add(label);
+  // Tải + dựng một lượt; file lỗi (!gltf) thì thử lại một lần sau 20 giây (mẫu statue-scan.ts).
+  const attempt = (retryLeft: number): void => {
+    Promise.all(files.map((f) => loadGltf(f))).then((list) => {
+      const gltfs = new Map(files.map((f, i) => [f, list[i]]));
+      let failed = false;
+      for (const sp of SPECS) {
+        const gltf = gltfs.get(sp.file);
+        if (!gltf) { failed = true; continue; }
+        if (ents.has(sp.id)) continue;
+        const root = new THREE.Group();
+        const model = SkeletonUtils.clone(gltf.scene);
+        if (sp.tint) applyTint(model, sp.tint);
+        if (sp.scale) model.scale.setScalar(sp.scale);
+        root.add(model);
+        root.visible = false;
+        const clips = new Map<string, THREE.AnimationClip>();
+        for (const c of gltf.animations) clips.set(c.name, c);
+        let label: THREE.Sprite | null = null;
+        if (sp.name) {
+          label = makeLabel(sp.name, sp.labelY);
+          root.add(label);
+        }
+        scene.add(root);
+        ents.set(sp.id, { id: sp.id, kind: sp.kind, root, mixer: new THREE.AnimationMixer(model), clips, cur: null, curName: '', placed: false, label, clipMap: sp.clipMap });
       }
-      scene.add(root);
-      ents.set(sp.id, { id: sp.id, kind: sp.kind, root, mixer: new THREE.AnimationMixer(model), clips, cur: null, curName: '', placed: false, label, clipMap: sp.clipMap });
-    }
-  });
+      if (failed && retryLeft > 0) setTimeout(() => attempt(retryLeft - 1), 20000);
+    });
+  };
+  attempt(1);
 }
 
 export function updateAnimals(states: AnimalState[] | undefined, dt: number): void {

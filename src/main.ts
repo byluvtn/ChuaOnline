@@ -734,10 +734,20 @@ async function logout() {
   clearToken();
   location.reload();
 }
-function changeLook(name: string, o: Outfit, c: string) {
-  nameInput.value = name; outfit = o; color = c;
-  localStorage.setItem('co:name', name); localStorage.setItem('co:outfit', o); localStorage.setItem('co:color', c);
-  socket?.emit('join', { name, outfit: o, color: c, room: roomId });
+function changeLook(name: string, o: Outfit, c: string, done?: (ok: boolean) => void) {
+  const finish = (ok: boolean) => {
+    if (ok) {
+      nameInput.value = name; outfit = o; color = c;
+      localStorage.setItem('co:name', name); localStorage.setItem('co:outfit', o); localStorage.setItem('co:color', c);
+    }
+    done?.(ok);
+  };
+  if (!socket) { finish(false); return; }
+  let settled = false;
+  const timer = setTimeout(() => { if (!settled) { settled = true; finish(false); } }, 5000);
+  socket.emit('join', { name, outfit: o, color: c, room: roomId }, (r: { ok: boolean } | undefined) => {
+    if (settled) return; settled = true; clearTimeout(timer); finish(r?.ok === true);
+  });
 }
 function startMenu() {
   initMenu({

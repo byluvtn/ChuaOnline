@@ -406,7 +406,7 @@ io.on('connection', (socket) => {
     if (other.pid === pid) { saveTombstone(other); other.socket.emit('kicked'); other.socket.disconnect(true); sessions.delete(id); }
   }
 
-  socket.on('join', async (p: { name?: string; outfit?: Outfit; color?: string; room?: string; resume?: string }) => {
+  socket.on('join', async (p: { name?: string; outfit?: Outfit; color?: string; room?: string; resume?: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
     const prof = await db.getProfile(pid);
     if (!prof) return socket.disconnect(true);
     const old = sessions.get(socket.id);
@@ -415,13 +415,22 @@ io.on('connection', (socket) => {
     let room = roomOk(String(p?.room)) ? String(p.room) : ROOMS[0].id;
     if (roomSessions(room).filter((s) => s.pid !== pid).length >= ROOM_CAPACITY) {
       const alt = roomList().find((r) => r.online < r.capacity);
-      if (!alt) return socket.emit('join:error', 'Các chùa đều đã đầy');
+      if (!alt) {
+        ack?.({ ok: false, error: 'Các chùa đều đã đầy' });
+        return socket.emit('join:error', 'Các chùa đều đã đầy');
+      }
       room = alt.id;
     }
     const name = clean(p?.name, 24) || prof.name;
     const outfit = OUTFITS.includes(p?.outfit as Outfit) ? (p!.outfit as Outfit) : prof.outfit;
     const color = cleanColor(p?.color ?? prof.color);
-    await db.saveLook(pid, name, outfit, color);
+    try {
+      await db.saveLook(pid, name, outfit, color);
+    } catch {
+      ack?.({ ok: false, error: 'Không lưu được nhân vật' });
+      return;
+    }
+    ack?.({ ok: true });
 
     const saved = lastPos.get(pid);
     lastPos.delete(pid);

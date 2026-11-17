@@ -59,9 +59,10 @@ export function openCharacter(ctx: MenuCtx) {
       h('button', { class: 'gold', onclick: () => {
         const n = name.value.replace(/[<>]/g, '').trim().slice(0, 24);
         if (!n) return ctx.toast('Vui lòng nhập pháp danh');
-        ctx.changeLook(n, outfit, color);
-        ctx.toast('Đã lưu nhân vật');
-        closePanel();
+        ctx.changeLook(n, outfit, color, (ok) => {
+          if (ok) { ctx.toast('Đã lưu nhân vật'); closePanel(); }
+          else ctx.toast('Không lưu được, thử lại sau');
+        });
       } }, 'Lưu'));
     name.id = 'cname';
     return () => {

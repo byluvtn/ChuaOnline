@@ -50,7 +50,7 @@ export interface MenuCtx {
   myPos(): { x: number; z: number } | null;
   players(): { id: string; name: string; x: number; z: number; level?: number }[];
   goTo(x: number, z: number): void;
-  changeLook(name: string, outfit: Outfit, color: string): void;
+  changeLook(name: string, outfit: Outfit, color: string, done?: (ok: boolean) => void): void;
   chatLog(): ChatMessage[];
   act(kind: ActionKind): void;
   guideTo(qid: string): void;
