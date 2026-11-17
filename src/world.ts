@@ -481,6 +481,20 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     floaters.push({ m: grp, vy: 0.7 + Math.random() * 0.2, life: 45, max: 45, fade: 5, light: spr });
   };
 
+  // Rocket materials are shared per color (rockets never mutate opacity).
+  // Sparks keep one material per sprite: the update loop fades EACH spark by
+  // writing material.opacity from its own remaining life — sharing would make
+  // all sparks of one color fade in lockstep.
+  const rocketMatCache = new Map<number, THREE.SpriteMaterial>();
+  const rocketMat = (color: number) => {
+    let m = rocketMatCache.get(color);
+    if (!m) {
+      m = new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending });
+      rocketMatCache.set(color, m);
+    }
+    return m;
+  };
+
   // Tàn pháo (sprite toả cầu) + rocket đang chờ/bay lên.
   const sparks: { m: THREE.Sprite; v: THREE.Vector3; life: number }[] = [];
   const rockets: { m: THREE.Sprite; x: number; z: number; top: number; vy: number; delay: number; color: number }[] = [];
@@ -515,7 +529,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       const px = x + (Math.random() - 0.5) * spread;
       const pz = z + (Math.random() - 0.5) * spread;
       const y0 = 1.4, top = 25 + Math.random() * 10;
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending }));
+      const spr = new THREE.Sprite(rocketMat(color));
       spr.scale.setScalar(0.7);
       spr.position.set(px, y0, pz);
       spr.visible = delay <= 0;
@@ -704,7 +718,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       r.m.position.y += r.vy * dt;
       if (r.m.position.y >= r.top) {
         explodeShell(r.x, r.top, r.z, r.color);
-        scene.remove(r.m); (r.m.material as THREE.Material).dispose();
+        scene.remove(r.m);
         rockets.splice(i, 1);
       }
     }

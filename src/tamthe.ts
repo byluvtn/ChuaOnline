@@ -4,6 +4,7 @@ import { buildBuddha } from './statues';
 import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import { buildZafuParts } from './zafu';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = TAM_THE_PLAT.y;
@@ -64,19 +65,48 @@ export function buildTamThe(c: TempleCtx) {
   stairSide.map.repeat.set(1, 1);
   stairSide.map.needsUpdate = true;
   // Thứ tự mặt BoxGeometry: +x, -x, +y(bước), -y, +z(đứng, hướng lên bệ), -z
-  const stairMats = [stairSide, stairSide, stairTop, stairTop, stairRiser, stairRiser];
   const stairW = TAM_THE_PLAT.stairW * 2 + 0.6;
   // sz1 < sz0 (stairs ascend northward, z decreases), so use Math.abs to keep depth positive (negative depth inverts winding and culls faces under FrontSide).
   const stairD = Math.abs(sz1 - sz0) / nSteps + 0.02; // = 0.40
+  // Lấy một số mặt (theo group của BoxGeometry) ra thành geometry riêng để gộp theo material.
+  function facesOf(box: THREE.BoxGeometry, faces: number[]): THREE.BufferGeometry {
+    const src = box.toNonIndexed();
+    const g = new THREE.BufferGeometry();
+    const pick = (name: 'position' | 'normal' | 'uv', itemSize: number) => {
+      const attr = src.getAttribute(name);
+      const arr = new Float32Array(faces.length * 6 * itemSize);
+      faces.forEach((f, i) => {
+        for (let v = 0; v < 6; v++) for (let k = 0; k < itemSize; k++)
+          arr[(i * 6 + v) * itemSize + k] = attr.getComponent(f * 6 + v, k);
+      });
+      return new THREE.BufferAttribute(arr, itemSize);
+    };
+    g.setAttribute('position', pick('position', 3));
+    g.setAttribute('normal', pick('normal', 3));
+    g.setAttribute('uv', pick('uv', 2));
+    return g;
+  }
+
+  // Gộp 20 bậc thành 3 mesh theo material (mặt bước / mặt đứng / hông) thay cho
+  // 20 mesh × mảng 6 material (≈120 draw call). Bỏ mặt -y (đáy chìm dưới đất)
+  // và -z (áp sát bậc trên) — không nhìn thấy được.
+  const treadGeos: THREE.BufferGeometry[] = [];
+  const riserGeos: THREE.BufferGeometry[] = [];
+  const sideGeos: THREE.BufferGeometry[] = [];
   for (let i = 0; i < nSteps; i++) {
     const t0 = i / nSteps, t1 = (i + 1) / nSteps;
     const h = BASE * t1;
     const zc = sz0 + (sz1 - sz0) * (t0 + t1) / 2;
-    const step = new THREE.Mesh(new THREE.BoxGeometry(stairW, h, stairD), stairMats);
-    step.position.set(0, h / 2, zc);
-    step.castShadow = false; step.receiveShadow = true;
-    add(step);
+    const bgeo = new THREE.BoxGeometry(stairW, h, stairD);
+    bgeo.translate(0, h / 2, zc);
+    treadGeos.push(facesOf(bgeo, [2])); // +y: mặt bước
+    riserGeos.push(facesOf(bgeo, [4])); // +z: mặt đứng hướng lên bệ
+    sideGeos.push(facesOf(bgeo, [0, 1])); // ±x: hông
   }
+  const treadMesh = new THREE.Mesh(mergeGeometries(treadGeos, false)!, stairTop);
+  const riserMesh = new THREE.Mesh(mergeGeometries(riserGeos, false)!, stairRiser);
+  const sideMesh = new THREE.Mesh(mergeGeometries(sideGeos, false)!, stairSide);
+  for (const m of [treadMesh, riserMesh, sideMesh]) { m.castShadow = false; m.receiveShadow = true; add(m); }
   // Tay vịn cùng tông gỗ sáng (repeat theo chiều dài thanh)
   const railWoodM = woodFloorM.clone();
   railWoodM.map = woodFloorM.map!.clone();
@@ -135,6 +165,7 @@ export function buildTamThe(c: TempleCtx) {
     return y0 + h;
   };
   const goldBar = lamb(0xe8b64a, { emissive: 0x3a2a08 });
+  const barXforms: { p: [number, number, number]; s: [number, number, number] }[] = [];
   const clerestory = (w: number, d: number, yBase: number, hgt: number) => {
     const grp = new THREE.Group();
     const t = 0.38;
@@ -143,8 +174,7 @@ export function buildTamThe(c: TempleCtx) {
       const n = Math.max(2, Math.floor(Math.max(bw, bd) / 0.9));
       for (let i = 0; i < n; i++) {
         const k = ((i + 0.5) / n - 0.5) * (Math.max(bw, bd) - 0.8);
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(bw > bd ? 0.08 : bd + 0.02, hgt * 0.6, bw > bd ? bd + 0.02 : 0.08), goldBar);
-        bar.position.set(x + (bw > bd ? k : 0), yBase + hgt / 2, z + (bw > bd ? 0 : k)); grp.add(bar);
+        barXforms.push({ p: [x + (bw > bd ? k : 0), yBase + hgt / 2, z + (bw > bd ? 0 : k)], s: [bw > bd ? 0.08 : bd + 0.02, hgt * 0.6, bw > bd ? bd + 0.02 : 0.08] });
       }
     };
     mk(w, t, 0, d / 2); mk(w, t, 0, -d / 2); mk(t, d, w / 2, 0); mk(t, d, -w / 2, 0);
@@ -163,6 +193,20 @@ export function buildTamThe(c: TempleCtx) {
   const yc2 = top2 - 4.4 * 0.2 - 0.3;
   // cổ diêm 2: rộng đúng bằng chân mái tầng 3, chân chôn vào sườn mái tầng 2
   clerestory(W * 0.17, D * 0.17, top2 - 2.55, 2.37);
+  // Song cổ diêm (cả 2 tầng): 1 InstancedMesh thay cho ~54 mesh rời.
+  {
+    const bars = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), goldBar, barXforms.length);
+    const d = new THREE.Object3D();
+    barXforms.forEach((b, i) => {
+      d.position.set(b.p[0], b.p[1], b.p[2]);
+      d.scale.set(b.s[0], b.s[1], b.s[2]);
+      d.rotation.set(0, 0, 0);
+      d.updateMatrix();
+      bars.setMatrixAt(i, d.matrix);
+    });
+    bars.instanceMatrix.needsUpdate = true;
+    add(bars);
+  }
   const y3 = yc2 + 1.1;
   const top3 = tier(W * 0.17, D * 0.17, 3.2, 0.5, y3 - 0.1);
   const ridge = new THREE.Mesh(new THREE.BoxGeometry(W * 0.17 * 0.5, 0.34, 0.45), c.goldM); ridge.position.y = top3 - 0.1; add(ridge);

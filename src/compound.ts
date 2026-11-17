@@ -369,6 +369,7 @@ export function buildZenGarden(g: GardenCtx) {
 
   // rặng tre dọc tường Bắc (z≈-40) và Tây (x≈-44)
   const boo = g.lamb(0x7fae5a), leaf = g.lamb(0x4e9a3d, { flatShading: true, side: THREE.DoubleSide });
+  const leafGeo = new THREE.SphereGeometry(0.55, 7, 5);
   const clump = (x: number, z: number, seed: number) => {
     const c = new THREE.Group();
     for (let i = 0; i < 5; i++) {
@@ -376,8 +377,8 @@ export function buildZenGarden(g: GardenCtx) {
       const px = Math.cos(a) * 0.22, pz = Math.sin(a) * 0.22;
       const st = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, h, 6), boo); st.position.set(px, h / 2, pz); st.rotation.set(Math.sin(a) * 0.05, 0, Math.cos(a) * 0.05); st.castShadow = true; c.add(st);
       for (let k = 0; k < 3; k++) {
-        const lf = new THREE.Mesh(new THREE.SphereGeometry(0.55, 7, 5), leaf);
-        lf.scale.set(1, 0.3, 1); lf.position.set(px + Math.cos(a + k) * 0.25, h - 0.3 - k * 0.55, pz + Math.sin(a + k) * 0.25); lf.castShadow = true; c.add(lf);
+        const lf = new THREE.Mesh(leafGeo, leaf);
+        lf.scale.set(1, 0.3, 1); lf.position.set(px + Math.cos(a + k) * 0.25, h - 0.3 - k * 0.55, pz + Math.sin(a + k) * 0.25); c.add(lf);
       }
     }
     c.position.set(x, GY, z); grp.add(c);
