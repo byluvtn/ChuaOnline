@@ -1120,8 +1120,7 @@ export function buildTemple(c: TempleCtx) {
     w.position.set((x0 + x1) / 2, 0.8, (z0 + z1) / 2); w.rotation.y = -ang; w.castShadow = w.receiveShadow = true; scene.add(w);
     const t = new THREE.Mesh(new THREE.BoxGeometry(len + 0.1, 0.18, 0.7), capM);
     t.position.set(w.position.x, 1.7, w.position.z); t.rotation.y = -ang; scene.add(t);
-    const n = Math.ceil(len / 3);
-    for (let i = 0; i <= n; i++) colliders.push({ x: x0 + ((x1 - x0) * i) / n, z: z0 + ((z1 - z0) * i) / n, r: 0.55 });
+    // Không đẩy collider tường: clampToCompound đã chặn kín chu vi (K1); collider thưa 3 m vừa hở vừa thừa.
   };
   wallSeg(-WALL.x, WALL.zN, WALL.x, WALL.zN);
   wallSeg(-WALL.x, WALL.zN, -WALL.x, WALL.zS); wallSeg(WALL.x, WALL.zN, WALL.x, WALL.zS);

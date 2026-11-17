@@ -231,7 +231,9 @@ export function buildTamThe(c: TempleCtx) {
     const fl = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), lamb([0xff8fb6, 0xffffff, 0xffd35a][k % 3], { emissive: 0x201010 }));
     fl.position.set(1.7 + (k - 2) * 0.1, BASE + 1.78 + (k % 2) * 0.12, tableZ + (k % 2 - 0.5) * 0.1); add(fl);
   }
-  for (const x of [-3, 0, 3]) colliders.push({ x: TAM_THE.x + x, z: TAM_THE.z + tableZ, r: 1.15 });
+  // Bàn lễ rộng 10 m: 5 vòng r=1.6 cách nhau 2 m (chồng lên nhau như bệ thờ 11 vòng),
+  // phủ kín tới ±5.6 — không còn khe hở hay đầu bàn trống như 3 vòng r=1.15 cũ.
+  for (const x of [-4, -2, 0, 2, 4]) colliders.push({ x: TAM_THE.x + x, z: TAM_THE.z + tableZ, r: 1.6 });
 
   const lanterns = new THREE.InstancedMesh(new THREE.SphereGeometry(0.36, 12, 10), c.redBase, 18);
   const d = new THREE.Object3D(); let li = 0;
