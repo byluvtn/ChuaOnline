@@ -1232,9 +1232,12 @@ export function buildTemple(c: TempleCtx) {
     const key = d ? `${d.weekKey}|${d.name}|${d.merit}` : 'null';
     if (key === steleKey) return;
     steleKey = key;
-    const data: SteleData | null = d
-      ? { name: d.name, merit: d.merit, weekLabel: `Tuần ${Number(d.weekKey.split('-W')[1])} — ${d.weekKey.slice(0, 4)}` }
-      : null;
+    let data: SteleData | null = null;
+    if (d) {
+      const m = /^(\d{4})-W(\d{1,2})$/.exec(d.weekKey);
+      const weekLabel = m ? `Tuần ${Number(m[2])} — ${m[1]}` : `Tuần ${d.weekKey}`;
+      data = { name: d.name, merit: d.merit, weekLabel };
+    }
     const old = steleFaceMat.map;
     steleFaceMat.map = steleTexture(data);
     steleFaceMat.needsUpdate = true;

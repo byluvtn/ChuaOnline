@@ -1,5 +1,5 @@
 // shared/roads.ts
-// Road graph + Dijkstra. Pure data and pure functions (no imports, server + client safe).
+// Road graph. Pure data and pure functions (imports only the pure shared Dijkstra, server + client safe).
 //
 // Platform note (Tam The, verified from layout.ts groundY + TAM_THE_PLAT):
 // footprint x -20..20, z -80..-56, top y = 3.0. The only walkable entry is the central
@@ -22,6 +22,8 @@
 //
 // Dropped edges: none. The edges below were not geometrically re-checked against every
 // collider here; they are used exactly as specified.
+
+import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
 
 export type Pt = { x: number; z: number }
 
@@ -209,60 +211,28 @@ export const ROAD_EDGES: [string, string][] = [
 
 const NODE_BY_ID = new Map<string, RoadNode>(ROAD_NODES.map((n) => [n.id, n]))
 
-// Adjacency lists in ROAD_EDGES order (deterministic tie-breaking).
-const ADJ = new Map<string, { id: string; w: number }[]>()
-for (const n of ROAD_NODES) ADJ.set(n.id, [])
+// Index adjacency for the shared Dijkstra (Fable #56). Node ids in ROAD_NODES order.
+const IDX = new Map<string, number>(ROAD_NODES.map((n, i) => [n.id, i]))
+const ADJ_IDX: DijkstraEdge[][] = ROAD_NODES.map(() => [])
 for (const [a, b] of ROAD_EDGES) {
-  const na = NODE_BY_ID.get(a)
-  const nb = NODE_BY_ID.get(b)
-  if (!na || !nb) continue
-  const w = Math.hypot(na.x - nb.x, na.z - nb.z)
-  ADJ.get(a)!.push({ id: b, w })
-  ADJ.get(b)!.push({ id: a, w })
+  const ia = IDX.get(a)
+  const ib = IDX.get(b)
+  if (ia === undefined || ib === undefined) continue
+  const w = Math.hypot(ROAD_NODES[ia].x - ROAD_NODES[ib].x, ROAD_NODES[ia].z - ROAD_NODES[ib].z)
+  ADJ_IDX[ia].push({ to: ib, w })
+  ADJ_IDX[ib].push({ to: ia, w })
 }
 
-/** Dijkstra over the edge list; node ids from -> to inclusive, [] if unreachable/unknown. */
+/** Dijkstra over the edge list; node ids from -> to inclusive, [] if unreachable/unknown.
+ *  Uses the shared Dijkstra (shared/dijkstra.ts) with the roads tie-break (smaller id wins). */
 export function roadPath(fromId: string, toId: string): string[] {
-  if (!NODE_BY_ID.has(fromId) || !NODE_BY_ID.has(toId)) return []
-  if (fromId === toId) return [fromId]
-  const dist = new Map<string, number>()
-  const prev = new Map<string, string>()
-  const done = new Set<string>()
-  for (const n of ROAD_NODES) dist.set(n.id, Infinity)
-  dist.set(fromId, 0)
-  for (;;) {
-    // Pick the unvisited node with the smallest distance (ties: smaller id).
-    let cur: string | null = null
-    let best = Infinity
-    for (const n of ROAD_NODES) {
-      if (done.has(n.id)) continue
-      const d = dist.get(n.id)!
-      if (d < best || (d === best && cur !== null && n.id < cur)) {
-        best = d
-        cur = n.id
-      }
-    }
-    if (cur === null || best === Infinity) return []
-    if (cur === toId) break
-    done.add(cur)
-    for (const nb of ADJ.get(cur)!) {
-      if (done.has(nb.id)) continue
-      const nd = best + nb.w
-      if (nd < dist.get(nb.id)! - 1e-9) {
-        dist.set(nb.id, nd)
-        prev.set(nb.id, cur)
-      }
-    }
-  }
-  const path: string[] = [toId]
-  let c = toId
-  while (c !== fromId) {
-    const p = prev.get(c)
-    if (p === undefined) return []
-    path.push(p)
-    c = p
-  }
-  return path.reverse()
+  const from = IDX.get(fromId)
+  const to = IDX.get(toId)
+  if (from === undefined || to === undefined) return []
+  if (from === to) return [fromId]
+  const ids = ROAD_NODES.map((n) => n.id)
+  const { prev } = dijkstra(ADJ_IDX, from, to, (a, b) => ids[a] < ids[b])
+  return reconstructPath(prev, from, to).map((i) => ids[i])
 }
 
 /** Waypoints of roadPath: excludes the start node, includes the destination. */

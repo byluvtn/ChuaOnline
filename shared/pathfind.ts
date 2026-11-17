@@ -1,4 +1,5 @@
 import { ROAD_NODES, ROAD_EDGES, HOUSE_DOORS, type Pt } from './roads';
+import { dijkstra, reconstructPath } from './dijkstra';
 
 export type Collider = { x: number; z: number; r: number; x2?: number; z2?: number };
 export interface Pathfinder {
@@ -328,19 +329,7 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
     const A = nearestNode(from);
     let B = nearestNode(to);
 
-    const dist = new Array<number>(N).fill(Infinity);
-    const prev = new Array<number>(N).fill(-1);
-    const done = new Array<boolean>(N).fill(false);
-    dist[A] = 0;
-    for (let it = 0; it < N; it++) {
-      let u = -1;
-      for (let i = 0; i < N; i++) if (!done[i] && (u < 0 || dist[i] < dist[u])) u = i;
-      if (u < 0 || dist[u] === Infinity) break;
-      done[u] = true;
-      for (const e of adj[u]) {
-        if (!done[e.to] && dist[u] + e.w < dist[e.to]) { dist[e.to] = dist[u] + e.w; prev[e.to] = u; }
-      }
-    }
+    const { dist, prev } = dijkstra(adj, A); // không early-exit: fallback cần dist đầy đủ
 
     if (dist[B] === Infinity) {
       let best = A, bestD = Infinity;
@@ -353,12 +342,8 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
       console.warn('planPath: target unreachable, stopping at node ' + ids[B]);
     }
 
-    const buildChain = (end: number): Pt[] => {
-      const chain: number[] = [];
-      for (let i = end; i !== -1; i = prev[i]) chain.push(i);
-      chain.reverse();
-      return chain.map((i) => ({ x: pts[i].x, z: pts[i].z }));
-    };
+    const buildChain = (end: number): Pt[] =>
+      reconstructPath(prev, A, end).map((i) => ({ x: pts[i].x, z: pts[i].z }));
     let out = buildChain(B);
 
     const endsAt = (q: Pt) => out.length > 0 && Math.hypot(out[out.length - 1].x - q.x, out[out.length - 1].z - q.z) < 0.05;

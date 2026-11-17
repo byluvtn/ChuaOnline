@@ -103,6 +103,6 @@ export function openSpin(ctx: MenuCtx, back?: () => void) {
     body.append(
       h('button', { class: 'ghost back', onclick: () => back?.() }, '← Trò chơi'),
       stage, used, note,
-      h('p', { class: 'hint' }, 'Mỗi ngày quay 1 lượt miễn phí. Kết quả do máy chủ quyết định. Ngày mới bắt đầu lúc 07:00 giờ Việt Nam.'));
+      h('p', { class: 'hint' }, 'Mỗi ngày quay 1 lượt miễn phí. Kết quả do máy chủ quyết định. Ngày mới bắt đầu lúc 00:00 giờ Việt Nam.'));
   });
 }

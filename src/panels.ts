@@ -637,9 +637,9 @@ function renderQuests(body: HTMLElement, ctx: PanelCtx) {
       h('progress', { max: 100, value: pct.toFixed(0) }))),
     h('small', { class: 'hint', style: 'margin:0' }, 'Lên cấp nhận thưởng xu + công đức và mở khóa vật phẩm mới.'));
 
-  body.append(h('h3', { style: 'margin:8px 0 4px' }, 'Mỗi ngày'), h('p', { class: 'hint', style: 'margin:0 0 6px' }, 'Làm mới lúc 7h sáng mỗi ngày.'));
+  body.append(h('h3', { style: 'margin:8px 0 4px' }, 'Mỗi ngày'), h('p', { class: 'hint', style: 'margin:0 0 6px' }, 'Làm mới lúc 0h mỗi ngày.'));
   body.append(...questRows(daily, ctx));
-  body.append(h('h3', { style: 'margin:14px 0 4px' }, 'Mỗi tuần'), h('p', { class: 'hint', style: 'margin:0 0 6px' }, 'Làm mới vào thứ Hai hằng tuần — thưởng lớn hơn.'));
+  body.append(h('h3', { style: 'margin:14px 0 4px' }, 'Mỗi tuần'), h('p', { class: 'hint', style: 'margin:0 0 6px' }, 'Làm mới lúc 0h thứ Hai hằng tuần — thưởng lớn hơn.'));
   body.append(...questRows(weekly, ctx));
 }
 

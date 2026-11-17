@@ -3,8 +3,8 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { levelOf, type Outfit, type Profile } from '../shared/types.js';
-import { dayKeyICT } from '../shared/time.js';
-import { ITEM_BY_ID, earnedTitles, type MailGift, type MailItem, type PlayerStats, type StatKey } from '../shared/game.js';
+import { dayKeyICT, weekKey } from '../shared/time.js';
+import { ITEM_BY_ID, STAT_KEY_CAMEL, earnedTitles, type MailGift, type MailItem, type PlayerStats, type StatKey } from '../shared/game.js';
 
 const localFile = process.env.DB_FILE ? process.env.DB_FILE : 'data/chuaonline.db';
 if (!process.env.TURSO_DATABASE_URL) {
@@ -277,13 +277,8 @@ await bootRetry('syncAdmins', () => syncAdmins());
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const now = () => Date.now();
-export const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
-export const weekKey = (d = new Date()) => {
-  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
-  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-  return `${t.getUTCFullYear()}-W${Math.ceil(((+t - +y0) / 86400000 + 1) / 7)}`;
-};
+// Mốc ngày: dayKeyICT (00:00 giờ VN); mốc tuần: weekKey (shared/time.ts). Ngày chuyển từ khóa UTC sang ICT,
+// người chơi 00:00–07:00 có thể nhận đôi 1 lần hoặc đứt chuỗi điểm danh (đã chấp nhận, không có cơ chế chuyển tiếp).
 
 // ---- passwords ----
 const hashPw = (pw: string) => {
@@ -548,9 +543,9 @@ export async function setAccessory(id: number, item: string | null) {
 
 // ---- quests ----
 /** Khoá phiên nhiệm vụ: nhiệm vụ ngày dùng day_key, nhiệm vụ tuần (id `w_…`) dùng week_key. */
-export const questKey = (questId: string, d = new Date()) => (questId.startsWith('c_') ? 'once' : (questId.startsWith('w_') ? weekKey(d) : ((questId.startsWith('dq_') || questId.startsWith('gq_')) ? dayKeyICT(d) : dayKey(d))));
+export const questKey = (questId: string, d = new Date()) => (questId.startsWith('c_') ? 'once' : (questId.startsWith('w_') ? weekKey(d) : dayKeyICT(d)));
 export async function questRows(id: number) {
-  const rows = (await db.execute({ sql: "SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?, ?, 'once')", args: [id, dayKey(), dayKeyICT(), weekKey()] })).rows as unknown as { quest_id: string; progress: number; claimed: number }[];
+  const rows = (await db.execute({ sql: "SELECT quest_id, progress, claimed FROM quest_progress WHERE player_id = ? AND day_key IN (?, ?, 'once')", args: [id, dayKeyICT(), weekKey()] })).rows as unknown as { quest_id: string; progress: number; claimed: number }[];
   return rows.map((r) => ({ quest_id: r.quest_id, progress: Number(r.progress), claimed: Number(r.claimed) }));
 }
 export async function bumpQuest(id: number, questId: string, target: number, by = 1) {
@@ -709,10 +704,9 @@ export async function getStatValue(id: number, key: StatKey): Promise<number> {
 export async function getStats(id: number): Promise<PlayerStats> {
   const r = (await db.execute({ sql: 'SELECT bows, chants, lanterns, meditate_sec, beads_rounds, incense FROM player_stats WHERE player_id = ?', args: [id] })).rows[0] as unknown as
     { bows: number; chants: number; lanterns: number; meditate_sec: number; beads_rounds: number; incense: number } | undefined;
-  return {
-    bows: Number(r?.bows ?? 0), chants: Number(r?.chants ?? 0), lanterns: Number(r?.lanterns ?? 0),
-    meditateSec: Number(r?.meditate_sec ?? 0), beadsRounds: Number(r?.beads_rounds ?? 0), incense: Number(r?.incense ?? 0),
-  };
+  const out = { bows: 0, chants: 0, lanterns: 0, meditateSec: 0, beadsRounds: 0, incense: 0 } as PlayerStats;
+  (Object.keys(STAT_KEY_CAMEL) as StatKey[]).forEach((k) => { out[STAT_KEY_CAMEL[k]] = Number(r?.[k] ?? 0); });
+  return out;
 }
 /** Ghi nhận mốc thành tựu đã thưởng; true nếu lần đầu đạt mốc này. */
 export async function claimStatReward(id: number, milestoneId: string): Promise<boolean> {
@@ -757,17 +751,17 @@ await db.execute(`CREATE TABLE IF NOT EXISTS checkins (
   streak INTEGER NOT NULL DEFAULT 0,
   total INTEGER NOT NULL DEFAULT 0
 )`);
-const yesterdayKey = () => dayKey(new Date(Date.now() - 86_400_000));
+const yesterdayKey = () => dayKeyICT(new Date(Date.now() - 86_400_000));
 export async function checkinState(id: number): Promise<{ streak: number; claimedToday: boolean; total: number }> {
   const r = (await db.execute({ sql: 'SELECT last_day, streak, total FROM checkins WHERE player_id = ?', args: [id] })).rows[0] as unknown as { last_day: string; streak: number; total: number } | undefined;
   if (!r) return { streak: 0, claimedToday: false, total: 0 };
-  const claimedToday = r.last_day === dayKey();
+  const claimedToday = r.last_day === dayKeyICT();
   const alive = claimedToday || r.last_day === yesterdayKey();
   return { streak: alive ? Number(r.streak) : 0, claimedToday, total: Number(r.total) };
 }
 /** Điểm danh nguyên tử: null nếu hôm nay đã nhận. Ngày chu kỳ 1..7 tra bảng CHECKIN_REWARDS. */
 export async function claimCheckin(id: number): Promise<{ streak: number; cycleDay: number } | null> {
-  const today = dayKey();
+  const today = dayKeyICT();
   const r = await db.execute({
     sql: `INSERT INTO checkins (player_id, last_day, streak, total) VALUES (?, ?, 1, 1)
     ON CONFLICT(player_id) DO UPDATE SET
@@ -949,7 +943,7 @@ export async function sendGift(
     });
 
     // 4. Tiêu 1 lượt minigame_daily game 'gift', cap 5 (đúng thứ tự cột của claimMinigame)
-    const dk = dayKey();
+    const dk = dayKeyICT();
     const quotaRes = await tx.execute({
       sql: `INSERT INTO minigame_daily (player_id, day_key, game, count)
             VALUES (?, ?, 'gift', 1)
@@ -1025,25 +1019,25 @@ export async function claimMinigame(id: number, game: string, cap: number): Prom
   const r = await db.execute({
     sql: `INSERT INTO minigame_daily (player_id, day_key, game, count) VALUES (?,?,?,1)
     ON CONFLICT(player_id, day_key, game) DO UPDATE SET count = count + 1 WHERE count < ?`,
-    args: [id, dayKey(), game, cap],
+    args: [id, dayKeyICT(), game, cap],
   });
   return r.rowsAffected === 1;
 }
 export const minigameCount = async (id: number, game: string): Promise<number> => {
-  const r = (await db.execute({ sql: 'SELECT count FROM minigame_daily WHERE player_id = ? AND day_key = ? AND game = ?', args: [id, dayKey(), game] })).rows[0] as unknown as { count: number } | undefined;
+  const r = (await db.execute({ sql: 'SELECT count FROM minigame_daily WHERE player_id = ? AND day_key = ? AND game = ?', args: [id, dayKeyICT(), game] })).rows[0] as unknown as { count: number } | undefined;
   return r ? Number(r.count) : 0;
 };
 
 // ---- xin xăm ----
 export const getFortuneToday = async (id: number): Promise<number | null> => {
-  const r = (await db.execute({ sql: 'SELECT n FROM fortune_daily WHERE player_id = ? AND day_key = ?', args: [id, dayKey()] })).rows[0] as unknown as { n: number } | undefined;
+  const r = (await db.execute({ sql: 'SELECT n FROM fortune_daily WHERE player_id = ? AND day_key = ?', args: [id, dayKeyICT()] })).rows[0] as unknown as { n: number } | undefined;
   return r ? Number(r.n) : null;
 };
 /** Lưu quẻ của hôm nay; đua nhau cũng chỉ giữ 1 quẻ/ngày. Trả về n đang được lưu. */
 export async function saveFortune(id: number, n: number): Promise<number> {
   await db.execute({
     sql: 'INSERT INTO fortune_daily (player_id, day_key, n) VALUES (?,?,?) ON CONFLICT(player_id, day_key) DO NOTHING',
-    args: [id, dayKey(), n],
+    args: [id, dayKeyICT(), n],
   });
   return (await getFortuneToday(id)) ?? n;
 }

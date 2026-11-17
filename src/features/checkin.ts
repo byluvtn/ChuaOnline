@@ -57,7 +57,7 @@ function render(body: HTMLElement, ctx: MenuCtx, busy = false) {
       h('h3', {}, `Chuỗi điểm danh: ${st.streak} ngày · Tổng lượt: ${st.total}`)),
     h('div', { class: 'ckgrid' }, ...cells),
     btn,
-    h('p', { class: 'hint' }, `Hôm nay: ${rewardText(cur - 1)}. Bỏ lỡ một ngày thì chuỗi tính lại từ ngày 1. Ngày mới bắt đầu lúc 07:00 giờ Việt Nam.`));
+    h('p', { class: 'hint' }, `Hôm nay: ${rewardText(cur - 1)}. Bỏ lỡ một ngày thì chuỗi tính lại từ ngày 1. Ngày mới bắt đầu lúc 00:00 giờ Việt Nam.`));
 }
 
 export function openCheckin(ctx: MenuCtx) {

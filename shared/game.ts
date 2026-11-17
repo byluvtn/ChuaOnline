@@ -307,9 +307,9 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc23', zone: Z_CHINH_DIEN },
   { id: 'nq_incense_tamthe', label: 'Thắp hương hộ ở Điện Tam Thế', event: 'incense', target: 1, coins: 15, merit: 8,
     giver: 'npc29', zone: Z_TAM_THE },
-  { id: 'nq_feed_pets', label: 'Cho chó mèo ăn', event: 'feed', target: 2, coins: 20, merit: 10, giver: 'npc14', steps: ['talk', 'feed'] },
-  { id: 'nq_find_lost_pet', label: 'Tìm chó mèo đi lạc', event: 'find', target: 2, coins: 25, merit: 12, giver: 'npc2', steps: ['talk', 'find'] },
-  { id: 'nq_phongsinh', label: 'Phóng sinh lần đầu', event: 'buy', target: 4, coins: 15, merit: 8,
+  { id: 'nq_feed_pets', label: 'Cho chó mèo ăn', event: 'talk', target: 2, coins: 20, merit: 10, giver: 'npc14', steps: ['talk', 'feed'] },
+  { id: 'nq_find_lost_pet', label: 'Tìm chó mèo đi lạc', event: 'talk', target: 2, coins: 25, merit: 12, giver: 'npc2', steps: ['talk', 'find'] },
+  { id: 'nq_phongsinh', label: 'Phóng sinh lần đầu', event: 'talk', target: 4, coins: 15, merit: 8,
     giver: 'npc30', receiver: 'npc30', stall: 'stall_phongsinh', zone: Z_PS_PIER, steps: ['talk', 'buyphongsinh', 'release', 'deliver'] },
   { id: 'nq_feed_birds', label: 'Cho đàn chim ăn', event: 'talk', target: 4, coins: 25, merit: 12,
     giver: 'npc30', receiver: 'npc30', stall: 'stall_phongsinh', steps: ['talk', 'buyfood', 'feed', 'deliver'] },
@@ -324,8 +324,8 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'dq_sutra', label: 'Tụng kinh ở Thiền Đường', event: 'sutra', target: 1, coins: 25, merit: 12, giver: 'npc37', zone: Z_THIEN_DUONG },
   { id: 'dq_incense', label: 'Thắp hương 3 lần', event: 'incense', target: 3, coins: 20, merit: 10, giver: 'npc37' },
   { id: 'dq_lantern', label: 'Thả đèn hoa đăng', event: 'lantern', target: 1, coins: 20, merit: 10, giver: 'npc37', zone: Z_CAU_SEN },
-  { id: 'dq_feed', label: 'Cho chó mèo ăn', event: 'feed', target: 2, coins: 20, merit: 10, giver: 'npc37', steps: ['talk', 'feed'] },
-  { id: 'dq_release', label: 'Phóng sinh 1 lần', event: 'buy', target: 4, coins: 25, merit: 12,
+  { id: 'dq_feed', label: 'Cho chó mèo ăn', event: 'talk', target: 2, coins: 20, merit: 10, giver: 'npc37', steps: ['talk', 'feed'] },
+  { id: 'dq_release', label: 'Phóng sinh 1 lần', event: 'talk', target: 4, coins: 25, merit: 12,
     giver: 'npc37', receiver: 'npc37', stall: 'stall_phongsinh', zone: Z_PS_PIER, steps: ['talk', 'buyphongsinh', 'release', 'deliver'] },
   { id: 'dq_bell', label: 'Thỉnh chuông', event: 'talk', target: 2, coins: 15, merit: 8, giver: 'npc37', receiver: 'npc4', steps: ['talk', 'deliver'] },
   { id: 'dq_meditate', label: 'Thiền 2 phút', event: 'meditate', target: 12, coins: 30, merit: 15, giver: 'npc37', zone: Z_THIEN_DUONG },
@@ -460,6 +460,11 @@ export interface MailAck {
 export interface GiftAck { ok: boolean; error?: string; left?: number }
 
 export type StatKey = 'bows' | 'chants' | 'lanterns' | 'meditate_sec' | 'beads_rounds' | 'incense';
+/** Một nguồn duy nhất cho 2 cách viết khóa stat: snake (DB/cột, StatKey) ↔ camel (PlayerStats). */
+export const STAT_KEY_CAMEL: Record<StatKey, keyof PlayerStats> = {
+  bows: 'bows', chants: 'chants', lanterns: 'lanterns',
+  meditate_sec: 'meditateSec', beads_rounds: 'beadsRounds', incense: 'incense',
+};
 export interface StatMilestone { id: string; stat: StatKey; threshold: number; title: string; coins: number; item?: string }
 export const STAT_MILESTONES: StatMilestone[] = [
   { id: 'bow100', stat: 'bows', threshold: 100, title: 'Chắp tay thành kính', coins: 20 },
@@ -486,6 +491,8 @@ export interface MilestoneEvent { id: string; title: string; coins: number; item
 export type TitleKind = 'level' | 'quests' | 'donated' | 'stat';
 /** need: cấp tối thiểu (level), số nhiệm vụ khác nhau (quests), tổng xu (donated) hoặc ngưỡng của stat. */
 export interface TitleRule { id: string; name: string; kind: TitleKind; need: number; desc: string; stat?: keyof PlayerStats }
+/** Số nhiệm vụ NPC (nq_) hiện có — q26 theo số này, không hard-code (Fable #54). */
+const NQ_COUNT = NPC_QUESTS.filter((q) => q.id.startsWith('nq_')).length;
 export const TITLES: TitleRule[] = [
   { id: 'lv-t1', name: 'Sơ phát tâm', kind: 'level', need: 1, desc: 'Đạt cấp 1' },
   { id: 'lv-t2', name: 'Cư sĩ', kind: 'level', need: 4, desc: 'Đạt cấp 4' },
@@ -499,7 +506,7 @@ export const TITLES: TitleRule[] = [
   { id: 'lv-t10', name: 'Trí tuệ', kind: 'level', need: 28, desc: 'Đạt cấp 28' },
   { id: 'q5', name: 'Người Làm Thiện', kind: 'quests', need: 5, desc: 'Hoàn thành 5 nhiệm vụ khác nhau' },
   { id: 'q15', name: 'Bậc Thiện Hạnh', kind: 'quests', need: 15, desc: 'Hoàn thành 15 nhiệm vụ khác nhau' },
-  { id: 'q26', name: 'Viên Mãn Hạnh Nguyện', kind: 'quests', need: 26, desc: 'Hoàn thành 26 nhiệm vụ khác nhau' },
+  { id: 'q26', name: 'Viên Mãn Hạnh Nguyện', kind: 'quests', need: NQ_COUNT, desc: `Hoàn thành ${NQ_COUNT} nhiệm vụ khác nhau` },
   { id: 'd100', name: 'Người Gieo Duyên', kind: 'donated', need: 100, desc: 'Đóng góp tổng cộng 100 xu' },
   { id: 'd500', name: 'Thí Chủ', kind: 'donated', need: 500, desc: 'Đóng góp tổng cộng 500 xu' },
   { id: 'd1000', name: 'Đại Thí Chủ', kind: 'donated', need: 1000, desc: 'Đóng góp tổng cộng 1000 xu' },
@@ -535,8 +542,22 @@ export function titleProgress(t: TitleRule, i: TitleInput): number {
   return 0;
 }
 export const titleName = (id: string): string => TITLES.find((t) => t.id === id)?.name ?? id;
-/** Danh hiệu cao nhất = id cuối cùng theo thứ tự TITLES; earned đã theo thứ tự đó. */
-export const defaultTitle = (earned: string[]): string | null => (earned.length ? earned[earned.length - 1] : null);
+/** Thứ hạng danh hiệu để chọn mặc định: level (tiến trình chính) > quests > donated > stat;
+ *  trong cùng hạng, need cao hơn thì cao hơn. (Vị trí trong TITLES KHÔNG phải thứ hạng:
+ *  danh hiệu stat nằm cuối mảng nhưng là thành tựu phụ — người cấp 28 không nên mặc
+ *  định đeo danh hiệu thắp hương chỉ vì nó đứng sau lv-t10.) */
+const TITLE_KIND_RANK: Record<TitleKind, number> = { level: 0, quests: 1, donated: 2, stat: 3 };
+/** Danh hiệu mặc định = danh hiệu hạng cao nhất đã nhận, không phải mới nhận nhất. */
+export const defaultTitle = (earned: string[]): string | null => {
+  const set = new Set(earned);
+  let best: TitleRule | null = null;
+  for (const t of TITLES) {
+    if (!set.has(t.id)) continue;
+    if (!best || TITLE_KIND_RANK[t.kind] < TITLE_KIND_RANK[best.kind]
+      || (TITLE_KIND_RANK[t.kind] === TITLE_KIND_RANK[best.kind] && t.need > best.need)) best = t;
+  }
+  return best?.id ?? null;
+};
 
 export interface BeadsState { rewarded: number }
 export interface BeadsAck { ok: boolean; rewarded?: boolean; merit?: number; error?: string }

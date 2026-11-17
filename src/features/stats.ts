@@ -1,4 +1,4 @@
-import { ITEM_BY_ID, STAT_MILESTONES, type MilestoneEvent, type StatKey, type StatsAck, type StatsState } from '../../shared/game';
+import { ITEM_BY_ID, STAT_KEY_CAMEL, STAT_MILESTONES, type MilestoneEvent, type StatKey, type StatsAck, type StatsState } from '../../shared/game';
 import { h } from '../panels';
 import type { MenuCtx } from '../menu';
 
@@ -13,14 +13,14 @@ export function initStats(ctx: MenuCtx) {
   });
 }
 
-interface Row { stat: StatKey; label: string; icon: string; value: (s: StatsState) => number }
+interface Row { stat: StatKey; label: string; icon: string }
 const ROWS: Row[] = [
-  { stat: 'bows', label: 'Lạy Phật', icon: '🙏', value: (s) => s.stats.bows },
-  { stat: 'chants', label: 'Tụng kinh', icon: '📿', value: (s) => s.stats.chants },
-  { stat: 'lanterns', label: 'Thả đèn', icon: '🏮', value: (s) => s.stats.lanterns },
-  { stat: 'meditate_sec', label: 'Ngồi thiền', icon: '🧘', value: (s) => s.stats.meditateSec },
-  { stat: 'beads_rounds', label: 'Vòng hạt', icon: '📿', value: (s) => s.stats.beadsRounds },
-  { stat: 'incense', label: 'Thắp hương', icon: '🕯', value: (s) => s.stats.incense },
+  { stat: 'bows', label: 'Lạy Phật', icon: '🙏' },
+  { stat: 'chants', label: 'Tụng kinh', icon: '📿' },
+  { stat: 'lanterns', label: 'Thả đèn', icon: '🏮' },
+  { stat: 'meditate_sec', label: 'Ngồi thiền', icon: '🧘' },
+  { stat: 'beads_rounds', label: 'Vòng hạt', icon: '📿' },
+  { stat: 'incense', label: 'Thắp hương', icon: '🕯' },
 ];
 
 const nf = new Intl.NumberFormat('vi-VN');
@@ -32,7 +32,7 @@ function renderRows(box: HTMLElement) {
   const st: StatsState = cache ?? { stats: { bows: 0, chants: 0, lanterns: 0, meditateSec: 0, beadsRounds: 0, incense: 0 }, claimed: [] };
   for (const row of ROWS) {
     const ms = STAT_MILESTONES.filter((m) => m.stat === row.stat).sort((a, b) => a.threshold - b.threshold);
-    const v = row.value(st);
+    const v = st.stats[STAT_KEY_CAMEL[row.stat]];
     const nextIdx = ms.findIndex((m) => !st.claimed.includes(m.id) && v < m.threshold);
     const next = nextIdx >= 0 ? ms[nextIdx] : undefined;
     const prev = nextIdx > 0 ? ms[nextIdx - 1].threshold : 0;
