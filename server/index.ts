@@ -1269,6 +1269,7 @@ io.on('connection', (socket) => {
     if (merit === 0 && coins === 0) return reply({ ok: false, error: 'Cần tặng ít nhất công đức hoặc xu' });
     if (!(await db.getProfile(userId))) return reply({ ok: false, error: 'Không tìm thấy người chơi' });
     await db.addRewards(userId, merit, coins);
+    await db.logAdminGrant(s.pid, userId, merit, coins);
     for (const other of sessions.values()) {
       if (other.pid === userId) await pushProfile(other);
     }
