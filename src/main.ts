@@ -30,8 +30,15 @@ import {
 } from '../shared/types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-const isTouch = matchMedia('(pointer: coarse)').matches || location.search.includes('touch=1');
-if (isTouch) document.body.classList.add('touch');
+const coarseMq = matchMedia('(pointer: coarse)');
+let isTouch = coarseMq.matches || location.search.includes('touch=1');
+const syncTouch = () => {
+  isTouch = coarseMq.matches || location.search.includes('touch=1');
+  document.body.classList.toggle('touch', isTouch);
+};
+syncTouch();
+coarseMq.addEventListener('change', syncTouch);
+window.addEventListener('orientationchange', syncTouch);
 hydrateIcons();
 
 const COLORS = ['#d9a62b', '#778c96', '#72818e', '#bc7672', '#c0561f', '#e8821e', '#7a6130', '#5b6377', '#2f5aa8', '#a3343f', '#3b8a52', '#c27d1e', '#7a3f8f', '#e3b341', '#d99a1e', '#8fb0c4', '#5a3a22', '#6f93b5'];
@@ -343,11 +350,13 @@ function clearPlayers() {
 }
 
 // ---------- HUD ----------
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
 function toast(text: string) {
   const el = $('toast');
   el.textContent = text;
   el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2200);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
 }
 
 const DONATE_MS = 10000;
@@ -1011,7 +1020,8 @@ function seatTaken(st: { x: number; z: number }): boolean {
 /** Độ dài route thật; Infinity nếu đường vòng không tới được đích (lastFallback). */
 function routeLength(ax: number, az: number, bx: number, bz: number): number {
   const pts = pathfinder.findPath({ x: ax, z: az }, { x: bx, z: bz });
-  if (pathfinder.lastFallback) return Infinity;
+  const fb = pathfinder.lastFallback;
+  if (fb) return Infinity;
   let len = 0, px = ax, pz = az;
   for (const p of pts) { len += Math.hypot(p.x - px, p.z - pz); px = p.x; pz = p.z; }
   return len;
@@ -1263,6 +1273,7 @@ const tmp = new THREE.Vector3();
 
 let pathQueue: THREE.Vector3[] = [];
 let pathTarget: THREE.Vector3 | null = null;
+let clickPathFallback = false;
 
 const ACCEL_S = 0.25, DECEL_S = 0.25, WALK_SPEED = 3.8, RUN_SPEED = 7, ARRIVE_DIST = 1.5;
 const STRIDE_M = WALK_SPEED * 1.24;
@@ -1858,7 +1869,8 @@ function updateGuidePath(): void {
   // ve trung voi duong nguoi choi thuc su di; chi dung routeFrom khi findPath
   // fallback (dich khong toi duoc) hoac tra ve rong.
   let pts = pathfinder.findPath(from, guideTarget);
-  if (pathfinder.lastFallback || !pts.length) {
+  const fb = pathfinder.lastFallback;
+  if (fb || !pts.length) {
     pts = routeFrom(from, nearestNode(guideTarget));
     if (!pts.length) pts = [from, guideTarget];
     else pts = [...pts, guideTarget];
@@ -2471,20 +2483,29 @@ function loop(now: number = performance.now()) {
       me.ry = Math.atan2(dx, dz);
       moving = true;
     } else if (clickTarget) {
-      if (pathTarget !== clickTarget) { pathTarget = clickTarget; pathQueue = (bowSeat && bowDirect) ? [new THREE.Vector3(clickTarget.x, 0, clickTarget.z)] : pathfinder.findPath({ x: root.position.x, z: root.position.z }, { x: clickTarget.x, z: clickTarget.z }).map((p) => new THREE.Vector3(p.x, 0, p.z)); }
+      if (pathTarget !== clickTarget) {
+        pathTarget = clickTarget;
+        if (bowSeat && bowDirect) {
+          clickPathFallback = false;
+          pathQueue = [new THREE.Vector3(clickTarget.x, 0, clickTarget.z)];
+        } else {
+          pathQueue = pathfinder.findPath({ x: root.position.x, z: root.position.z }, { x: clickTarget.x, z: clickTarget.z }).map((p) => new THREE.Vector3(p.x, 0, p.z));
+          clickPathFallback = pathfinder.lastFallback;
+        }
+      }
       const wp = pathQueue.length ? pathQueue[0] : clickTarget;
       tmp.copy(wp).sub(root.position);
       tmp.y = 0;
       const wpDist = tmp.length();
       const arrived = wpDist < 0.2 || (pathQueue.length <= 1 && wpDist < (guideQuestId ? 0.25 : 0.9) && (curSpeed < 1.6 || tmp.x * moveDir.x + tmp.z * moveDir.z < 0));
       if (wpDist < 0.3 && pathQueue.length > 1) { pathQueue.shift(); }
-      else if (arrived && bowSeat && pathfinder.lastFallback && (wp.x !== clickTarget.x || wp.z !== clickTarget.z) && Math.hypot(clickTarget.x - root.position.x, clickTarget.z - root.position.z) > 1.2) {
+      else if (arrived && bowSeat && clickPathFallback && (wp.x !== clickTarget.x || wp.z !== clickTarget.z) && Math.hypot(clickTarget.x - root.position.x, clickTarget.z - root.position.z) > 1.2) {
         pathQueue = [clickTarget.clone()];   // đường vòng cụt: đi thẳng tới đệm, collide() trượt dọc tường
       }
-      else if (arrived && pathfinder.lastFallback && pathQueue.length === 1 && wpDist < 0.3 && (wp.x !== clickTarget.x || wp.z !== clickTarget.z) && Math.hypot(clickTarget.x - root.position.x, clickTarget.z - root.position.z) > 3) {
+      else if (arrived && clickPathFallback && pathQueue.length === 1 && wpDist < 0.3 && (wp.x !== clickTarget.x || wp.z !== clickTarget.z) && Math.hypot(clickTarget.x - root.position.x, clickTarget.z - root.position.z) > 3) {
         pathQueue = [clickTarget.clone()];   // chuỗi suy biến tại chân nhân vật, đích còn xa: không coi là đã tới, đi thẳng tới đích
       }
-      else if (arrived) { clickTarget = null; pathTarget = null; pathQueue = []; }
+      else if (arrived) { clickTarget = null; pathTarget = null; pathQueue = []; clickPathFallback = false; }
       else {
         tmp.normalize();
         let remain = wpDist;
