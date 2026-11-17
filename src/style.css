@@ -142,6 +142,11 @@ textarea { height: 96px; resize: none; margin: 8px 0; }
 
 /* ---------- panels ---------- */
 .panel { width: min(580px, 96vw); }
+#panel .card { display: flex; flex-direction: column; overflow: hidden; }
+#panel #panelBody { overflow-y: auto; min-height: 0; padding-right: 6px; scrollbar-width: thin; scrollbar-color: #c9a23c rgba(224,210,174,.35); }
+#panel #panelBody::-webkit-scrollbar { width: 8px; }
+#panel #panelBody::-webkit-scrollbar-track { background: rgba(224,210,174,.35); border-radius: 8px; }
+#panel #panelBody::-webkit-scrollbar-thumb { background: #c9a23c; border-radius: 8px; }
 .phead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .phead h2 { font-size: 22px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }

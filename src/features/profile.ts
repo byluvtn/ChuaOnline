@@ -44,7 +44,7 @@ function render(ctx: PanelCtx, headerBox: HTMLElement, titlesBox: HTMLElement) {
         h('div', { style: 'font-size:12px;opacity:.7' }, `${fmt(p.merit)} công đức · ${fmt(p.coins)} xu`)))
   );
 
-  titlesBox.append(h('div', { style: 'color:#f4cd6e;font-size:20px;font-weight:700;margin:16px 0 8px' }, cur ? titleName(cur) : 'Chưa có danh hiệu'));
+  titlesBox.append(h('div', { style: 'color:#8a5a1c;font-size:20px;font-weight:700;margin:16px 0 8px' }, cur ? titleName(cur) : 'Chưa có danh hiệu'));
   titlesBox.append(h('p', { style: 'font-size:12px;opacity:.8;line-height:1.5;margin:0 0 6px' }, 'Làm đủ điều kiện trên thẻ là nhận được. Ai làm đủ cũng nhận được, không giới hạn suất. Danh hiệu không bán. Có nhiều danh hiệu thì chọn mang một cái, đổi lúc nào cũng được.'));
   titlesBox.append(h('div', { style: 'font-size:12px;opacity:.7;margin-bottom:8px' }, `Danh hiệu tu tập · Đã nhận ${earned.size}/24 danh hiệu · không giới hạn suất`));
 
@@ -52,12 +52,12 @@ function render(ctx: PanelCtx, headerBox: HTMLElement, titlesBox: HTMLElement) {
     const v = titleProgress(r, input);
     const done = earned.has(r.id);
     const on = done && cur === r.id;
-    const card = h('div', { style: `border:2px solid ${on ? '#f4cd6e' : 'rgba(255,255,255,.12)'};border-radius:12px;padding:8px 10px;margin:6px 0;opacity:${done ? 1 : 0.55}` },
+    const card = h('div', { style: `border:2px solid ${on ? '#d9a02e' : '#e0d2ae'};border-radius:12px;padding:8px 10px;margin:6px 0;background:#fbf4df;opacity:${done ? 1 : 0.55}` },
       h('div', { style: 'font-weight:700' }, `🏆 ${r.name}`),
       h('div', { style: 'font-size:12px;opacity:.8' }, r.desc),
       h('div', { style: 'font-size:12px;opacity:.9;margin-top:2px' }, progressLine(r, v)));
     if (on) {
-      card.append(h('div', { style: 'color:#f4cd6e;font-size:12px;font-weight:700;margin-top:4px' }, 'Đang mang'));
+      card.append(h('div', { style: 'color:#8a5a1c;font-size:12px;font-weight:700;margin-top:4px' }, 'Đang mang'));
     } else if (done) {
       const btn = h('button', { style: 'margin-top:6px;padding:4px 12px;border-radius:14px;cursor:pointer;background:#f4cd6e;color:#3a2410;border:none;font-weight:700' }, 'Mang danh hiệu');
       btn.addEventListener('click', () => {
@@ -78,9 +78,9 @@ export function openProfilePanel(ctx: PanelCtx) {
   if (!ctx.profile()) { ctx.toast('Chưa đăng nhập'); return; }
   openCustomPanel('Hồ sơ & danh hiệu', (body) => {
     const p = ctx.profile();
-    const bio = h('textarea', { maxlength: '200', placeholder: 'Tiểu sử: đôi lời về bạn (không bắt buộc)', style: 'width:100%;min-height:64px;margin-top:10px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;resize:vertical' });
+    const bio = h('textarea', { maxlength: '200', placeholder: 'Tiểu sử: đôi lời về bạn (không bắt buộc)', style: 'width:100%;min-height:64px;margin-top:10px;padding:8px;border-radius:10px;border:1.5px solid #dccfae;background:#fffdf4;color:inherit;font:inherit;resize:vertical' });
     bio.value = p?.bio ?? '';
-    const age = h('input', { type: 'text', inputmode: 'numeric', placeholder: 'Tuổi (không bắt buộc)', style: 'width:100%;margin-top:8px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit' });
+    const age = h('input', { type: 'text', inputmode: 'numeric', placeholder: 'Tuổi (không bắt buộc)', style: 'width:100%;margin-top:8px;padding:8px;border-radius:10px;border:1.5px solid #dccfae;background:#fffdf4;color:inherit;font:inherit' });
     age.value = p?.age != null ? String(p.age) : '';
     const save = h('button', { style: 'background:#f4cd6e;color:#3a2410;border:none;border-radius:14px;padding:6px 16px;font-weight:700;cursor:pointer;margin-top:8px' }, 'Lưu hồ sơ');
     save.addEventListener('click', () => {
