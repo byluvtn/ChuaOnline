@@ -57,7 +57,8 @@ export const NPC_DEFS: NpcDef[] = [
  * NPC_CLOCK_OFFSET_MIN chỉ để thử: lệch đồng hồ NPC đi số phút đó.
  */
 const VN_OFFSET_MS = 7 * 3600_000;
-const CLOCK_SKEW_MS = Number(process.env.NPC_CLOCK_OFFSET_MIN ?? 0) * 60_000;
+const CLOCK_SKEW_MIN = Number(process.env.NPC_CLOCK_OFFSET_MIN ?? 0);
+const CLOCK_SKEW_MS = (Number.isFinite(CLOCK_SKEW_MIN) ? CLOCK_SKEW_MIN : 0) * 60_000;
 const DAY_MS = 86_400_000;
 const MIN = 60_000;
 export const SESSIONS = [

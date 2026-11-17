@@ -30,7 +30,8 @@ const LOST_SPOTS: P[] = [
   { x: 39, z: 16 }, // sân Điện Mẫu, ngoài biên indoors (|z-10|=6 >= 4.2), cách node dienMau 1.5 m, cách bồ đoàn 6 m
   { x: -46, z: -46 },   // back yard (kept)
 ];
-const PERCH_SPOTS: P[] = [{ x: -47, z: -27 }, { x: 30, z: -31 }];
+// Old first spot (-47,-27) = Thien Duong centre (indoors), moved outside; door is at (-40.5,-27).
+const PERCH_SPOTS: P[] = [{ x: -37, z: -23.5 }, { x: 30, z: -31 }];
 const PLAZA: P = { x: 0, z: 6 };
 const OWL_SPEED = 5;
 const OWL_VY = 3;
