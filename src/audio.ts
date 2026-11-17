@@ -16,20 +16,36 @@ let vol = settings.volume;
 let ambientOn = false;
 let bgm: HTMLAudioElement | null = null;
 const BGM_GAIN = 0.3;
-const applyBgm = () => { if (bgm) bgm.volume = muted ? 0 : Math.min(1, BGM_GAIN * vol); };
+const applyBgm = () => {
+  if (!bgm) return;
+  bgm.volume = muted ? 0 : Math.min(1, BGM_GAIN * vol);
+  if (muted && !bgm.paused) bgm.pause();
+};
 const BGM_TRACKS = ['/audio/spiritual-ambient.mp3', '/audio/placid-ambient.mp3', '/audio/om-mani-padme-hum.mp3', '/audio/dai-bi-than-chu.mp3'];
 let bgmIdx = 0;
+let bgmFail = 0;
+function nextTrack(a: HTMLAudioElement) {
+  bgmIdx = (bgmIdx + 1) % BGM_TRACKS.length;
+  a.src = BGM_TRACKS[bgmIdx];
+  if (!muted) void a.play().catch(() => {});
+}
 function startBgm() {
   if (!bgm) {
     const a = new Audio(BGM_TRACKS[bgmIdx]);
     a.preload = 'auto';
-    a.addEventListener('ended', () => { bgmIdx = (bgmIdx + 1) % BGM_TRACKS.length; a.src = BGM_TRACKS[bgmIdx]; void a.play().catch(() => {}); });
-    a.addEventListener('error', () => { if (bgm === a) bgm = null; });
+    a.addEventListener('ended', () => nextTrack(a));
+    a.addEventListener('error', () => {
+      if (bgm !== a) return;
+      bgmFail++;
+      if (bgmFail >= BGM_TRACKS.length) { bgm = null; return; } // mọi bài đều lỗi — bỏ nhạc
+      nextTrack(a);
+    });
+    a.addEventListener('canplay', () => { bgmFail = 0; });
     document.addEventListener('visibilitychange', () => { if (!bgm) return; if (document.hidden) bgm.pause(); else if (!muted) void bgm.play().catch(() => {}); });
     bgm = a;
   }
   applyBgm();
-  void bgm.play().catch(() => {});
+  if (!muted) void bgm.play().catch(() => {});
 }
 const level = () => (muted ? 0 : 0.7 * vol);
 
