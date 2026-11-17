@@ -60,8 +60,8 @@ export const ITEMS: ShopItem[] = [
   { id: 'huong_tram', name: 'Hương trầm', desc: 'Thắp hương nhận 5 công đức thay vì 1. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🕯', category: 'le_vat', boostMerit: 5 },
   { id: 'hoa_sen', name: 'Hoa sen', desc: 'Lạy Phật nhận 4 công đức. Dùng 1 lần.', price: 15, kind: 'consumable', icon: '🪷', category: 'le_vat', boostMerit: 4 },
   { id: 'den_hoa_dang', name: 'Đèn hoa đăng', desc: 'Thả đèn nhận 15 công đức. Dùng 1 lần.', price: 25, kind: 'consumable', icon: '🏮', category: 'le_vat', boostMerit: 15 },
-  { id: 'nen_sap_ong', name: 'Nến sáp ong', desc: 'Tụng kinh nhận 7 công đức thay vì 2. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🕯', category: 'le_vat', boostMerit: 5 },
-  { id: 'hoa_dang_phat', name: 'Hoa dâng Phật', desc: 'Lạy Phật nhận 8 công đức. Dùng 1 lần.', price: 20, kind: 'consumable', icon: '🌸', category: 'le_vat', boostMerit: 4 },
+  { id: 'nen_sap_ong', name: 'Nến sáp ong', desc: 'Tụng kinh nhận 5 công đức thay vì 2. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🕯', category: 'le_vat', boostMerit: 5 },
+  { id: 'hoa_dang_phat', name: 'Hoa dâng Phật', desc: 'Lạy Phật nhận 4 công đức. Dùng 1 lần.', price: 20, kind: 'consumable', icon: '🌸', category: 'le_vat', boostMerit: 4 },
   // ---- Đồ ăn
   { id: 'pho_chay', name: 'Phở chay', desc: 'Ăn chay thanh tịnh, tụng kinh tiếp theo nhận 5 công đức thay vì 2. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🍜', category: 'do_an', boostMerit: 5 },
   { id: 'com_chay', name: 'Cơm chay', desc: 'Ăn chay thanh tịnh, lạy Phật tiếp theo nhận 4 công đức thay vì 1. Dùng 1 lần.', price: 10, kind: 'consumable', icon: '🍚', category: 'do_an', boostMerit: 4 },
@@ -79,7 +79,7 @@ export const ITEMS: ShopItem[] = [
   { id: 'ba_ba_tim', name: 'Bà ba tím', desc: 'Áo bà ba tím, áo ngắn tay, quần đen.', price: 70, kind: 'accessory', icon: '👕', category: 'ao_trang', minLevel: 2 },
   { id: 'ao_lam', name: 'Áo lam đi chùa', desc: 'Áo lam xám, cổ trắng — nam nữ đều mặc được.', price: 60, kind: 'accessory', icon: '👕', category: 'ao_trang' },
   // ---- Tràng hạt
-  { id: 'trang_hat', name: 'Tràng hạt 108', desc: 'Mỗi lần tụng kinh nhận thêm công đức. Dùng 1 lần.', price: 30, kind: 'consumable', icon: '📿', category: 'trang_hat', boostMerit: 2 },
+  { id: 'trang_hat', name: 'Tràng hạt 108', desc: 'Tụng kinh nhận 5 công đức thay vì 2. Dùng 1 lần.', price: 30, kind: 'consumable', icon: '📿', category: 'trang_hat', boostMerit: 5 },
   { id: 'trang_hat_ngoc', name: 'Tràng hạt ngọc', desc: 'Tràng hạt ngọc trai — vật phẩm quý.', price: 200, kind: 'accessory', icon: '📿', category: 'trang_hat', minLevel: 3 },
   // ---- Bồ đoàn
   { id: 'bo_doan_do', name: 'Bồ đoàn đỏ hoa văn', desc: 'Bồ đoàn đỏ thêu hoa văn.', price: 90, kind: 'accessory', icon: '💺', category: 'bo_doan' },
@@ -187,7 +187,7 @@ export const SUTRAS: Sutra[] = [
       'nhãn giới, cho đến ý thức giới; vô vô minh, diệc vô vô minh tận;',
       'cho đến vô lão tử, diệc vô lão tử tận;',
       'vô khổ tập diệt đạo, vô trí diệc vô đắc.',
-      'Dĩ vô sở đắc cố, Bồ Đề Tát Đề; y Bát Nhã Ba La Mật Đa cố, tâm vô quái ngại;',
+      'Dĩ vô sở đắc cố, Bồ Đề Tát Đỏa; y Bát Nhã Ba La Mật Đa cố, tâm vô quái ngại;',
       'vô quái ngại cố, vô hữu khủng bố, viễn ly điên đảo mộng tưởng, cứu cánh Niết Bàn.',
       'Tam thế chư Phật, y Bát Nhã Ba La Mật Đa cố, đắc A Nậu Đa La Tam Miệu Tam Bồ Đề.',
       'Cho nên tri Bát Nhã Ba La Mật Đa, thị đại thần chú, thị đại minh chú,',
@@ -231,7 +231,7 @@ export const SUTRAS: Sutra[] = [
     reps: 1,
     lines: (() => {
       const out: string[] = ['Nam Mô Bổn Sư Thích Ca Mâu Ni Phật (3 lần)', 'Nam Mô A Di Đà Phật'];
-      for (let i = 2; i < 108; i++) out.push('Nam Mô A Di Đà Phật');
+      for (let i = 2; i < 109; i++) out.push('Nam Mô A Di Đà Phật');
       out.push('Nguyện dứt trầm luân khổ, đồng lên cõi Cực Lạc.');
       return out;
     })(),
@@ -353,9 +353,9 @@ export type GardenQuality = 'normal' | 'good';
 
 /** Hạt giống từng loại cây (item id trong ITEMS + giá bán ở npc38). */
 export const GARDEN_SEEDS: Record<GardenSpecies, { item: string; name: string; price: number }> = {
-  soi: { item: 'hat_soi', name: 'Sồi', price: 10 },
-  thong: { item: 'hat_thong', name: 'Thông', price: 12 },
-  bo_de: { item: 'hat_bo_de', name: 'Bồ Đề', price: 20 },
+  soi: { item: 'hat_soi', name: 'Sồi', price: ITEM_BY_ID['hat_soi'].price },
+  thong: { item: 'hat_thong', name: 'Thông', price: ITEM_BY_ID['hat_thong'].price },
+  bo_de: { item: 'hat_bo_de', name: 'Bồ Đề', price: ITEM_BY_ID['hat_bo_de'].price },
 };
 
 /** Hạt TỐT từng loại cây (chỉ từ thu hoạch, không bán). */

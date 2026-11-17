@@ -30,6 +30,10 @@ export function daysUntil(f: Festival): number | null {
   for (let i = 0; i <= 400; i++) {
     const l = lunarOf(new Date(base.getTime() + i * DAY));
     if (l && !l.leap && l.day === f.lunarDay && (f.monthly || l.month === f.lunarMonth)) return i;
+    if (f.lunarDay === 30 && !f.monthly && l && !l.leap && l.day === 29 && l.month === f.lunarMonth) {
+      const next = lunarOf(new Date(base.getTime() + (i + 1) * DAY));
+      if (next && next.day === 1) return i;
+    }
   }
   return null;
 }

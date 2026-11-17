@@ -59,7 +59,7 @@ export const FORTUNES: Fortune[] = [
     health: 'Chú ý nghỉ ngơi, giữ ấm cơ thể.',
     wealth: 'Hạn chế chi tiêu, giữ của phòng thân.',
   },
-  // ===== Thượng thượng (10 quẻ) =====
+  // ===== Thượng thượng (11 quẻ) =====
   {
     grade: 'Thượng thượng',
     general: 'Sen vàng nở rộ, vận may đang đến gần. Cứ giữ lòng chân thành, công sức bỏ ra sẽ được đền đáp và bình yên theo cùng.',
