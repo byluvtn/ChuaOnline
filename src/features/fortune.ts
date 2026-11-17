@@ -2,6 +2,7 @@ import type { Socket } from 'socket.io-client';
 import { h, openCustomPanel } from '../panels';
 import { FORTUNES, type FortuneAck } from '../data/fortunes';
 import { iconSvg } from '../icons';
+import { emitAck } from '../emitAck';
 
 const validN = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < FORTUNES.length;
 const textOf = (n: number) => {
@@ -42,8 +43,15 @@ export function openFortune(ctx: { socket: Socket; toast: (t: string) => void })
       btn.disabled = true;
       tube.classList.add('shake');
       timers.push(window.setTimeout(() => {
-        ctx.socket.emit('fortune:draw', (r?: FortuneAck) => {
+        emitAck<FortuneAck>(ctx.socket, 'fortune:draw', [], (r, timedOut) => {
           if (closed) return;
+          if (timedOut) {
+            tube.classList.remove('shake');
+            btn.disabled = false;
+            ctx.toast('Mất kết nối, thử lại nhé');
+            loadSaved();
+            return;
+          }
           if (r?.ok && validN(r.n)) { show(r.n); return; }
           tube.classList.remove('shake');
           btn.disabled = false;

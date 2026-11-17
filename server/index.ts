@@ -467,6 +467,7 @@ io.on('connection', (socket) => {
       z: from ? Math.max(MAP_Z_MIN, Math.min(MAP_HALF, from.z)) : 8 + Math.random() * 3,
       ry: from ? from.ry : Math.PI, anim: 'idle', merit: prof.merit,
       title: prof.title ?? defaultTitle(prof.titles),
+      pid,
     };
     const s: Session = old ?? { pid, state, room, socket, last: {} };
     s.state = state;
@@ -1124,19 +1125,21 @@ io.on('connection', (socket) => {
     cb?.({ ok: true, merit: rule.merit, coins: rule.coins, left: rule.cap - (await db.minigameCount(pid, game)) });
   });
 
-  socket.on('beads:start', (cb?: (r: { ok: boolean }) => void) => {
+  socket.on('beads:start', (cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
-    if (!s) return cb?.({ ok: false });
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     s.beadStart = Date.now();
     cb?.({ ok: true });
   });
   socket.on('beads:done', async (cb?: (r: BeadsAck) => void) => {
     const s = me();
-    if (!s) return cb?.({ ok: false });
+    if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const started = s.beadStart;
     s.beadStart = undefined;
-    const elapsed = started === undefined ? -1 : Date.now() - started;
-    if (elapsed < BEAD_ROUND_MIN_MS || elapsed > BEAD_ROUND_MAX_MS) return cb?.({ ok: false });
+    if (started === undefined) return cb?.({ ok: false, error: 'Vòng chưa bắt đầu — chạm vào hạt để bắt đầu vòng mới' });
+    const elapsed = Date.now() - started;
+    if (elapsed < BEAD_ROUND_MIN_MS) return cb?.({ ok: false, error: 'Vòng quá nhanh — hãy lần chậm rãi, đủ nhịp' });
+    if (elapsed > BEAD_ROUND_MAX_MS) return cb?.({ ok: false, error: 'Vòng quá chậm — đã quá 30 phút, bắt đầu vòng mới nhé' });
     await countStatSafe(s, 'beads_rounds');
     const rewarded = await db.claimMinigame(pid, 'lanhat', BEAD_DAILY_CAP);
     const merit = rewarded ? Math.round(BEAD_ROUND_REWARD.merit * meritBoost(new Date()).mult) : 0;
@@ -1184,7 +1187,11 @@ io.on('connection', (socket) => {
     if (typeof mailId !== 'number' || !Number.isFinite(mailId)) return cb?.({ ok: false, error: 'Thư không hợp lệ', unread: await db.mailUnread(pid) });
     const before = (await db.getWallet(pid))?.merit ?? 0;
     const got = await db.claimMail(pid, mailId);
-    if (!got) return cb?.({ ok: false, error: 'Quà đã được nhận hoặc thư không có quà', unread: await db.mailUnread(pid) });
+    if (!got) return cb?.({ ok: false, error: 'Máy chủ đang bận, thử lại sau', unread: await db.mailUnread(pid) });
+    if (!got.ok) {
+      const msg = got.reason === 'claimed' ? 'Quà đã được nhận rồi' : got.reason === 'no_gift' ? 'Thư này không có quà' : 'Không tìm thấy thư';
+      return cb?.({ ok: false, error: msg, reason: got.reason, unread: await db.mailUnread(pid) });
+    }
     const { merit, coins, items } = got.gift;
     await grantRewards(s, merit, coins, { skipAdd: true, beforeMerit: before });
     cb?.({ ok: true, merit, coins, items: items ?? {}, unread: await db.mailUnread(pid) });
@@ -1193,12 +1200,13 @@ io.on('connection', (socket) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
 
-    const p = (payload ?? {}) as { to?: string; item?: string; note?: string };
-    const toSocketId = String(p.to ?? '');
+    const p = (payload ?? {}) as { toPid?: number; item?: string; note?: string };
+    const toPid = p.toPid;
+    if (typeof toPid !== 'number' || !Number.isInteger(toPid) || toPid < 1) return cb?.({ ok: false, error: 'Người nhận không hợp lệ' });
     const itemId = String(p.item ?? '');
 
-    // Resolve người nhận qua sessions map
-    const toSession = sessions.get(toSocketId);
+    // Resolve người nhận theo player id (socket id đổi mỗi lần kết nối lại)
+    const toSession = [...sessions.values()].find((x) => x.pid === toPid);
     if (!toSession) return cb?.({ ok: false, error: 'Người nhận không trực tuyến' });
     if (toSession.room !== s.room) return cb?.({ ok: false, error: 'Người nhận không ở cùng phòng' });
     if (toSession.pid === s.pid) return cb?.({ ok: false, error: 'Không thể tặng cho chính mình' });

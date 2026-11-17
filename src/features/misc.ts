@@ -3,6 +3,7 @@ import { CONFIG } from '../config';
 import { NEWS, LATEST_NEWS_ID } from '../data/news';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { emitAck } from '../emitAck';
 
 const SEEN = 'co:news';
 export const newsUnread = () => Number(localStorage.getItem(SEEN) ?? 0) < LATEST_NEWS_ID;
@@ -113,7 +114,8 @@ export function openFeedback(ctx: MenuCtx) {
       if (text.length < 5) { err.textContent = 'Góp ý cần tối thiểu 5 ký tự.'; return; }
       err.textContent = '';
       send.disabled = true;
-      ctx.socket.emit('feedback:send', { text, contact: contact.value.trim() }, (r: { ok: boolean; error?: string }) => {
+      emitAck<{ ok: boolean; error?: string }>(ctx.socket, 'feedback:send', [{ text, contact: contact.value.trim() }], (r, timedOut) => {
+        if (timedOut) { err.textContent = 'Mất kết nối, thử lại sau.'; send.disabled = false; return; }
         if (r?.ok) form.replaceChildren(h('div', { class: 'thanks' }, h('b', {}, 'Xin cảm ơn bạn!'), h('p', {}, 'Góp ý của bạn đã được ghi nhận. Chúc bạn một ngày an lạc.')));
         else { err.textContent = r?.error ?? 'Không gửi được, thử lại sau.'; send.disabled = false; }
       });

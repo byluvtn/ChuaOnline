@@ -2,6 +2,7 @@ import { ITEM_BY_ID, SPIN_SEGMENTS, type SpinAck, type SpinState } from '../../s
 import { audio } from '../audio';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { emitAck } from '../emitAck';
 
 let spinUsed: boolean | null = null;
 let onChange: () => void = () => {};
@@ -53,22 +54,24 @@ export function openSpin(ctx: MenuCtx, back?: () => void) {
     const used = h('div', { class: 'spin-used' }, USED_TEXT);
 
     const showUsed = () => { btn.hidden = true; used.hidden = false; };
+    btn.disabled = true;
     used.hidden = true;
-    if (spinUsed) showUsed();
-    else if (spinUsed === null) {
-      btn.disabled = true;
-      ctx.socket.emit('spin:get', (r: SpinAck) => {
-        if (r?.ok) { spinUsed = !!r.used; onChange(); }
-        if (!stage.isConnected) return;
-        if (spinUsed) showUsed(); else btn.disabled = false;
-      });
-    }
+    emitAck<SpinAck>(ctx.socket, 'spin:get', [], (r) => {
+      if (r?.ok) { spinUsed = !!r.used; onChange(); }
+      if (!stage.isConnected) return;
+      if (spinUsed) showUsed(); else btn.disabled = false;
+    });
 
     btn.onclick = () => {
       if (btn.disabled) return;
       btn.disabled = true;
       note.textContent = '';
-      ctx.socket.emit('spin:play', (r: SpinAck) => {
+      emitAck<SpinAck>(ctx.socket, 'spin:play', [], (r, timedOut) => {
+        if (timedOut) {
+          btn.disabled = false;
+          note.textContent = 'Mất kết nối, thử lại nhé';
+          return;
+        }
         if (!r?.ok || typeof r.segment !== 'number') {
           if (r?.used) { spinUsed = true; onChange(); }
           if (!stage.isConnected) return;

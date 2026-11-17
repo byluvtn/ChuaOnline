@@ -5,6 +5,7 @@ import { iconSvg } from './icons';
 import { audio } from './audio';
 import { DIALOGUES } from './data/dialogues';
 import { TELEPORT_DEST } from './data/places';
+import { emitAck } from './emitAck';
 
 export interface PanelCtx {
   socket: Socket;
@@ -128,7 +129,12 @@ export function openDonatePanel(ctx: PanelCtx) {
       if (!Number.isInteger(n) || n < 1) { ctx.toast('Số xu không hợp lệ'); return; }
       if (n > (ctx.profile()?.coins ?? 0)) { ctx.toast('Không đủ xu'); return; }
       submitBtn.disabled = true;
-      ctx.socket.emit('donate', n, (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string }) => {
+      emitAck(ctx.socket, 'donate', [n], (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string } | undefined, timedOut) => {
+        if (timedOut || !r) {
+          ctx.toast('Mất kết nối, thử lại nhé');
+          submitBtn.disabled = false;
+          return;
+        }
         if (!r.ok) {
           ctx.toast(r.error ?? 'Lỗi');
           submitBtn.disabled = false;
@@ -154,7 +160,12 @@ export function openDonorsPanel(ctx: PanelCtx) {
   openCustomPanel('Bảng vinh danh', (body) => {
     let alive = true;
     body.appendChild(h('p', { class: 'hint' }, 'Đang tải...'));
-    ctx.socket.emit('donors:get', (rows: { name: string; coins: number; merit: number }[]) => {
+    emitAck(ctx.socket, 'donors:get', [], (rows: { name: string; coins: number; merit: number }[] | undefined, timedOut) => {
+      if (timedOut) {
+        if (!alive) return;
+        body.replaceChildren(h('p', { class: 'hint' }, 'Không tải được bảng vinh danh — mất kết nối, mở lại thử nhé'));
+        return;
+      }
       if (!alive) return;
       body.replaceChildren();
       if (!rows || rows.length === 0) {
@@ -264,7 +275,12 @@ export function openAdminPanel(ctx: PanelCtx) {
         if (coins === null || merit === null) { ctx.toast('Số không hợp lệ (0 - 1.000.000)'); return; }
         if (coins === 0 && merit === 0) { ctx.toast('Nhập số xu hoặc công đức cần thêm'); return; }
         selfBtn.disabled = true;
-        ctx.socket.emit('admin:selfgrant', { merit, coins }, (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => {
+        emitAck(ctx.socket, 'admin:selfgrant', [{ merit, coins }], (r: { ok: boolean; merit?: number; coins?: number; error?: string } | undefined, timedOut) => {
+          if (timedOut) {
+            selfBtn.disabled = false;
+            ctx.toast('Mất kết nối, thử lại nhé');
+            return;
+          }
           selfBtn.disabled = false;
           if (!r?.ok) { ctx.toast(r?.error ?? 'Lỗi'); return; }
           ctx.toast(`Đã thêm ${coins} xu, ${merit} công đức cho bản thân`);
@@ -293,8 +309,13 @@ export function openAdminPanel(ctx: PanelCtx) {
       const load = () => {
         query = searchInput.value;
         listBox.replaceChildren(h('p', { class: 'hint' }, 'Đang tải...'));
-        ctx.socket.emit('admin:list', query, (r: { ok: boolean; rows?: AdminPlayerRow[]; error?: string }) => {
+        emitAck(ctx.socket, 'admin:list', [query], (r: { ok: boolean; rows?: AdminPlayerRow[]; error?: string } | undefined, timedOut) => {
           if (!alive || tab !== 'players') return;
+          if (timedOut || !r) {
+            ctx.toast('Mất kết nối, thử lại nhé');
+            listBox.replaceChildren();
+            return;
+          }
           if (!r.ok) {
             ctx.toast(r.error ?? 'Lỗi');
             listBox.replaceChildren();
@@ -332,7 +353,12 @@ export function openAdminPanel(ctx: PanelCtx) {
             }
             if (coins === 0 && merit === 0) { ctx.toast('Nhập số xu hoặc công đức cần tặng'); return; }
             grantBtn.disabled = true;
-            ctx.socket.emit('admin:grant', { userId: row.id, merit, coins }, (r: { ok: boolean; merit?: number; coins?: number; error?: string }) => {
+            emitAck(ctx.socket, 'admin:grant', [{ userId: row.id, merit, coins }], (r: { ok: boolean; merit?: number; coins?: number; error?: string } | undefined, timedOut) => {
+              if (timedOut || !r) {
+                grantBtn.disabled = false;
+                ctx.toast('Mất kết nối, thử lại nhé');
+                return;
+              }
               grantBtn.disabled = false;
               if (!r.ok) { ctx.toast(r.error ?? 'Lỗi'); return; }
               ctx.toast(`Đã tặng ${label}: +${coins} xu, +${merit} công đức`);
@@ -345,7 +371,12 @@ export function openAdminPanel(ctx: PanelCtx) {
           banBtn.onclick = () => {
             if (!banned && !confirm(`Khóa tài khoản ${label}?`)) return;
             banBtn.disabled = true;
-            ctx.socket.emit('admin:ban', { userId: row.id, banned: !banned }, (r: { ok: boolean; banned?: boolean; error?: string }) => {
+            emitAck(ctx.socket, 'admin:ban', [{ userId: row.id, banned: !banned }], (r: { ok: boolean; banned?: boolean; error?: string } | undefined, timedOut) => {
+              if (timedOut || !r) {
+                banBtn.disabled = false;
+                ctx.toast('Mất kết nối, thử lại nhé');
+                return;
+              }
               banBtn.disabled = false;
               if (!r.ok) { ctx.toast(r.error ?? 'Lỗi'); return; }
               ctx.toast(banned ? `Đã mở khóa ${label}` : `Đã khóa ${label}`);
@@ -392,7 +423,12 @@ export function openAdminPanel(ctx: PanelCtx) {
         const t = text.value.trim();
         if (t.length < 1 || t.length > 200) { ctx.toast('Nội dung phải từ 1 đến 200 ký tự'); return; }
         sendBtn.disabled = true;
-        ctx.socket.emit('admin:broadcast', { text: t }, (r: { ok: boolean; error?: string }) => {
+        emitAck(ctx.socket, 'admin:broadcast', [{ text: t }], (r: { ok: boolean; error?: string } | undefined, timedOut) => {
+          if (timedOut || !r) {
+            sendBtn.disabled = false;
+            ctx.toast('Mất kết nối, thử lại nhé');
+            return;
+          }
           sendBtn.disabled = false;
           if (!r.ok) { ctx.toast(r.error ?? 'Lỗi'); return; }
           ctx.toast('Đã gửi thông báo');
@@ -425,15 +461,20 @@ export function openAdminPanel(ctx: PanelCtx) {
 
     const drawStats = () => {
       content.replaceChildren(h('div', {}, 'Đang tải...'));
-      ctx.socket.emit('admin:stats', (res: {
+      emitAck(ctx.socket, 'admin:stats', [], (res: {
         ok: boolean;
         online?: number;
         totalPlayers?: number;
         newToday?: number;
         totalDonated?: number;
         error?: string;
-      }) => {
+      } | undefined, timedOut) => {
         if (!alive || tab !== 'stats') return;
+        if (timedOut) {
+          ctx.toast('Không tải được thống kê');
+          content.replaceChildren();
+          return;
+        }
         if (!res || !res.ok) {
           ctx.toast((res && res.error) || 'Không tải được thống kê');
           content.replaceChildren();
@@ -451,8 +492,12 @@ export function openAdminPanel(ctx: PanelCtx) {
           h('b', {}, 'Nhật ký quản trị'),
           logBox,
         );
-        ctx.socket.emit('admin:log', (logRes: { ok: boolean; rows?: { id: number; adminName: string; targetName: string; merit: number; coins: number; createdAt: number }[]; error?: string }) => {
+        emitAck(ctx.socket, 'admin:log', [], (logRes: { ok: boolean; rows?: { id: number; adminName: string; targetName: string; merit: number; coins: number; createdAt: number }[]; error?: string } | undefined, timedOut) => {
           if (!alive || tab !== 'stats') return;
+          if (timedOut) {
+            logBox.replaceChildren(h('p', { class: 'hint' }, 'Không tải được nhật ký'));
+            return;
+          }
           if (!logRes?.ok) {
             logBox.replaceChildren(h('p', { class: 'hint' }, 'Không tải được nhật ký'));
             return;
@@ -693,7 +738,12 @@ function renderRank(body: HTMLElement, ctx: PanelCtx) {
 function renderRooms(body: HTMLElement, ctx: PanelCtx) {
   const list = h('div', {}, h('p', { class: 'hint' }, 'Đang tải...'));
   body.append(list);
-  ctx.socket.emit('rooms:list', (rooms: RoomInfo[]) => {
+  emitAck(ctx.socket, 'rooms:list', [], (rooms: RoomInfo[] | undefined, timedOut) => {
+    if (timedOut || !rooms) {
+      if (current !== 'rooms') return;
+      list.replaceChildren(h('p', { class: 'hint' }, 'Không tải được danh sách chùa — mất kết nối, mở lại thử nhé'));
+      return;
+    }
     if (current !== 'rooms') return;
     list.replaceChildren(...rooms.map((r) => h('div', { class: 'room' + (r.id === ctx.room() ? ' cur' : '') },
       h('div', {}, h('b', {}, r.name), h('div', { class: 'hint', style: 'margin:0' }, `${r.online}/${r.capacity} người`)),

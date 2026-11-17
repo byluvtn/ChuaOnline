@@ -455,6 +455,7 @@ export interface MailItem {
 export interface MailAck {
   ok: boolean; error?: string; unread?: number; mails?: MailItem[];
   merit?: number; coins?: number; items?: Record<string, number>;
+  reason?: 'claimed' | 'no_gift' | 'not_found';
 }
 export interface GiftAck { ok: boolean; error?: string; left?: number }
 
@@ -538,7 +539,7 @@ export const titleName = (id: string): string => TITLES.find((t) => t.id === id)
 export const defaultTitle = (earned: string[]): string | null => (earned.length ? earned[earned.length - 1] : null);
 
 export interface BeadsState { rewarded: number }
-export interface BeadsAck { ok: boolean; rewarded?: boolean; merit?: number }
+export interface BeadsAck { ok: boolean; rewarded?: boolean; merit?: number; error?: string }
 
 export interface SpinState { used: boolean }
 export interface SpinAck {

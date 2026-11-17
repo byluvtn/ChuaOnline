@@ -11,7 +11,7 @@ import { clampToCompound, resolveBridge, LAKE, BRIDGE, inLake } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
-import { getLastPhoto, takePhoto } from './features/photo';
+import { takePhoto } from './features/photo';
 import { openFestivals } from './features/festivals';
 import { createPost } from './post';
 import { createWorld } from './world';
@@ -756,7 +756,7 @@ function startMenu() {
   initMenu({
     socket: socket!, profile: () => profile, quests: () => quests, room: () => roomId, switchRoom, toast, logout,
     myPos: () => (me ? { x: me.char.root.position.x, z: me.char.root.position.z } : null),
-    players: () => [...remotes.entries()].filter(([, r]) => !r.data.npc).map(([id, r]) => ({ id, name: r.data.name, x: r.char.root.position.x, z: r.char.root.position.z, level: levelOf(r.data.merit) })),
+    players: () => [...remotes.entries()].filter(([, r]) => !r.data.npc).map(([id, r]) => ({ id, name: r.data.name, x: r.char.root.position.x, z: r.char.root.position.z, level: levelOf(r.data.merit), pid: r.data.pid })),
     goTo: (x, z) => { clickTarget = new THREE.Vector3(x, 0, z); bowSeat = null; setSitting(false); },
     changeLook, chatLog: () => chatLog,
     act: (kind) => doAction(kind),
@@ -2682,4 +2682,4 @@ const focusIdle = new THREE.Vector3(0, 0, 8);
 let loadedHidden = false;
 requestAnimationFrame(loop);
 
-if (import.meta.env.DEV) (window as any).__co = { walkTo: (x: number, z: number) => { setSitting(false); clickTarget = new THREE.Vector3(x, 0, z); }, me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr, buildBuddha, buildQuanAm, photo: () => getLastPhoto() };
+if (import.meta.env.DEV) (window as any).__co = { walkTo: (x: number, z: number) => { setSitting(false); clickTarget = new THREE.Vector3(x, 0, z); }, me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr, buildBuddha, buildQuanAm };

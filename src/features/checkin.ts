@@ -2,6 +2,7 @@ import { CHECKIN_REWARDS, ITEM_BY_ID, type CheckinAck, type CheckinState } from 
 import { audio } from '../audio';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { emitAck } from '../emitAck';
 
 let state: CheckinState | null = null;
 let onChange: () => void = () => {};
@@ -35,7 +36,12 @@ function render(body: HTMLElement, ctx: MenuCtx, busy = false) {
   if (st.claimedToday || busy) btn.disabled = true;
   btn.onclick = () => {
     btn.disabled = true;
-    ctx.socket.emit('checkin:claim', (r: CheckinAck) => {
+    emitAck<CheckinAck>(ctx.socket, 'checkin:claim', [], (r, timedOut) => {
+      if (timedOut) {
+        ctx.toast('Mất kết nối, thử lại nhé');
+        if (body.isConnected) render(body, ctx);
+        return;
+      }
       if (r?.state) state = r.state;
       onChange();
       if (r?.ok) {
@@ -57,7 +63,7 @@ function render(body: HTMLElement, ctx: MenuCtx, busy = false) {
 export function openCheckin(ctx: MenuCtx) {
   openCustomPanel('Điểm danh', (body) => {
     render(body, ctx, true);
-    ctx.socket.emit('checkin:get', (r: CheckinAck) => {
+    emitAck<CheckinAck>(ctx.socket, 'checkin:get', [], (r) => {
       if (r?.state) { state = r.state; onChange(); }
       if (body.isConnected) render(body, ctx);
     });

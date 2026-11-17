@@ -1,6 +1,7 @@
 import type { BeadsAck, BeadsState } from '../../shared/game';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { emitAck } from '../emitAck';
 
 const TOTAL = 108;
 const MARKS = [27, 54, 81];
@@ -78,11 +79,17 @@ export function openBeads(ctx: MenuCtx) {
       stopPresence();
       bead.disabled = true;
       result.textContent = 'Đang ghi nhận vòng hạt...';
-      ctx.socket.emit('beads:done', (r: BeadsAck) => {
+      emitAck<BeadsAck>(ctx.socket, 'beads:done', [], (r, timedOut) => {
         waiting = false;
         if (!body.isConnected) return;
+        if (timedOut) {
+          result.textContent = 'Mất kết nối — vòng có thể đã được ghi nhận, kiểm tra lại sau nhé';
+          result.classList.add('bad');
+          again.hidden = false;
+          return;
+        }
         result.classList.toggle('bad', !r?.ok);
-        if (!r?.ok) result.textContent = 'Vòng chưa hợp lệ — hãy lần chậm rãi, đủ nhịp.';
+        if (!r?.ok) result.textContent = r?.error ?? 'Vòng chưa hợp lệ — hãy lần chậm rãi, đủ nhịp.';
         else if (r.rewarded) result.textContent = `Hoàn thành một vòng · +${r.merit ?? 0} công đức · +5 xu`;
         else result.textContent = 'Hoàn thành một vòng · Vòng này tính vào thành tựu (đã hết lượt thưởng hôm nay)';
         again.hidden = false;
@@ -93,7 +100,15 @@ export function openBeads(ctx: MenuCtx) {
       if (finished || waiting) return;
       if (!started) {
         started = true;
-        ctx.socket.emit('beads:start', () => {});
+        emitAck<{ ok: boolean; error?: string }>(ctx.socket, 'beads:start', [], (r, timedOut) => {
+          if (r?.ok) return;
+          // Server không bắt đầu được vòng (vd mất kết nối): hủy vòng ngay để
+          // khỏi phí 108 lần chạm rồi beads:done vẫn lỗi.
+          started = false; n = 0; stopPresence();
+          result.textContent = timedOut ? 'Mất kết nối — vòng hạt chưa bắt đầu, thử lại nhé' : (r?.error ?? 'Không bắt đầu được vòng hạt — thử lại nhé');
+          result.classList.add('bad');
+          paint();
+        });
         startPresence();
       }
       n++;

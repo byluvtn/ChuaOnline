@@ -2,6 +2,7 @@ import { ITEM_BY_ID, ITEMS, type GiftAck, type MailAck, type MailGift, type Mail
 import { audio } from '../audio';
 import { h, openCustomPanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { emitAck } from '../emitAck';
 
 let unread = 0;
 let mails: MailItem[] = [];
@@ -74,7 +75,7 @@ function openGiftForm(body: HTMLElement, ctx: MenuCtx) {
 
   const selTo = h('select', { class: 'gift-to' },
     h('option', { value: '' }, '-- Chọn người nhận --'),
-    ...players.map(p => h('option', { value: p.id }, p.name))
+    ...players.map(p => h('option', { value: String(p.pid) }, `${p.name} · Cấp ${p.level ?? '?'}`))
   );
   const selItem = h('select', { class: 'gift-item' },
     h('option', { value: '' }, '-- Chọn lễ vật --'),
@@ -91,7 +92,12 @@ function openGiftForm(body: HTMLElement, ctx: MenuCtx) {
 
   btnSend.onclick = () => {
     btnSend.disabled = true;
-    ctx.socket.emit('gift:send', { to: selTo.value, item: selItem.value, note: inpNote.value }, (r: GiftAck) => {
+    emitAck<GiftAck>(ctx.socket, 'gift:send', [{ toPid: Number(selTo.value), item: selItem.value, note: inpNote.value }], (r, timedOut) => {
+      if (timedOut) {
+        ctx.toast('Mất kết nối — không rõ quà đã gửi chưa, kiểm tra lại nhé');
+        btnSend.disabled = false;
+        return;
+      }
       if (r?.ok) {
         ctx.toast(`Đã gửi quà. Còn ${r.left} lượt tặng hôm nay.`);
         if (body.isConnected) renderList(body, ctx);
@@ -132,15 +138,19 @@ function openMailDetail(body: HTMLElement, ctx: MenuCtx, m: MailItem) {
     if (m.claimed) btn.disabled = true;
     btn.onclick = () => {
       btn.disabled = true;
-      ctx.socket.emit('mail:claim', m.id, (r: MailAck) => {
+      emitAck<MailAck>(ctx.socket, 'mail:claim', [m.id], (r, timedOut) => {
+        if (timedOut) {
+          ctx.toast('Mất kết nối, thử lại nhé');
+          if (body.isConnected) openMailDetail(body, ctx, m);
+          return;
+        }
         setUnread(r);
         if (r?.ok) {
           m.claimed = true;
           audio.play('coin');
-          const its = Object.entries(r.items ?? {}).map(([id, q]) => `, +${q} ${ITEM_BY_ID[id]?.name ?? id}`).join('');
-          ctx.toast(`Nhận quà thư: +${r.merit} công đức, +${r.coins} xu${its}`);
+          ctx.toast('Nhận quà thư: ' + giftText({ merit: r.merit ?? 0, coins: r.coins ?? 0, items: r.items ?? {} }));
         } else {
-          if (r?.error && /đã được nhận/.test(r.error)) m.claimed = true;
+          if (r?.reason === 'claimed') m.claimed = true;
           ctx.toast(r?.error ?? 'Không nhận được quà');
         }
         if (body.isConnected) openMailDetail(body, ctx, m);
@@ -154,7 +164,11 @@ function openMailDetail(body: HTMLElement, ctx: MenuCtx, m: MailItem) {
 export function openMail(ctx: MenuCtx) {
   openCustomPanel('Hòm thư', (body) => {
     body.replaceChildren(h('p', { class: 'hint' }, 'Đang tải...'));
-    ctx.socket.emit('mail:list', (r: MailAck) => {
+    emitAck<MailAck>(ctx.socket, 'mail:list', [], (r, timedOut) => {
+      if (timedOut) {
+        if (body.isConnected) body.replaceChildren(h('p', { class: 'hint' }, 'Không tải được hòm thư — mất kết nối, mở lại thử nhé'));
+        return;
+      }
       if (r?.ok) { mails = r.mails ?? []; setUnread(r); }
       if (!body.isConnected) return;
       if (!r?.ok) { body.replaceChildren(h('p', { class: 'hint' }, r?.error ?? 'Không tải được hòm thư')); return; }

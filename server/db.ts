@@ -867,8 +867,9 @@ export async function markMailRead(id: number, mailId: number): Promise<boolean>
 }
 /** Nhận quà nguyên tử: null nếu thư không thuộc người chơi, không có quà hoặc đã nhận.
  *  Kẹt khóa (2 lần nhận đồng thời) thì thử lại như claimQuestWithRewards (idempotent nhờ
- *  UPDATE ... claimed = 0); sau 8 lần vẫn kẹt thì trả null thay vì throw. */
-export async function claimMail(id: number, mailId: number): Promise<{ gift: MailGift } | null> {
+ *  UPDATE ... claimed = 0); sau 8 lần vẫn kẹt thì trả null thay vì throw. Không nhận được
+ *  (đã nhận, không có quà, không thấy thư) thì trả { ok: false, reason }; null CHỈ nghĩa là kẹt khóa tạm thời. */
+export async function claimMail(id: number, mailId: number): Promise<ClaimMailResult | null> {
   for (let i = 0; ; i++) {
     try {
       return await claimMailOnce(id, mailId);
@@ -879,15 +880,18 @@ export async function claimMail(id: number, mailId: number): Promise<{ gift: Mai
     }
   }
 }
-async function claimMailOnce(id: number, mailId: number): Promise<{ gift: MailGift } | null> {
+export type ClaimMailResult = { ok: true; gift: MailGift } | { ok: false; reason: 'claimed' | 'no_gift' | 'not_found' };
+async function claimMailOnce(id: number, mailId: number): Promise<ClaimMailResult> {
   const tx = await db.transaction('write');
   try {
-    const row = (await tx.execute({ sql: 'SELECT gift FROM mail WHERE id = ? AND player_id = ? AND claimed = 0 AND gift IS NOT NULL', args: [mailId, id] })).rows[0] as unknown as { gift: string } | undefined;
-    if (!row) { await tx.rollback(); return null; }
+    const row = (await tx.execute({ sql: 'SELECT gift, claimed FROM mail WHERE id = ? AND player_id = ?', args: [mailId, id] })).rows[0] as unknown as { gift: string | null; claimed: number } | undefined;
+    if (!row) { await tx.rollback(); return { ok: false, reason: 'not_found' }; }
+    if (Number(row.claimed) === 1) { await tx.rollback(); return { ok: false, reason: 'claimed' }; }
+    if (row.gift == null) { await tx.rollback(); return { ok: false, reason: 'no_gift' }; }
     const gift = parseGift(row.gift);
-    if (!gift) { await tx.rollback(); return null; }
+    if (!gift) { await tx.rollback(); return { ok: false, reason: 'no_gift' }; }
     const r = await tx.execute({ sql: 'UPDATE mail SET claimed = 1 WHERE id = ? AND player_id = ? AND claimed = 0', args: [mailId, id] });
-    if (r.rowsAffected !== 1) { await tx.rollback(); return null; }
+    if (r.rowsAffected !== 1) { await tx.rollback(); return { ok: false, reason: 'claimed' }; }
     const wk = weekKey();
     await tx.execute({
       sql: `UPDATE players SET
@@ -904,7 +908,7 @@ async function claimMailOnce(id: number, mailId: number): Promise<{ gift: MailGi
       });
     }
     await tx.commit();
-    return { gift };
+    return { ok: true, gift };
   } catch (err) {
     try { await tx.rollback(); } catch { /* đã đóng */ }
     throw err;

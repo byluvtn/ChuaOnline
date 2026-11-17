@@ -24,8 +24,9 @@ function progressLine(r: TitleRule, v: number): string {
   return '';
 }
 
-function render(ctx: PanelCtx, body: HTMLElement) {
-  body.replaceChildren();
+function render(ctx: PanelCtx, headerBox: HTMLElement, titlesBox: HTMLElement) {
+  headerBox.replaceChildren();
+  titlesBox.replaceChildren();
   const p = ctx.profile();
   if (!p) return;
   const lv = levelOf(p.merit);
@@ -34,40 +35,18 @@ function render(ctx: PanelCtx, body: HTMLElement) {
   const stats = getStatsCache()?.stats ?? { bows: 0, chants: 0, lanterns: 0, meditateSec: 0, beadsRounds: 0, incense: 0 };
   const input: TitleInput = { level: lv, questsDone: p.questsDone, donated: p.donated, stats };
 
-  const bio = h('textarea', { maxlength: '200', placeholder: 'Tiểu sử: đôi lời về bạn (không bắt buộc)', style: 'width:100%;min-height:64px;margin-top:10px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;resize:vertical' });
-  bio.value = p.bio ?? '';
-  const age = h('input', { type: 'text', inputmode: 'numeric', placeholder: 'Tuổi (không bắt buộc)', style: 'width:100%;margin-top:8px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit' });
-  age.value = p.age != null ? String(p.age) : '';
-  const save = h('button', { style: 'background:#f4cd6e;color:#3a2410;border:none;border-radius:14px;padding:6px 16px;font-weight:700;cursor:pointer;margin-top:8px' }, 'Lưu hồ sơ');
-  save.addEventListener('click', () => {
-    const b = bio.value.trim();
-    if (b.length > 200) { ctx.toast('Tiểu sử tối đa 200 ký tự'); return; }
-    const raw = age.value.trim();
-    let a: number | null = null;
-    if (raw) {
-      const n = Number(raw);
-      if (!Number.isInteger(n) || n < 1 || n > 120) { ctx.toast('Tuổi phải từ 1 đến 120'); return; }
-      a = n;
-    }
-    ctx.socket.emit('profile:save', { bio: b || null, age: a }, (r: { ok: boolean; error?: string }) => {
-      if (r?.ok) ctx.toast('Đã lưu hồ sơ');
-      else ctx.toast(r?.error ?? 'Không lưu được hồ sơ');
-    });
-  });
-
-  body.append(
+  headerBox.append(
     h('div', { style: 'display:flex;gap:10px;align-items:center;margin:4px 0 6px' },
       h('div', { class: 'avatar' }, (p.name || '?').charAt(0).toUpperCase()),
       h('div', {},
         h('b', {}, p.name),
         h('div', { style: 'font-size:13px;opacity:.85' }, `Cấp ${lv} · ${levelTitle(lv)}`),
-        h('div', { style: 'font-size:12px;opacity:.7' }, `${fmt(p.merit)} công đức · ${fmt(p.coins)} xu`))),
-    bio, age, save,
-    h('div', { style: 'font-size:12px;opacity:.7;margin-top:4px' }, 'Tất cả đều không bắt buộc.'));
+        h('div', { style: 'font-size:12px;opacity:.7' }, `${fmt(p.merit)} công đức · ${fmt(p.coins)} xu`)))
+  );
 
-  body.append(h('div', { style: 'color:#f4cd6e;font-size:20px;font-weight:700;margin:16px 0 8px' }, cur ? titleName(cur) : 'Chưa có danh hiệu'));
-  body.append(h('p', { style: 'font-size:12px;opacity:.8;line-height:1.5;margin:0 0 6px' }, 'Làm đủ điều kiện trên thẻ là nhận được. Ai làm đủ cũng nhận được, không giới hạn suất. Danh hiệu không bán. Có nhiều danh hiệu thì chọn mang một cái, đổi lúc nào cũng được.'));
-  body.append(h('div', { style: 'font-size:12px;opacity:.7;margin-bottom:8px' }, `Danh hiệu tu tập · Đã nhận ${earned.size}/24 danh hiệu · không giới hạn suất`));
+  titlesBox.append(h('div', { style: 'color:#f4cd6e;font-size:20px;font-weight:700;margin:16px 0 8px' }, cur ? titleName(cur) : 'Chưa có danh hiệu'));
+  titlesBox.append(h('p', { style: 'font-size:12px;opacity:.8;line-height:1.5;margin:0 0 6px' }, 'Làm đủ điều kiện trên thẻ là nhận được. Ai làm đủ cũng nhận được, không giới hạn suất. Danh hiệu không bán. Có nhiều danh hiệu thì chọn mang một cái, đổi lúc nào cũng được.'));
+  titlesBox.append(h('div', { style: 'font-size:12px;opacity:.7;margin-bottom:8px' }, `Danh hiệu tu tập · Đã nhận ${earned.size}/24 danh hiệu · không giới hạn suất`));
 
   for (const r of TITLES) {
     const v = titleProgress(r, input);
@@ -86,21 +65,49 @@ function render(ctx: PanelCtx, body: HTMLElement) {
           if (!res?.ok) { ctx.toast(res?.error ?? 'Không đổi được danh hiệu'); return; }
           const pr = ctx.profile();
           if (pr) pr.title = r.id;
-          render(ctx, body);
+          render(ctx, headerBox, titlesBox);
         });
       });
       card.append(btn);
     }
-    body.append(card);
+    titlesBox.append(card);
   }
 }
 
 export function openProfilePanel(ctx: PanelCtx) {
   if (!ctx.profile()) { ctx.toast('Chưa đăng nhập'); return; }
   openCustomPanel('Hồ sơ & danh hiệu', (body) => {
-    const rerender = () => render(ctx, body);
+    const p = ctx.profile();
+    const bio = h('textarea', { maxlength: '200', placeholder: 'Tiểu sử: đôi lời về bạn (không bắt buộc)', style: 'width:100%;min-height:64px;margin-top:10px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit;resize:vertical' });
+    bio.value = p?.bio ?? '';
+    const age = h('input', { type: 'text', inputmode: 'numeric', placeholder: 'Tuổi (không bắt buộc)', style: 'width:100%;margin-top:8px;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:inherit;font:inherit' });
+    age.value = p?.age != null ? String(p.age) : '';
+    const save = h('button', { style: 'background:#f4cd6e;color:#3a2410;border:none;border-radius:14px;padding:6px 16px;font-weight:700;cursor:pointer;margin-top:8px' }, 'Lưu hồ sơ');
+    save.addEventListener('click', () => {
+      const b = bio.value.trim();
+      if (b.length > 200) { ctx.toast('Tiểu sử tối đa 200 ký tự'); return; }
+      const raw = age.value.trim();
+      let a: number | null = null;
+      if (raw) {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > 120) { ctx.toast('Tuổi phải từ 1 đến 120'); return; }
+        a = n;
+      }
+      ctx.socket.emit('profile:save', { bio: b || null, age: a }, (r: { ok: boolean; error?: string }) => {
+        if (r?.ok) ctx.toast('Đã lưu hồ sơ');
+        else ctx.toast(r?.error ?? 'Không lưu được hồ sơ');
+      });
+    });
+    const headerBox = h('div', {});
+    const titlesBox = h('div', {});
+    body.append(
+      headerBox,
+      bio, age, save,
+      h('div', { style: 'font-size:12px;opacity:.7;margin-top:4px' }, 'Tất cả đều không bắt buộc.'),
+      titlesBox);
+    const rerender = () => render(ctx, headerBox, titlesBox);
     ctx.socket.on('profile', rerender);
-    render(ctx, body);
+    render(ctx, headerBox, titlesBox);
     ctx.socket.emit('stats:get', () => rerender());
     return () => ctx.socket.off('profile', rerender);
   });

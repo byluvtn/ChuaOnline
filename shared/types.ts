@@ -26,6 +26,8 @@ export interface PlayerState {
   role?: 'abbot' | 'novice' | 'lay';
   /** id danh hiệu đang đeo; chỉ người chơi có */
   title?: string | null;
+  /** id người chơi trong DB (ổn định qua các lần kết nối lại); chỉ người chơi có, NPC không có */
+  pid?: number;
   /** hoạt động đang làm (máy chủ suy ra); chỉ để hiện dòng trạng thái */
   act?: NpcAct | null;
 }

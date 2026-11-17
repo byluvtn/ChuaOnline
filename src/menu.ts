@@ -48,7 +48,7 @@ export interface MenuCtx {
   takePhoto?: () => void;
   logout(): void;
   myPos(): { x: number; z: number } | null;
-  players(): { id: string; name: string; x: number; z: number; level?: number }[];
+  players(): { id: string; name: string; x: number; z: number; level?: number; pid?: number }[];
   goTo(x: number, z: number): void;
   changeLook(name: string, outfit: Outfit, color: string, done?: (ok: boolean) => void): void;
   chatLog(): ChatMessage[];
