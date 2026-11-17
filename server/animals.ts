@@ -36,7 +36,8 @@ const PLAZA: P = { x: 0, z: 6 };
 const OWL_SPEED = 5;
 const OWL_VY = 3;
 
-const rooms = new Map<string, A[]>();
+interface RoomAnimals { list: A[]; flockAnchor: P | null; flockMoveAt: number }
+const rooms = new Map<string, RoomAnimals>();
 let lostToggle = 0;
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
@@ -366,8 +367,6 @@ function outdoorJitter(p: P, r: number): P {
 }
 
 const FLOCK_SPOTS = ['plaza', 'bridgeN', 'bridgeS', 'axisMid'];
-let flockAnchor: P | null = null;
-let flockMoveAt = 0;
 
 function pickFlockAnchor(): P {
   const pt = nodePt(pick(FLOCK_SPOTS));
@@ -399,17 +398,21 @@ export function createAnimals(room: string): A[] {
     mk('chick2', 'chick', 'Gà con', 30, -31, 1.2, { x: 30, z: -31 }),
     mk('chick3', 'chick', 'Gà con', 30, -31, 1.2, { x: 30, z: -31 }),
   ];
-  rooms.set(room, list);
-  flockAnchor = pickFlockAnchor();
+  const anchor = pickFlockAnchor();
+  rooms.set(room, { list, flockAnchor: anchor, flockMoveAt: 0 });
   for (const a of list) {
     if (a.s.kind === 'parrot' || a.s.kind === 'chick') {
-      a.home = outdoorJitter(flockAnchor, 2.5);
+      a.home = outdoorJitter(anchor, 2.5);
       a.s.x = a.home.x; a.s.z = a.home.z;
     }
   }
   return list;
 }
-const get = (room: string) => rooms.get(room) ?? createAnimals(room);
+const get = (room: string): RoomAnimals => {
+  let rec = rooms.get(room);
+  if (!rec) { createAnimals(room); rec = rooms.get(room)!; }
+  return rec;
+};
 
 function step(a: A, tx: number, tz: number, mv: number): number {
   const dx = tx - a.s.x, dz = tz - a.s.z, d = Math.hypot(dx, dz);
@@ -491,42 +494,46 @@ function tickWalker(a: A, dt: number) {
   a.wait = rnd(3, 8);
 }
 
-export function tickAnimals(room: string, dt: number) {
-  if (Date.now() > flockMoveAt) {
-    flockAnchor = pickFlockAnchor();
-    for (const a of get(room)) {
-      if (a.s.kind === 'parrot' || a.s.kind === 'chick') a.home = outdoorJitter(flockAnchor, 2.5);
+export function tickAnimals(room: string, dt: number, now = Date.now()) {
+  const rec = get(room);
+  if (now > rec.flockMoveAt) {
+    const anchor = pickFlockAnchor();
+    rec.flockAnchor = anchor;
+    for (const a of rec.list) {
+      if (a.s.kind === 'parrot' || a.s.kind === 'chick') a.home = outdoorJitter(anchor, 2.5);
     }
-    flockMoveAt = Date.now() + 120_000 + Math.random() * 60_000;
+    rec.flockMoveAt = now + 120_000 + Math.random() * 60_000;
   }
-  for (const a of get(room)) (a.owl ? tickOwl : tickWalker)(a, dt);
+  for (const a of rec.list) (a.owl ? tickOwl : tickWalker)(a, dt);
 }
 
 export function getAnimalStates(room: string): AnimalState[] {
-  return get(room).map(a => ({ ...a.s }));
+  return get(room).list.map(a => ({ ...a.s }));
 }
 
 export function setAnimalEating(room: string, id: string, seconds = 8) {
-  const a = get(room).find(x => x.s.id === id);
+  const a = get(room).list.find(x => x.s.id === id);
   if (!a || (a.s.kind as string) !== 'dog' && (a.s.kind as string) !== 'cat') return;
   a.eatT = seconds; a.path = [];
 }
 
-export function feedFlock(room: string, x: number, z: number, seconds = 10): void {
-  flockAnchor = pickFlockAnchor();
-  for (const a of get(room)) {
+export function feedFlock(room: string, x: number, z: number, seconds = 10, now = Date.now()): void {
+  const rec = get(room);
+  const anchor = pickFlockAnchor();
+  rec.flockAnchor = anchor;
+  for (const a of rec.list) {
     if (a.s.kind !== 'parrot' && a.s.kind !== 'chick') continue;
     a.feedTo = outdoorJitter({ x, z }, 1.5);
     a.feedEat = seconds;
     a.path = [];
-    a.home = outdoorJitter(flockAnchor, 2.5);
+    a.home = outdoorJitter(anchor, 2.5);
   }
-  flockMoveAt = Date.now() + 150_000;
+  rec.flockMoveAt = now + 150_000;
 }
 
 export function flockCenter(room: string): { x: number; z: number } | null {
   let n = 0, sx = 0, sz = 0;
-  for (const a of get(room)) {
+  for (const a of get(room).list) {
     if (a.s.kind !== 'parrot' && a.s.kind !== 'chick') continue;
     sx += a.s.x; sz += a.s.z; n++;
   }
@@ -534,7 +541,7 @@ export function flockCenter(room: string): { x: number; z: number } | null {
 }
 
 export function triggerLost(room: string): string | null {
-  const list = get(room);
+  const list = get(room).list;
   if (list.some(a => a.s.lost)) return null;
   const id = lostToggle++ % 2 === 0 ? 'vang' : 'muop';
   const a = list.find(x => x.s.id === id)!;
@@ -545,7 +552,7 @@ export function triggerLost(room: string): string | null {
 }
 
 export function resolveLost(room: string, id: string) {
-  const a = get(room).find(x => x.s.id === id);
+  const a = get(room).list.find(x => x.s.id === id);
   if (!a || !a.s.lost) return;
   a.s.lost = false; a.wait = rnd(3, 8);
   // Keep-out: sanitize the walk back to the plaza as well.

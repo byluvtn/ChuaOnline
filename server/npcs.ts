@@ -696,10 +696,14 @@ function tryRest(room: NpcRoom, n: Npc, now: number) {
   n.mode = 'toRest';
   startWalk(n, restRoute(n), 1.2);
 }
+/** Trả giường nếu NPC đang giữ (dùng khi tuyến đi nghỉ/làm bị chặn). */
+function releaseBed(room: NpcRoom, n: Npc) {
+  if (n.bedId !== null) { room.beds[n.bedId] = null; n.bedId = null; }
+}
 /** Day khoi giuong: tra giuong, di ve slot quet (tieu danh chuong ve thap). */
 function wakeNpc(room: NpcRoom, n: Npc, now: number) {
   const bedX = BED_X[n.bedId ?? 0];
-  if (n.bedId !== null) { room.beds[n.bedId] = null; n.bedId = null; }
+  releaseBed(room, n);
   n.mode = 'toWork';
   startWalk(n, workRoute(n, bedX), 1.2);
 }
@@ -879,6 +883,21 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
 
 function decide(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
+  // #6: tuyến đi tụng/nghỉ/làm bị chặn (step() đã xóa route, phase về idle)
+  // mà mode vẫn kẹt ở toChant/toRest/toWork → nhả ghế/giường, về normal.
+  // phase 'idle' + mode đang đi chỉ xảy ra sau abort: startWalk luôn đặt
+  // phase 'walk', arrive() luôn đổi mode.
+  if (n.phase === 'idle' && (n.mode === 'toChant' || n.mode === 'toRest' || n.mode === 'toWork')) {
+    if (n.mode === 'toChant') { releaseSeat(room, n.def.id); n.chantSeat = null; }
+    if (n.mode === 'toRest' || n.mode === 'toWork') releaseBed(room, n);
+    // toRest: như trường hợp hết giường trong tryRest — thử lại sau 60 giây,
+    // không để runSchedule gọi tryRest lại ngay tick sau (vòng lặp abort).
+    if (n.mode === 'toRest') n.shiftEnd = now + 60_000;
+    // toWork: như arrive() của toWork — bắt đầu ca mới.
+    if (n.mode === 'toWork') n.shiftEnd = now + SHIFT_MS;
+    n.route = []; n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000);
+    return;
+  }
   if (n.def.behavior === 'desk') { npc6Decide(n, s, now); return; }
   if (n.def.behavior === 'post') { postIdleAct(n, now); return; }
   if (n.mode === 'chanting' || n.mode === 'toChant') return; // runSchedule owns chanting
