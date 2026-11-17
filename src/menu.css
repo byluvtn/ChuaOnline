@@ -188,3 +188,51 @@ body.menu-collapsed #actions, body.menu-collapsed #chat { bottom: calc(84px + en
 .bd-result.bad { color: #8a2414; }
 .bd-again { display: block; margin: 10px auto 0; }
 .bd-again[hidden] { display: none; }
+
+/* ---------- panel Quản trị (chỉ áp khi .card có class admin-panel) ---------- */
+.card.admin-panel { width: min(680px, 96vw); overflow: hidden; display: flex; flex-direction: column; padding-right: 10px; }
+.card.admin-panel .phead { flex: none; }
+.card.admin-panel #panelBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin-left: -4px; padding: 0 8px 0 4px; scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #c9a23c transparent; }
+.card.admin-panel #panelBody::-webkit-scrollbar { width: 8px; }
+.card.admin-panel #panelBody::-webkit-scrollbar-track { background: transparent; }
+.card.admin-panel #panelBody::-webkit-scrollbar-thumb { background: #c9a23c; border-radius: 999px; }
+
+/* hàng nhập/nút gọn */
+.card.admin-panel .qrow { gap: 6px; padding: 6px; flex-wrap: wrap; }
+.card.admin-panel .qrow > .donate-input { flex: 1 1 140px; min-width: 0; width: auto; }
+.card.admin-panel .qrow button { padding: 6px 8px; font-size: 13px; border-radius: 9px; white-space: nowrap; }
+.card.admin-panel .admin-num { flex: none; width: 60px; padding: 5px 4px; font-size: 12px; border-radius: 9px; -moz-appearance: textfield; appearance: textfield; }
+.card.admin-panel .admin-num::placeholder { font-size: 11px; }
+.card.admin-panel .admin-num::-webkit-outer-spin-button,
+.card.admin-panel .admin-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* bảng người chơi */
+.card.admin-panel .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.card.admin-panel .admin-table th,
+.card.admin-panel .admin-table td { padding: 6px 8px; border-bottom: 1px solid #e3d8c0; text-align: left; vertical-align: middle; }
+.card.admin-panel .admin-table th { font-size: 12px; color: #8a5a1c; white-space: nowrap; }
+.card.admin-panel .admin-table td:nth-child(1) { overflow-wrap: anywhere; }
+.card.admin-panel .admin-table th:nth-child(2),
+.card.admin-panel .admin-table td:nth-child(2),
+.card.admin-panel .admin-table th:nth-child(3),
+.card.admin-panel .admin-table td:nth-child(3) { text-align: right; white-space: nowrap; }
+.card.admin-panel .admin-table th:nth-child(4),
+.card.admin-panel .admin-table td:nth-child(4) { white-space: nowrap; }
+.card.admin-panel .admin-table .qrow { padding: 0; margin-bottom: 0; background: none; border: 0; }
+
+/* hẹp: mỗi người chơi là một khối, vẫn đủ 5 trường, không tràn ngang */
+@media (max-width: 560px) {
+  .card.admin-panel .admin-table,
+  .card.admin-panel .admin-table tbody { display: block; }
+  .card.admin-panel .admin-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .card.admin-panel .admin-table tr { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; padding: 8px 0; border-bottom: 1px solid #e3d8c0; }
+  .card.admin-panel .admin-table td:nth-child(n) { display: block; min-width: 0; padding: 0; border: 0; text-align: left; white-space: normal; }
+  .card.admin-panel .admin-table td:nth-child(1) { grid-column: 1 / -1; font-weight: 700; }
+  .card.admin-panel .admin-table td:nth-child(4),
+  .card.admin-panel .admin-table td:nth-child(5) { grid-column: 1 / -1; }
+  .card.admin-panel .admin-table td:nth-child(4):empty { display: none; }
+  .card.admin-panel .admin-table td:nth-child(5) { margin-top: 4px; }
+  .card.admin-panel .admin-table td:nth-child(2)::before { content: 'Công đức: '; opacity: .7; }
+  .card.admin-panel .admin-table td:nth-child(3)::before { content: 'Xu: '; opacity: .7; }
+  .card.admin-panel .admin-table td:nth-child(4)::before { content: 'Trạng thái: '; opacity: .7; }
+}

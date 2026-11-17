@@ -207,6 +207,8 @@ export function openAdminPanel(ctx: PanelCtx) {
     let tab: AdminTab = 'players';
     let query = '';
     let alive = true;
+    const card = document.querySelector<HTMLElement>('#panel .card');
+    card?.classList.add('admin-panel');
 
     const tabsEl = h('div', { class: 'rtabs' });
     const content = h('div', {});
@@ -250,10 +252,10 @@ export function openAdminPanel(ctx: PanelCtx) {
       const meritVal = h('b', {}, (me?.merit ?? 0).toLocaleString('vi-VN'));
       const coinsVal = h('b', {}, (me?.coins ?? 0).toLocaleString('vi-VN'));
       const selfCoinsIn = h('input', {
-        type: 'number', min: '0', step: '1', placeholder: 'Xu', style: 'width:64px',
+        type: 'number', min: '0', step: '1', placeholder: 'Xu', class: 'admin-num',
       }) as HTMLInputElement;
       const selfMeritIn = h('input', {
-        type: 'number', min: '0', step: '1', placeholder: 'Công đức', style: 'width:64px',
+        type: 'number', min: '0', step: '1', placeholder: 'Công đức', class: 'admin-num',
       }) as HTMLInputElement;
       const selfBtn = h('button', {}, 'Thêm cho bản thân') as HTMLButtonElement;
       selfBtn.onclick = () => {
@@ -315,10 +317,10 @@ export function openAdminPanel(ctx: PanelCtx) {
             .filter((x) => x !== '').join(' · ');
 
           const coinsIn = h('input', {
-            type: 'number', min: '0', step: '1', placeholder: 'Xu', style: 'width:64px',
+            type: 'number', min: '0', step: '1', placeholder: 'Xu', class: 'admin-num',
           }) as HTMLInputElement;
           const meritIn = h('input', {
-            type: 'number', min: '0', step: '1', placeholder: 'Công đức', style: 'width:64px',
+            type: 'number', min: '0', step: '1', placeholder: 'Công đức', class: 'admin-num',
           }) as HTMLInputElement;
           const grantBtn = h('button', {}, 'Tặng') as HTMLButtonElement;
           grantBtn.onclick = () => {
@@ -359,7 +361,7 @@ export function openAdminPanel(ctx: PanelCtx) {
             h('td', {}, h('div', { class: 'qrow' }, coinsIn, meritIn, grantBtn, banBtn)),
           ));
         }
-        listBox.appendChild(h('table', { class: 'donor-table' },
+        listBox.appendChild(h('table', { class: 'admin-table' },
           h('thead', {}, h('tr', {},
             h('th', {}, 'Tên'),
             h('th', {}, 'Công đức'),
@@ -487,7 +489,10 @@ export function openAdminPanel(ctx: PanelCtx) {
     };
 
     draw();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+      card?.classList.remove('admin-panel');
+    };
   });
 }
 
