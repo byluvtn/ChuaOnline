@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#2a1a10" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="/icons/icon-180.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Chùa Online" />
+  <meta name="apple-mobile-web-app-title" content="Chùa 24/7" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Chùa Online</title>
+  <title>Chùa 24/7</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
@@ -21,7 +21,7 @@
 
   <div id="login" class="overlay login">
     <div class="card">
-      <div class="brand"><span class="logo" data-icon="lotus"></span><h1>Chùa Online</h1></div>
+      <div class="brand"><span class="logo" data-icon="lotus"></span><h1>Chùa 24/7</h1></div>
       <p class="tag">Thắp một nén hương, gửi một lời nguyện bình an.</p>
       <canvas id="preview" width="600" height="440"></canvas>
       <div class="tabs" id="outfits" role="tablist">
@@ -66,7 +66,7 @@
   </div>
 
   <div id="hud" hidden>
-    <div id="marquee"><span>Chào mừng bạn về Chùa Online: cùng thắp hương, niệm Phật, gửi lời nguyện bình an. Giữ lời nói hiền!</span></div>
+    <div id="marquee"><span>Chào mừng bạn về Chùa 24/7: cùng thắp hương, niệm Phật, gửi lời nguyện bình an. Giữ lời nói hiền!</span></div>
 
   <div id="donateMarquee" hidden><span></span></div>
 
@@ -120,15 +120,6 @@
       <button id="zoneBtn" class="act teacher" hidden><span class="ico" data-icon="temple"></span><span class="lb"></span></button>
     </div>
 
-    <!-- bottom feature bar: rebuilt by src/menu.ts (initMenu). Static fallback keeps legacy ids alive. -->
-    <div id="menu" class="glass">
-      <button data-panel="shop"><span class="ico" data-icon="shop"></span><span class="lb">Cửa hàng</span></button>
-      <button data-panel="bag"><span class="ico" data-icon="bag"></span><span class="lb">Túi đồ</span></button>
-      <button data-panel="quests"><span class="ico" data-icon="scroll"></span><span class="lb">Nhiệm vụ</span><em id="questDot" hidden></em></button>
-      <button data-panel="rank"><span class="ico" data-icon="trophy"></span><span class="lb">Xếp hạng</span></button>
-      <button data-panel="rooms"><span class="ico" data-icon="temple"></span><span class="lb">Chọn chùa</span></button>
-      <button id="logoutBtn"><span class="ico" data-icon="exit"></span><span class="lb">Thoát</span></button>
-    </div>
 
     <div id="joystick" hidden><div id="stick"></div></div>
     <div id="toast"></div>

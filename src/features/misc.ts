@@ -114,7 +114,7 @@ export function openFeedback(ctx: MenuCtx) {
 
 function supportBlock(): HTMLElement {
   const box = h('div', { class: 'support' });
-  box.append(h('p', {}, 'Chùa Online được xây dựng với tấm lòng, miễn phí cho mọi người. Nếu thấy hữu ích, bạn có thể góp một chút để duy trì máy chủ và phát triển thêm.'));
+  box.append(h('p', {}, 'Chùa 24/7 được xây dựng với tấm lòng, miễn phí cho mọi người. Nếu thấy hữu ích, bạn có thể góp một chút để duy trì máy chủ và phát triển thêm.'));
   const any = CONFIG.donateText || CONFIG.donateQrUrl || CONFIG.supportEmail;
   if (!any) { box.append(h('p', { class: 'hint' }, 'Thông tin ủng hộ sẽ sớm được cập nhật')); return box; }
   if (CONFIG.donateQrUrl) box.append(h('img', { class: 'qr', src: CONFIG.donateQrUrl, alt: 'Mã QR ủng hộ', referrerpolicy: 'no-referrer' }));

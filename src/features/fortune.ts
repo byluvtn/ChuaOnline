@@ -6,7 +6,7 @@ import { iconSvg } from '../icons';
 const validN = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < FORTUNES.length;
 const textOf = (n: number) => {
   const f = FORTUNES[n];
-  return `Quẻ số ${n + 1} – ${f.grade}\n${f.poem.join('\n')}\nLời giải: ${f.general}\nCông việc: ${f.career}\nGia đạo – Tình duyên: ${f.love}\nSức khỏe: ${f.health}\nTài lộc: ${f.wealth}\n(Chùa Online, chỉ để giải trí và suy ngẫm)`;
+  return `Quẻ số ${n + 1} – ${f.grade}\n${f.poem.join('\n')}\nLời giải: ${f.general}\nCông việc: ${f.career}\nGia đạo – Tình duyên: ${f.love}\nSức khỏe: ${f.health}\nTài lộc: ${f.wealth}\n(Chùa 24/7, chỉ để giải trí và suy ngẫm)`;
 };
 
 export function openFortune(ctx: { socket: Socket; toast: (t: string) => void }) {

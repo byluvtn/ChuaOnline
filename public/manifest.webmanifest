@@ -1,6 +1,6 @@
 {
-  "name": "Chùa Online",
-  "short_name": "Chùa Online",
+  "name": "Chùa 24/7",
+  "short_name": "Chùa 24/7",
   "description": "Thắp một nén hương, gửi một lời nguyện bình an.",
   "lang": "vi",
   "start_url": "/",
@@ -10,6 +10,7 @@
   "theme_color": "#2a1a10",
   "background_color": "#2a1a10",
   "icons": [
-    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
   ]
 }

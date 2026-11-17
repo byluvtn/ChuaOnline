@@ -10,8 +10,8 @@ const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.
 
 export function openInstall() {
   openCustomPanel('Cài vào màn hình', (body) => {
-    body.append(h('p', {}, 'Cài Chùa Online như một ứng dụng để mở nhanh từ màn hình chính, toàn màn hình, không cần mở trình duyệt.'));
-    if (isStandalone()) { body.append(h('div', { class: 'thanks' }, h('b', {}, 'Đã cài'), h('p', {}, 'Bạn đang dùng Chùa Online dưới dạng ứng dụng.'))); return; }
+    body.append(h('p', {}, 'Cài Chùa 24/7 như một ứng dụng để mở nhanh từ màn hình chính, toàn màn hình, không cần mở trình duyệt.'));
+    if (isStandalone()) { body.append(h('div', { class: 'thanks' }, h('b', {}, 'Đã cài'), h('p', {}, 'Bạn đang dùng Chùa 24/7 dưới dạng ứng dụng.'))); return; }
     if (deferred) {
       body.append(h('button', { class: 'gold', onclick: async () => {
         const d = deferred; deferred = null;

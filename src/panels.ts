@@ -710,7 +710,7 @@ export { levelOf };
 // ------------------------------------------------------------------ sư thầy (NPC)
 const TEACHER_SECTIONS: { title: string; lines: string[] }[] = [
   { title: 'Chào mừng bạn', lines: [
-    'A Di Đà Phật. Chùa Online là nơi bạn có thể dừng chân giữa ngày bận rộn, đi dạo, lễ Phật và trò chuyện cùng mọi người.',
+    'A Di Đà Phật. Chùa 24/7 là nơi bạn có thể dừng chân giữa ngày bận rộn, đi dạo, lễ Phật và trò chuyện cùng mọi người.',
     'Bạn hãy bắt đầu từ việc nhỏ: đi qua cầu cong vào sân chùa, rồi thắp một nén hương trước chánh điện. Nhiệm vụ đầu tiên trong mục Nhiệm vụ sẽ được ghi nhận ngay.',
   ] },
   { title: 'Cách tu tập', lines: [

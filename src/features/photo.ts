@@ -14,7 +14,7 @@ function pad(n: number): string {
 function fileName(d: Date): string {
   const date = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
   const time = `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-  return `chua-online-${date}-${time}.png`;
+  return `chua247-${date}-${time}.png`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
