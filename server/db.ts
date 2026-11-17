@@ -357,6 +357,10 @@ export async function logoutToken(token: string) {
 
 // ---- profile ----
 interface Row { id: number; username: string | null; name: string; outfit: Outfit; color: string; merit: number; coins: number; accessory: string | null; is_admin: number; title: string | null; bio: string | null; age: number | null }
+export async function getWallet(id: number): Promise<{ merit: number; coins: number } | null> {
+  const r = (await db.execute({ sql: 'SELECT merit, coins FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as { merit: number; coins: number } | undefined;
+  return r ? { merit: Number(r.merit), coins: Number(r.coins) } : null;
+}
 export async function getProfile(id: number): Promise<Profile | null> {
   const r = (await db.execute({ sql: 'SELECT id, username, name, outfit, color, merit, coins, accessory, is_admin, title, bio, age FROM players WHERE id = ?', args: [id] })).rows[0] as unknown as Row | undefined;
   if (!r) return null;

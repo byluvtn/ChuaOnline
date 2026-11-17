@@ -127,6 +127,7 @@ interface Session {
   resume?: string;
   /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
   beadStart?: number;
+  questCache?: { rows: Awaited<ReturnType<typeof db.questRows>>; at: number };
 }
 const sessions = new Map<string, Session>();
 const roomChat = new Map<string, ChatMessage[]>();
@@ -187,7 +188,7 @@ async function refreshQuestGuard(room: string): Promise<void> {
   try {
     const next = new Set<string>();
     for (const s of list) {
-      const rows = await db.questRows(s.pid);
+      const rows = await cachedQuestRows(s);
       const byId = new Map(rows.map((r) => [r.quest_id, r]));
       for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS].filter((x) => !x.id.startsWith('dq_') || dqTodayIds().includes(x.id))) {
         const req = (q as any).requires as string | undefined;
@@ -238,8 +239,8 @@ function npcPos(s: Session, npcId: string): { x: number; z: number } | undefined
 function distTo(s: Session, x: number, z: number): number {
   return Math.hypot(s.state.x - x, s.state.z - z);
 }
-async function questList(pid: number): Promise<QuestState[]> {
-  const rows = new Map((await db.questRows(pid)).map((r) => [r.quest_id, r]));
+async function questList(pid: number, s?: Session): Promise<QuestState[]> {
+  const rows = new Map((await (s ? cachedQuestRows(s) : db.questRows(pid))).map((r) => [r.quest_id, r]));
   const map = (q: AnyQuestDef) => ({
     id: q.id, label: q.label, target: q.target, coins: q.coins, merit: q.merit,
     progress: rows.get(q.id)?.progress ?? 0, claimed: !!rows.get(q.id)?.claimed,
@@ -252,6 +253,17 @@ async function questList(pid: number): Promise<QuestState[]> {
   });
   return [...QUESTS, ...WEEKLY_QUESTS, ...NPC_QUESTS.filter((q) => !q.id.startsWith('dq_') || dqTodayIds().includes(q.id)), ...visibleChain].map(map);
 }
+const QUEST_CACHE_TTL_MS = 30_000;
+async function cachedQuestRows(s: Session) {
+  const c = s.questCache;
+  if (c && Date.now() - c.at < QUEST_CACHE_TTL_MS) return c.rows;
+  const rows = await db.questRows(s.pid);
+  s.questCache = { rows, at: Date.now() };
+  return rows;
+}
+function invalidateQuestCache(pid: number) {
+  for (const x of sessions.values()) if (x.pid === pid) delete x.questCache;
+}
 // Single place for step / zone / accepted checks of NPC and chain quests.
 // Returns true if progress was advanced.
 async function advanceNpcQuest(
@@ -261,7 +273,7 @@ async function advanceNpcQuest(
   by = 1,
   rows?: Awaited<ReturnType<typeof db.questRows>>,
 ): Promise<boolean> {
-  const row = (rows ?? (await db.questRows(s.pid))).find((r) => r.quest_id === q.id);
+  const row = (rows ?? (await cachedQuestRows(s))).find((r) => r.quest_id === q.id);
   if (!row || row.claimed) return false; // not accepted or already claimed
   const progress = row.progress ?? 0;
   if (progress >= q.target) return false;
@@ -273,6 +285,7 @@ async function advanceNpcQuest(
   }
   if (['bow', 'incense', 'chant', 'sutra', 'visit'].includes(ev) && !inZone((q as any).zone, s.state.x, s.state.z)) return false;
   await db.bumpQuest(s.pid, q.id, q.target, by);
+  invalidateQuestCache(s.pid);
   return true;
 }
 async function pushProfile(s: Session) {
@@ -282,20 +295,21 @@ async function pushProfile(s: Session) {
   s.state.accessory = p.accessory;
   s.socket.emit('profile', p);
 }
-async function pushQuests(s: Session) { s.socket.emit('quests', await questList(s.pid)); }
+async function pushQuests(s: Session) { s.socket.emit('quests', await questList(s.pid, s)); }
 async function questEvent(s: Session, ev: QuestEvent, by = 1) {
   for (const q of [...QUESTS, ...WEEKLY_QUESTS]) if (q.event === ev) await db.bumpQuest(s.pid, q.id, q.target, by);
-  const rows = await db.questRows(s.pid);
+  invalidateQuestCache(s.pid);
+  const rows = await cachedQuestRows(s);
   for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS]) await advanceNpcQuest(s, q as AnyQuestDef, ev, by, rows);
   await pushQuests(s);
 }
 /** Cộng thưởng + đếm quest 'merit' (nhiệm vụ tuần tích công đức). */
 async function grantRewards(s: Session, merit: number, coins: number, opts?: { skipAdd?: boolean; beforeMerit?: number }) {
-  const before = opts?.beforeMerit ?? (await db.getProfile(s.pid))?.merit ?? 0;
+  const before = opts?.beforeMerit ?? (await db.getWallet(s.pid))?.merit ?? 0;
   const lvBefore = levelOf(before);
   if (!opts?.skipAdd) await db.addRewards(s.pid, merit, coins);
   await questEvent(s, 'merit', merit);
-  const after = (await db.getProfile(s.pid))?.merit ?? 0;
+  const after = (await db.getWallet(s.pid))?.merit ?? 0;
   const lvAfter = levelOf(after);
   if (lvAfter > lvBefore && (await db.claimLevelReward(s.pid, lvAfter))) {
     await db.addRewards(s.pid, LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore), LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore));
@@ -494,7 +508,7 @@ io.on('connection', (socket) => {
     const now = Date.now();
     if (now - (lastVisitCheck.get(s) ?? 0) >= 1000) {
       lastVisitCheck.set(s, now);
-      const rows = await db.questRows(s.pid);
+      const rows = await cachedQuestRows(s);
       for (const vq of [...NPC_QUESTS, ...CHAIN_QUESTS]) {
         if (await advanceNpcQuest(s, vq as AnyQuestDef, 'visit', 1, rows)) {
           await pushQuests(s);
@@ -580,7 +594,7 @@ io.on('connection', (socket) => {
     io.to(s.room).emit('sky:lantern', l);
     await grantRewards(s, SKY_LANTERN_MERIT, 0);
     await countStatSafe(s, 'lanterns');
-    const p = await db.getProfile(s.pid);
+    const p = await db.getWallet(s.pid);
     reply({ ok: true, coins: p?.coins ?? 0, merit: SKY_LANTERN_MERIT });
     await pushProfile(s);
   });
@@ -618,7 +632,7 @@ io.on('connection', (socket) => {
     if (!item) return { ok: false as const, error: 'Vật phẩm không tồn tại' };
     // Hạt tốt chỉ có từ thu hoạch — không bán ở đâu cả (giá 0 nên phải chặn ở server, không chỉ ẩn UI).
     if (item.category === 'hat_giong' && item.price === 0) return { ok: false as const, error: 'Hạt tốt chỉ có từ thu hoạch' };
-    const lvl = levelOf((await db.getProfile(pid))?.merit ?? 0);
+    const lvl = levelOf((await db.getWallet(pid))?.merit ?? 0);
     if (item.minLevel && lvl < item.minLevel) return { ok: false as const, error: `Cần cấp ${item.minLevel} để mua` };
     if (item.kind === 'accessory' && (await db.itemQty(pid, item.id)) > 0) return { ok: false as const, error: 'Bạn đã sở hữu' };
     const cost = item.price * qty;
@@ -673,7 +687,7 @@ io.on('connection', (socket) => {
     const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
     if (!s || !q || !isNpcQuest(q)) return reply({ ok: false, error: 'Nhiệm vụ không hợp lệ' });
     if (q.id.startsWith('dq_') && !dqTodayIds().includes(q.id)) return reply({ ok: false, error: 'Việc này không phải việc hôm nay' });
-    const rows = await db.questRows(s.pid);
+    const rows = await cachedQuestRows(s);
     const byId = new Map(rows.map((r) => [r.quest_id, r]));
     const req = (q as any).requires as string | undefined;
     if (req && !byId.get(req)?.claimed) return reply({ ok: false, error: 'Chưa mở khóa nhiệm vụ này' });
@@ -681,6 +695,7 @@ io.on('connection', (socket) => {
     await db.acceptQuest(s.pid, q.id);
     const steps = (q as any).steps as QuestEvent[] | undefined;
     if (steps?.[0] === 'talk' || (!steps && q.event === 'talk')) await db.bumpQuest(s.pid, q.id, q.target, 1);
+    invalidateQuestCache(s.pid);
     if (q.id === 'nq_find_lost_pet') triggerLost(s.room);
     reply({ ok: true });
     await pushQuests(s);
@@ -705,10 +720,10 @@ io.on('connection', (socket) => {
     if (!set) { set = new Set<string>(); sweptPoints.set(s, set); }
     const key = `${q.id}:${pt.x},${pt.z}`;
     if (set.has(key)) {
-      const cur = await db.questRows(s.pid);
+      const cur = await cachedQuestRows(s);
       return reply({ ok: false, error: 'Điểm này đã quét rồi', progress: cur.find((r) => r.quest_id === q.id)?.progress ?? 0 });
     }
-    const rows = await db.questRows(s.pid);
+    const rows = await cachedQuestRows(s);
     const ok = await advanceNpcQuest(s, q, 'sweep', 1, rows);
     if (!ok) return reply({ ok: false, error: 'Chưa thể quét lúc này' });
     set.add(key);
@@ -727,7 +742,7 @@ io.on('connection', (socket) => {
       return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
     }
     if (distTo(s, a.x, a.z) > 2.5) return reply({ ok: false, error: 'Bạn đứng quá xa' });
-    const rows = await db.questRows(s.pid);
+    const rows = await cachedQuestRows(s);
     let ok = false;
     for (const q of defs) if (await advanceNpcQuest(s, q, 'feed', 1, rows)) ok = true;
     if (!ok) return reply({ ok: false, error: 'Chưa thể cho ăn lúc này' });
@@ -799,7 +814,7 @@ io.on('connection', (socket) => {
       return reply({ ok: false, error: 'Yêu cầu không hợp lệ' });
     }
     if (distTo(s, a.x, a.z) > 2.5) return reply({ ok: false, error: 'Bạn đứng quá xa' });
-    const rows = await db.questRows(s.pid);
+    const rows = await cachedQuestRows(s);
     const ok = await advanceNpcQuest(s, q, 'find', 1, rows);
     if (!ok) return reply({ ok: false, error: 'Chưa thể tìm lúc này' });
     resolveLost(s.room, a.id);
@@ -816,7 +831,7 @@ io.on('connection', (socket) => {
     const pos = receiver ? npcPos(s, receiver) : undefined;
     if (!pos) return reply({ ok: false, error: 'Không tìm thấy người nhận' });
     if (distTo(s, pos.x, pos.z) > 3) return reply({ ok: false, error: 'Bạn đứng quá xa người nhận' });
-    const rows = await db.questRows(s.pid);
+    const rows = await cachedQuestRows(s);
     const ok = await advanceNpcQuest(s, q, 'deliver', 1, rows);
     if (!ok) return reply({ ok: false, error: 'Chưa thể giao lúc này' });
     reply({ ok: true });
@@ -831,7 +846,7 @@ io.on('connection', (socket) => {
     if (distTo(s, stall.x, stall.z) > 4) return reply({ ok: false, error: 'Bạn đứng quá xa gian hàng' });
     const vid = VENDOR_STALL[stallId];
     if (vid && vendorAway(s.room, vid)) return reply({ ok: false, error: VENDOR_AWAY_MSG(vendorName(s.room, vid)) });
-    const rows = await db.questRows(s.pid);
+    const rows = await cachedQuestRows(s);
     const byId = new Map(rows.map((r) => [r.quest_id, r]));
     const match = [...NPC_QUESTS, ...CHAIN_QUESTS].find((q) => {
       const row = byId.get(q.id);
@@ -877,7 +892,7 @@ io.on('connection', (socket) => {
       roomChat.set(s.room, arr);
       io.to(s.room).emit('chat', msg);
     }
-    const p = await db.getProfile(s.pid);
+    const p = await db.getWallet(s.pid);
     reply({ ok: true, coins: p?.coins ?? 0 });
     await pushProfile(s);
   });
@@ -892,7 +907,7 @@ io.on('connection', (socket) => {
     if (distTo(s, PHONG_CD.x, PHONG_CD.z) > 6) return reply({ ok: false, error: 'Bạn đứng quá xa bàn ghi công đức' });
     const n = typeof amount === 'number' ? amount : Number(amount);
     if (!Number.isInteger(n) || n < 1 || n > 100000) return reply({ ok: false, error: 'Số xu không hợp lệ' });
-    const before = (await db.getProfile(s.pid))?.merit ?? 0;
+    const before = (await db.getWallet(s.pid))?.merit ?? 0;
     const lvBefore = levelOf(before);
     const r = await db.donate(s.pid, n);
     if (!r.ok) return reply({ ok: false, error: r.error });
@@ -1043,6 +1058,7 @@ io.on('connection', (socket) => {
       if (!pos || distTo(s, pos.x, pos.z) > 3) return reply({ ok: false, error: 'Bạn đứng quá xa người giao' });
     }
     if (await db.claimQuestWithRewards(pid, q.id, q.target, q.merit, q.coins)) {
+      invalidateQuestCache(pid);
       await pushProfile(s);
       await maybeAwardTitles(s);
       await pushQuests(s);
@@ -1166,7 +1182,7 @@ io.on('connection', (socket) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     if (typeof mailId !== 'number' || !Number.isFinite(mailId)) return cb?.({ ok: false, error: 'Thư không hợp lệ', unread: await db.mailUnread(pid) });
-    const before = (await db.getProfile(pid))?.merit ?? 0;
+    const before = (await db.getWallet(pid))?.merit ?? 0;
     const got = await db.claimMail(pid, mailId);
     if (!got) return cb?.({ ok: false, error: 'Quà đã được nhận hoặc thư không có quà', unread: await db.mailUnread(pid) });
     const { merit, coins, items } = got.gift;
@@ -1290,7 +1306,7 @@ io.on('connection', (socket) => {
     for (const other of sessions.values()) {
       if (other.pid === userId) await pushProfile(other);
     }
-    const after = await db.getProfile(userId);
+    const after = await db.getWallet(userId);
     reply({ ok: true, merit: after?.merit ?? 0, coins: after?.coins ?? 0 });
   });
 
@@ -1307,7 +1323,7 @@ io.on('connection', (socket) => {
     await db.addRewards(s.pid, merit, coins);
     await db.logAdminGrant(s.pid, s.pid, merit, coins);
     await pushProfile(s);
-    const after = await db.getProfile(s.pid);
+    const after = await db.getWallet(s.pid);
     reply({ ok: true, merit: after?.merit ?? 0, coins: after?.coins ?? 0 });
   });
 
@@ -1413,27 +1429,34 @@ setInterval(() => {
   for (const r of ROOMS) refreshQuestGuard(r.id).catch(() => {});
 }, 10_000);
 
+let meditateTickRunning = false;
 // meditation: every tick, seated players earn merit; group bonus doubles it
 setInterval(async () => {
-  for (const r of ROOMS) {
-    const sitting = roomSessions(r.id).filter((s) => s.state.anim === 'sit');
-    if (!sitting.length) { io.to(r.id).emit('meditation', meditationInfo(r.id)); continue; }
-    const bonus = sitting.length >= GROUP_MEDITATE_MIN;
-    roomMinutes.set(r.id, (roomMinutes.get(r.id) ?? 0) + (sitting.length * MEDITATE_TICK_MS) / 60_000);
-    for (const s of sitting) {
-      // Breaker: all players share one DB, so if it is down, skip the rest of this room.
-      if (!db.dbBackgroundAllowed()) break;
-      try {
-        await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0);
-        await questEvent(s, 'meditate');
-        await countStatSafe(s, 'meditate_sec', MEDITATE_TICK_MS / 1000);
-        db.dbBackgroundResult();
-      } catch (e) {
-        db.dbBackgroundResult(e);
-        console.warn('[meditate]', (e as Error).message);
+  if (meditateTickRunning) return;
+  meditateTickRunning = true;
+  try {
+    for (const r of ROOMS) {
+      const sitting = roomSessions(r.id).filter((s) => s.state.anim === 'sit');
+      if (!sitting.length) { io.to(r.id).emit('meditation', meditationInfo(r.id)); continue; }
+      const bonus = sitting.length >= GROUP_MEDITATE_MIN;
+      roomMinutes.set(r.id, (roomMinutes.get(r.id) ?? 0) + (sitting.length * MEDITATE_TICK_MS) / 60_000);
+      for (const s of sitting) {
+        // Breaker: all players share one DB, so if it is down, skip the rest of this room.
+        if (!db.dbBackgroundAllowed()) break;
+        try {
+          await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0);
+          await questEvent(s, 'meditate');
+          await countStatSafe(s, 'meditate_sec', MEDITATE_TICK_MS / 1000);
+          db.dbBackgroundResult();
+        } catch (e) {
+          db.dbBackgroundResult(e);
+          console.warn('[meditate]', (e as Error).message);
+        }
       }
+      io.to(r.id).emit('meditation', meditationInfo(r.id));
     }
-    io.to(r.id).emit('meditation', meditationInfo(r.id));
+  } finally {
+    meditateTickRunning = false;
   }
 }, MEDITATE_TICK_MS);
 
