@@ -17,6 +17,7 @@ const today = (nowMs: number) => dayKeyICT(new Date(nowMs));
 const validPlot = (plot: number) => GARDEN_PLOTS.some((p) => p.id === plot);
 const validSpecies = (s: string): s is GardenSpecies => Object.hasOwn(GARDEN_SEEDS, s);
 const stageMsFor = (q: GardenQuality) => q === 'good' ? GARDEN_STAGE_MS_GOOD : GARDEN_STAGE_MS;
+const normQuality = (q: unknown): GardenQuality => q === 'good' ? 'good' : 'normal';
 
 /** Ghi DB có thử lại khi SQLITE_BUSY: 2 client cùng ghi (người chơi + tua nhanh test, hoặc
  *  2 người chơi cùng tưới/thu hoạch) có thể kẹt khóa; 1 lần va chạm không được làm chết server
@@ -44,7 +45,7 @@ export function computePlot(row: GardenRow, nowMs: number): { row: GardenRow; de
   // Mỗi lần tưới mở 1 giai đoạn (hạt tốt gieo ở stage 2 nên chỉ cần 2 lần tưới).
   // Không tưới thì cây đứng yên, dù thời gian có trôi.
   {
-    const quality: GardenQuality = r.quality ?? 'normal';
+    const quality: GardenQuality = normQuality(r.quality);
     const stageMs = stageMsFor(quality);
     const waters = r.waters ?? 0;
     const before = r.stage;
@@ -83,7 +84,7 @@ export async function listGardenRows(pid: number, nowMs: number): Promise<{ stat
     const r = rows.get(p.id);
     if (!r) return { plot: p.id, species: null, stage: 0, quality: 'normal', waters: 0, wilted: false, wateredToday: false, harvestable: false, harvested: false, waterCooldownMs: 0, progress: 0 };
     const wateredToday = r.watered_day_vn === day;
-    const quality: GardenQuality = r.quality ?? 'normal';
+    const quality: GardenQuality = normQuality(r.quality);
     const waters = r.waters ?? 0;
     const stageMs = stageMsFor(quality);
     // Đang nấu = giai đoạn hiện tại đã có lần tưới của nó; chưa tưới thì tiến trình đứng 0.
@@ -100,6 +101,7 @@ export async function listGardenRows(pid: number, nowMs: number): Promise<{ stat
 }
 
 export async function plantGardenRow(pid: number, plot: number, species: string, quality: GardenQuality, nowMs: number): Promise<Result> {
+  quality = normQuality(quality);
   if (!validPlot(plot)) return { ok: false, error: 'Luống không hợp lệ', grew: [] };
   if (!validSpecies(species)) return { ok: false, error: 'Loại hạt không hợp lệ', grew: [] };
   const { rows, grew } = await syncRows(pid, nowMs);
@@ -107,9 +109,10 @@ export async function plantGardenRow(pid: number, plot: number, species: string,
   // Hạt tốt gieo ở stage 2 (cây con khỏe); hạt thường ở stage 1.
   // Gieo hạt KHÔNG tính là 1 lần tưới (watered_day_vn để trống, waters = 0).
   const stage = quality === 'good' ? 2 : 1;
-  await gdb(`INSERT INTO garden_plots (player_id, plot_id, species, quality, stage, planted_at, last_watered_at, watered_day_vn, harvested, stage_at, wilted, grow_counted, harvested_at, waters)
+  const ins = await gdb(`INSERT OR IGNORE INTO garden_plots (player_id, plot_id, species, quality, stage, planted_at, last_watered_at, watered_day_vn, harvested, stage_at, wilted, grow_counted, harvested_at, waters)
           VALUES (?, ?, ?, ?, ?, ?, ?, '', 0, ?, 0, 0, 0, 0)`,
     [pid, plot, species, quality, stage, nowMs, nowMs, nowMs]);
+  if (ins.rowsAffected === 0) return { ok: false, error: 'Luống đã có cây', grew };
   return { ok: true, grew };
 }
 
@@ -128,8 +131,9 @@ export async function waterGardenRow(pid: number, plot: number, nowMs: number): 
     const mins = Math.ceil((stageMs - (nowMs - row.last_watered_at)) / 60000);
     return { ok: false, error: `Tưới lại sau ${mins} phút`, grew };
   }
-  await gdb('UPDATE garden_plots SET last_watered_at = ?, watered_day_vn = ?, wilted = 0, stage_at = ?, waters = waters + 1 WHERE player_id = ? AND plot_id = ?',
-    [nowMs, today(nowMs), nowMs, pid, plot]);
+  const upd = await gdb('UPDATE garden_plots SET last_watered_at = ?, watered_day_vn = ?, wilted = 0, stage_at = ?, waters = waters + 1 WHERE player_id = ? AND plot_id = ? AND last_watered_at = ?',
+    [nowMs, today(nowMs), nowMs, pid, plot, row.last_watered_at]);
+  if (upd.rowsAffected === 0) return { ok: false, error: 'Luống vừa được tưới, thử lại sau', grew };
   return { ok: true, grew };
 }
 
@@ -139,9 +143,10 @@ export async function harvestGardenRow(pid: number, plot: number, nowMs: number)
   if (!row) return { ok: false, error: 'Luống trống', grew };
   if (row.harvested) return { ok: false, error: 'Cây đã thu hoạch', grew };
   if (row.stage < 4) return { ok: false, error: 'Cây chưa lớn', grew };
-  await gdb('UPDATE garden_plots SET harvested = 1, harvested_at = ? WHERE player_id = ? AND plot_id = ?',
+  const upd = await gdb('UPDATE garden_plots SET harvested = 1, harvested_at = ? WHERE player_id = ? AND plot_id = ? AND harvested = 0 AND stage = 4',
     [nowMs, pid, plot]);
-  return { ok: true, species: row.species, quality: row.quality ?? 'normal', grew };
+  if (upd.rowsAffected === 0) return { ok: false, error: 'Cây đã thu hoạch', grew };
+  return { ok: true, species: row.species, quality: normQuality(row.quality), grew };
 }
 
 export async function gardenSeedGiftSent(pid: number): Promise<boolean> {
