@@ -4,7 +4,8 @@ export interface NewsItem {
   items: string[];
 }
 
-export const LATEST_NEWS_ID = 129;
+// Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
+export const LATEST_NEWS_ID = 126;
 
 export const NEWS: NewsItem[] = [
   {
@@ -43,7 +44,6 @@ export const NEWS: NewsItem[] = [
     items: [
       'Râu Sư Ông giờ hẹp lại, rủ thon dần tới ngực, không còn đọc thành yếm trắng.',
       'Râu mọc liền từ dưới cằm, nối với ria mép, nhìn từ trên xuống vẫn rõ là râu.',
-      'Râu hai Sư Thầy còn lại cũng được làm lại cùng kiểu, không tệ đi.',
     ],
   },
   {
@@ -120,16 +120,6 @@ export const NEWS: NewsItem[] = [
     ],
   },
   {
-    title: 'Quản trị tự thêm xu và công đức cho bản thân',
-    date: '2026-11-17',
-    items: [
-      'Quản trị viên có thêm mục Bản thân trong tab Người chơi của bảng Quản trị: xem số xu và công đức hiện tại rồi thêm cho chính mình.',
-      'Mỗi lần thêm tối đa 1.000.000 xu hoặc 1.000.000 công đức; số dư cập nhật ngay, không cần tải lại.',
-      'Mỗi lần tự thêm đều ghi vào Nhật ký quản trị trong tab Thống kê.',
-      'Chỉ quản trị viên mới thấy mục này.',
-    ],
-  },
-  {
     title: 'Mèo và chó không còn đi xuyên bồ đoàn',
     date: '2026-11-16',
     items: [
@@ -143,7 +133,6 @@ export const NEWS: NewsItem[] = [
     items: [
       'Bậc thềm trước Chính Điện giờ cùng màu đá với các bậc và bệ còn lại trong chùa.',
       'Chó, mèo và các thú khác giờ bước lên bậc thay vì đi xuyên qua bậc.',
-      'Đã kiểm tra lại đường đi của NPC quanh thềm điện sau khi sửa.',
     ],
   },
   {
@@ -180,7 +169,6 @@ export const NEWS: NewsItem[] = [
     items: [
       'Râu Sư Ông giờ rủ rõ phía trước áo, không còn cắm vào ngực áo.',
       'Đã sửa cả lúc quét sân: râu không còn chìm vào áo khi vung chổi.',
-      'Râu hai Sư Thầy còn lại cũng được kiểm tra, không tệ đi.',
     ],
   },
   {
@@ -212,30 +200,12 @@ export const NEWS: NewsItem[] = [
     ],
   },
   {
-    title: 'Bảng quản trị cho quản trị viên',
-    date: '2026-11-16',
-    items: [
-      'Quản trị viên có thêm nút Quản trị: mở bảng quản trị với 4 mục.',
-      'Mục Người chơi: tìm người chơi, tặng xu hoặc công đức, khóa hoặc mở khóa tài khoản.',
-      'Mục Thông báo: gửi tin cho mọi người đang online; mục Dịch chuyển: tới ngay bất cứ khu nào trong chùa; mục Thống kê: xem người online, người mới và tổng quyên góp.',
-    ],
-  },
-  {
-    title: 'Camera tự do trên điện thoại cho quản trị viên',
-    date: '2026-11-16',
-    items: [
-      'Nút Camera chỉ quản trị viên mới thấy trên điện thoại.',
-      'Joystick lái camera, kéo màn hình để xoay, nút ▲/▼ để bay lên/xuống.',
-      'Trên máy tính vẫn dùng phím F như cũ.',
-    ],
-  },
-  {
     title: 'Cây liễu cổ thụ bên bờ hồ Tây',
     date: '2026-11-16',
     items: [
       'Bờ Tây hồ sen có thêm cây liễu cổ thụ cao 13 m: rèm lá rủ dài gần chạm đất, thân thấp khuất sau rèm lá.',
       'Lá giữ đúng dạng cắt alpha nên nhìn xuyên qua kẽ lá được, không thành tấm đặc; gốc cây có va chạm, đi bộ không xuyên qua thân.',
-      'Cây đứng ở bãi cỏ phía Tây hồ, cách đường đi Vườn Tây hơn 8 m; nếu muốn dời cây sang chỗ khác thì nhắn lại.',
+      'Cây đứng ở bãi cỏ phía Tây hồ, cách đường đi Vườn Tây hơn 8 m.',
     ],
   },
   {
@@ -269,7 +239,7 @@ export const NEWS: NewsItem[] = [
     title: 'Cảnh mới: tháp 5 tầng, cầu đá, cây cổ thụ bồ đề',
     date: '2026-11-15',
     items: [
-      'Tháp nhỏ ở (34,-15) giờ là tháp 5 tầng mái đỏ (thay tháp 3 tầng cũ); tháp mini ở vườn giữ mái đen.',
+      'Tháp nhỏ giờ là tháp 5 tầng mái đỏ (thay tháp 3 tầng cũ); tháp mini ở vườn giữ mái đen.',
       'Cầu đá vòm đỏ mới bắc qua vịnh đông hồ cá koi (gần cầu chính).',
       'Thêm 4 cây mới: anh đào bên cầu sen, sồi bóng mát khu nghỉ, sồi heyhey bên hồ, cây đu phía tây — tán cao, không chắn màn hình.',
       'Cây bồ đề cổ thụ (cao 15 m) mới trồng phía đông, cạnh Điện Mẫu; có ghế đá bên gốc — Sư Ông thi thoảng ra ngồi nghỉ dưới gốc cây.',
@@ -371,7 +341,7 @@ export const NEWS: NewsItem[] = [
     date: '2026-11-15',
     items: [
       'Quét sân không còn kẹt sau một điểm khi mạng chập chờn.',
-      'Tiến độ cập nhật ngay khi quét xong, không phụ thuộc push riêng từ server.',
+      'Tiến độ cập nhật ngay khi quét xong.',
     ],
   },
   {
@@ -615,7 +585,7 @@ export const NEWS: NewsItem[] = [
     date: '2026-11-14',
     items: [
       'Giá treo quẻ gần Chính Điện giờ đã xin được xăm: tới gần giá, bấm "Xin xăm", lắc ống xăm để rút một quẻ trong ngày.',
-      'Bộ 33 quẻ viết riêng cho chùa (thơ 4 câu, lời giải công việc / tình cảm / sức khỏe / tài lộc); mỗi ngày được xin một quẻ miễn phí, do server rút và ghi nhận — mở lại trong ngày vẫn thấy đúng quẻ đã rút; quẻ chỉ để giải trí và suy ngẫm.',
+      'Bộ 33 quẻ viết riêng cho chùa (thơ 4 câu, lời giải công việc / tình cảm / sức khỏe / tài lộc); mỗi ngày được xin một quẻ miễn phí, mở lại trong ngày vẫn thấy đúng quẻ đã rút; quẻ chỉ để giải trí và suy ngẫm.',
     ],
   },
   {
@@ -697,7 +667,7 @@ export const NEWS: NewsItem[] = [
     title: 'Thêm chó Labrador làm chó thứ 3 trong chùa',
     date: '2026-11-14',
     items: [
-      'Chó Labrador (bản làm nhẹ từ 72 nghìn mặt xuống còn gần 6 nghìn mặt) gia nhập sân chùa làm chó thứ 3, cao khoảng 6 tấc, đi lại quanh sân và vườn như 2 chó còn lại.',
+      'Chó Labrador gia nhập sân chùa làm chó thứ 3, cao khoảng 6 tấc, đi lại quanh sân và vườn như 2 chó còn lại.',
       'Cho chó mèo ăn (Q23) và tìm chó mèo đi lạc (Q24) không đổi; Labrador cũng được cho ăn như 2 chó kia.',
     ],
   },
@@ -860,7 +830,7 @@ export const NEWS: NewsItem[] = [
   },
   {
     title: 'Am Cố và Phòng ghi công đức xoay đúng hướng',
-    date: '2026-11-13',
+    date: '2026-11-14',
     items: [
       'Am Cố xoay mặt tiền về hướng Nam, nhìn ra sân chùa thay vì quay vào tường bao phía Đông.',
       'Phòng ghi công đức xoay mặt mở về hướng Bắc, nhìn ra sân chính; Sư Thầy Trực Ban vẫn ngồi ở bàn trực, quay mặt ra cửa.',
@@ -1044,7 +1014,7 @@ export const NEWS: NewsItem[] = [
     title: 'Tải mượt hơn, chuông đúng dáng',
     date: '2026-11-12',
     items: [
-      'Gộp mesh các nhà (Nhà Tổ, Tăng Xá, Điện Mẫu, Nhà Khách, Thiền Đường, Trai Đường, Phòng Công Đức, Am Cổ) để giảm tải đồ họa.',
+      'Các nhà trong chùa (Nhà Tổ, Tăng Xá, Điện Mẫu, Nhà Khách, Thiền Đường, Trai Đường, Phòng Công Đức, Am Cổ) được tối ưu để game chạy mượt hơn.',
       'Chuông ở Tháp Chuông đã quay đúng chiều: miệng chuông hướng xuống.',
       'Ghế gỗ trong vườn giờ là vật cản.',
     ],

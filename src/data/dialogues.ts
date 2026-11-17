@@ -166,9 +166,9 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questDone: 'Sân sạch bong rồi! Cảm ơn thí chủ nhiều lắm.',
     questLines: {
       nq_find_lost_pet: {
-        offer: 'Trời ơi, Vàng với Mướp chạy đâu mất tiêu rồi. Tôi quét sân mãi mà không thấy. Con tìm giúp tôi với, tụi nó hay trốn sau Bảo Tháp, trong vườn hay bờ ao lắm.',
-        reminder: 'Con tìm quanh chùa thử xem, nhớ nhìn kỹ sau mấy cái cây, cái cột. Tụi nó khéo trốn lắm.',
-        done: 'Tìm thấy rồi à, may quá! Cảm ơn con nhiều, để tôi dắt nó về sân.',
+        offer: 'Vàng với Mướp chạy đâu mất tiêu rồi. Con quét sân mãi mà không thấy. Thí chủ tìm giúp con với, tụi nó hay trốn sau Bảo Tháp, trong vườn hay bờ ao lắm.',
+        reminder: 'Thí chủ tìm quanh chùa thử xem, nhớ nhìn kỹ sau mấy cái cây, cái cột. Tụi nó khéo trốn lắm.',
+        done: 'Tìm thấy rồi à, may quá! Cảm ơn thí chủ nhiều, để con dắt nó về sân.',
       },
     },
     smallTalk: [
@@ -192,8 +192,8 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
       { time: 'noon', text: 'Trưa rồi, con quét cầu xong là ra ao xem cá chép ăn.' },
       { time: 'afternoon', text: 'Chào thí chủ! Chiều nay sen nở đẹp lắm, đứng trên cầu ngắm là thích nhất.' },
     ],
-    questOffer: 'Cầu sen lá rụng đầy cả mặt cầu, một mình con quét không kịp. Thí chủ giúp con quét hai chỗ dưới tán cây gần cầu nhé.',
-    questReminder: 'Cầu còn lá ở hai đầu đấy, thí chủ giúp con cho sạch nhé.',
+    questOffer: 'Cầu sen lá rụng đầy cả mặt cầu, một mình con quét không kịp. Thí chủ giúp con quét hai chỗ ngay giữa mặt cầu nhé.',
+    questReminder: 'Cầu còn lá ở giữa mặt cầu đấy, thí chủ giúp con cho sạch nhé.',
     questDone: 'Cầu sạch rồi, đi lại an toàn hẳn! Cảm ơn thí chủ nhé.',
     smallTalk: [
       'Cá chép dưới ao dạn lắm, cứ thấy bóng người là bơi lại xin ăn.',
@@ -322,8 +322,8 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
       { time: 'noon', text: 'Trưa nắng chang chang mà đường vẫn mát nhờ bóng cây hai bên.' },
       { time: 'afternoon', text: 'Chào thí chủ! Chiều nay đường chính đông người qua lại, con quét dọn cho sạch.' },
     ],
-    questOffer: 'Đường chính lá rụng nhiều quá, thí chủ giúp con quét ba chỗ dưới mấy cây dọc đường nhé.',
-    questReminder: 'Đường còn lá ở mấy gốc cây đấy, thí chủ giúp con nốt nhé.',
+    questOffer: 'Đường chợ ngoài cửa chùa lá rụng nhiều quá, thí chủ giúp con quét ba chỗ dọc đường chợ, trước các quầy nhé.',
+    questReminder: 'Đường chợ còn lá ở trước mấy quầy đấy, thí chủ giúp con nốt nhé.',
     questDone: 'Đường thông thoáng rồi, đi lại dễ hẳn! Cảm ơn thí chủ nhé.',
     smallTalk: [
       'Đường chính là lối ai vào chùa cũng đi qua, nên con quét kỹ lắm.',
@@ -478,9 +478,9 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         done: 'Bao gạo tới rồi, cảm ơn thí chủ nhiều, con nấu cơm cho các thầy ngay đây!',
       },
       nq_feed_pets: {
-        offer: 'Chó mèo trong chùa đói bụng rồi, mà tôi đang bận dưới bếp. Đồ ăn để sẵn ở Trai Đường, con cho hai bé ăn giúp thầy nhé.',
-        reminder: 'Chó mèo đang quanh quẩn ngoài sân đó. Con lại gần rồi bấm Cho ăn là được.',
-        done: 'Cảm ơn con. Hai bé ăn no, nằm ngoan rồi. Con có lòng lắm.',
+        offer: 'Chó mèo trong chùa đói bụng rồi, mà con đang bận dưới bếp. Đồ ăn để sẵn ở Trai Đường, thí chủ cho các bé ăn giúp con nhé.',
+        reminder: 'Chó mèo đang quanh quẩn ngoài sân đó. Thí chủ lại gần rồi bấm Cho ăn là được.',
+        done: 'Cảm ơn thí chủ. Các bé ăn no, nằm ngoan rồi. Thí chủ có lòng lắm.',
       },
     },
     smallTalk: [
@@ -603,16 +603,16 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
       { time: 'noon', text: 'Trưa rồi mà Bảo Tháp vẫn đông người chụp ảnh, em với bạn đứng đợi nãy giờ.' },
       { time: 'afternoon', text: 'Chào anh/chị! Chiều nay em với bạn qua Bảo Tháp chụp ảnh, nắng đẹp lắm.' },
     ],
-    questOffer: 'Anh ơi chụp giúp em tấm ảnh ở Bảo Tháp với, em đi với bạn mà không ai chụp cho cả nhóm.',
+    questOffer: 'Anh/chị ơi chụp giúp em tấm ảnh ở Bảo Tháp với, em đi với bạn mà không ai chụp cho cả nhóm.',
     questReminder: 'Tấm ảnh ở Bảo Tháp chụp giúp em chưa? Bọn em đợi ở đây nhé.',
-    questDone: 'Ảnh đẹp ơi là đẹp, cảm ơn anh nhiều lắm, bọn em thích lắm!',
+    questDone: 'Ảnh đẹp ơi là đẹp, cảm ơn anh/chị nhiều lắm, bọn em thích lắm!',
     smallTalk: [
       'Bảo Tháp là chỗ em thích chụp nhất, đứng từ xa lấy được cả tháp lẫn cây.',
       'Cuối tuần em hay rủ bạn qua chùa, cả nhóm ai cũng thích chụp ảnh ở Bảo Tháp.',
       'Chùa này cây cối nhiều, chụp ảnh lên hình đẹp ơi là đẹp.',
     ],
     farewell: [
-      'Em cảm ơn anh nhiều lắm, ảnh đẹp ơi là đẹp!',
+      'Em cảm ơn anh/chị nhiều lắm, ảnh đẹp ơi là đẹp!',
       'Anh/chị về cẩn thận nhé!',
     ],
   },
@@ -627,9 +627,9 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
       { time: 'noon', text: 'Trưa nắng mà vườn Thiền vẫn mát, em ngồi đây đọc sách nãy giờ.' },
       { time: 'afternoon', text: 'Chào anh/chị! Chiều nay em ra vườn Thiền đọc sách, gió mát thích lắm.' },
     ],
-    questOffer: 'Chị ngồi đây đọc sách, em mua giúp chị chai nước ở quán ngoài cổng nhé, chị khát quá.',
-    questReminder: 'Chai nước mua giúp chị chưa? Chị ngồi đây đọc sách đợi nhé.',
-    questDone: 'Cảm ơn em nhiều lắm, nước mát quá, đúng lúc chị đang khát.',
+    questOffer: 'Em ngồi đây đọc sách, anh/chị mua giúp em chai nước ở quán ngoài cổng nhé, em khát quá.',
+    questReminder: 'Chai nước mua giúp em chưa? Em ngồi đây đọc sách đợi nhé.',
+    questDone: 'Cảm ơn anh/chị nhiều lắm, nước mát quá, đúng lúc em đang khát.',
     smallTalk: [
       'Chiều chiều ra đây ngồi đọc sách, gió mát mà yên tĩnh hơn ở nhà.',
       'Vườn Thiền là chỗ em thích nhất trong chùa, vừa đẹp vừa yên.',
@@ -849,7 +849,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         done: 'Đàn chim ăn no rồi, thí chủ có lòng lắm. Cảm ơn thí chủ đã giúp bác.',
       },
     },
-    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, cá phóng sinh 10 xu một con. Bác còn bán thức ăn cho chim 5 xu một túi và thức ăn cho chó mèo 5 xu một túi nữa, thí chủ mua về cho chúng ăn lấy phước nhé.',
+    shopGreeting: 'Bác có chim phóng sinh, cá phóng sinh, thức ăn cho chim và thức ăn cho chó mèo nữa, thí chủ mua về thả và cho chúng ăn lấy phước nhé.',
     smallTalk: [
       'Chim bác nuôi đều khỏe mạnh, thả ra là bay vút lên trời ngay.',
       'Hồ phóng sinh ở phía đông Chính Điện, bến thả ngay mép ao, thí chủ cứ đi thẳng là tới.',
@@ -870,7 +870,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
       { time: 'noon', text: 'Trưa nắng rồi, thí chủ nhớ tưới cây hôm nay chưa? Cây khát là héo đấy.' },
       { time: 'afternoon', text: 'Chiều mát, thí chủ ra vườn gieo thử một hạt đi, cây lớn nhanh lắm.' },
     ],
-    questOffer: 'Vườn Cây có 8 luống trống, thí chủ mua hạt giống ở tiểu rồi gieo xuống, ngày nào cũng nhớ tưới nước nhé.',
+    questOffer: 'Thí chủ mua hạt giống ở tiểu rồi gieo vào luống trống nhé, hạt thường tưới đủ 3 lần là cây lớn sau khoảng 45 phút.',
     questReminder: 'Thí chủ làm xong việc vườn chưa? Gieo hạt, tưới nước, chăm cây lớn rồi thu hoạch, xong quay lại gặp tiểu nhé.',
     questDone: 'Cây thí chủ chăm lớn tốt lắm, tiểu cảm ơn thí chủ nhé.',
     questLines: {
@@ -885,8 +885,8 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         done: 'Cây được tưới no nước rồi, mai lại tưới tiếp nhé.',
       },
       gq_grow: {
-        offer: 'Thí chủ chăm một cây lớn hẳn giúp tiểu nhé, tưới đều mỗi ngày là cây lớn sau khoảng 20 phút.',
-        reminder: 'Cây thí chủ chăm đã lớn hẳn chưa? Nhớ tưới mỗi ngày thì cây mới lớn.',
+        offer: 'Thí chủ chăm một cây lớn hẳn giúp tiểu nhé, tưới đủ 3 lần là cây lớn sau khoảng 45 phút.',
+        reminder: 'Cây thí chủ chăm đã lớn hẳn chưa? Nhớ tưới đủ 3 lần thì cây mới lớn.',
         done: 'Có cây lớn hẳn rồi, vườn thêm xanh tốt, tiểu cảm ơn thí chủ.',
       },
       gq_harvest: {
@@ -895,11 +895,11 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         done: 'Thu hoạch tốt lắm, vừa có công đức vừa có hạt mới để gieo tiếp.',
       },
     },
-    shopGreeting: 'Tiểu có hạt sồi 10 xu, hạt thông 12 xu, hạt bồ đề 20 xu. Thí chủ mua hạt rồi gieo vào luống trống trong vườn nhé.',
+    shopGreeting: 'Tiểu có hạt sồi, hạt thông, hạt bồ đề. Thí chủ mua hạt rồi gieo vào luống trống trong vườn nhé.',
     smallTalk: [
-      'Mỗi giai đoạn cây lớn mất 5 phút sau khi tưới, tưới đều là khoảng 20 phút cây lớn hẳn.',
+      'Mỗi giai đoạn cây lớn sau 15 phút kể từ lần tưới, tưới đủ 3 lần là khoảng 45 phút cây lớn hẳn.',
       'Cây quá 24 giờ không tưới thì héo, quá 48 giờ thì biến mất, thí chủ nhớ tưới mỗi ngày.',
-      'Thu hoạch cây lớn được 15 công đức với ít xu và thêm hạt giống, gieo tiếp được ngay.',
+      'Thu hoạch cây lớn được 15 công đức với thêm hạt giống để gieo tiếp; cây trồng từ hạt tốt còn thêm xu.',
     ],
     farewell: [
       'Thí chủ chăm cây vui nhé, nhớ tưới mỗi ngày.',
@@ -919,7 +919,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questOffer: '',
     questReminder: '',
     questDone: 'Cảm ơn thí chủ đã ủng hộ, ăn ngon miệng nhé.',
-    shopGreeting: 'Phở chay của cô 10 xu một tô, nước dùng nấu từ rau củ, thí chủ ăn thử nhé.',
+    shopGreeting: 'Phở chay của cô nấu nước dùng từ rau củ, thí chủ ăn thử nhé.',
     smallTalk: [
       'Nước dùng cô hầm từ nấm, cà rốt với củ cải, không dùng gì mặn đâu.',
       'Khách đi lễ xong hay ghé ăn tô phở chay rồi mới về.',
@@ -943,7 +943,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questOffer: '',
     questReminder: '',
     questDone: 'Cảm ơn thí chủ, uống cho mát nhé.',
-    shopGreeting: 'Trà đá của bác 5 xu một ly, thí chủ uống cho đỡ khát nhé.',
+    shopGreeting: 'Trà đá của bác mát lạnh, thí chủ uống cho đỡ khát nhé.',
     smallTalk: [
       'Trà bác pha đậm vừa, đá bỏ nhiều nên uống rất mát.',
       'Đi bộ dưới nắng lâu thì nên ghé uống ly trà cho đỡ mệt.',
@@ -967,7 +967,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questOffer: '',
     questReminder: '',
     questDone: 'Cảm ơn thí chủ, dùng cơm ngon miệng nhé.',
-    shopGreeting: 'Cơm chay của cô 10 xu một phần, có đậu hũ, rau xào và canh, thí chủ dùng thử nhé.',
+    shopGreeting: 'Cơm chay của cô có đậu hũ, rau xào và canh, thí chủ dùng thử nhé.',
     smallTalk: [
       'Đậu hũ cô tự chiên, rau thì mua mỗi sáng ở chợ.',
       'Cơm chay ăn thanh đạm, đi lễ xong ăn vào nhẹ bụng lắm.',
@@ -984,23 +984,23 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     name: 'Bác Bán Phóng Sinh',
     role: 'Người bán phóng sinh',
     greetings: [
-      { time: 'morning', text: 'Chào thí chủ, sáng nay chim hót hay, cá cũng khỏe, mua một con về thả lấy phước nhé.' },
-      { time: 'noon', text: 'Trưa rồi, chim cá bác vẫn khỏe, thí chủ mua về thả ở hồ phóng sinh nhé.' },
-      { time: 'afternoon', text: 'Chiều nay bác còn ít chim cá, thí chủ mua giúp bác nhé.' },
+      { time: 'morning', text: 'Mô Phật, chào thí chủ. Thả chim thả cá phải nhẹ tay, thí chủ nhớ niệm một câu Phật hiệu rồi hẵng thả nhé.' },
+      { time: 'noon', text: 'Mô Phật. Trưa rồi, thí chủ cứ thong thả. Phóng sinh thì phải thả đúng chỗ, ra bến thả ở mép hồ chứ đừng thả bừa.' },
+      { time: 'afternoon', text: 'Chiều rồi, thí chủ có lòng phóng sinh thì ra bến thả cho sớm, lòng thành mới có phước.' },
     ],
     questOffer: '',
     questReminder: '',
     questDone: 'Cảm ơn thí chủ, thả chim thả cá xong nhớ niệm Phật nhé.',
-    shopGreeting: 'Bác có chim phóng sinh 20 xu một con, cá phóng sinh 10 xu một con, thức ăn cho chim 5 xu một túi, thí chủ mua về thả và cho chim ăn nhé.',
+    shopGreeting: 'Bác có chim và cá để thí chủ phóng sinh, với thức ăn cho chim nữa. Mua về thì ra bến thả, vừa thả vừa niệm Phật nhé.',
     smallTalk: [
-      'Chim bác nuôi khỏe mạnh, thả ra là bay vút lên trời ngay.',
-      'Cá bác giữ nước sạch mỗi ngày nên con nào cũng khỏe, thả xuống ao là bơi đi liền.',
-      'Hồ phóng sinh ở phía đông Chính Điện, bến thả ngay mép ao.',
-      'Thả một con chim hay một con cá là cứu một mạng sống, phước báu lắm đấy.',
+      'Bến thả ở mép hồ phía đông Chính Điện, thí chủ ra đó thả cho đúng chỗ nhé.',
+      'Thả cá thì thả sát mặt nước, đừng ném từ trên cao, cá mới không bị choáng.',
+      'Thả chim thì mở lồng cho chim tự bay, đừng vội xua, để nó định thần đã.',
+      'Thả xong thì chắp tay niệm một câu Phật hiệu, hồi hướng phước lành cho muôn loài.',
     ],
     farewell: [
-      'Thí chủ đi thong thả, nhớ ghé lại nhé.',
-      'Mô Phật, chúc thí chủ an lành.',
+      'Mô Phật, thí chủ thả xong nhớ niệm một câu Phật hiệu nhé.',
+      'Thí chủ đi thong thả, giữ lòng từ bi nhé.',
     ],
   },
 
@@ -1016,7 +1016,7 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questOffer: '',
     questReminder: '',
     questDone: 'Cảm ơn con, uống cho mát nhé.',
-    shopGreeting: 'Trà đá của bà 5 xu một ly, con uống cho đỡ khát nhé.',
+    shopGreeting: 'Trà đá của bà mát lạnh, con uống cho đỡ khát nhé.',
     smallTalk: [
       'Bà bán trà ở đây từ hồi chợ còn nhỏ xíu.',
       'Trà bà nấu từ lá, thơm và mát, uống quen rồi là nhớ.',
