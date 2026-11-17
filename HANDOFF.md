@@ -6,7 +6,7 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
-## Commit gần nhất: 605c05d (round 1 + round 2 merged)
+## Commit gần nhất: 7a70bf1 (fix admin log, 2026-11-17) — HANDOFF bắt kịp tới tin 129
 Push lên `origin/main` (byluvtn/ChuaOnline).
 
 ---
@@ -926,3 +926,224 @@ Cạnh (47, đã kiểm tra): gate–bridgeS, bridgeS–bridgeN, bridgeN–plaza
 - `toToon()` sửa để giữ `alphaTest` (lá liễu: alphaMode MASK, alphaCutoff 0.246), `side: DoubleSide` và `alphaMap` nếu có; áp dụng cho cả 3 nhánh (có map / vertexColors / trơn). Material không có alpha không đổi hành vi.
 - `tools/willow-sim.mjs`: chạy `npx tsx tools/willow-sim.mjs` ra `WILLOW_SIM: ALL PASS` — A1 GLB đúng size/tris/meshes (5.510.480 B, 9.082 tris, 2 mesh, 1 material MASK cutoff 0,246); A2 vị trí (-14, 30) đúng, 25 placements; A3 blocked=false, groundY=0; B 90 node đường tới được từ plaza; C collider cách đường gần nhất 7,349 m; D đường 8,349 / hồ 7,814 / đèn 6,021 / bồn hoa 3,792 / anh đào 6,000; E `garden.ts` có `alphaTest`.
 - Còn treo: ảnh điện thoại thật từ quảng trường và từ bờ hồ để user xác nhận bằng mắt.
+
+## Bắt kịp tin 25–129 — gộp 2026-11-17
+
+Gộp bởi Lux, đối chiếu với `git log` + `src/data/news.ts` + soi code trực tiếp
+trên GitHub (2026-11-13→17). HANDOFF.md trước bản gộp này dừng ở tin 105
+(entry cây liễu, đuôi file) và header vẫn ghi commit `605c05d` — các tin
+25–104 chưa từng có entry, tin 106–129 cũng chưa. Entry cây liễu (105) đã có
+sẵn ở trên, không ghi lại ở đây.
+
+Trạng thái lúc gộp: HEAD `7a70bf1` (2026-11-17). Tin "Có gì mới":
+`LATEST_NEWS_ID` = 129, 131 entries trong mảng (chênh +2 là quirk cũ từ đầu
+dự án, KHÔNG phải lệch đếm). R3 XONG CẢ 3 (R3.1 tặng quà 86, R3.3 bia tuần 87,
+R3.2 chụp ảnh 88). R2.1 xin xăm XONG (tin 60). A2 XONG (tin 11–24).
+Thứ tự khóa tiếp theo: **Fable audit + animation → R4** (kit:
+`prompt-audit-fable-chua-online.md`, chủ dự án đang duyệt nội dung 17/11).
+Roadmap + phan-b stale nặng (dừng ở 2026-11-11) — cập nhật sau nghiệm thu,
+không cập nhật lẻ từng tin.
+
+### Tin 25–36 — blitz đêm 13→14 (HEAD `d85de5f`, 12 commit)
+- Hệ nhiệm vụ v1 (26): 21 nhiệm vụ/ngày, chợ 4 quầy ngoài Tam Quan
+  (hoa quả/bánh/trà/hương hoa, 10 xu/món), guide path + mũi tên, +16 NPC → 28.
+- Camera tự zoom trong nhà (31). Tượng hành lang còn **5/bên** (spec A2.1 chốt 6 —
+  coi như đổi thiết kế, không phải lỗi).
+- Hòm công đức (35): đóng góp xu game qua Sư Thầy Trực Ban, 1 xu = 1 công đức,
+  >50 xu thông báo cả phòng, bảng vinh danh top 10 ở Tam Quan. Chỉ xu game.
+- Thú cưng (36): chó Vàng/Đen, mèo Mướp, 3 cú, 2 chim + 2 nhiệm vụ cho ăn/tìm thú lạc.
+- Quầy chim cá phóng sinh (37, `0acdea7`): chim 20 xu, cá 10 xu, thả ở bến
+  hồ phóng sinh +20/+10 công đức, nhiệm vụ "Phóng sinh lần đầu".
+- Thông báo đóng góp (38, `6b7067f`): ≥50 xu → chữ chạy + tin hệ thống, 5 mẫu
+  cảm ơn xoay. **Tin 55 KHÔNG trùng 38** (55 chỉ thêm: <50 xu vẫn có thông báo
+  riêng) — đừng xóa/gộp, sẽ lệch số tin sau. Lần sau tinh chỉnh kiểu này đặt
+  tiêu đề nêu đúng phần mới, vd "Đóng góp nhỏ cũng có thông báo riêng".
+
+### Tin 39–61 — blitz ngày 14 (HEAD `c573e1f`, 23 commit)
+- Sư Phó + Q22 (39); cho chim/thú ăn + Q26 (40); sửa world v2 (41: cầu thang
+  Tam Thế, tượng vàng retry, quầy chợ, Phòng ghi công đức quay ĐÔNG, hòm công
+  đức ×3, bảng vinh danh dời ra đường hồ Koi).
+- Đệm zafu (43/44); guide chợ + Q1 (45); Mướp ×2, đi lại sân trước/ao (46/57);
+  khách dạo trước khi về (47); props 3D (48: hòm công đức, ghế đá, đèn lồng,
+  tháp mini + giá treo quẻ); bảng ước, đèn đá, vườn cát lớn hơn, hành lang cao
+  hơn (49); Labrador chó thứ 3 (50); chợ 2 hàng (51); Collie + Munchkin thay
+  chó khối (52); tượng Phật vàng trong Đền Trình (53); đóng góp ≥50 xu thông
+  báo (55 — xem ghi chú ở trên); chợ về 1 hàng Đông (58).
+- **Hệ Danh hiệu (59): 24 danh hiệu, chữ vàng trên đầu nhân vật**, điều kiện theo
+  cấp/nhiệm vụ/đóng góp/tụng/thắp hương/lạy/thả đèn/lần hạt/thiền, mặc định đeo
+  danh hiệu cao nhất; danh hiệu nhiệm vụ/hương tính từ phiên bản này trở đi.
+  (Tin 123 sau này đổi thành tự chọn 1 danh hiệu để đeo.)
+- **R2.1 xin xăm (60, commit `80fc1ff`, ĐÃ SOI CODE):** bảng `fortune_daily`
+  (player_id, day_key) PK, `getFortuneToday` + `saveFortune` ON CONFLICT DO NOTHING, handler `fortune:get`/`fortune:draw`, 33 quẻ thơ 4 câu (11 Thượng /
+  13 Trung / 9 Hạ), localStorage đã bỏ hẳn. 2 lệch so với spec Lux: (1) lần bốc
+  đầu trong ngày phải đứng trong 3.5m của giá treo quẻ ở (24,−24) (mở lại quẻ
+  cũ thì ở đâu cũng được); (2) lần bốc đầu dùng Math.random rồi lưu, không phải
+  bốc xác định theo tài khoản+ngày — nhưng ON CONFLICT nên trong ngày vẫn 1 quẻ.
+- Tên NPC xếp tầng (61).
+
+### Tin 62–84 — blitz đêm 14→15 (HEAD `7a70c98`, 23 commit)
+- Sửa loạt 62–81: ngồi xếp bằng, quầy chợ đều, nhãn NPC, đệm bỏ viền sen,
+  tên không nhảy khi xếp chồng, quầy phóng sinh gộp 1, NPC rải khi vào, đăng
+  nhập lại giữ vị trí, **bảng vinh danh chạy thật (70)**, NPC rảnh làm việc vặt
+  (71), NPC nói 1 câu (72), **giảm nóng máy (73): cap 60fps, điện thoại mặc
+  định đồ họa Vừa, bóng 1024**, guide quét phủ hết điểm (74), sư trực đi lại
+  phòng công đức (75), bảng lễ 13 lễ âm lịch (76), NPC tour làm 6 việc (77),
+  dòng trạng thái dưới tên NPC (78), không đi xuyên đồ vật (79), sửa chim vườn
+  cát (80), shop trung tâm bỏ 7 món trùng chợ (81).
+- **Vườn trồng cây (82):** 8 luống Vườn Tây, hạt Sồi 10 / Thông 12 / Anh Đào 15 /
+  Bồ Đề 20 xu, lớn sau ~20 phút nếu tưới, thu hoạch 15 công đức + 5–10 xu +
+  1–2 hạt, héo sau 24h không tưới, mất sau 48h, Q27–Q30, thư chào mừng tặng
+  1 hạt Sồi miễn phí. (Trồng cây từng bị gạch trong bản đối chiếu — giờ đã
+  vào game, cần xếp chỗ trong lộ trình.)
+- **Sư Ông npc37 (83–84):** kho 9→10 việc, giao 3 việc/ngày (cùng 3 việc cho
+  mọi người, reset 00:00 VN), dấu "!" + nút guide; việc mới "Tưới 1 cây"
+  20 xu + 10 công đức (84; nước tưới 10→9 công đức ở tin 85, cap ngày 36).
+  Trùng ý tưởng rota chấp tác 3 việc/ngày của R5.2, khác ở chỗ cho MỌI người
+  chơi chứ không riêng người tu.
+
+### Tin 85–104 — blitz ngày 15 (HEAD `55bbcdc`, 20 commit)
+- Tưới cây 10→9 công đức (85, commit `888ffa9`).
+- **R3.1 tặng quà (86, `fe379be`, ĐÃ SOI CODE):** `db.sendGift` transaction
+  (trừ túi qty≥1 → thư kind 'gift' qua cleanGift → cap 5/ngày bằng
+  minigame_daily 'gift' WHERE count<5), handler `gift:send` cùng phòng +
+  không tự tặng + chỉ lễ vật/consumable, UI trong mail.ts. 2 lệch so với spec
+  Lux: lời nhắn 120 ký tự (spec 100); người nhận PHẢI online cùng phòng
+  (spec nói offline vẫn nhận được).
+- **R3.3 bia tuần (87, `21484ca`):** bia đá ở (10,14) rìa quảng trường,
+  `db.topWeekly` → `rank:get` → `setStele`, refresh 5 phút — khớp thiết kế.
+- **R3.2 chụp ảnh (88, `1c084cc`, ĐÃ SOI CODE):** `src/features/photo.ts`,
+  post.render() + toDataURL cùng task (không ảnh đen), CSS `.photo-mode` ẩn
+  HUD, watermark "Chùa Online • chua247.top" + pháp danh + ngày, tải PNG.
+  Lệch: watermark ghi "Chùa Online", chưa phải thương hiệu **Chùa 24/7** —
+  ĐÃ SỬA 2026-11-17 (`2436a30`, xem mục fix sau tin 129).
+- Quét guide 89–90; râu Sư Ông 91; chổi to hơn 92; cây cao hơn 93; điểm quét
+  Q2–Q4 dời 94; bảng lễ quay ra cổng 95; nút di chuyển iPhone 96; khách rải
+  2 bên 97; tìm đường guide 98.
+- **Áo mới (99, `a20fcb0`):** áo dài hồng sen 90 / vàng nhạt 100, bà ba nâu/tím
+  70, áo lam 60, nón lá 50, khăn đóng 60 — đều kind 'accessory' trong shop.
+- Đèn lồng xếp lại (100, `ab6807d` — tiêu đề tin này ban đầu copy nhầm của
+  tin 95, ĐÃ SỬA 2026-11-17 `4af3bdd`); cảnh: tháp 5 tầng + cầu đá + bồ đề cổ
+  (101); thông báo không bị chat che (102); chỉnh vườn (103); tụng chung
+  nhóm (104, `55bbcdc`): roster tụng + ghế tụng ở 5 điện, nghỉ đúng 2 giường
+  theo thiết kế của chủ dự án.
+
+### Tin 105–107 — tối 16/11 (HEAD `f6aa784`, 5 commit)
+- Cây liễu cổ thụ bên bờ hồ Tây (105, `9490e2a` — entry chi tiết đã có ở trên,
+  cuối file trước bản gộp này).
+- **Fly.io làm host tạm vì Oracle hết capacity** (`2750eb8` + workflow
+  auto-deploy `c0b63a4`): app `chua247`, region sin, máy 512MB (~$3.88) +
+  volume 1GB ($0.15) + egress ~$0.27 ≈ $4.30/tháng → được miễn → $0.
+  Máy 256MB crash liên tục, chủ dự án nâng lên 512MB lúc 22:36 ngày 16/11 —
+  không hạ xuống nếu không có lệnh của chủ dự án.
+- Camera tự do trên điện thoại cho admin (106, `0e1ee20`): joystick lái,
+  kéo xoay, nút ▲/▼ bay lên xuống; máy tính vẫn phím F.
+- **Bảng quản trị (107, `f6aa784`, ĐÃ SOI CODE — xem mục "ĐÃ KIỂM CHỨNG")**:
+  tìm người chơi, tặng xu/công đức, khóa/mở tài khoản, gửi tin cho mọi người
+  online, dịch chuyển tới bất cứ khu nào, thống kê online/người mới/tổng quyên
+  góp. Quyền admin giờ rộng hơn hẳn thời chỉ có camera.
+
+### Tin 108–129 — blitz đêm 16→17 (HEAD `b7250ac`, 22 commit)
+- Sửa crash Turso fetch-fail (`e5eb809`, không ghi tin); joystick landscape
+  (108, `53cb6a5`); bảng Đại Hùng Bảo Điện + 7 bảng mới (109, `869835b`).
+- **Chống sập Turso (`ba85036`, không ghi tin, ĐÃ SOI CODE):** timeout 5s
+  (AbortSignal) cho mọi fetch Turso, nhận diện lỗi transient (fetch failed /
+  UND_ERR_SOCKET… — lỗi SQL không retry), circuit breaker cho job nền (mở sau
+  3 lỗi, backoff 30s→120s), `withDbRetry` tối đa 3 lần, `safeHandler` bọc hết
+  socket listener để lỗi không giết server. Làm nghiêm túc.
+- Fly 256→512MB (`46df098`, chủ dự án chọn, vẫn <$5 = miễn phí).
+- Sửa pathfinder line-collider (110, `bd83385`); râu Sư Ông ×2 (111 `480a373` +
+  126 `a667abc` — lần sửa râu thứ 3); nút hành động xếp cột dọc (112, `78be24f`);
+  guide tới người trên cầu (113, `5c181c3`); chó Trắng/Nâu vào, Đen ra
+  (114, `5cc0a4d`); bậc thềm chánh điện (115, `8a5748f`); thú vs đệm
+  (116, `d70ce5e`); **admin tự tặng mình (117, `38f9146`)**; biển ống
+  xăm (118, `3ea3ad2`); mèo Bông/Mun (119, `c5b02a9`); 2 track tụng
+  tiếng Pali (120, `b100c79`); **minimap tròn (121, `9feb69d`, ĐÃ SOI
+  CODE: `#minimapWrap` 150px, `border-radius: 50%`)**; Sư Ông ngồi ghế
+  bồ đề (122, `616ec7e`); **hồ sơ + danh hiệu (123, `0056ca5`, ĐÃ SOI
+  CODE: cột bio + age, lưu trên server; danh hiệu giờ tự chọn 1 cái để
+  đeo, thay được — thay cho mặc định đeo cao nhất)**; chim to hơn
+  (124, `1ce53f2`); **quẻ thêm Lời giải (125, `553f772`, ĐÃ SOI CODE:
+  vẫn 33 quẻ 11/13/9, thơ 4 câu, tất cả có thêm field `general`)**;
+  bỏ cây anh đào hồng + tre ở Bảo Tháp (127, `4d62890` — migration cẩn
+  thận: anh_dao → sồi, hạt trong túi người chơi được gộp sang sồi chứ
+  không mất); bịt khe giữa các tầng mái (128, `c0b6ee1`).
+- **Đèn trời + pháo hoa (129, `b7250ac`, ĐÃ SOI CODE):** đèn trời 15 xu,
+  +2 công đức, chờ 60s, chỉ ngoài sân, cả phòng thấy, tính vào stat đèn;
+  pháo hoa 3 cỡ, cooldown theo cỡ, khóa 1 màn/phòng, mở khóa đúng cả
+  đường lỗi, rồng phượng báo cả chùa.
+
+### Fix sau tin 129 — sáng 17/11 (không ghi tin mới, HEAD `7a70bf1`)
+- `4af3bdd`: tin 100 đổi tiêu đề thành "Đèn lồng đỏ dời khỏi cột đá và đèn đá,
+  không còn chồng chéo" (tiêu đề cũ trùng tin 95).
+- `2436a30`: watermark ảnh thành "Chùa 24/7 • chua247.top".
+- `b3b3799`: xóa đoạn đường thừa phía nam Phòng Ghi Công Đức (temple.ts,
+  rect stale `(-43.2, 39.5, -40.8, 42.2)`; rect live phía bắc còn nguyên).
+- `7a70bf1`: `admin:grant` thêm 1 dòng ghi `admin_log` (trước đó chỉ
+  selfgrant mới ghi — xem rider 6 cũ, nay đã xong).
+- 4 commit này chạy qua vòng mới: **Lux viết prompt → Sonnet qua Vilao viết
+  code → Lux soi + áp + push** (nối 2026-11-17, key Vilao của chủ dự án;
+  Sonnet ưu tiên butterfly → stey → nra, lỗi thì sang Opus 5.5 cùng thứ tự).
+  Chủ dự án cho phép Lux tự push lên GitHub không cần hỏi trước.
+
+### ĐÃ KIỂM CHỨNG bằng code (không theo tự báo cáo)
+- A2: merge gọi ở 11 chỗ trong temple.ts (trước là 0); chuông đã lật đúng;
+  prewarm nối trong main.ts; tin sạch, A2.2 ở ID 11.
+- R2.1 + R3: xem mục trên. Vườn cây: migration có PRAGMA-guard + backfill,
+  giai đoạn 15 phút (hạt tốt 10 phút), 25% hạt tốt, thu hoạch tốt +15 xu.
+- A2.1 lát 4 (HEAD `bb147d9`): map bounds x −66..66, z −88..64; tin 5→6;
+  ảnh hành lang PASS; ảnh toàn cảnh mờ do sương (chấp nhận).
+- **Bảng quản trị (tin 107, ĐÃ SOI CODE 2026-11-17):** `requireAdmin` kiểm
+  `is_admin` phía server trên mọi handler; `admin:grant` tặng người khác cap
+  100k; `admin:selfgrant` cap 1M + ghi `admin_log`; `admin:ban` cấm tự khóa
+  mình + cấm khóa admin khác, xóa hết session, và **login chặn tài khoản bị
+  khóa** (kiểm sau mật khẩu nên không lộ tài khoản nào bị khóa); `listPlayers`
+  escape ký tự LIKE; `admin:broadcast` cooldown 5s, 1–200 ký tự; `admin:stats`
+  đếm đúng. Sót duy nhất lúc đó (`admin:grant` không ghi log) ĐÃ SỬA
+  (`7a70bf1`). Teleport chỉ client-side (panels.ts, không có endpoint server
+  — hợp với kiểu di chuyển client-authoritative của game, không tính là lỗi).
+- **Hạ tầng Fly.io (ĐÃ SOI CODE): fly.toml đặt `DB_FILE=/data/chuaonline.db`
+  trên volume, KHÔNG có `TURSO_*` — Fly đang chạy SQLite local, không nối
+  Turso.** Nghĩa là 72 tài khoản trên Turso với dữ liệu trên Fly là 2 DB
+  riêng; đâu là production thật + dữ liệu nào là chuẩn thì CHƯA RÕ — chờ
+  quyết của chủ dự án (đã hỏi sáng 17/11), đừng tự gộp hay tự chọn DB.
+- Đèn trời + pháo hoa, hồ sơ + danh hiệu, quẻ Lời giải, minimap tròn: xem
+  mục tin 108–129 trên. Tin sạch: LATEST 129, 131 entries (offset-2 giữ).
+
+### CHƯA KIỂM CHỨNG — đừng ghi là xong
+- Ảnh nghiệm thu loạt tin 25–129 (đặc biệt 39–129): CHƯA CÓ.
+- Test máy thật Galaxy S26 Ultra: tuyến 5 nhà (nhà khách → tăng xá → nhà tổ →
+  am cổ → thiền đường) sau fix đơ + camera zoom (31) + tượng vàng 10MB +
+  model 3D (48) + nhãn mới (61) + giảm nóng (73) + vườn cây (82) + Sư Ông
+  (83–84) + chụp ảnh/bia tuần/áo mới (88/87/99) + bảng quản trị, đèn trời/
+  pháo hoa, minimap tròn, hồ sơ (105–129). Headless không tính.
+- Nội thất 7 nhà (A2.3), ca trực/nghỉ NPC, fix đơ trên máy thật, số draw-call:
+  chưa đo. Không có script verify nào cho loạt tính năng blitz (tools/ chỉ có
+  verify thời R1/R2.2: beads/boost/bow/checkin/mail/shop/spin/stats).
+- Ảnh `a21-pho.png` KHÔNG đạt làm bằng chứng §12.6 — chụp lại từ cổng (0,44)
+  nhìn ra phố. Nhãn bản đồ còn chồng 4 chỗ.
+
+### RIDER — đã xong trong đợt này
+- ~~PHONG_CD duplicate~~ — XONG `b3b3799` (xóa rect stale phía nam).
+- ~~Tin 100 trùng tiêu đề tin 95~~ — XONG `4af3bdd`.
+- ~~Watermark R3.2 "Chùa Online"~~ — XONG `2436a30` (thành "Chùa 24/7").
+- ~~Admin audit-log thiếu (admin:grant không ghi log)~~ — XONG `7a70bf1`.
+
+### RIDER CÒN TREO
+- **Đường tới am cổ** còn thiếu (đi bộ kiểm lát 4 tới được là nhờ đi trên cỏ).
+  Ranh giới bắc đã mở ở A2.7 nên tới được Am Cổ, nhưng đường lát tới đó chưa có.
+- **Shop bán áo tu — CHỜ QUYẾT của chủ dự án:** áo tràng nâu 120 / vàng 320 /
+  trúc 150 + áo lam 60 bán bằng xu như phụ kiện, đụng luật Phần C "áo tu chỉ
+  đạt bằng tu tập, không bán"; áo tràng vàng còn ghi "chỉ dành cho bậc cao cấp"
+  nhưng trả 320 xu là có. Giữ bán hay rút lại để dành cho Phần C?
+
+### QUYẾT ĐỊNH CÒN TREO (chủ dự án)
+- Áo tu trong shop: giữ hay rút (mục trên).
+- Hòm công đức + hệ nhiệm vụ/thú cưng + danh hiệu + vườn cây + Sư Ông xếp ở
+  đâu trong lộ trình (sau R2.1 theo thứ tự khóa là R3 — R3 đã xong; roadmap
+  cập nhật sau nghiệm thu).
+- **Đâu là production thật — Fly SQLite local hay Turso?** Fly chạy
+  `DB_FILE=/data/chuaonline.db`, không nối Turso; 72 tài khoản Turso và dữ
+  liệu Fly là 2 DB riêng. Chủ dự án xác nhận đâu là chuẩn rồi mới tính chuyện
+  gộp/migrate — đừng tự chọn.
+- Fable audit: chủ dự án đang duyệt nội dung kit (`prompt-audit-fable-chua-online.md`,
+  17/11); chạy Prompt A sau khi duyệt xong, trước R4.
