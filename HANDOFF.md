@@ -36,7 +36,7 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
 - Lưu ý: Lux đã cho agent làm thử lúc 16:53 nhưng user bảo dừng để
   về nhà tự làm — agent tắt khi mới đang clone, chưa viết code nào.
 
-### 2. Đợt 3 còn lại: 3.15 + 3.16 (CHƯA LÀM)
+### 2. Đợt 3 còn lại: 3.15 + 3.16 (✅ XONG 17/11)
 
 - Bối cảnh: Đợt 3 (sửa lỗi theo `AUDIT.md`) đã xong 3.1–3.13, 3.14
   đang làm dở lúc viết handoff này; Lux push 3.1–3.14 lên main trong
@@ -49,17 +49,21 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
   `initMenu` (sau đăng nhập) → đăng ký SW trước đăng nhập. File:
   `public/sw.js`, `src/menu.ts`, `src/main.ts`. Ghi chú: có thể gộp
   vào R4.2 (PWA) thay vì làm riêng.
-- **3.16 Deploy (#57) — CẦN ĐÁNH GIÁ LẠI.** Spec gốc: thêm
-  `concurrency` cho workflow, ghim action thay `@master`, sửa comment
-  nhắc Turso sai bối cảnh (file `.github/workflows/deploy-fly.yml`,
-  `fly.toml`). NHƯNG game đã chuyển khỏi Fly sang Oracle ngày
-  2026-11-17: workflow deploy-fly.yml ĐÃ TẮT, deploy giờ qua auto-pull
-  trên Oracle (kéo main mỗi 5 phút + restart). #57 viết cho thời Fly
-  nên phần lớn đã lỗi thời — session ở nhà quyết: (a) xóa hẳn
-  deploy-fly.yml + fly.toml (Fly đã chết, máy đã dừng), hay (b) để
-  nguyên trạng thái tắt. Vấn đề restart-khi-push giờ nằm ở auto-pull
-  Oracle: nó restart cả khi push chỉ đổi tài liệu — cải tiến sau:
-  thêm lọc đường dẫn (bỏ qua push chỉ có file `.md`).
+  → ✅ XONG 17/11 (commit e7a5275, không tăng news): cache 'co-shell-v2',
+  navigate chỉ cache khi res.ok + pathname '/', đăng ký SW chuyển sang
+  main.ts top-level (trước đăng nhập), bỏ khỏi initMenu.
+- **3.16 Deploy (#57) — ✅ XONG 17/11 (chọn (a): xóa hẳn).** Spec gốc:
+  thêm `concurrency` cho workflow, ghim action thay `@master`, sửa
+  comment nhắc Turso sai bối cảnh (file `.github/workflows/deploy-fly.yml`,
+  `fly.toml`). NHƯNG game đã chuyển khỏi Fly sang Oracle ngày 2026-11-17:
+  workflow deploy-fly.yml đã `disabled_manually` trên GitHub (verify qua
+  API 17/11; lần chạy cuối 17/11 08:30Z) + Fly đã chết/máy đã dừng, nên
+  spec gốc không còn ý nghĩa — xóa hẳn `.github/workflows/deploy-fly.yml`
+  + `fly.toml` trong commit 3.16 này. Không còn tham chiếu live nào (chỉ
+  còn nhắc trong AUDIT.md / flyio-deploy.md / Dockerfile — tài liệu/lịch
+  sử, để nguyên). ⚠️ Lọc `.md`-only cho auto-pull Oracle CHƯA làm được:
+  deploy.sh + trigger pull chỉ nằm trên VM Oracle, không có IP/key SSH —
+  cần user tự sửa trên VM hoặc cấp quyền.
 
 ---
 
