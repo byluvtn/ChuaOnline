@@ -25,7 +25,6 @@ export function openSettings(ctx: MenuCtx) {
       toggle('showNames', 'Hiện tên người chơi'),
       toggle('showBubbles', 'Hiện bóng chat'),
       toggle('showTips', 'Hiện gợi ý'),
-      toggle('showNpcs', 'Hiện NPC sư thầy/chú tiểu'),
-      h('button', { class: 'ghost wide danger', onclick: () => ctx.logout() }, 'Đăng xuất'));
+      toggle('showNpcs', 'Hiện NPC sư thầy/chú tiểu'));
   });
 }

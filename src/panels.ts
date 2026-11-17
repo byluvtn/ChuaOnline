@@ -4,6 +4,7 @@ import { levelOf, meritForLevel, type Profile } from '../shared/types';
 import { iconSvg } from './icons';
 import { audio } from './audio';
 import { DIALOGUES } from './data/dialogues';
+import { TELEPORT_DEST } from './data/places';
 
 export interface PanelCtx {
   socket: Socket;
@@ -151,8 +152,10 @@ export function openDonatePanel(ctx: PanelCtx) {
 
 export function openDonorsPanel(ctx: PanelCtx) {
   openCustomPanel('Bảng vinh danh', (body) => {
+    let alive = true;
     body.appendChild(h('p', { class: 'hint' }, 'Đang tải...'));
     ctx.socket.emit('donors:get', (rows: { name: string; coins: number; merit: number }[]) => {
+      if (!alive) return;
       body.replaceChildren();
       if (!rows || rows.length === 0) {
         body.appendChild(h('p', { class: 'hint' }, 'Chưa có ai đóng góp. Bạn sẽ là người đầu tiên?'));
@@ -180,6 +183,7 @@ export function openDonorsPanel(ctx: PanelCtx) {
         onclick: () => { closePanel(); openDonatePanel(ctx); },
       }, 'Đóng góp ngay')));
     });
+    return () => { alive = false; };
   });
 }
 
@@ -400,21 +404,6 @@ export function openAdminPanel(ctx: PanelCtx) {
       );
     };
 
-    const TELEPORT_DEST: { label: string; x: number; z: number }[] = [
-      { label: 'Sân chùa (quảng trường)', x: 0, z: 6 },
-      { label: 'Chính Điện (trước thềm)', x: 0, z: -20 },
-      { label: 'Điện Tam Thế (chân cầu thang)', x: 0, z: -50 },
-      { label: 'Bảo Tháp (phía nam)', x: -30, z: -31 },
-      { label: 'Cầu cong giữa hồ', x: 0, z: 22 },
-      { label: 'Sân Quan Âm', x: 28, z: 14 },
-      { label: 'Sân Phật (phía Tây)', x: -28, z: 14 },
-      { label: 'Điện Mẫu', x: 39, z: 10 },
-      { label: 'Chợ phiên', x: 47, z: 50 },
-      { label: 'Vườn Phóng Sinh (bến thả)', x: 30, z: -31 },
-      { label: 'Thiền đường', x: -47, z: -27 },
-      { label: 'Vườn Thiền', x: -34, z: -26 },
-    ];
-
     const drawTeleport = () => {
       content.replaceChildren();
       for (const d of TELEPORT_DEST) {
@@ -468,15 +457,18 @@ export function openAdminPanel(ctx: PanelCtx) {
           }
           const rows = logRes.rows ?? [];
           if (rows.length === 0) {
-            logBox.replaceChildren(h('p', { class: 'hint' }, 'Chưa có lần tự tặng nào.'));
+            logBox.replaceChildren(h('p', { class: 'hint' }, 'Chưa có lần tặng nào.'));
             return;
           }
           logBox.replaceChildren(...rows.map((r) => {
             const parts: string[] = [];
             if (r.coins > 0) parts.push(`+${r.coins} xu`);
             if (r.merit > 0) parts.push(`+${r.merit} công đức`);
+            const who = r.targetName === r.adminName
+              ? `${r.adminName} tự tặng ${parts.join(', ')} cho bản thân`
+              : `${r.adminName} tặng ${parts.join(', ')} cho ${r.targetName}`;
             return h('div', { class: 'row' },
-              h('span', {}, `${r.adminName} tự tặng ${parts.join(', ')} cho bản thân`),
+              h('span', {}, who),
               h('span', {}, new Date(r.createdAt).toLocaleString('vi-VN')),
             );
           }));

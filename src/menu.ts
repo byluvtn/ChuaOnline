@@ -32,7 +32,7 @@ import { initBoost } from './features/boost';
 import { initStats } from './features/stats';
 import { initSpin, spinPending } from './features/spin';
 import { beadsPending, initBeads, openBeads } from './features/beads';
-import { newsUnread, openCommunity, openDonate, openFacebook, openFeedback, openGuide, openNews } from './features/misc';
+import { newsUnread, openCommunity, openFacebook, openFeedback, openGuide, openNews } from './features/misc';
 import { openCharacter } from './features/character';
 import { openSettings } from './features/settings';
 import { initInstallCapture, openInstall } from './features/install';
@@ -86,7 +86,6 @@ export function initMenu(ctx: MenuCtx): void {
     { id: 'fortune', icon: 'fortune', label: 'Xin xăm', run: () => openFortune(ctx) },
     { id: 'guide', icon: 'guide', label: 'Cách chơi', run: openGuide },
     { id: 'feedback', icon: 'feedback', label: 'Góp ý & ủng hộ', run: () => openFeedback(ctx) },
-    { id: 'donate', icon: 'donate', label: 'Ủng hộ', run: openDonate },
     { id: 'fb', icon: 'facebook', label: 'Facebook', run: () => openFacebook(ctx) },
     { id: 'char', icon: 'user', label: 'Nhân vật', run: () => openCharacter(ctx) },
     { id: 'settings', icon: 'settings', label: 'Cài đặt', run: () => openSettings(ctx) },

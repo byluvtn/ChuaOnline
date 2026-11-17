@@ -1,34 +1,7 @@
-import { TAM_THE, TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, PLAZA, QUAN, WALL } from '../layout';
+import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
-
-interface Place { name: string; x: number; z: number; r: number; ly?: number }
-const PLACES: Place[] = [
-  { name: 'Chánh điện', x: HALL.x, z: HALL.z, r: 8 },
-  { name: 'Sân thiền trái', x: -(DECK.x0 + DECK.x1) / 2, z: (DECK.z0 + DECK.z1) / 2, r: 5 },
-  { name: 'Sân thiền phải', x: (DECK.x0 + DECK.x1) / 2, z: (DECK.z0 + DECK.z1) / 2, r: 5 },
-  { name: 'Sân chùa', x: PLAZA.x, z: PLAZA.z, r: 8 },
-  { name: 'Gác chuông', x: BELL.x, z: BELL.z, r: 4 },
-  { name: 'Tháp Quan Âm', x: QUAN.x, z: QUAN.z, r: 4 },
-  { name: 'Đại Phật', x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 5 },
-  { name: 'Bảo tháp', x: BAO_THAP.x, z: BAO_THAP.z, r: 4 },
-  { name: 'Điện Tam Thế', x: TAM_THE.x, z: TAM_THE.z + 6, r: 8 },
-  { name: 'Tháp cảnh', x: PAGODA.x, z: PAGODA.z, r: 4 },
-  { name: 'Nhà Tổ', x: 36, z: -62.5, r: 4 },
-  { name: 'Tăng xá', x: -41, z: -65.5, r: 4 },
-  { name: 'Nhà khách', x: -47, z: -55.5, r: 4 },
-  { name: 'Trai đường', x: -29, z: -55.5, r: 4 },
-  { name: 'Am Cổ', x: 50, z: -72, r: 4 },
-  { name: 'Vườn Tháp', x: VUON_THAP.x, z: VUON_THAP.z, r: 4 },
-  { name: 'Thiền đường', x: -39.5, z: -27, r: 4 },
-  { name: 'Phòng Ghi Công Đức', x: -42, z: 41.5, r: 4 },
-  { name: 'Vườn Phóng Sinh', x: 28, z: -31, r: 4 },
-  { name: 'Điện Mẫu', x: 39, z: 10, r: 4 },
-  { name: 'Đền Trình', x: 11, z: 39, r: 4 },
-  { name: 'Hồ cá koi', x: LAKE.x, z: LAKE.z + 8.5, r: 4 },
-  { name: 'Cầu cong', x: BRIDGE.x, z: (BRIDGE.z0 + BRIDGE.z1) / 2, r: 3 },
-  { name: 'Tam quan', x: 0, z: WALL.zS - 4, r: 4 },
-];
+import { PLACES, type Place } from '../data/places';
 
 export function openMap(ctx: MenuCtx) {
   openCustomPanel('Bản đồ chùa', (body) => {

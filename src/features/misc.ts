@@ -10,10 +10,20 @@ export const newsUnread = () => Number(localStorage.getItem(SEEN) ?? 0) < LATEST
 export function openNews() {
   localStorage.setItem(SEEN, String(LATEST_NEWS_ID));
   openCustomPanel('Có gì mới', (body) => {
-    for (const n of NEWS) {
-      body.append(h('div', { class: 'news' }, h('div', { class: 'news-h' }, h('b', {}, n.title), h('small', {}, n.date.split('-').reverse().join('/'))),
-        h('ul', {}, ...n.items.map((i) => h('li', {}, i)))));
-    }
+    const PAGE = 20;
+    let shown = 0;
+    const more = h('button', { class: 'ghost wide' }, 'Xem thêm tin cũ');
+    const showMore = () => {
+      for (const n of NEWS.slice(shown, shown + PAGE)) {
+        more.before(h('div', { class: 'news' }, h('div', { class: 'news-h' }, h('b', {}, n.title), h('small', {}, n.date.split('-').reverse().join('/'))),
+          h('ul', {}, ...n.items.map((i) => h('li', {}, i)))));
+      }
+      shown = Math.min(shown + PAGE, NEWS.length);
+      if (shown >= NEWS.length) more.remove();
+    };
+    more.onclick = showMore;
+    body.append(more);
+    showMore();
   });
 }
 
@@ -121,9 +131,6 @@ function supportBlock(): HTMLElement {
   if (CONFIG.donateText) box.append(h('pre', { class: 'donate' }, CONFIG.donateText));
   if (CONFIG.supportEmail) box.append(h('p', { class: 'hint' }, `Liên hệ: ${CONFIG.supportEmail}`));
   return box;
-}
-export function openDonate() {
-  openCustomPanel('Ủng hộ', (body) => body.append(h('p', {}, 'Xin chân thành cảm ơn tấm lòng của bạn. Mọi sự ủng hộ đều là tùy tâm, không bắt buộc.'), supportBlock()));
 }
 export function openFacebook(ctx: MenuCtx) {
   if (!CONFIG.facebookUrl) return ctx.toast('Chưa cấu hình trang Facebook');
