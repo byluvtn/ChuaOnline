@@ -58,6 +58,11 @@ export function isTransientDbError(e: unknown, depth = 0): boolean {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/** Lỗi kẹt khóa SQLite: 2 transaction 'write' đồng thời thì bên thua báo SQLITE_BUSY ngay
+ *  (kết nối transaction không có busy_timeout — PRAGMA lúc boot chỉ đặt cho 1 kết nối pool).
+ *  Chỉ dùng để thử lại các thao tác claim idempotent (UPDATE ... claimed = 0). */
+const isBusyDbError = (e: unknown) => /SQLITE_BUSY|database is locked/i.test(String(e));
+
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
@@ -558,14 +563,46 @@ export async function acceptQuest(id: number, questId: string): Promise<void> {
     args: [id, questKey(questId), questId],
   });
 }
-/** Returns true if the claim was valid (done and not claimed yet). */
-export async function claimQuest(id: number, questId: string, target: number): Promise<boolean> {
-  const r = await db.execute({
-    sql: `UPDATE quest_progress SET claimed = 1
+/** Đánh dấu đã nhận, cộng thưởng và ghi quest_done trong cùng một transaction. Trả false nếu chưa đạt hoặc đã nhận.
+ *  Kẹt khóa (2 lần nhận đồng thời) thì thử lại: UPDATE ... claimed = 0 khiến lần chạy lại là
+ *  idempotent — nếu lần trước đã commit thì lần này khớp 0 dòng và trả false. Sau 8 lần vẫn
+ *  kẹt thì trả false thay vì throw để handler không treo/crash. */
+export async function claimQuestWithRewards(id: number, questId: string, target: number, merit: number, coins: number): Promise<boolean> {
+  for (let i = 0; ; i++) {
+    try {
+      return await claimQuestOnce(id, questId, target, merit, coins);
+    } catch (e) {
+      if (isBusyDbError(e) && i < 7) { await sleep(250); continue; }
+      if (isBusyDbError(e)) return false;
+      throw e;
+    }
+  }
+}
+async function claimQuestOnce(id: number, questId: string, target: number, merit: number, coins: number): Promise<boolean> {
+  const tx = await db.transaction('write');
+  try {
+    const r = await tx.execute({
+      sql: `UPDATE quest_progress SET claimed = 1
     WHERE player_id = ? AND day_key = ? AND quest_id = ? AND progress >= ? AND claimed = 0`,
-    args: [id, questKey(questId), questId, target],
-  });
-  return r.rowsAffected === 1;
+      args: [id, questKey(questId), questId, target],
+    });
+    if (r.rowsAffected !== 1) { await tx.rollback(); return false; }
+    const wk = weekKey();
+    await tx.execute({
+      sql: `UPDATE players SET
+      weekly_merit = CASE WHEN week_key = ? THEN weekly_merit + ? ELSE ? END,
+      week_key = ?, merit = merit + ?, coins = coins + ? WHERE id = ?`,
+      args: [wk, merit, merit, wk, merit, coins, id],
+    });
+    await tx.execute({ sql: 'INSERT OR IGNORE INTO quest_done (player_id, quest_id, claimed_at) VALUES (?,?,?)', args: [id, questId, now()] });
+    await tx.commit();
+    return true;
+  } catch (err) {
+    try { await tx.rollback(); } catch { /* đã đóng */ }
+    throw err;
+  } finally {
+    tx.close();
+  }
 }
 
 // ---- level milestone rewards ----
@@ -824,13 +861,52 @@ export async function markMailRead(id: number, mailId: number): Promise<boolean>
   const r = await db.execute({ sql: 'UPDATE mail SET read_at = ? WHERE id = ? AND player_id = ? AND read_at IS NULL', args: [now(), mailId, id] });
   return r.rowsAffected === 1;
 }
-/** Nhận quà nguyên tử: null nếu thư không thuộc người chơi, không có quà hoặc đã nhận. */
+/** Nhận quà nguyên tử: null nếu thư không thuộc người chơi, không có quà hoặc đã nhận.
+ *  Kẹt khóa (2 lần nhận đồng thời) thì thử lại như claimQuestWithRewards (idempotent nhờ
+ *  UPDATE ... claimed = 0); sau 8 lần vẫn kẹt thì trả null thay vì throw. */
 export async function claimMail(id: number, mailId: number): Promise<{ gift: MailGift } | null> {
-  const r = await db.execute({ sql: 'UPDATE mail SET claimed = 1 WHERE id = ? AND player_id = ? AND claimed = 0 AND gift IS NOT NULL', args: [mailId, id] });
-  if (r.rowsAffected !== 1) return null;
-  const row = (await db.execute({ sql: 'SELECT gift FROM mail WHERE id = ? AND player_id = ?', args: [mailId, id] })).rows[0] as unknown as { gift: string } | undefined;
-  const gift = parseGift(row?.gift);
-  return gift ? { gift } : null;
+  for (let i = 0; ; i++) {
+    try {
+      return await claimMailOnce(id, mailId);
+    } catch (e) {
+      if (isBusyDbError(e) && i < 7) { await sleep(250); continue; }
+      if (isBusyDbError(e)) return null;
+      throw e;
+    }
+  }
+}
+async function claimMailOnce(id: number, mailId: number): Promise<{ gift: MailGift } | null> {
+  const tx = await db.transaction('write');
+  try {
+    const row = (await tx.execute({ sql: 'SELECT gift FROM mail WHERE id = ? AND player_id = ? AND claimed = 0 AND gift IS NOT NULL', args: [mailId, id] })).rows[0] as unknown as { gift: string } | undefined;
+    if (!row) { await tx.rollback(); return null; }
+    const gift = parseGift(row.gift);
+    if (!gift) { await tx.rollback(); return null; }
+    const r = await tx.execute({ sql: 'UPDATE mail SET claimed = 1 WHERE id = ? AND player_id = ? AND claimed = 0', args: [mailId, id] });
+    if (r.rowsAffected !== 1) { await tx.rollback(); return null; }
+    const wk = weekKey();
+    await tx.execute({
+      sql: `UPDATE players SET
+      weekly_merit = CASE WHEN week_key = ? THEN weekly_merit + ? ELSE ? END,
+      week_key = ?, merit = merit + ?, coins = coins + ? WHERE id = ?`,
+      args: [wk, gift.merit, gift.merit, wk, gift.merit, gift.coins, id],
+    });
+    for (const [item, qty] of Object.entries(gift.items ?? {})) {
+      if (!(qty > 0)) continue;
+      await tx.execute({
+        sql: `INSERT INTO inventory (player_id, item_id, qty) VALUES (?,?,MAX(?,0))
+    ON CONFLICT(player_id, item_id) DO UPDATE SET qty = MAX(qty + ?, 0)`,
+        args: [id, item, qty, qty],
+      });
+    }
+    await tx.commit();
+    return { gift };
+  } catch (err) {
+    try { await tx.rollback(); } catch { /* đã đóng */ }
+    throw err;
+  } finally {
+    tx.close();
+  }
 }
 export async function sendGift(
   fromId: number,

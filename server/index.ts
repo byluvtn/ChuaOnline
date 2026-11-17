@@ -65,11 +65,20 @@ const MIME: Record<string, string> = {
   '.glb': 'model/gltf-binary', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
 };
 
+/** IP thật của client lấy từ header do proxy nền tảng đặt (Fly, Render); không có thì dùng địa chỉ socket. */
+function clientIp(req: IncomingMessage): string {
+  for (const name of ['fly-client-ip', 'true-client-ip', 'cf-connecting-ip']) {
+    const v = req.headers[name];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return req.socket.remoteAddress ?? '?';
+}
+
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x');
   if (url.pathname.startsWith('/api/')) {
     if (req.method !== 'POST') return send(res, 405, { error: 'method' });
-    const ip = req.socket.remoteAddress ?? '?';
+    const ip = clientIp(req);
     if (limited(ip)) return send(res, 429, { error: 'Thao tác quá nhanh, thử lại sau' });
     let b: any;
     try { b = await readJson(req); } catch { return send(res, 400, { error: 'bad request' }); }
@@ -111,7 +120,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin' | 'sky' | 'fw:small' | 'fw:large' | 'fw:dragon', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin' | 'sky' | 'fw:small' | 'fw:large' | 'fw:dragon' | 'release', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** resume token cua tab (sessionStorage) de khoi phuc vi tri khi vao lai */
@@ -281,10 +290,10 @@ async function questEvent(s: Session, ev: QuestEvent, by = 1) {
   await pushQuests(s);
 }
 /** Cộng thưởng + đếm quest 'merit' (nhiệm vụ tuần tích công đức). */
-async function grantRewards(s: Session, merit: number, coins: number) {
-  const before = (await db.getProfile(s.pid))?.merit ?? 0;
+async function grantRewards(s: Session, merit: number, coins: number, opts?: { skipAdd?: boolean; beforeMerit?: number }) {
+  const before = opts?.beforeMerit ?? (await db.getProfile(s.pid))?.merit ?? 0;
   const lvBefore = levelOf(before);
-  await db.addRewards(s.pid, merit, coins);
+  if (!opts?.skipAdd) await db.addRewards(s.pid, merit, coins);
   await questEvent(s, 'merit', merit);
   const after = (await db.getProfile(s.pid))?.merit ?? 0;
   const lvAfter = levelOf(after);
@@ -511,7 +520,7 @@ io.on('connection', (socket) => {
 
   socket.on('action', async (kind: ActionKind, wish?: string) => {
     const s = me();
-    const rule = ACTION_RULES[kind];
+    const rule = Object.hasOwn(ACTION_RULES, kind) ? ACTION_RULES[kind] : undefined;
     if (!s || !rule) return;
     const now = Date.now();
     if (now - (s.last[kind] ?? 0) < rule.cooldownMs) return;
@@ -605,7 +614,7 @@ io.on('connection', (socket) => {
   });
 
   const buyItem = async (itemId: string, qty: number) => {
-    const item = ITEM_BY_ID[String(itemId)];
+    const item = Object.hasOwn(ITEM_BY_ID, String(itemId)) ? ITEM_BY_ID[String(itemId)] : undefined;
     if (!item) return { ok: false as const, error: 'Vật phẩm không tồn tại' };
     // Hạt tốt chỉ có từ thu hoạch — không bán ở đâu cả (giá 0 nên phải chặn ở server, không chỉ ẩn UI).
     if (item.category === 'hat_giong' && item.price === 0) return { ok: false as const, error: 'Hạt tốt chỉ có từ thu hoạch' };
@@ -620,7 +629,7 @@ io.on('connection', (socket) => {
   socket.on('shop:buy', async (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
-    const away = ITEM_VENDORS[String(itemId)];
+    const away = Object.hasOwn(ITEM_VENDORS, String(itemId)) ? ITEM_VENDORS[String(itemId)] : undefined;
     if (away && away.length > 0 && away.every((v) => vendorAway(s.room, v))) {
       return cb?.({ ok: false, error: VENDOR_AWAY_MSG(away.map((v) => vendorName(s.room, v)).join(', ')) });
     }
@@ -633,11 +642,11 @@ io.on('connection', (socket) => {
   socket.on('shop:buy5', async (itemId: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
-    const away = ITEM_VENDORS[String(itemId)];
+    const away = Object.hasOwn(ITEM_VENDORS, String(itemId)) ? ITEM_VENDORS[String(itemId)] : undefined;
     if (away && away.length > 0 && away.every((v) => vendorAway(s.room, v))) {
       return cb?.({ ok: false, error: VENDOR_AWAY_MSG(away.map((v) => vendorName(s.room, v)).join(', ')) });
     }
-    const item = ITEM_BY_ID[String(itemId)];
+    const item = Object.hasOwn(ITEM_BY_ID, String(itemId)) ? ITEM_BY_ID[String(itemId)] : undefined;
     if (!item) return cb?.({ ok: false, error: 'Vật phẩm không tồn tại' });
     if (item.kind !== 'consumable') return cb?.({ ok: false, error: 'Mua 5 chỉ áp dụng cho vật phẩm tiêu hao' });
     const r = await buyItem(itemId, 5);
@@ -650,7 +659,7 @@ io.on('connection', (socket) => {
     if (!s) return;
     if (itemId === null) await db.setAccessory(pid, null);
     else {
-      const item = ITEM_BY_ID[String(itemId)];
+      const item = Object.hasOwn(ITEM_BY_ID, String(itemId)) ? ITEM_BY_ID[String(itemId)] : undefined;
       if (!item || item.kind !== 'accessory' || (await db.itemQty(pid, item.id)) < 1) return;
       await db.setAccessory(pid, item.id);
     }
@@ -832,9 +841,7 @@ io.on('connection', (socket) => {
       return cur === 'marketbuy' && (q as any).stall === stallId;
     });
     if (!match) return reply({ ok: false, error: 'Chưa có nhiệm vụ cần mua món này' });
-    const profile: any = await db.getProfile(s.pid);
-    if (!profile || (profile.coins ?? 0) < 10) return reply({ ok: false, error: 'Không đủ xu' });
-    await db.addRewards(s.pid, 0, -10);
+    if (!(await db.spendCoins(s.pid, 10))) return reply({ ok: false, error: 'Không đủ xu' });
     await advanceNpcQuest(s, match as AnyQuestDef, 'marketbuy', 1, rows);
     reply({ ok: true });
     await pushProfile(s);
@@ -920,6 +927,9 @@ io.on('connection', (socket) => {
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     const kind = payload?.kind;
     if (kind !== 'bird' && kind !== 'fish') return cb?.({ ok: false, error: 'Loại không hợp lệ' });
+    const now = Date.now();
+    if (now - (s.last.release ?? 0) < 2000) return cb?.({ ok: false, error: 'Đang xử lý, thử lại sau' });
+    s.last.release = now;
     const itemId = kind === 'bird' ? 'chim_phong_sinh' : 'ca_phong_sinh';
     if (distTo(s, 30, -31) > 3.5) return cb?.({ ok: false, error: 'Bạn đứng quá xa bến thả' });
     if ((await db.itemQty(pid, itemId)) < 1) return cb?.({ ok: false, error: 'Bạn không có chim/cá phóng sinh' });
@@ -1032,9 +1042,7 @@ io.on('connection', (socket) => {
       const pos = giver ? npcPos(s, giver) : undefined;
       if (!pos || distTo(s, pos.x, pos.z) > 3) return reply({ ok: false, error: 'Bạn đứng quá xa người giao' });
     }
-    if (await db.claimQuest(pid, q.id, q.target)) {
-      await db.addRewards(pid, q.merit, q.coins);
-      await db.recordQuestDone(pid, q.id);
+    if (await db.claimQuestWithRewards(pid, q.id, q.target, q.merit, q.coins)) {
       await pushProfile(s);
       await maybeAwardTitles(s);
       await pushQuests(s);
@@ -1158,11 +1166,11 @@ io.on('connection', (socket) => {
     const s = me();
     if (!s) return cb?.({ ok: false, error: 'Chưa vào chùa' });
     if (typeof mailId !== 'number' || !Number.isFinite(mailId)) return cb?.({ ok: false, error: 'Thư không hợp lệ', unread: await db.mailUnread(pid) });
+    const before = (await db.getProfile(pid))?.merit ?? 0;
     const got = await db.claimMail(pid, mailId);
     if (!got) return cb?.({ ok: false, error: 'Quà đã được nhận hoặc thư không có quà', unread: await db.mailUnread(pid) });
     const { merit, coins, items } = got.gift;
-    for (const [item, qty] of Object.entries(items ?? {})) await db.addItem(pid, item, qty);
-    await grantRewards(s, merit, coins);
+    await grantRewards(s, merit, coins, { skipAdd: true, beforeMerit: before });
     cb?.({ ok: true, merit, coins, items: items ?? {}, unread: await db.mailUnread(pid) });
   });
   socket.on('gift:send', async (payload: unknown, cb?: (r: GiftAck) => void) => {
@@ -1180,7 +1188,7 @@ io.on('connection', (socket) => {
     if (toSession.pid === s.pid) return cb?.({ ok: false, error: 'Không thể tặng cho chính mình' });
 
     // Validate lễ vật
-    const itemDef = ITEM_BY_ID[itemId];
+    const itemDef = Object.hasOwn(ITEM_BY_ID, itemId) ? ITEM_BY_ID[itemId] : undefined;
     if (!itemDef || itemDef.category !== 'le_vat' || itemDef.kind !== 'consumable') {
       return cb?.({ ok: false, error: 'Món quà không hợp lệ' });
     }
