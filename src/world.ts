@@ -465,7 +465,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   const FINALE_MIN_GAP_MS = 3000;
   const FINALE_SHELLS = 3;
 
-  /** Đèn trời: bay chậm (vy ~0,8), sống 45s, mờ dần 5s cuối. Tái dùng model + glow của đèn hồ. */
+  /** Đèn trời: bay chậm (vy ~0,4), nhóm phóng 1,5x, sống 45s, mờ dần 5s cuối. Tái dùng model + glow của đèn hồ. */
   const spawnSkyLantern = (x: number, z: number) => {
     const grp = new THREE.Group();
     if (lanternModel) grp.add(lanternModel.clone(true));
@@ -474,11 +474,12 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       grp.add(new THREE.Mesh(floatGeo, mat));
       const top = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.2, 10), lamb(0xb85a18)); top.position.y = 0.4; grp.add(top);
     }
-    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffb04a, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
-    spr.scale.setScalar(2.6); grp.add(spr);
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffb04a, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending }));
+    spr.scale.setScalar(3.2); grp.add(spr);
+    grp.scale.setScalar(1.5);
     grp.position.set(x + (Math.random() - 0.5) * 1.4, 2.2, z + (Math.random() - 0.5) * 1.4);
     scene.add(grp);
-    floaters.push({ m: grp, vy: 0.7 + Math.random() * 0.2, life: 45, max: 45, fade: 5, light: spr });
+    floaters.push({ m: grp, vy: 0.35 + Math.random() * 0.05, life: 45, max: 45, fade: 5, light: spr });
   };
 
   // Rocket materials are shared per color (rockets never mutate opacity).
@@ -504,7 +505,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     const n = 24 + Math.floor(Math.random() * 17);
     for (let i = 0; i < n; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-      s.scale.setScalar(0.5 + Math.random() * 0.35);
+      s.scale.setScalar(0.7 + Math.random() * 0.45);
       s.position.set(x, y, z);
       scene.add(s);
       const up = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2;
@@ -528,7 +529,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       const spread = isFinale ? 12 : 6;
       const px = x + (Math.random() - 0.5) * spread;
       const pz = z + (Math.random() - 0.5) * spread;
-      const y0 = 1.4, top = 25 + Math.random() * 10;
+      const y0 = 1.4, top = 4.8 + Math.random() * 0.6;
       const spr = new THREE.Sprite(rocketMat(color));
       spr.scale.setScalar(0.7);
       spr.position.set(px, y0, pz);

@@ -1,4 +1,4 @@
-import { h, openCustomPanel } from '../panels';
+import { h, openCustomPanel, closePanel } from '../panels';
 import { FESTIVALS, type Festival } from '../data/festivals';
 import type { MenuCtx } from '../menu';
 import { SKY_LANTERN_COST, FIREWORKS, SKY_LANTERN_WISH_MAX } from '../../shared/game';
@@ -65,6 +65,7 @@ export function openFestivals(ctx: Pick<MenuCtx, 'socket' | 'profile' | 'toast'>
         audio.play('firework');
         syncCoins(a);
         ctx.toast('Pháo hoa đã nổ trên sân chùa');
+        closePanel();
       });
     };
     body.append(h('div', { class: 'fest' },
@@ -81,6 +82,7 @@ export function openFestivals(ctx: Pick<MenuCtx, 'socket' | 'profile' | 'toast'>
           syncCoins(a);
           wishInput.value = '';
           ctx.toast(a.merit ? `Đèn trời đã bay lên · +${a.merit} công đức` : 'Đèn trời đã bay lên');
+          closePanel();
         });
       }),
       btn(`Pháo hoa nhỏ — ${FIREWORKS.small.cost.toLocaleString('vi-VN')} xu (3 quả)`, () => launch('small')),
