@@ -1111,7 +1111,7 @@ export const NEWS: NewsItem[] = [
     ],
   },
   {
-    title: 'Chào mừng đến Chùa Online',
+    title: 'Chào mừng đến Chùa 24/7',
     date: '2026-01-01',
     items: [
       'Dạo quanh khuôn viên chùa, thắp hương và tụng kinh để tích công đức.',
