@@ -30,7 +30,7 @@ function drawWatermark(ctx: CanvasRenderingContext2D, w: number, h: number, name
   const pad1 = w / 60;
   const size1 = Math.max(18, Math.round(w / 48));
   const size2 = Math.max(14, Math.round(size1 * 0.8));
-  const line1 = 'Chùa Online \u2022 chua247.top';
+  const line1 = 'Chùa 24/7 \u2022 chua247.top';
   const line2 = `${name} \u2022 ${now.toLocaleDateString('vi-VN')}`;
   const font = '"Segoe UI", system-ui, -apple-system, Roboto, sans-serif';
 
