@@ -205,6 +205,13 @@ function nodePt(id: string): Pt {
   return { x: n.x, z: n.z };
 }
 
+/** Bốc 1 phần tử theo trọng số. Dùng Math.random() để sim ghi đè theo seed vẫn đúng. */
+function pickWeighted<T>(items: readonly T[], weights: readonly number[]): T {
+  let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < items.length; i++) { r -= weights[i]; if (r < 0) return items[i]; }
+  return items[items.length - 1];
+}
+
 /** Ca truc: 20 phut lam, 10 phut nghi (mac dinh cua prompt, khong phai spec). */
 const SHIFT_MS = 20 * MIN;
 const REST_MS = 10 * MIN;
@@ -254,11 +261,16 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
 // - Wanderer (npc1/npc29): mỗi người 1 node WANDER_NODES khác nhau (bỏ 'gate'), cách nhau ≥ 3 m.
 // Không đụng NPC cố định (vendor, desk, bell, chant, tiểu quét...).
 const SPREAD_ROUTE_POOL = ['bridgeS', 'bridgeN', 'plaza', 'hallFront', 'axisMid', 'pillars', 'corrW', 'dienMau', 'restArea', 'denTrinh', 'psPier', 'zenGarden', 'thienDuong', 'baoThap', 'tamThe', 'westMid', 'eastMid', 'quanYard', 'buddhaYard', 'vuonCay'];
+/** Node trục giữa: trọng số 1. Mọi node khác trong pool (Bắc/ngoại vi) có trọng số 3. */
+const SPREAD_ROUTE_CENTER = ['bridgeS', 'bridgeN', 'plaza', 'hallFront', 'axisMid', 'pillars'];
+/** Trọng số bốc node: giữa ×1, Bắc/ngoại vi ×3 (kéo visitor/wanderer mới sinh ra khỏi trục giữa). */
+const spreadRouteWeight = (id: string): number => (SPREAD_ROUTE_CENTER.includes(id) ? 1 : 3);
+/** Trọng số song song với SPREAD_ROUTE_POOL. */
+const SPREAD_ROUTE_WEIGHTS = SPREAD_ROUTE_POOL.map(spreadRouteWeight);
 const SPREAD_GATE_MAX = 2;
 const SPREAD_MIN_GAP = 1.2;
 /** Đặt 1 visitor vào chặng khởi đầu (cổng 10% / tuyến 40% / trong điện 50%). Trả true nếu đặt ở cổng. gateOk = còn chỗ ở cổng. */
 function placeVisitor(npcs: Npc[], n: Npc, now: number, gateOk: boolean): boolean {
-  const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
   const near = (x: number, z: number, self: Npc) =>
     npcs.some(o => o !== self && o.state && dist({ x, z }, { x: o.state.x, z: o.state.z }) < SPREAD_MIN_GAP);
   const okPt = (x: number, z: number, self: Npc) =>
@@ -270,8 +282,11 @@ function placeVisitor(npcs: Npc[], n: Npc, now: number, gateOk: boolean): boolea
   };
   const toInside = (n: Npc): void => {
     const s = n.state;
-    const stage: Npc['stage'] = pick(['bow', 'chant', 'branch']);
-    const p = visitorSpot(stage === 'branch' ? pick(BRANCH_SPOTS) : VISITOR_SPOT, n.def);
+    // Chặng trong điện: branch 50%, bow 25%, chant 25% (bớt dồn về Chính Điện).
+    const stage: Npc['stage'] = pickWeighted<Npc['stage']>(['branch', 'bow', 'chant'], [50, 25, 25]);
+    // Điểm branch: plaza ×1, 5 điểm còn lại ×2.
+    const branchWeights = BRANCH_SPOTS.map((b) => (dist(b, PLAZA_SPOT) < 1 ? 1 : 2));
+    const p = visitorSpot(stage === 'branch' ? pickWeighted(BRANCH_SPOTS, branchWeights) : VISITOR_SPOT, n.def);
     s.x = p.x; s.z = p.z; s.ry = Math.PI; n.stage = stage;
     if (stage === 'branch') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(0, 5000); }
     else { n.phase = 'act'; s.anim = stage === 'bow' ? 'bow' : 'chant'; n.until = now + R(5000, 15000); }
@@ -297,7 +312,7 @@ function placeVisitor(npcs: Npc[], n: Npc, now: number, gateOk: boolean): boolea
   if (want === 'gate' && gateOk) { toGate(n); return true; }
   if (want === 'inside' || want === 'gate') { toInside(n); return false; }
   // trên tuyến
-  if (placeRoute(n, pick(SPREAD_ROUTE_POOL))) return false;
+  if (placeRoute(n, pickWeighted(SPREAD_ROUTE_POOL, SPREAD_ROUTE_WEIGHTS))) return false;
   if (gateOk) { toGate(n); return true; }
   // Fallback cuối luôn thành công: visitorSpot cấp góc RIÊNG theo từng NPC,
   // nên không bao giờ trùng điểm với visitor khác và không để NPC kẹt ở cổng.
@@ -306,17 +321,18 @@ function placeVisitor(npcs: Npc[], n: Npc, now: number, gateOk: boolean): boolea
 }
 
 function spreadVisitors(npcs: Npc[], now: number) {
-  const pick = <T,>(a: T[]): T => a[Math.floor(Math.random() * a.length)];
   const near = (x: number, z: number, self: Npc) =>
     npcs.some(o => o !== self && o.state && dist({ x, z }, { x: o.state.x, z: o.state.z }) < SPREAD_MIN_GAP);
 
   // 1) Wanderer: 2 node khác nhau, cách nhau ≥ 3 m, bỏ 'gate'
   const wanderers = npcs.filter(n => n.def.behavior === 'wander');
   const wPool = WANDER_NODES.filter(id => id !== 'gate');
+  // Node khởi đầu của wanderer: giữa ×1, Bắc/ngoại vi ×3 (như SPREAD_ROUTE_POOL).
+  const wPoolWeights = wPool.map(spreadRouteWeight);
   const used: { x: number; z: number }[] = [];
   wanderers.forEach(n => {
     for (let t = 0; t < 20; t++) {
-      const p = nodePt(pick(wPool));
+      const p = nodePt(pickWeighted(wPool, wPoolWeights));
       if (used.some(u => dist(u, p) < 3)) continue;
       if (!walkable(p)) continue;
       // Tách ≥ 1,2 m với MỌI NPC khác (kể cả NPC cố định như bell/sweepZen/sweepRoad)
@@ -358,15 +374,27 @@ function nextBellIn(now: number): number {
 
 const WANDER_WEST = ['bellTower', 'zenGarden', 'thienDuong', 'westMid', 'westNorth', 'rearKT', 'rearW', 'baoThap', 'buddhaYard'];
 const WANDER_EAST = ['drumTower', 'denTrinh', 'restArea', 'dienMau', 'psPier', 'eastMid', 'eastNorth', 'rearTO', 'rearE', 'quanYard'];
-/** Bốc node đích cho wanderer: ở Tây/Đông thì node cùng bên ×4, còn lại ×1; ở giữa/Bắc thì node Tây và Đông ×2, node giữa và tamThe ×1. */
-function pickWanderNode(cur: Pt): string {
+/** Node phía Bắc (không tính tamThe): wanderer ở giữa bốc các node này ×3. */
+const WANDER_NORTH = ['baoThap', 'zenGarden', 'thienDuong', 'rearKT', 'rearTO', 'westNorth', 'eastNorth'];
+/** NPC cư trú phía Bắc (Sư Phó): node Bắc và tamThe ×4 bất kể đang đứng ở đâu. */
+const WANDER_NORTH_RESIDENT_ID = 'npc29';
+/** Bốc node đích cho wanderer: ở Tây/Đông thì node cùng bên ×6, tamThe ×2, node giữa ×1, node bên kia ×1; ở giữa thì tamThe ×4, node Bắc ×3, node Tây/Đông còn lại ×2, node giữa ×1. npc29 luôn ưu tiên node Bắc ×4. */
+function pickWanderNode(cur: Pt, npcId = ''): string {
   const side = cur.x < -8 ? 'west' : cur.x > 8 ? 'east' : 'mid';
   const weight = (id: string): number => {
+    const isNorth = id === 'tamThe' || WANDER_NORTH.includes(id);
     const inW = WANDER_WEST.includes(id);
     const inE = WANDER_EAST.includes(id);
-    if (side === 'west') return inW ? 4 : 1;
-    if (side === 'east') return inE ? 4 : 1;
-    return inW || inE ? 2 : 1;
+    // Trọng số gốc: giữ nguyên mọi thiên vị bên / Bắc / cư trú như trước.
+    let base: number;
+    if (npcId === WANDER_NORTH_RESIDENT_ID && isNorth) base = 4;
+    else if (side === 'west') base = id === 'tamThe' ? 2 : inW ? 6 : 1;
+    else if (side === 'east') base = id === 'tamThe' ? 2 : inE ? 6 : 1;
+    else if (id === 'tamThe') base = 4;
+    else if (WANDER_NORTH.includes(id)) base = 3;
+    else base = inW || inE ? 2 : 1;
+    // Hệ số gần 30/(30 + khoảng cách): node cách 10 m ~0,75, cách 60 m ~0,33. Ưu tiên node gần để chặng đi bộ ngắn, ít cắt qua trục giữa.
+    return base * (30 / (30 + dist(cur, nodePt(id))));
   };
   const w = WANDER_NODES.map(weight);
   let r = Math.random() * w.reduce((a, b) => a + b, 0);
@@ -379,7 +407,7 @@ function pickDest(n: Npc): { to: Pt; route: Pt[] } | null {
   for (let tries = 0; tries < 12; tries++) {
     switch (n.def.behavior) {
       case 'wander': {
-        const id = pickWanderNode(cur);
+        const id = pickWanderNode(cur, n.def.id);
         const to = nodePt(id);
         if (dist(to, cur) < 0.8) continue;
         return { to, route: routeFrom(cur, id) };
@@ -456,7 +484,13 @@ function abbotDecide(n: Npc, now: number) {
 }
 
 /** Visitor branch points after chant: pier, merit desk door, Tam The platform, north-east and north-west rear roads. */
-const VISITOR_BRANCH = ['psPier', 'phongCDDoor', 'tamThe', 'rearKT', 'rearTO'] as const;
+const VISITOR_BRANCH = ['psPier', 'phongCDDoor', 'tamThe', 'rearKT', 'rearTO', 'quanYard'] as const;
+/** Trọng số song song với VISITOR_BRANCH: tamThe ×3, rearKT/rearTO/quanYard ×2, psPier/phongCDDoor ×1. quanYard là điểm đến phía Đông. */
+const VISITOR_BRANCH_WEIGHTS = [1, 1, 3, 2, 2, 2];
+/** Trọng số điểm branch từ vị trí s: trọng số gốc × 30/(30 + khoảng cách từ s). Điểm gần được ưu tiên để chặng đi bộ tới branch ngắn lại, ít cắt qua trục giữa; thiên vị Bắc (tamThe ×3) vẫn giữ. Hằng 30 (m) là khoảng cách mà tại đó hệ số gần giảm còn một nửa. */
+function branchWeight(s: Pt, id: (typeof VISITOR_BRANCH)[number]): number {
+  return VISITOR_BRANCH_WEIGHTS[VISITOR_BRANCH.indexOf(id)] * (30 / (30 + dist(s, nodePt(id))));
+}
 
 /** Chinh Dien bounds (HALL x -17..17, z -42..-22): inside it a visitor walks straight to a cushion. */
 function inChinhDien(p: Pt): boolean {
@@ -482,13 +516,14 @@ function seatRoute(n: Npc, seat: ChantSeat): Pt[] {
 function leaveToGate(n: Npc) {
   n.mode = 'toLeave'; n.stage = 'toGate';
   const walk = inNhaKhach(n.state) ? nkExit('gate') : routeFrom(n.state, 'gate');
-  startWalk(n, [...walk, visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def));
+  // Về cổng thì đi nhanh hơn (×1,5) để rút ngắn thời gian đi bộ qua trục giữa.
+  startWalk(n, [...walk, visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def) * 1.5);
 }
 
 function visitorArrive(room: NpcRoom, n: Npc, now: number) {
   const s = n.state;
   if (n.stage === 'toAltar') { n.stage = 'bow'; n.phase = 'act'; s.anim = 'bow'; n.until = now + 3200; s.ry = Math.PI; }
-  else if (n.stage === 'toBranch') { n.stage = 'branch'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 10000); }
+  else if (n.stage === 'toBranch') { n.stage = 'branch'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(20_000, 45_000); }
   else if (n.stage === 'toPlaza') { n.stage = 'plaza'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(4000, 8000); }
   else if (n.stage === 'toSeat') {
     n.stage = 'seatChant'; n.mode = 'seatChant'; n.phase = 'act'; s.anim = 'chant';
@@ -513,9 +548,9 @@ function visitorArrive(room: NpcRoom, n: Npc, now: number) {
   else { n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000); }
 }
 /** Tour sau khi tung: 2-3 trong 6 diem (chuong, Thien Duong, Nha Khach, phong sinh, Nha To, Vuon Thap), moi lan chon khac nhau. */
-const STROLL_CHANCE = 0.75; // ~75% khach di tour, 25% ve thang nhu cu de cong khong vang (news 96: tang tu 0.6 de san chua bot dong)
-const TOUR_STOP_MIN = 2;
-const TOUR_STOP_MAX = 3;
+const STROLL_CHANCE = 0.9; // ~90% khách đi tour, 10% về thẳng để cổng không vắng (vòng 2: tăng từ 0.75 để kéo dài thời gian ở ngoại vi)
+const TOUR_STOP_MIN = 3; // số điểm dừng tối thiểu mỗi tour (vòng 2: từ 2)
+const TOUR_STOP_MAX = 4; // số điểm dừng tối đa mỗi tour (vòng 2: từ 3)
 const TOUR_BELL_GAP_MS = 20_000;
 const BELL_SPOT: Pt = { x: -34, z: -6 };
 let tourReleaseBird = false;
@@ -641,14 +676,23 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
       startStroll(room, n, now);
       break;
     case 'chant': {
-      if (Math.random() < 0.3) {
-        const t = VISITOR_BRANCH[Math.floor(Math.random() * VISITOR_BRANCH.length)];
+      if (Math.random() < 0.6) {
+        const t = pickWeighted(VISITOR_BRANCH, VISITOR_BRANCH.map((id) => branchWeight(s, id)));
         n.stage = 'toBranch'; startWalk(n, routeFrom(s, t), 1.2);
       } else { n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); }
       break;
     }
     case 'toPlaza': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
-    case 'branch': n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); break;
+    case 'branch': {
+      // Điểm vừa ở = điểm branch cách NPC ≤ 3 m; bỏ nó khi bốc điểm kế tiếp.
+      const others = VISITOR_BRANCH.filter((id) => dist(nodePt(id), s) > 3);
+      if (others.length > 0 && Math.random() < 0.5) {
+        // 50%: đi tiếp 1 branch point khác (không về cổng ở bước này).
+        const t = pickWeighted(others, others.map((id) => branchWeight(s, id)));
+        n.stage = 'toBranch'; startWalk(n, routeFrom(s, t), 1.2);
+      } else { n.stage = 'toPlaza'; startWalk(n, [...routeFrom(s, 'plaza'), visitorSpot(PLAZA_SPOT, n.def)], visitorSpeed(n.def)); }
+      break;
+    }
     case 'stroll': {
       if (room.questGuard.has(n.def.id)) { cancelTour(room, n, now); break; }
       const st = n.tourStops[n.tourIdx];
@@ -673,7 +717,16 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
       tourNext(room, n);
       break;
     }
-    case 'plaza': case 'toGate': n.stage = 'toGate'; startWalk(n, [...routeFrom(s, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def)); break;
+    case 'plaza':
+      // 50% đi thêm 1 vòng branch ở ngoại vi trước khi về cổng (vòng 2)
+      if (Math.random() < 0.5) {
+        const bid = pickWeighted(VISITOR_BRANCH, VISITOR_BRANCH.map((id) => branchWeight(s, id)));
+        n.stage = 'toBranch';
+        startWalk(n, [...routeFrom(s, bid), visitorSpot(nodePt(bid), n.def)], visitorSpeed(n.def));
+        break;
+      }
+      n.stage = 'toGate'; startWalk(n, [...routeFrom(s, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def)); break;
+    case 'toGate': n.stage = 'toGate'; startWalk(n, [...routeFrom(s, 'gate'), visitorSpot(nodePt('gate'), n.def)], visitorSpeed(n.def)); break;
   }
 }
 
@@ -861,7 +914,10 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
       n.mode = 'toIdleRest';
       startWalk(n, routeFrom(n.state, node), 1.2);
     }
-    else { n.phase = 'idle'; s.anim = 'idle'; s.ry = R(0, Math.PI * 2); n.until = now + R(4000, 9000); }
+    else { n.phase = 'idle'; s.anim = 'idle'; s.ry = R(0, Math.PI * 2); n.until = now + R(10_000, 20_000); }
+    // Đang đứng/làm hành động tại chỗ trong 3 m quanh Tam Thế thì ở lại thêm 20-60 s.
+    // Chỉ áp dụng khi không đi bộ tới ghế/hương/nghỉ (mode vẫn 'normal').
+    if (n.mode === 'normal' && (n.phase === 'act' || n.phase === 'idle') && dist(s, nodePt('tamThe')) < 3) n.until += R(20_000, 60_000);
     return;
   }
   if (n.def.behavior === 'bell') {
