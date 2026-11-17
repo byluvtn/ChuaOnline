@@ -681,7 +681,12 @@ export function buildTemple(c: TempleCtx) {
       const k = Math.max(1, Math.round((2 * h.hz - sn / 2) / 2.2 - 0.5)), sw = (2 * h.hz - sn / 2) / (k + 0.5), rw = sw / 2 - 0.4;
       const rwb = rw + 0.15;
       for (let i = 0; i <= n; i++) colliders.push({ x: at.x - wide + i * sn, z: at.z - h.hz, r: rnb });
-      for (let j = 0; j <= k; j++) { const lz = -h.hz + sn / 2 + sw / 2 + j * sw; colliders.push({ x: at.x - h.hx, z: at.z + lz, r: rwb }, { x: at.x + h.hx, z: at.z + lz, r: j === 1 ? rw : j === 0 || j === 2 ? rw + 0.075 : rwb }); } // merge-fix: j=2 (góc ĐN) rw+0.075 — rwb chặn leg ktMid->cửa Nhà Khách (d 0.53<0.55); khe còn 0.725<0.8 nên seam vẫn kín
+      // merge-fix: ngoại lệ chỉ áp cho Nhà Khách (j=1 dùng rw, j=0 và j=2 dùng rw+0.075), vì rwb chặn leg ktMid->cửa Nhà Khách (d 0.53<0.55); khe còn 0.725<0.8 nên seam vẫn kín. Điện Mẫu và Trai Đường dùng rwb.
+      for (let j = 0; j <= k; j++) {
+        const lz = -h.hz + sn / 2 + sw / 2 + j * sw;
+        const re = name === 'nha-khach' ? (j === 1 ? rw : rw + 0.075) : rwb;
+        colliders.push({ x: at.x - h.hx, z: at.z + lz, r: rwb }, { x: at.x + h.hx, z: at.z + lz, r: re });
+      }
     }
     zones.push({ x: at.x, z: at.z, r: 7, id: zoneId });
     return h;
@@ -1163,7 +1168,11 @@ export function buildTemple(c: TempleCtx) {
     const listMat = new THREE.MeshBasicMaterial({ map: honorBoardTexture(null) });
     const list = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.05), listMat);
     list.position.set(0, 0.82, 0.09); board.add(list);
+    let honorKey = '';
     setHonorBoard = (rows) => {
+      const key = rows.map((r) => `${r.name}:${r.coins}:${r.merit}`).join('|');
+      if (key === honorKey) return;
+      honorKey = key;
       const old = listMat.map;
       listMat.map = honorBoardTexture(rows);
       old?.dispose();
@@ -1372,7 +1381,7 @@ export function buildTemple(c: TempleCtx) {
       const n = Math.max(1, Math.ceil(len / postStep));
       const ang = Math.atan2(zb - za, xb - xa);
       for (let i = 0; i <= n; i++) posts.push({ x: xa + ((xb - xa) * i) / n, z: za + ((zb - za) * i) / n });
-      const wr = len / n / 2 + 0.002 - 0.4;
+      const wr = Math.max(0.05, len / n / 2 + 0.002 - 0.4);
       for (let i = 0; i <= n; i++) {
         const wall: { x: number; z: number; r: number; x2?: number; z2?: number } = {
           x: xa + ((xb - xa) * i) / n, z: za + ((zb - za) * i) / n, r: wr,

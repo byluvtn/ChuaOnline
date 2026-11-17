@@ -134,26 +134,11 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   scene.add(ground);
 
   const pave = stoneTexture([150, 144, 134], [3, 14]);
-  // Lối đi chính chia làm hai đoạn, chừa hẳn lòng hồ sen ở giữa khuôn viên
-  const pathN = new THREE.Mesh(new THREE.PlaneGeometry(6, PLAZA.z + PLAZA.r - (LAKE.z - LAKE.b - 0.8)), lamb(0xffffff, { map: pave }));
-  pathN.rotation.x = -Math.PI / 2;
-  pathN.position.set(0, 0.02, (PLAZA.z + PLAZA.r + (LAKE.z - LAKE.b - 0.8)) / 2);
-  pathN.receiveShadow = true; scene.add(pathN);
-  const pathS = new THREE.Mesh(new THREE.PlaneGeometry(6, 45 - (LAKE.z + LAKE.b + 0.8)), lamb(0xffffff, { map: pave }));
+  // Lối đi chính: tấm lát paveCompound phủ tới z=44, chỉ còn dải 1m từ mép tấm lát ra tới cổng
+  const pathS = new THREE.Mesh(new THREE.PlaneGeometry(6, 1), lamb(0xffffff, { map: pave }));
   pathS.rotation.x = -Math.PI / 2;
-  pathS.position.set(0, 0.02, (45 + (LAKE.z + LAKE.b + 0.8)) / 2);
+  pathS.position.set(0, 0.02, 44.5);
   pathS.receiveShadow = true; scene.add(pathS);
-  const plazaT = stoneTexture([166, 158, 142], [5, 5], 6);
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(PLAZA.r, 48), lamb(0xffffff, { map: plazaT }));
-  plaza.rotation.x = -Math.PI / 2; plaza.position.set(PLAZA.x, 0.03, PLAZA.z); plaza.receiveShadow = true;
-  scene.add(plaza);
-  // inner mandala ring
-  const ring = new THREE.Mesh(new THREE.RingGeometry(3.4, 3.75, 48), lamb(0xb78a3a, { emissive: 0x3a2808 }));
-  ring.rotation.x = -Math.PI / 2; ring.position.set(PLAZA.x, 0.045, PLAZA.z);
-  scene.add(ring);
-  const lotusFlat = new THREE.Mesh(new THREE.CircleGeometry(3.3, 8), lamb(0xdba3b6, { emissive: 0x30121c }));
-  lotusFlat.rotation.x = -Math.PI / 2; lotusFlat.position.set(PLAZA.x, 0.04, PLAZA.z);
-  scene.add(lotusFlat);
 
   const stoneM = lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [4, 1]) });
   void stoneM;
