@@ -3,35 +3,34 @@ import { FESTIVALS, type Festival } from '../data/festivals';
 import type { MenuCtx } from '../menu';
 import { SKY_LANTERN_COST, FIREWORKS, SKY_LANTERN_WISH_MAX } from '../../shared/game';
 import { audio } from '../audio';
+import { ictParts, solarToLunar, dayKeyICT } from '../../shared/time';
 
-const DAY = 86_400_000;
-let fmt: Intl.DateTimeFormat | null | undefined;
-function lunarOf(d: Date): { month: number; day: number; leap: boolean } | null {
-  if (fmt === undefined) {
-    try {
-      fmt = new Intl.DateTimeFormat('en-u-ca-chinese', { month: 'numeric', day: 'numeric' });
-      if (!fmt.formatToParts(new Date()).some((p) => p.type === 'day')) fmt = null;
-    } catch { fmt = null; }
+/** Bảng âm lịch 402 ngày (hôm nay + 400 ngày + 1 ngày dự phòng cho fallback ngày 30),
+ * tính một lần theo ngày ICT rồi tra — thay cho 400 lần formatToParts mỗi lễ. */
+interface LunarRow { day: number; month: number; leap: boolean }
+let lunarTable: { key: string; rows: LunarRow[] } | null = null;
+function getLunarTable(): LunarRow[] {
+  const key = dayKeyICT();
+  if (lunarTable && lunarTable.key === key) return lunarTable.rows;
+  const p = ictParts(new Date());
+  const rows: LunarRow[] = [];
+  for (let i = 0; i <= 401; i++) {
+    const t = new Date(Date.UTC(p.year, p.month - 1, p.day + i));
+    const l = solarToLunar(t.getUTCDate(), t.getUTCMonth() + 1, t.getUTCFullYear());
+    rows.push({ day: l.day, month: l.month, leap: l.leap });
   }
-  if (!fmt) return null;
-  const parts = fmt.formatToParts(d);
-  const m = parts.find((p) => p.type === 'month')?.value ?? '';
-  const day = Number(parts.find((p) => p.type === 'day')?.value);
-  const month = parseInt(m, 10);
-  if (!month || !day) return null;
-  return { month, day, leap: /bis|leap/i.test(m) || m.includes('bis') };
+  lunarTable = { key, rows };
+  return rows;
 }
 
-/** Days from today (local noon) until the next lunar occurrence, or null if unsupported. */
+/** Days from today (ICT) until the next lunar occurrence, or null if not found within 400 days. */
 export function daysUntil(f: Festival): number | null {
-  const base = new Date();
-  base.setHours(12, 0, 0, 0);
-  if (!lunarOf(base)) return null;
+  const rows = getLunarTable();
   for (let i = 0; i <= 400; i++) {
-    const l = lunarOf(new Date(base.getTime() + i * DAY));
-    if (l && !l.leap && l.day === f.lunarDay && (f.monthly || l.month === f.lunarMonth)) return i;
-    if (f.lunarDay === 30 && !f.monthly && l && !l.leap && l.day === 29 && l.month === f.lunarMonth) {
-      const next = lunarOf(new Date(base.getTime() + (i + 1) * DAY));
+    const l = rows[i];
+    if (!l.leap && l.day === f.lunarDay && (f.monthly || l.month === f.lunarMonth)) return i;
+    if (f.lunarDay === 30 && !f.monthly && !l.leap && l.day === 29 && l.month === f.lunarMonth) {
+      const next = rows[i + 1];
       if (next && next.day === 1) return i;
     }
   }
