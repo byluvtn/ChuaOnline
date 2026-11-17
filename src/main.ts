@@ -1,3 +1,4 @@
+import './polyfill';
 import * as THREE from 'three';
 import { io, type Socket } from 'socket.io-client';
 import { api, clearToken, getToken, setToken } from './api';
