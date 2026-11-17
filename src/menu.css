@@ -94,8 +94,9 @@ body.menu-collapsed #actions, body.menu-collapsed #chat { bottom: calc(80px + en
 .lvtable tr.cur td { background: #f8e19a; font-weight: 700; }
 
 /* map */
-.tmap-wrap { border-radius: 16px; overflow: hidden; border: 1px solid #c9a96a; max-width: 440px; margin: 0 auto; }
-.tmap { width: 100%; height: auto; aspect-ratio: 1; display: block; cursor: pointer; }
+.card:has(.tmap-wrap) { width: min(780px, 96vw); }
+.tmap-wrap { border-radius: 16px; overflow: auto; border: 1px solid #c9a96a; max-width: 700px; margin: 0 auto; }
+.tmap { width: 100%; min-width: 620px; height: auto; aspect-ratio: 1; display: block; cursor: pointer; }
 
 /* fortune */
 .tube-wrap { display: grid; place-items: center; height: 190px; }

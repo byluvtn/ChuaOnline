@@ -1,0 +1,70 @@
+{
+  "device": {
+    "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+    "screen": [
+      384,
+      854
+    ],
+    "viewport": [
+      384,
+      716
+    ],
+    "dpr": 2.8125,
+    "hidden": false,
+    "webgl": true
+  },
+  "loaded": [
+    "tinh-that-blender",
+    "tinh-that-blender",
+    "tinh-that-blender",
+    "dien-duoc-su-blender"
+  ],
+  "variant": "procedural fallback",
+  "conditions": "Note20 Chrome, screen on, USB reverse, dev Vite, stationary camera, 2s warmup + 8s requestAnimationFrame samples per location; independent one-off scene render counts include shadow pass; not a GPU timer",
+  "spots": [
+    {
+      "name": "duoc-su-near",
+      "elapsedMs": 3532.800000000745,
+      "frames": 96,
+      "fps": 26.89,
+      "sceneFrames": 96,
+      "renderFps": 27.17,
+      "avgMs": 37.19,
+      "p95Ms": 50,
+      "p99Ms": 66.6,
+      "maxMs": 66.6,
+      "over33": 42,
+      "over50": 2,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": null
+    },
+    {
+      "name": "tinh-that-near",
+      "elapsedMs": 3512.600000001119,
+      "frames": 104,
+      "fps": 29.32,
+      "sceneFrames": 104,
+      "renderFps": 29.61,
+      "avgMs": 34.1,
+      "p95Ms": 33.4,
+      "p99Ms": 50,
+      "maxMs": 66.6,
+      "over33": 35,
+      "over50": 1,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": null
+    }
+  ]
+}

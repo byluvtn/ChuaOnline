@@ -1,0 +1,89 @@
+{
+  "variant": "blender",
+  "device": {
+    "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+    "viewport": [
+      384,
+      716
+    ],
+    "dpr": 2.8125,
+    "hidden": false,
+    "screen": [
+      384,
+      854
+    ]
+  },
+  "roofs": [
+    {
+      "name": "chinh-dien-roof",
+      "source": "blender"
+    },
+    {
+      "name": "dien-tam-the-roof",
+      "source": "blender"
+    }
+  ],
+  "conditions": "Note20 Chrome, USB reverse, same static camera, 2s warmup and 8s rAF sample per spot; renderer.render counted for scene, not a GPU timer",
+  "spots": [
+    {
+      "name": "main-court",
+      "frames": 132,
+      "elapsedMs": 8035,
+      "fps": 16.3,
+      "sceneFrames": 132,
+      "renderFps": 16.43,
+      "p95Ms": 66.7,
+      "p99Ms": 66.7,
+      "over50": 89,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": {
+        "calls": 1820,
+        "triangles": 1165016
+      }
+    },
+    {
+      "name": "chinh-dien-near",
+      "frames": 187,
+      "elapsedMs": 8034,
+      "fps": 23.15,
+      "sceneFrames": 187,
+      "renderFps": 23.28,
+      "p95Ms": 50.1,
+      "p99Ms": 66.6,
+      "over50": 11,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": {
+        "calls": 813,
+        "triangles": 694082
+      }
+    },
+    {
+      "name": "tam-the-near",
+      "frames": 240,
+      "elapsedMs": 8019,
+      "fps": 29.81,
+      "sceneFrames": 240,
+      "renderFps": 29.93,
+      "p95Ms": 33.4,
+      "p99Ms": 49.9,
+      "over50": 0,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": {
+        "calls": 304,
+        "triangles": 295964
+      }
+    }
+  ]
+}

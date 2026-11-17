@@ -6,6 +6,80 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
+## Mái Blender Chính Điện và Điện Tam Thế (2026-11-17, local)
+
+- Dựng hai mái ba tầng chồng diêm riêng trong Blender 5.3, mái cong, góc đầu đao, gân ngói, bờ nóc, song trang trí cổ diêm, bánh xe pháp luân. Nguồn chỉnh sửa `tools/blender/main-roofs.blend`; tái xuất bằng `& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --factory-startup --python tools/build-main-roofs.py`.
+- `public/models/chinh-dien-roof.glb` và `public/models/dien-tam-the-roof.glb` dùng mặt trước +Z, mét, Y-up và scale 1, lần lượt 33.696/32.104 tam giác, 5 mesh, không texture ngoài. Giữ cột, xà, bệ, cầu thang, chữ Việt, tượng, ghế, zones, collider và groundY hiện hữu; chỉ thay mái. Khi tải lỗi, mái procedural vẫn hiển thị.
+- Đạt `node tools/verify-main-roofs.mjs`, `npm run typecheck`, `npm run build` (cảnh báo bundle >500 kB vốn có). Kiểm tra trong trình duyệt: cả 2 GLB hiện đúng, biển điện không bị mái che; ảnh `shots/chinh-dien-blender-roof.png`, `shots/tam-the-blender-roof.png`. Chặn GLB kiểm tra cả 2 fallback, groundY vẫn 1,35/3 m, zone vẫn `daiHung`/`tamThe`.
+- Đã đo Note20 thật qua USB/ADB: SM-N981N, Chrome Android, viewport 384×716 CSS px, canvas 576×1074 px, Chrome hiển thị, Vite dev qua USB reverse. Mỗi góc camera tĩnh làm nóng 2 giây rồi lấy 8 giây `requestAnimationFrame`, đếm riêng `renderer.render` của scene, không phải GPU timer. GLB lượt 1: sân chính 16,30 FPS, Chính Điện gần 23,15, Tam Thế gần 29,81; mái procedural (chặn hai GLB): 17,06 / 23,48 / 29,92; GLB lượt 2: 17,77 / 22,73 / 29,53. File gốc: `shots/note20-main-roofs-blender.json`, `shots/note20-main-roofs-procedural.json`, `shots/note20-main-roofs-blender-repeat.json`. Số FPS giữa các lượt chồng lấn nhau, chưa đủ kết luận GLB làm chậm/tăng tốc; sân chính vẫn chỉ ~16–18 FPS. Nhiệt pin đọc qua ADB từ 32,0°C lên 36,2°C sau ba lượt, màn hình vẫn sáng.
+- Đây là thiết kế theo ngôn ngữ mái chùa Việt, **chưa phải phục dựng chính xác công trình thật** vì chưa có ảnh/đo vẽ tham chiếu; chưa dựng trọn kiến trúc hai điện và chưa thay Điện Mẫu, Nhà Tổ hay các nhà khác. Cần đối chiếu ảnh chùa thật trước khi tăng độ chi tiết ở khu trung tâm.
+- Tin mới `LATEST_NEWS_ID` 129 → 130. Chưa commit/push.
+
+### Điều tra FPS sân chính trên Note20 (2026-11-17, local)
+
+- Đo trực tiếp Note20/Chrome (viewport 384×716, canvas 576×1074), camera tĩnh `(0,10,32)` nhìn `(0,2,-10)`, mỗi phép A/B làm nóng 1,5 s rồi lấy mẫu 6 s và trở lại baseline xen kẽ. Dữ liệu `shots/note20-court-profile.json`; phân nhóm draw call một frame tại `shots/note20-court-draws.json`. Script chạy từ `tools`: `node note20-court-profile.mjs` / `node note20-court-draws.mjs`; cần kết nối CDP cổng 9222 trên Chrome Note20.
+- Máy đã nóng (pin ~39–40°C) nên baseline thấp hơn lượt trước: khoảng 14–15 FPS. Mỗi frame sân chính ~1.400–1.700 draw call / ~1,0–1,1 triệu tam giác, trong khi riêng `renderer.render()` mất ~60–65 ms (wall time JS/driver), phần còn lại khoảng 4–7 ms. Có ~9.200 object trong scene, ~6.800 mesh, ~2.800 mesh castShadow; camera gần Tam Thế chỉ ~359 draw call màu theo lượt phân nhóm. Không suy diễn đây là thời gian GPU thuần.
+- Shadow map mặt trời 1024² cập nhật hằng frame: tắt castShadow tạm thời ~20–21 FPS, đóng băng shadow map ~19–20 FPS so với baseline ~14–15. Tắt riêng castShadow của nhóm La Hán không cải thiện, dù chúng góp nhiều tam giác trong shadow pass. Không giữ shadow map đóng băng vì mặt trời/NPC di chuyển.
+- Độ phân giải halving (canvas 288×537), bỏ post hay bỏ riêng bloom hầu như không cải thiện FPS; nút thắt chính không phải fill-rate hoặc hậu kỳ. Ẩn thử NPC: ~17 FPS; ẩn thử Chính Điện: ~15,8 FPS; ẩn thử Tam Thế: ~15,3 FPS, chỉ dùng để quy nguồn tải, không phải giải pháp thực tế. Góc sân chính cần vẽ đồng thời ~351 call Chính Điện, ~277 Tam Thế, ~321 nhân vật, ~164 hồ koi (số nhóm từ một frame; có dao động do NPC).
+- Hướng tối ưu ưu tiên: giảm số mesh/draw call của nội thất hai điện và NPC bằng gộp/instancing theo vật liệu trong từng cụm; giảm số caster động/không nhìn thấy trong shadow frustum hoặc tách bóng tĩnh và động trước khi cân nhắc đóng băng map. Không giảm pixel ratio hay tắt bloom làm bước đầu. Chưa áp dụng thay đổi chất lượng/kiến trúc nào từ phép thử này.
+
+## Model Blender đợt 1 (2026-11-17, local)
+
+- Thay kiến trúc Điện Dược Sư và ba tịnh thất trong `src/expansion.ts`; chưa chuyển các công trình khác. Giữ nội thất, tượng, biển chữ Việt, ghế, collider, zones và groundY trong game.
+- Nguồn chỉnh sửa: `tools/blender/campus-architecture.blend`, hai collection riêng. Trong file nguồn tịnh thất được đặt lệch x=20 để dễ xem; khi xuất GLB cả hai asset đều ở gốc, đơn vị mét, Y-up, mặt trước +Z, scale 1.
+- Dựng lại bằng `& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --factory-startup --python tools/build-architecture.py` tại gốc repo. Script ghi lại hai GLB, `.blend` và `tools/blender/architecture-audit.json`.
+- `public/models/dien-duoc-su-blender.glb`: 13.704 tam giác, 6 mesh/vật liệu, 732.832 byte; bao mái khoảng 15,13 × 11,53 m, cao 10,05 m; nền 12 × 9 m, cao 0,45 m.
+- `public/models/tinh-that-blender.glb`: 2.744 tam giác, 6 mesh/vật liệu, 149.860 byte; bao mái 4,33 × 3,73 m, cao 3,95 m; nền 3,2 × 2,5 m, cao 0,16 m. Ba bản sao dùng chung geometry/material và chỉ tải một file.
+- Vật liệu PBR màu, opaque, single-sided; không có texture ngoài, animation hoặc phụ thuộc file rời. Mái cong có độ dày, đường gân ngói và diềm; cửa sổ là lỗ thật với chấn song.
+- Loader thay đúng nhóm kiến trúc sau khi tải thành công và dispose geometry fallback; không dispose vật liệu dùng chung. Nếu tải lỗi vẫn giữ kiến trúc procedural.
+- Đạt `node tools/verify-architecture.mjs`, `npm run build`, `npx tsx tools/verify-expansion.ts`. Browser xác nhận 4 instance, kích thước đúng, 7 ghế, groundY 0,45/0,16 và zone Dược Sư còn nguyên. Chặn hai URL GLB vẫn giữ đủ 4 fallback.
+- Ảnh: `shots/blender-duoc-su.png`, `shots/blender-tinh-that.png` và bản `-ingame.png`; số đo `shots/blender-architecture-metrics.json`. Render riêng không shadow: Điện 6 calls, ba tịnh thất 18 calls, chưa tính sàn test. Chi tiết mesh tăng so với kiến trúc khối cũ.
+- Đã đo **Note20 thật** qua USB/ADB: SM-N981N, Chrome Android, màn hình 1080×2400, viewport 384×716 CSS px, canvas 576×1074 px, Vite dev với 4 GLB tải thành công. Script `tools/note20-fps.mjs` dùng `requestAnimationFrame` và đếm riêng `renderer.render` của scene (không lấy `renderer.info` sau post-pass làm số draw call); mỗi góc làm nóng 2 giây rồi đo 8 giây, camera đứng yên. Bản GLB lần đầu: sân chính **19,12 FPS**, Dược Sư gần/xa **34,17/32,59**, tịnh thất gần/xa **37,50/37,05**, thang Ngọc **37,19**. Chi tiết ở `shots/note20-fps-blender.json` (lượt đầu trước khi thêm đếm render).
+- Đối chứng 3,5 giây/góc trên máy đã ấm: GLB Dược Sư **27,39 FPS render**, tịnh thất **29,31**; chặn GLB để dùng procedural: **27,17/29,61**. Lưu `shots/note20-fps-blender-quick.json`, `shots/note20-fps-procedural-quick.json`. Lượt GLB sau khi bật lại: **28,35/31,91**. Khác biệt nhỏ hơn dao động giữa các lượt, **không đủ kết luận GLB tăng/giảm FPS**. Nhiệt pin đọc bằng ADB tăng từ 30,5°C lên khoảng 37,7°C; có lượt Chrome timeout và màn hình tắt, đã loại khỏi kết quả. Góc sân chính còn ~14–19 FPS tùy lượt, vấn đề hiệu năng toàn cảnh chưa giải quyết; chưa đo frame GPU hay thử nhiều máy.
+- Tin mới `LATEST_NEWS_ID` 128 → 129. Chưa commit/push. Lỗi đường NPC trung tâm của đợt trước chưa được xử lý trong đợt model này.
+
+## Mở rộng khuôn viên 24/7 (2026-11-17, tích hợp local; còn lỗi đường NPC trung tâm)
+
+### Phạm vi và trải nghiệm
+- User cho phép thi công theo bản đồ ngày 17/11 sau khi đọc GitHub. Nền code: `origin/main` tại `3e28376`, đã `git pull --rebase`, không có commit mới.
+- Mục tiêu: người chơi đi từ Tam Quan qua khuôn viên cũ tới các cảnh quan mới và đỉnh Chùa Ngọc. Các cầu phải thông, nước không đi xuyên được, cao độ nhân vật khớp mặt nền.
+- Vòng chơi dùng hệ thống hiện có: nhận nhiệm vụ từ NPC, đi tới điểm hành hương/thiền hành hoặc dâng hương, quay về nhận công đức. Không thêm chiến đấu hay cơ chế thua.
+- Khu Nam và điện cũ giữ vai trò định hướng. Tây là đời sống tăng đoàn/hồ sen; Đông là Dược Sư, rừng trúc, sông và vườn hoa; Bắc là đường núi và điểm nhìn cao nhất.
+- Ban đầu kiến trúc procedural, gộp mesh theo vật liệu và theo từng cụm để giữ culling. Đợt Blender phía trên thay kiến trúc Dược Sư và tịnh thất bằng GLB; các phần khác giữ nguyên.
+
+### Quy hoạch đã áp
+- Tường `x ±92`, Bắc `z −122`, Nam `45`; hai cổng phụ `(±92, 2)`, không cổng Bắc. Dữ liệu dùng chung ở `shared/campus.ts`.
+- Chuông `(34, −6)`, trống `(−34, −6)`, Bảo Tháp `(−34, −15)`, phòng công đức `(35, 33)`, khu nghỉ `(−35, 33)`.
+- Hồ koi `(0, 14)`, elip `14 × 10`, cầu trục `z 2..26`; bỏ quảng trường tròn. Bồn hoa và Thủy Đình giữ tọa độ đã chốt.
+- Tăng xá dời tới `(−64, −74)`, thu thân nhà vào vùng `x −70..−58`; ba tịnh thất phía Nam. Vườn Tháp dời tới `(50, −94)`, mang cả tượng Cleveland theo hằng tọa độ; không thay model tượng.
+- Các hạng mục mới: vườn rau/ao sen, hồ sen Tây và đình; rừng trúc, Dược Sư, vườn hoa; sông `x 63..67 / z −82..14` với ao cuối `(65,16)`; Chùa Ngọc, động thiền, rừng thông, hai đình nghỉ.
+- Cầu bắt buộc: hồ sen Tây `z 2`; sông Đông `z −38` và `z 2`. Biên client/server và pathfinder cập nhật cùng bản đồ.
+- `ngocStepProfile()` là nguồn chung cho hình học và cao độ: 299 bậc + 2 chiếu nghỉ 1 m; bước sâu `(30−2)/299`, tổng cao 6 m. Bậc được gộp, không tạo 299 draw call.
+- Giữ lối giữa sân: dời lư hương rời ngoài sân từ `(0,−13)` sang `(3.4,−20.5)`. Không thay bàn thờ hay tượng trong các điện cũ.
+- Các điểm quét sân/cây ở `(±8.5,12)` được dời tới `(±16.5,1)` vì hồ mới chiếm chỗ cũ. NPC, map, danh sách địa điểm và giới hạn được cập nhật cùng tọa độ.
+
+### Gameplay và giới hạn
+- Thêm nhiệm vụ visit Chùa Ngọc, rừng trúc, bờ sông và nhiệm vụ dâng đèn tại Dược Sư trên hệ thống nhiệm vụ hiện có.
+- Thả hoa đăng tại hồ sen Tây và sông Đông tái dùng action/reward hiện có; sông có chuyển động đèn theo dòng. Payload đèn chứa tọa độ để cả phòng thấy đúng điểm thả.
+- Nút Dược Sư dâng đèn cầu an bằng action `lantern` hiện có, hiệu ứng đèn đứng trước bàn thờ. Server kiểm tra đúng vùng cho nhiệm vụ lantern; không thêm tiền tệ hay chỉ số sức khỏe mới. Rota chấp tác rau và lộ trình tu sĩ R5 chưa triển khai; không coi cảnh luống rau là hệ thống thu hoạch.
+- Nhiệm vụ Chùa Ngọc kiểm tra điểm đến như các nhiệm vụ visit khác; không có bộ đếm từng bậc hay chống teleport mới.
+- FPS/frame-time điện thoại thật: **chờ số đo máy thật**. Chưa commit/push/deploy đợt mở rộng này.
+
+### Kiểm chứng
+- `npm run typecheck`, `npm run build`: đạt; build còn cảnh báo bundle >500 kB.
+- `npx tsx tools/verify-expansion.ts`: đạt 299 bậc/2 chiếu nghỉ, groundY, khe cổng, chặn nước, vị trí cũ đã giải phóng, điểm sinh và graph liên thông.
+- `node tools/verify-expansion-server.mjs`: đạt spawn ngoài hồ; nhận 4 quest mới, hoàn thành 3 quest visit; cầu an chỉ tính trong vùng Dược Sư; đèn broadcast đúng gốc tọa độ. Move vào sông bị từ chối; reconnect giữ vị trí khô trên cầu. Test tạo khách local mới, không sửa tài khoản có sẵn.
+- `tools/steps-expansion-paths.mjs`: 30 tuyến từ `(0,30)` tới khu mới/công trình di dời đều tới đúng đích, không fallback. Lấy mẫu mỗi 0,12 m bằng hàm `collide` thật, độ đẩy lệch lớn nhất bằng 0. Đây là kiểm tra hình học tuyến, không mô phỏng input từng frame.
+- Kiểm tra riêng vòng lặp click-to-walk thật từ chân thang `(0,−82)` tới `(0,−112.5)`: nhân vật lên được mặt nền cao 6 m, dừng cách đích khoảng 0,54 m theo ngưỡng client. Không dùng dịch chuyển để thay cho đoạn leo thang.
+- Chạy thực qua cầu hồ sen Tây `(-90,2) → (-66,2)` và cầu sông Đông `(60,-38) → (70,-38)`: tới đích trong ngưỡng 1 m. Bật test này bằng `$env:WALK_INPUT='1'` khi chạy `steps-expansion-paths.mjs`; script mặc định chỉ kiểm tra hình học để không phải chờ các lượt đi dài.
+- Pathfinder có A* lưới giới hạn trong bản đồ khi graph không tìm được đường. Bộ tìm đường dựng lại khi model tải thêm collider. Các điểm Bảo Tháp, Vườn Tháp và tịnh thất dùng vị trí tiếp cận thay vì tâm bị vật thể chiếm chỗ.
+- `tools/steps-expansion.mjs`: 6 đường tâm cầu/cổng/thang không bị đẩy lệch. Cao độ mỗi bậc Ngọc khoảng 0,02007 m; đầu cầu đá vẫn đổi cao độ 0,28 m, chưa có ramp mượt.
+- Đã chụp 16 góc cảnh cùng bản đồ trong `shots/expansion-*.png`; số đo ở `shots/expansion-metrics.json`. Bản đồ desktop không cắt ngang; mobile cuộn được tới các địa điểm phía Đông, không tràn trang. Khu mới gộp theo vật liệu từng khu; Dược Sư 19 mesh, Chùa Ngọc 16 mesh; riêng mặt bậc Ngọc là 1 mesh.
+- Render trực tiếp ở 1280×800, ánh sáng kiểm chứng và tắt fog: góc toàn cảnh khoảng 6.400 calls / 3,73 triệu triangles, gồm cả cảnh cũ và shadow pass. Không phải chi phí riêng phần mở rộng, cũng không phải FPS. Chờ số đo máy thật trước khi kết luận hiệu năng đạt.
+- Mạng NPC có 181 node/193 cạnh, liên thông và không qua nước mới ngoài cầu. Các cạnh khu mở rộng phía Tây/Đông/Bắc đã lấy mẫu collider thật, không bị đẩy lệch. Còn 25 cạnh qua khu trung tâm/công trình di dời bị đẩy hơn 0,06 m (có đoạn tới 1,63 m); chi tiết ở `shots/expansion-path-diagnostics.json`. Không coi toàn mạng NPC đã nghiệm thu.
+- Review: sửa predicate spawn NPC loại nước mới, phục hồi vị trí resume bằng giới hạn tường và điểm khô gần nhất. Bước khỏi mép cầu vào nước mới bị trả về vị trí trước, không còn chiếu xuyên vài mét tới bờ xa. Test thêm chỗ sông/ao chồng nhau và mặt sàn Ngọc phía Bắc. Hai cổng phụ vẫn cho đứng trong túi ngoài tường 4 m tại dải cổng; ngoài dải đó bị clamp vào trong.
+- Tin mở rộng thêm đầu `src/data/news.ts`, `LATEST_NEWS_ID` **127 → 128** (không dùng id từ các mốc A2 cũ).
+
 ## Commit gần nhất: 7a70bf1 (fix admin log, 2026-11-17) — HANDOFF bắt kịp tới tin 129
 Push lên `origin/main` (byluvtn/ChuaOnline).
 

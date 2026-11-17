@@ -21,6 +21,21 @@ export function loadModel(name: string): Promise<THREE.Group | null> {
   return p;
 }
 
+/** Replace only the architectural shell; gameplay objects remain in the parent. */
+export function replaceRoof(parent: THREE.Group, fallback: THREE.Group, name: string): void {
+  fallback.userData.asset = name;
+  fallback.userData.source = 'procedural-fallback';
+  void loadModel(name).then(model => {
+    if (!model || !fallback.parent) return;
+    const instance = model.clone(true);
+    instance.name = name;
+    instance.userData.source = 'blender';
+    parent.add(instance);
+    parent.remove(fallback);
+    fallback.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+  }).catch(error => console.warn(`Roof ${name}: keeping fallback`, error));
+}
+
 const RETRY_DELAYS_MS = [2000, 5000]; // 3 lần thử: ngay, +2 s, +5 s
 
 async function loadOnce(name: string): Promise<THREE.Group | null> {

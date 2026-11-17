@@ -1,27 +1,63 @@
-// shared/roads.ts
+﻿// shared/roads.ts
 // Road graph. Pure data and pure functions (imports only the pure shared Dijkstra, server + client safe).
+// No src/ import here on purpose: every coordinate below is a literal mirror of the
+// 24/7 campus constants (shared/campus.ts, src/layout.ts) so the server graph and the
+// scene cannot drift apart, and the graph stays usable from the client too.
 //
-// Platform note (Tam The, verified from layout.ts groundY + TAM_THE_PLAT):
-// footprint x -20..20, z -80..-56, top y = 3.0. The only walkable entry is the central
-// stair on the south face (|x| <= 4.2, z -50 -> -56). The other faces are a 3 m wall.
-// z = -40 for |x| < 17 is ON the hall floor, so a z = -40 detour is wrong as well.
-// => The ground between the hall (north edge z = -42) and the stair foot (z = -50) is open.
-// The rear road stays split into a west segment and an east segment (z = -46); no rearMid
-// node was added. The middle crossing goes only via the hall east aisle and the stair
-// approach (see below).
+// â”€â”€ 24/7 campus (17.11.2026 plan) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Compound is now 184 Ã— 167 m: wall x Â±92, z âˆ’122â€¦45, side gates at (Â±92, 2) on the
+// cross path z = 2, south gate (0, 45), no north gate. The old Â±62 / âˆ’82 compound ring
+// is gone, so the garden ring moved out to x = Â±59 (rearW / rearE keep their ids; the
+// "rear road" is still z = âˆ’46).
 //
-// Corrected coordinates (kept from the old spokes): quanYard, buddhaYard, denTrinh, baoThap,
-// dienMau (39, 14.5) and thienDuong (-39.5, -27) are placed in front of their buildings.
-// dienMau / thienDuong door sides were taken as given; they were not re-derived from code.
+// Moved landmarks used below:
+//   koi lake (0, 14) a 14 Ã— b 10 â†’ water z 4â€¦24, bridge deck z 2â€¦26 (x Â±1.15)
+//   bell tower (+34, âˆ’6) Â· drum tower (âˆ’34, âˆ’6)
+//   Báº£o ThÃ¡p (âˆ’34, âˆ’15): octagon platform out to r â‰ˆ 6.8, south steps z âˆ’10â€¦âˆ’8.2
+//   khu nghá»‰ (âˆ’35, 33) Â· PhÃ²ng Ghi CÃ´ng Äá»©c (35, 33), door faces EAST at (39.5, 33)
+//   TÄƒng XÃ¡ (âˆ’64, âˆ’74) with its south door (âˆ’64, âˆ’70.5); three tá»‹nh tháº¥t at
+//   (âˆ’67,âˆ’67), (âˆ’61,âˆ’67), (âˆ’64,âˆ’63.8). The OLD TÄƒng XÃ¡ site (âˆ’41, âˆ’71) is empty:
+//   no node and no edge goes there any more.
+//   VÆ°á»n ThÃ¡p (cemetery) (50, âˆ’94), entered from the north bypass at (50, âˆ’82)
+//   lotus lake (âˆ’78, âˆ’2) a 10 Ã— b 7, boardwalk on z = 2 (x âˆ’88â€¦âˆ’66), pavilion (âˆ’70, 5)
+//   vÆ°á»n rau (âˆ’76, âˆ’42) with the small pond (âˆ’70, âˆ’35); its ONLY gate is the east gap
+//   in the fence at (âˆ’64, z âˆ’44â€¦âˆ’40)
+//   Äiá»‡n DÆ°á»£c SÆ° (77, âˆ’38), south door / steps at z â‰ˆ âˆ’33, westward lane at x = 69
+//   rá»«ng trÃºc (80, âˆ’3) Â· vÆ°á»n hoa (79, 28)
+//   east river x 63â€¦67, z âˆ’82â€¦14, crossed only at z = 2 and z = âˆ’38
+//   ChÃ¹a Ngá»c stairs x = 0, z âˆ’82â€¦âˆ’112 (height is the client's business)
+//   Ä‘á»™ng thiá»n (âˆ’26, âˆ’104), mouth opens south at z â‰ˆ âˆ’103.4
 //
-// Stair approach finding: the main hall altar is 24 m wide (hall.ts:159-171, AW = 25),
-// centred at (0, -40), spanning x -12..12, z -41.65..-38.35, top y = 1.9. The offering
-// table sits at z = -36.7. A stair base node at (0, -40) is buried in the altar, so it
-// is deleted. The clean approach is only via the east aisle (x = 14) and then west
-// along z = -41.8 on the platform skirt, north of the altar, into the stair.
+// AXIS CHANGE: the lake grew north to z = 4, so the old plaza (0, 6) and both bridge
+// nodes stood in water. plaza is now the crossroads of the axis and the cross path at
+// (0, 2) â€” the north head of the bridge deck; bridgeN (0, 1.5) is the last dry point
+// north of the deck, bridgeS (0, 26.5) the first dry point south of it.
 //
-// Dropped edges: none. The edges below were not geometrically re-checked against every
-// collider here; they are used exactly as specified.
+// CROSS PATH z = 2 is dry everywhere (the koi lake starts at z = 4):
+//   sideGateW â†’ lotus boardwalk (âˆ’88â€¦âˆ’66) â†’ pathW4â€¦pathW1 â†’ plaza â†’ pathE1â€¦pathE4
+//   â†’ river bridge at x = 65 â†’ rá»«ng trÃºc â†’ sideGateE.
+// The Quan Ã‚m and Pháº­t TÃ¢y spokes join it through quanSE / buddhaYard, never with a
+// straight line through the statue courts.
+//
+// PLATFORM NOTE (Tam Tháº¿, unchanged): footprint x âˆ’20â€¦20, z âˆ’80â€¦âˆ’56, top y = 3.0. The
+// only walkable entry is the central stair on the south face (|x| <= 4.2, z âˆ’50 â†’ âˆ’56);
+// the other three faces are a 3 m wall. z = âˆ’40 for |x| < 17 is ON the hall floor, so the
+// stair approach is still the east-aisle run (hallIn â†’ hallAisleE â†’ hallAisleN â†’
+// stairApp â†’ stairTop). The north side is reachable only by the bypass at z = âˆ’82 that
+// hugs the platform's north wall (westRearGate â†’ bypassW â†’ caveBypass â†’ ngocBase â†’
+// pineBypass â†’ bypassE â†’ cemeteryGate â†’ eastRearGate). The ChÃ¹a Ngá»c stair starts at
+// (0, âˆ’82), i.e. on that bypass, so the summit needs no platform or hall crossing.
+//
+// Building / water rules encoded below (main's live diagnostics, 17.11.2026):
+//   Â· no edge crosses the koi lake, the lotus lake, the farm pond or the east river
+//     except on the deck corridors named above;
+//   Â· the farm is entered through its east gate only (the fence has no other gap);
+//   Â· Báº£o ThÃ¡p is circled (baoE / baoW) instead of being crossed;
+//   Â· ktYard no longer runs straight to the moved TÄƒng XÃ¡ door;
+//   Â· Äiá»‡n DÆ°á»£c SÆ° is entered from the west river bank at x = 69 and then along the
+//     south lane â€” never through its west wall;
+//   Â· the rest garden reaches the cross path along the paved z â‰ˆ 41 lane, not across
+//     the koi lake.
 
 import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
 
@@ -34,84 +70,100 @@ export interface RoadNode {
 }
 
 export const ROAD_NODES: RoadNode[] = [
-  // Axis
+  // â”€â”€ Axis (koi bridge deck z 2â€¦26 is the only crossing on the axis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'gate', x: 0, z: 43.5 },
-  { id: 'bridgeS', x: 0, z: 30.2 },
-  { id: 'bridgeN', x: 0, z: 13.8 },
-  { id: 'plaza', x: 0, z: 6 },
+  { id: 'bridgeS', x: 0, z: 26.5 }, // was (0, 30.2); lake now reaches z = 24
+  { id: 'bridgeN', x: 0, z: 1.5 }, // was (0, 13.8); lake now starts at z = 4
+  { id: 'plaza', x: 0, z: 2 }, // was (0, 6) â€” axis / cross-path crossroads
   { id: 'axisMid', x: 3, z: -17 },
   { id: 'hallFront', x: 0, z: -20 },
   { id: 'hallIn', x: 0, z: -24 },
-  { id: 'hallWestWp', x: -21, z: -12.5 }, // west of the x=-18.1 colonnade; was (-18,-10), 0.50 from r0.50 column (-18.8,-9.4)
-  { id: 'hallEastWp', x: 24.5, z: -12.3 }, // gap between columns (22.5,-13.5) and (22.9,-11.2); was (24,-12.5); dời khỏi collider tượng hành lang
-  // Rear west / east
-  { id: 'rearW', x: -46, z: -46 },
+  { id: 'hallWestWp', x: -21, z: -12.5 }, // west of the x=-18.1 colonnade
+  { id: 'hallEastWp', x: 24.5, z: -12.3 }, // gap between columns (22.5,-13.5) and (22.9,-11.2)
+  { id: 'hallSE', x: 20, z: -19 }, // outside the hall corner (hx 17, south face z -22)
+  { id: 'corrW2', x: -24, z: -16 }, // west of the La HÃ¡n corridor (x -20.5 half 2.6)
+  // â”€â”€ Cross path z = 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  { id: 'pathW1', x: -16, z: 2 },
+  { id: 'pathW2', x: -28, z: 2 },
+  { id: 'pathW3', x: -40, z: 2 },
+  { id: 'pathW4', x: -52, z: 2 },
+  { id: 'pathE1', x: 16, z: 2 },
+  { id: 'pathE2', x: 28, z: 2 },
+  { id: 'pathE3', x: 40, z: 2 },
+  { id: 'pathE4', x: 52, z: 2 },
+  { id: 'sideGateW', x: -92, z: 2 },
+  // â”€â”€ Rear road z = âˆ’46 (garden ring x = Â±59) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  { id: 'rearW', x: -59, z: -46 },
   { id: 'rearKT', x: -30, z: -46 },
   { id: 'rearTO', x: 30, z: -46 },
-  { id: 'rearE', x: 46, z: -46 },
-  // Bypasses
+  { id: 'rearE', x: 59, z: -46 },
   { id: 'westMid', x: -22, z: -26 },
   { id: 'westNorth', x: -22, z: -46 },
   { id: 'eastMid', x: 22, z: -26 },
   { id: 'eastNorth', x: 22, z: -46 },
-  // Stair route
-  // Stair approach (east aisle, around the altar)
+  // â”€â”€ Stair route (east aisle around the altar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'hallAisleE', x: 14, z: -38 },
   { id: 'hallAisleN', x: 14, z: -41.8 },
   { id: 'stairApp', x: 4, z: -55.8 },
   { id: 'stairTop', x: 0, z: -56 },
   { id: 'tamThe', x: 0, z: -58 },
-  // Branch
-  { id: 'bellTower', x: -34, z: -6 },
-  { id: 'drumTower', x: 34, z: -6 },
+  // â”€â”€ Towers, yards, halls (ids preserved; positions follow the moved landmarks) â”€
+  { id: 'bellTower', x: 34, z: -6 }, // bell tower = +34
+  { id: 'bellW', x: 28, z: -6 }, // paved lane x = 28 under the bell tower
+  { id: 'drumTower', x: -34, z: -6 }, // drum tower = âˆ’34
+  { id: 'drumTowerW', x: -40, z: -8 }, // west of the drum tower
+  { id: 'zenOut', x: -28.3, z: -8 }, // east of the drum tower, at the z = -17 wall gap
   { id: 'quanYard', x: 28, z: 19.5 },
+  { id: 'quanE', x: 34, z: 14 }, // east of the Quan Ã‚m court (statue at 28,14)
+  { id: 'quanSE', x: 34, z: 7 },
   { id: 'buddhaYard', x: -22.6, z: 14 },
-  { id: 'denTrinh', x: 10, z: 39 },
-  { id: 'restArea', x: 27, z: 33.5 },
-  { id: 'restEast', x: 34.5, z: 26 },
-  { id: 'restSE', x: 34.5, z: 36 },
+  { id: 'denTrinh', x: 11, z: 39 },
+  { id: 'restArea', x: -35, z: 33 }, // khu nghá»‰ (WEST now)
+  { id: 'restEast', x: -27, z: 33 },
+  { id: 'restSE', x: -27, z: 39 },
+  { id: 'laneSW2', x: -27, z: 41.5 }, // paved south lane (z 39.8â€¦42.2)
+  { id: 'laneSW1', x: -14, z: 41.5 },
+  { id: 'laneSE1', x: 14, z: 41.5 },
   { id: 'denN', x: 11.5, z: 35.5 },
   { id: 'denE', x: 18, z: 37 },
+  { id: 'denE2', x: 18, z: 42 },
   { id: 'dienMau', x: 39, z: 14.5 },
+  { id: 'dienMauW', x: 33, z: 11 }, // paved lane x 27â€¦36 to the Äiá»‡n Máº«u forecourt
   { id: 'bodhiTree', x: 35.5, z: 20 },
-  // baoThap stops 2.2 m south of the thap's south steps (z -33..-31.2); the steps
-  // no longer sit inside the Tam The platform (platform z -80..-56).
-  { id: 'baoThap', x: -30, z: -28 }, // was -29: pillar r0.5 at (-30.2,-29.8) left only 0.33 clearance at the node
-  { id: 'phongCDDoor', x: -36, z: 35 },
-  // Vườn Tây: nối qua lối đông (quanh đầu đông hàng cây z=29,9) vì cạnh
-  // vuonCay->phongCDDoor thẳng bị hàng cây chắn nên bị pathfinder loại bỏ.
-  // gateW/vuonCayE lấy từ điểm tiếp tuyến đã đo (đoạn nào cũng segmentClear).
+  // Báº£o ThÃ¡p (âˆ’34, âˆ’15): stop south of the steps, two cipher lanes east / west.
+  { id: 'baoThap', x: -34, z: -7.6 },
+  { id: 'baoE', x: -25, z: -11 },
+  { id: 'baoW', x: -41, z: -11 },
+  { id: 'phongCDDoor', x: 39.5, z: 33 }, // PhÃ²ng Ghi CÃ´ng Äá»©c, EAST door
+  { id: 'phongCDLane', x: 47, z: 33 },
+  { id: 'phongCDN', x: 52, z: 12 },
+  // â”€â”€ VÆ°á»n TÃ¢y (ornamental garden) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'gateW', x: -10.6, z: 40.7 },
   { id: 'vuonCayE', x: -37.8, z: 28.4 },
   { id: 'vuonCay', x: -48, z: 24.5 },
-  // Vườn Tây: vào trong qua cổng Nam (vuonCayIn), theo hành lang nam tới dải
-  // đông rồi vào lối sỏi giữa hai hàng luống (vuonCayLane).
   { id: 'vuonCayIn', x: -48, z: 22 },
   { id: 'vuonCayE2', x: -42, z: 22 },
   { id: 'vuonCayLane', x: -42, z: 18 },
-  // Vườn Tây: node NGOÀI hàng rào để đi vào từ phía bắc/tây mà không xuyên
-  // rào — trước đây nearestNode() rơi về node trong vườn (vuonCayLane) vì
-  // không node nào nhìn thấy được, đường bộ "ngắn" xuyên thẳng qua rào.
   { id: 'vuonCayNW', x: -58, z: 6 },
   { id: 'vuonCayN', x: -48, z: 6 },
   { id: 'vuonCayNE', x: -38, z: 6 },
+  // â”€â”€ Zen garden, phÃ³ng sinh pond, pond pier â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'psPier', x: 30, z: -31 },
+  { id: 'psW', x: 25.5, z: -31 },
   { id: 'thienDuong', x: -39.5, z: -27.5 },
-  { id: 'zenGarden', x: -35.75, z: -27.25 }, // trên mặt cát, cách khung ≥ 1 m, xa 3 đá thiền
+  { id: 'zenGarden', x: -35.75, z: -27.25 },
   { id: 'corrW', x: -20.5, z: -6 },
   { id: 'pillars', x: 0, z: -5.9 },
-  // Waypoints that route around the zen-garden/drum/pier colliders
-  { id: 'zenIn', x: -28.3, z: -27 }, // inside the zen pocket, east of pillar (-29.4,-26); start of the x=-28.3 run to the z=-17 wall gap
-  { id: 'zenOut', x: -28.3, z: -8 }, // south of the z=-17 wall gap (-30.3..-26.7), north-east of the bell-tower pillars at z=-7.9
-  { id: 'drumTowerW', x: 29, z: -8 },
-  { id: 'psW', x: 25.5, z: -31 },
-  // Garden (rest route)
+  { id: 'zenIn', x: -28.3, z: -27 },
+  { id: 'zenW', x: -26, z: -26.6 },
+  { id: 'zenE1', x: -18, z: -20 },
+  { id: 'zenE2', x: -18, z: -24 },
+  // â”€â”€ West monastery (Viá»‡n KhÃ¡ch TÄƒng) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'ktGate', x: -30, z: -54 },
   { id: 'ktIn', x: -30, z: -57 },
   { id: 'ktMid', x: -34, z: -56 },
   { id: 'ktYard', x: -41, z: -60 },
-  { id: 'tangXaDoor', x: -41, z: -68 },
-  // East garden (Am Co)
+  // â”€â”€ East monastery (Viá»‡n Tá»•) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'toGate', x: 30, z: -54 },
   { id: 'toIn', x: 30, z: -58 },
   { id: 'toYard', x: 41, z: -58 },
@@ -120,12 +172,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'amCoE2', x: 57, z: -68.5 },
   { id: 'amCoDoor', x: 53, z: -71 },
   { id: 'amCoEast', x: 57.2, z: -75 },
-  // Zen garden east hedge gap (z = -26.6)
-  { id: 'zenE1', x: -18, z: -20 },
-  { id: 'zenE2', x: -18, z: -24 },
-  { id: 'zenW', x: -26, z: -26.6 },
-  // Market outside the south gate (quest v1): stalls at z 47-56, road down the middle.
-  // marketGate sits just south of the Tam Quan wall (gap |x| < 4.4 at z = 45), so the gate -> row edges stay short and straight.
+  // â”€â”€ Market outside the south gate (quest v1) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'marketGate', x: 0, z: 46 },
   { id: 'marketW1', x: -4.5, z: 47 },
   { id: 'marketE1', x: 4.5, z: 47 },
@@ -152,54 +199,136 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'marketS8', x: 42, z: 58 },
   { id: 'marketS9', x: 47, z: 58 },
   { id: 'marketS10', x: 52, z: 58 },
+  // â”€â”€ WEST BRANCH: lotus lake â†’ vÆ°á»n rau â†’ TÄƒng XÃ¡ + tá»‹nh tháº¥t â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  { id: 'lotusBridgeW', x: -88, z: 2 },
+  { id: 'lotusBridgeS', x: -78, z: 2 },
+  { id: 'lotusBridgeE', x: -66, z: 2 },
+  { id: 'lotusPavE', x: -66, z: 8 }, // dry bank east of the lake, clear of the bridge rail
+  { id: 'lotusPavS', x: -70, z: 9.2 }, // south of the pavilion (its east rail ends at z 7.3)
+  { id: 'lotusPavilion', x: -70, z: 5.5 }, // inside the pavilion, between its four columns
+  { id: 'lotusNE', x: -66, z: -13 }, // dry east bank, north of the lake (lake ends z âˆ’9)
+  { id: 'westRingN', x: -59, z: -20 }, // garden ring, north end
+  { id: 'farmGate', x: -64, z: -42 }, // the fence's only gap (east side, z âˆ’44â€¦âˆ’40)
+  { id: 'farm', x: -76, z: -44.2 }, // inside the vÆ°á»n rau, clear of the vegetable beds
+  { id: 'tangXaJct', x: -64, z: -69.5 }, // south lane node in front of TÄƒng XÃ¡ (clear of its SE corner post at -59,-71.5 r1.14)
+  { id: 'tangxaMid', x: -59, z: -59.5 }, // west of the Viá»‡n KhÃ¡ch TÄƒng fence (x âˆ’58)
+  { id: 'tangXaDoor', x: -64, z: -70.5 }, // TÄƒng XÃ¡ (âˆ’64,âˆ’74) south door
+  { id: 'westOuterN', x: -72, z: -59.5 }, // outer lane west of the fence, clear of the huts
+  { id: 'westOuterM', x: -72, z: -65 }, // turns in to the tá»‹nh tháº¥t front lane
+  { id: 'westOuterS', x: -72, z: -79 }, // outer lane, north of TÄƒng XÃ¡'s rear wall
+  // Tá»‹nh tháº¥t front lane runs south of the huts (their south wall line is z âˆ’65.95),
+  // so every hut approach is a straight walk along z = âˆ’65 and never crosses a wall.
+  { id: 'tinhThatJct', x: -64, z: -69 },
+  { id: 'tinhThatW', x: -70.5, z: -69 },
+  { id: 'tinhThatFrontW', x: -70.5, z: -64.5 },
+  { id: 'tinhThatFrontE', x: -58.8, z: -64.5 },
+  { id: 'tinhThatFront3', x: -60.5, z: -61.4 },
+  { id: 'tinhThat1', x: -67, z: -65 }, // south front of the hut at (âˆ’67,âˆ’67)
+  { id: 'tinhThat2', x: -60.8, z: -65 }, // south front of the hut at (âˆ’61,âˆ’67)
+  { id: 'tinhThatE', x: -60.5, z: -63.5 }, // east lane past tá»‹nh tháº¥t 3 (spans x âˆ’65.6â€¦âˆ’62.4)
+  { id: 'tinhThat3', x: -64, z: -61.4 }, // south front of the hut at (âˆ’64,âˆ’63.8)
+  // â”€â”€ EAST BRANCH: river, rá»«ng trÃºc, Äiá»‡n DÆ°á»£c SÆ°, vÆ°á»n hoa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  { id: 'riverBankW', x: 61, z: 2 },
+  { id: 'riverBridgeS', x: 65, z: 2 }, // bridge over the east river on the cross path
+  { id: 'riverBankE', x: 69, z: 2 },
+  { id: 'bamboo', x: 80, z: -3 },
+  { id: 'bambooS2', x: 80, z: 2 }, // south edge of the bamboo grove, on the cross path â€” clear of the culm field
+  { id: 'bambooN', x: 80, z: -20 },
+  { id: 'bambooS', x: 79, z: 10 },
+  { id: 'duocSuLane', x: 77, z: 2 }, // east lane x â‰ˆ 77 from the cross path to the door
+  { id: 'riverPathN', x: 70, z: -20 }, // east-bank riverside walk (paved z = âˆ’20)
+  { id: 'riverPathN2', x: 70, z: -38 },
+  { id: 'riverBridgeN', x: 65, z: -38 }, // north bridge (x 63â€¦67)
+  { id: 'riverNorthW', x: 59, z: -38 },
+  { id: 'riverNorthE', x: 69, z: -38 },
+  { id: 'duocSuApproach', x: 69, z: -31.5 },
+  { id: 'duocSuDoor', x: 77, z: -32 },
+  { id: 'duocSu', x: 77, z: -35.5 }, // inside the hall, north of the offering table
+  { id: 'flowerHill', x: 79, z: 28 },
+  { id: 'sideGateE', x: 92, z: 2 },
+  // â”€â”€ NORTH BRANCH: bypass behind Tam Tháº¿, Ngá»c stairs, cave, cemetery â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  { id: 'westRearGate', x: -68, z: -82 }, // ring turns west around the r1.14 corner at (-59,-71.5)
+  { id: 'bypassW', x: -40, z: -82 },
+  { id: 'caveBypass', x: -16, z: -82 },
+  { id: 'ngocBase', x: 0, z: -82 }, // foot of the 299-step stair
+  { id: 'ngocMid', x: 0, z: -97 }, // 99 / 100 / 100 landing zone
+  { id: 'ngocTop', x: 0, z: -112 }, // ChÃ¹a Ngá»c summit
+  { id: 'pineBypass', x: 18, z: -82 },
+  { id: 'bypassE', x: 40, z: -82 },
+  { id: 'cemeteryGate', x: 50, z: -82 },
+  { id: 'eastRearGate', x: 59, z: -82 },
+  { id: 'cemetery', x: 50, z: -90 }, // VÆ°á»n ThÃ¡p má»›i â€” stop at the lawn edge, short of the r0.85 grave marker at (50,-93.8)
+  { id: 'caveEntry', x: -16, z: -86 },
+  { id: 'caveMid', x: -16, z: -92 },
+  { id: 'caveElbow', x: -24, z: -96 },
+  { id: 'cavePath', x: -24, z: -101 },
+  { id: 'cave', x: -26, z: -104 }, // Ä‘á»™ng thiá»n, entered through the open south mouth
+  { id: 'pineRestW', x: -30, z: -95 },
+  { id: 'pineEntry', x: 18, z: -88 },
+  { id: 'pinePath', x: 26, z: -92 },
+  { id: 'pineRestE', x: 28, z: -100 },
 ]
 
 export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
   { id: 'traiDuong', x: -29, z: -58.25 },
   { id: 'nhaKhach', x: -47, z: -56.55 },
   { id: 'amCo', x: 53, z: -72.25 },
-  { id: 'tangXa', x: -41, z: -68 },
+  { id: 'tangXa', x: -64, z: -70.5 },
   { id: 'thienDuong', x: -40.5, z: -27 },
-  { id: 'phongCongDuc', x: -38.5, z: 35 },
+  { id: 'phongCongDuc', x: 39.5, z: 33 },
   { id: 'nhaTo', x: 36, z: -64.75 },
+  { id: 'duocSu', x: 77, z: -32 },
 ]
 
 export const ROAD_EDGES: [string, string][] = [
-  // Axis chain
+  // â”€â”€ Axis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['gate', 'bridgeS'], ['bridgeS', 'bridgeN'], ['bridgeN', 'plaza'],
   ['plaza', 'axisMid'], ['axisMid', 'hallFront'], ['hallFront', 'hallIn'],
-  // Axis to sides
-  ['plaza', 'pillars'], ['plaza', 'eastMid'],
-  ['hallFront', 'eastMid'],
-  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['hallFront', 'hallEastWp'], ['hallEastWp', 'drumTowerW'],
-  // West
-  ['corrW', 'westMid'], ['westMid', 'westNorth'], ['westNorth', 'rearKT'],
-  ['rearKT', 'rearW'], ['rearKT', 'ktGate'], ['ktGate', 'ktIn'], ['ktIn', 'ktMid'], ['ktMid', 'ktYard'], ['ktYard', 'tangXaDoor'],
-  // East
-  ['drumTower', 'drumTowerW'], ['drumTowerW', 'eastMid'], ['eastMid', 'eastNorth'], ['eastNorth', 'rearTO'], ['rearTO', 'rearE'],
-  ['psPier', 'psW'], ['psW', 'eastMid'],
-  // East garden (Am Co)
-  ['rearTO', 'toGate'], ['toGate', 'toIn'], ['toIn', 'toYard'], ['toYard', 'toE'], ['toE', 'amCoE1'], ['amCoE1', 'amCoE2'], ['amCoE2', 'amCoDoor'],
-  ['amCoE2', 'amCoEast'],
-  // Stair
+  ['plaza', 'pillars'],
+  // â”€â”€ Cross path z = 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['plaza', 'pathW1'], ['pathW1', 'pathW2'], ['pathW2', 'pathW3'], ['pathW3', 'pathW4'], ['pathW4', 'lotusBridgeE'],
+  ['plaza', 'pathE1'], ['pathE1', 'pathE2'], ['pathE2', 'pathE3'], ['pathE3', 'pathE4'], ['pathE4', 'riverBankW'],
+  ['sideGateW', 'lotusBridgeW'], ['lotusBridgeW', 'lotusBridgeS'], ['lotusBridgeS', 'lotusBridgeE'],
+  // â”€â”€ Hall / corridors / stair â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['corrW', 'corrW2'], ['corrW2', 'westMid'],
+  ['hallFront', 'hallEastWp'], ['hallFront', 'hallSE'], ['hallSE', 'eastMid'],
+  ['pathE1', 'hallEastWp'],
   ['hallIn', 'hallAisleE'], ['hallAisleE', 'hallAisleN'], ['hallAisleN', 'stairApp'], ['stairApp', 'stairTop'], ['stairTop', 'tamThe'],
-  // Branch
-  ['bellTower', 'corrW'], ['baoThap', 'zenGarden'],
-  ['zenGarden', 'thienDuong'], ['baoThap', 'zenIn'], ['zenIn', 'zenOut'], ['zenOut', 'bellTower'],
-  ['quanYard', 'plaza'],
-  ['quanYard', 'restEast'], ['restEast', 'restSE'], ['restSE', 'restArea'], ['quanYard', 'dienMau'], ['buddhaYard', 'plaza'],
-  ['quanYard', 'bodhiTree'],
-  ['buddhaYard', 'bridgeN'], ['denTrinh', 'gate'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'restArea'],
-  ['phongCDDoor', 'gate'],
-  // Vườn Tây qua lối đông: gate -> gateW -> vuonCayE -> vuonCay (cạnh cũ
-  // vuonCay->phongCDDoor đã xóa: đoạn thẳng xuyên hàng cây nên build loại bỏ).
+  // â”€â”€ Towers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['pathE2', 'bellW'], ['bellW', 'bellTower'], ['hallEastWp', 'bellTower'],
+  ['drumTower', 'drumTowerW'], ['drumTower', 'zenOut'], ['zenOut', 'pathW2'],
+  // â”€â”€ Rear road z = âˆ’46 and bypasses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['westMid', 'westNorth'], ['westNorth', 'rearKT'], ['rearKT', 'rearW'], ['rearW', 'westRingN'],
+  ['eastMid', 'eastNorth'], ['eastNorth', 'rearTO'], ['rearTO', 'rearE'], ['rearE', 'riverNorthW'],
+  ['psPier', 'psW'], ['psW', 'eastMid'],
+  // â”€â”€ West monastery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['rearKT', 'ktGate'], ['ktGate', 'ktIn'], ['ktIn', 'ktMid'], ['ktMid', 'ktYard'],
+  // â”€â”€ East monastery (Am Cá»•) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['rearTO', 'toGate'], ['toGate', 'toIn'], ['toIn', 'toYard'], ['toYard', 'toE'], ['toE', 'amCoE1'],
+  ['amCoE1', 'amCoE2'], ['amCoE2', 'amCoDoor'], ['amCoE2', 'amCoEast'],
+  // â”€â”€ Quan Ã‚m / Pháº­t TÃ¢y / Äiá»‡n Máº«u â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['quanYard', 'quanE'], ['quanE', 'quanSE'], ['quanSE', 'pathE2'],
+  ['quanYard', 'dienMau'], ['dienMau', 'dienMauW'], ['dienMauW', 'quanSE'], ['bodhiTree', 'dienMau'],
+  ['buddhaYard', 'pathW2'], ['buddhaYard', 'restArea'],
+  // â”€â”€ Rest garden + south lanes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['restArea', 'restEast'], ['restEast', 'restSE'], ['restSE', 'laneSW2'],
+  ['laneSW2', 'laneSW1'], ['laneSW1', 'gate'],
+  // â”€â”€ Äá»n TrÃ¬nh â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['gate', 'denTrinh'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'denE2'],
+  ['denE2', 'laneSE1'], ['laneSE1', 'gate'],
+  // â”€â”€ Báº£o ThÃ¡p (circled, never crossed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['baoThap', 'baoE'], ['baoE', 'zenIn'], ['baoThap', 'baoW'], ['baoW', 'thienDuong'],
+  ['baoW', 'drumTowerW'],
+  // â”€â”€ Zen garden â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['zenIn', 'zenGarden'], ['zenGarden', 'thienDuong'], ['zenIn', 'zenW'], ['zenW', 'zenE2'],
+  ['zenE2', 'zenE1'], ['zenE1', 'hallFront'],
+  // â”€â”€ PhÃ²ng Ghi CÃ´ng Äá»©c â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['phongCDDoor', 'phongCDLane'], ['phongCDLane', 'phongCDN'], ['phongCDN', 'pathE4'],
+  // â”€â”€ VÆ°á»n TÃ¢y â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['gate', 'gateW'], ['gateW', 'vuonCayE'], ['vuonCayE', 'vuonCay'],
   ['vuonCay', 'vuonCayIn'], ['vuonCayIn', 'vuonCayE2'], ['vuonCayE2', 'vuonCayLane'],
   ['vuonCayNW', 'vuonCayN'], ['vuonCayN', 'vuonCayNE'], ['vuonCayNE', 'vuonCayE'],
-  // Zen garden east hedge gap: hallFront -> east side -> gap -> baoThap / zenIn
-  ['hallFront', 'zenE1'], ['zenE1', 'zenE2'], ['zenE2', 'westMid'],
-  ['westMid', 'zenW'], ['zenW', 'baoThap'], ['zenW', 'zenIn'],
-  // Market: gate gap (|x| < 4.4 at z = 45) to the single east row, then south to marketS and along the south row behind the stalls.
+  // â”€â”€ Market â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['gate', 'marketGate'], ['marketGate', 'marketW1'], ['marketGate', 'marketE1'],
   ['marketW1', 'marketW2'], ['marketE1', 'marketE2'],
   ['marketW2', 'marketS'], ['marketE2', 'marketS'],
@@ -207,6 +336,43 @@ export const ROAD_EDGES: [string, string][] = [
   ['marketR5', 'marketR6'], ['marketR6', 'marketR7'], ['marketR7', 'marketR8'], ['marketR8', 'marketR9'], ['marketR9', 'marketR10'],
   ['marketS', 'marketS1'], ['marketS1', 'marketS2'], ['marketS2', 'marketS3'], ['marketS3', 'marketS4'], ['marketS4', 'marketS5'],
   ['marketS5', 'marketS6'], ['marketS6', 'marketS7'], ['marketS7', 'marketS8'], ['marketS8', 'marketS9'], ['marketS9', 'marketS10'],
+  // â”€â”€ WEST BRANCH: lotus lake, pavilion, farm, TÄƒng XÃ¡ + tá»‹nh tháº¥t â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Boardwalk spur: east end of the deck â†’ dry bank â†’ south of the pavilion â†’ inside.
+  ['lotusBridgeE', 'lotusPavE'], ['lotusPavE', 'lotusPavS'], ['lotusPavS', 'lotusPavilion'],
+  ['lotusBridgeE', 'lotusNE'], ['lotusNE', 'westRingN'],
+  ['westRingN', 'rearW'],
+  ['rearW', 'farmGate'], ['farmGate', 'farm'], // fence gate only, never over the farm fence
+  ['rearW', 'tangxaMid'], ['tangxaMid', 'tinhThatE'],
+  ['tinhThatE', 'tinhThatFrontE'], ['tinhThatFrontE', 'tinhThat2'],
+  ['tinhThatE', 'tinhThatFront3'], ['tinhThatFront3', 'tinhThat3'],
+  ['tinhThatJct', 'tangXaJct'], ['tangXaJct', 'tangXaDoor'],
+  ['tinhThatJct', 'tinhThatW'], ['tinhThatW', 'westOuterM'],
+  ['westOuterM', 'tinhThatFrontW'], ['tinhThatFrontW', 'tinhThat1'],
+  // Outer lane at x = âˆ’72 goes round the north side of TÄƒng XÃ¡: hub â†’ westOuterN â†’
+  // westOuterM â†’ tá»‹nh tháº¥t lane, and westOuterN â†’ westOuterS â†’ westRearGate, so the
+  // ring never has to squeeze past the hall's rear corner at (âˆ’59, âˆ’71.5).
+  ['tangxaMid', 'westOuterN'], ['westOuterM', 'westOuterN'], ['westOuterN', 'westOuterS'],
+  ['westOuterS', 'westRearGate'],
+  // â”€â”€ EAST BRANCH: river crossings, rá»«ng trÃºc, Äiá»‡n DÆ°á»£c SÆ°, vÆ°á»n hoa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['riverBankW', 'riverBridgeS'], ['riverBridgeS', 'riverBankE'], // river bridge at z = 2
+  // East gate line runs along the cross path at z = 2 (bambooS2), below the culm field,
+  // instead of cutting diagonally through the dense bamboo at (83â€¦85, âˆ’1).
+  ['riverBankE', 'bamboo'], ['riverBankE', 'bambooS2'], ['bambooS2', 'sideGateE'],
+  ['riverBankE', 'duocSuLane'], ['duocSuLane', 'duocSuDoor'], ['duocSuDoor', 'duocSu'],
+  ['bamboo', 'bambooN'], ['bamboo', 'bambooS'], ['bambooS', 'flowerHill'],
+  ['bambooN', 'riverPathN'], ['riverPathN', 'riverPathN2'], ['riverPathN2', 'riverBridgeN'],
+  ['riverBridgeN', 'riverNorthW'], ['riverBridgeN', 'riverNorthE'], // river bridge at z = âˆ’38
+  ['riverNorthE', 'duocSuApproach'], ['duocSuApproach', 'duocSuDoor'],
+  // â”€â”€ NORTH BRANCH: bypass z = âˆ’82, Ngá»c stairs, cave, cemetery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  ['westRearGate', 'bypassW'], ['bypassW', 'caveBypass'],
+  ['caveBypass', 'ngocBase'], ['ngocBase', 'pineBypass'], ['pineBypass', 'bypassE'],
+  ['bypassE', 'cemeteryGate'], ['cemeteryGate', 'eastRearGate'], ['eastRearGate', 'rearE'],
+  ['ngocBase', 'ngocMid'], ['ngocMid', 'ngocTop'], // 299 steps in 3 flights + 2 landings
+  ['cemeteryGate', 'cemetery'],
+  ['caveBypass', 'caveEntry'], ['caveEntry', 'caveMid'], ['caveMid', 'caveElbow'],
+  ['caveElbow', 'cavePath'], ['cavePath', 'cave'],
+  ['caveElbow', 'pineRestW'],
+  ['pineBypass', 'pineEntry'], ['pineEntry', 'pinePath'], ['pinePath', 'pineRestE'],
 ]
 
 const NODE_BY_ID = new Map<string, RoadNode>(ROAD_NODES.map((n) => [n.id, n]))

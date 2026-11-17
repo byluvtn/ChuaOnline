@@ -1,0 +1,48 @@
+[
+  {
+    "name": "dien-duoc-su-blender",
+    "sizeMetersXYZ": [
+      15.130000114440918,
+      10.050000190734863,
+      11.529999732971191
+    ],
+    "triangles": 13704,
+    "materials": [
+      "stone",
+      "timber",
+      "gold",
+      "darkwood",
+      "plaster",
+      "tile"
+    ],
+    "meshes": 6,
+    "bytes": 732832,
+    "textures": 0,
+    "scale": 1,
+    "front": "+Z",
+    "floorHeight": 0.45
+  },
+  {
+    "name": "tinh-that-blender",
+    "sizeMetersXYZ": [
+      4.329999923706055,
+      3.950000047683716,
+      3.7300000190734863
+    ],
+    "triangles": 2744,
+    "materials": [
+      "stone",
+      "timber",
+      "plaster",
+      "darkwood",
+      "tile",
+      "gold"
+    ],
+    "meshes": 6,
+    "bytes": 149860,
+    "textures": 0,
+    "scale": 1,
+    "front": "+Z",
+    "floorHeight": 0.16
+  }
+]

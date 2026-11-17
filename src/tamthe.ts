@@ -5,6 +5,7 @@ import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import { buildZafuParts } from './zafu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { replaceRoof } from './models';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = TAM_THE_PLAT.y;
@@ -27,7 +28,8 @@ export function buildTamThe(c: TempleCtx) {
   const PW = TAM_THE_PLAT.hx * 2, PD = TAM_THE_PLAT.hz * 2;
 
   const stoneM = lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [8, 1]) });
-  const add = <T extends THREE.Object3D>(o: T, parent: THREE.Object3D = g) => { parent.add(o); return o; };
+  let roofParent: THREE.Group = g;
+  const add = <T extends THREE.Object3D>(o: T, parent: THREE.Object3D = roofParent) => { parent.add(o); return o; };
   const box = (w: number, h: number, d: number, m: THREE.Material | THREE.Material[], x: number, y: number, z: number, shadow = true, seal = false) => {
     const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
     o.position.set(x, y, z); o.castShadow = shadow; o.receiveShadow = true;
@@ -147,6 +149,11 @@ export function buildTamThe(c: TempleCtx) {
   box(0.4, 0.4, purD, c.redM, purW / 2, purY, 0, false); box(0.4, 0.4, purD, c.redM, -purW / 2, purY, 0, false);
   const roofBaseY = purY + 0.2;
 
+  const roofFallback = new THREE.Group();
+  roofFallback.name = 'tam-the-roof-fallback';
+  g.add(roofFallback);
+  roofParent = roofFallback;
+
   const darkTile = lamb(0x6a2a1a, { roughness: 0.7 });
   const soffitM = lamb(0x3a1710, { map: woodTexture([6, 2]) });
   const tier = (w: number, d: number, h: number, lift: number, y0: number) => {
@@ -216,6 +223,8 @@ export function buildTamThe(c: TempleCtx) {
   }
   const fin = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2.4, 8), c.goldM); fin.position.y = top3 + 0.85; add(fin);
   g.userData.topY = top3 + 2.05;
+
+  roofParent = g;
 
   const hpFront = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 2.4), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('ĐIỆN TAM THẾ'), toneMapped: false }));
   hpFront.position.set(0, beamY - 1.6, fz + 0.66); add(hpFront);
@@ -311,6 +320,7 @@ export function buildTamThe(c: TempleCtx) {
     console.warn(`điện Tam Thế: ${seal.filled} khe đã bù, ${seal.remaining.length} khe lớn còn lại`);
     if (import.meta.env.DEV) console.warn('gapdump ' + JSON.stringify(seal.remaining));
   }
+  replaceRoof(g, roofFallback, 'dien-tam-the-roof');
   const halos = [mainB, amidaB, diLacB].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
   return { group: g, seats, zones, halos };
 }

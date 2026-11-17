@@ -1,4 +1,5 @@
 import { BRIDGE, HALL, PLAZA, clampToCompound, inLake } from '../src/layout.js';
+import { LOTUS, RIVER, expansionWaterBlocked } from '../shared/campus.js';
 import { ROAD_NODES, roadRoute, routeFrom } from '../shared/roads.js';
 import type { ActionKind, Anim, NpcAct, Outfit, PlayerState } from '../shared/types.js';
 import type { Pt } from '../shared/roads.js';
@@ -110,15 +111,19 @@ const HALL_IN: Pt = { x: HALL.x, z: HALL.z + HALL.hz - 2 };
 const ABBOT_SEAT: Pt = { x: HALL.x + 1.8, z: TABLE_Z + 2.1 };
 const VISITOR_SPOT: Pt = { x: HALL.x - 1.8, z: TABLE_Z + 2.7 };
 const PLAZA_SPOT: Pt = { x: PLAZA.x - 2.5, z: PLAZA.z + 2 };
-// Điểm "ngồi chơi/chờ" (stage branch): 1 ở sân chùa + 5 ở hai bên, để khách tái sinh
-// không rủ nhau đứng chơi ở sân chùa nữa. (news 96 — dời branch khỏi PLAZA_SPOT duy nhất)
+// Điểm "ngồi chơi/chờ" (stage branch): 1 ở sân chùa + các điểm cũ + các điểm mở rộng 24/7,
+// để khách tái sinh không rủ nhau đứng chơi ở sân chùa nữa (news 96).
+// 'plaza' giờ là ngã tư (0,2) trên đường ngang; các điểm mở rộng đều là road node.
 const BRANCH_SPOTS: Pt[] = [
   PLAZA_SPOT,
   { x: 28, z: 19.5 },  // quanYard — sân Quan Âm (Đông)
-  { x: 46, z: 25 },    // restArea — khu nghỉ (Đông)
+  { x: -35, z: 33 },   // restArea — khu nghỉ (Tây)
   { x: 11, z: 39 },    // denTrinh — Đền Trình (Nam, gần chợ)
-  { x: -35, z: 0 },    // westMid — lối giữa (Tây)
-  { x: -45, z: -27 },  // zenGarden — vườn Thiền (Tây)
+  { x: -22, z: -26 },  // westMid — lối giữa (Tây)
+  { x: -35.75, z: -27.25 },  // zenGarden — vườn Thiền (Tây)
+  { x: -70, z: 5.5 },  // pavilion — đình ngắm sen
+  { x: 80, z: -3 },    // bamboo — rừng trúc
+  { x: 79, z: 28 },    // flowers — vườn hoa
 ];
 
 /** Mỗi khách viếng có một chỗ đứng riêng quanh điểm chung (tránh chồng nhau). */
@@ -136,8 +141,15 @@ function visitorSpeed(def: { id: string }): number {
   return 1.0 + k * 0.04; // 1.00–1.48 m/s cho 13 khách; hai khách kề nhau lệch 0.04 m/s → tách ~1.4 m sau 35 s đi bộ
 }
 
-const PLAZA_LAMPS: Pt[] = [{ x: -4, z: 12 }, { x: 4, z: 12 }, { x: -4, z: 5 }, { x: 4, z: 5 }];
+// Đèn sân chùa cũ (-4/4, z 5/12) nằm trong hồ sen mở rộng (hồ z 4…24) nên đã bỏ;
+// danh sách giữ rỗng để walkable() không phải đổi hình dạng.
+const PLAZA_LAMPS: Pt[] = [];
 const SOUTH_END = { x: BRIDGE.x, z: BRIDGE.z0 - 1.2 }, NORTH_END = { x: BRIDGE.x, z: BRIDGE.z1 + 1.2 };
+
+/** Bán kính quét sân: quảng trường tròn cũ (PLAZA r 8.4) đã thành hồ sen, nên tiểu quét
+ *  sân nay quét dải đường ngang z = 2 hai bên hồ (PATH_Z trong layout.ts). */
+const SWEEP_PATH_Z = 2;
+const SWEEP_PATH_X = 14;
 
 const R = (a: number, b: number) => a + Math.random() * (b - a);
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
@@ -159,7 +171,7 @@ export interface NpcRoom {
 
 /** Ghế tụng: hàng đầu mỗi điện (đo từ code thật). S6 sẽ đặt đệm 3D đúng các tọa độ này. */
 export interface ChantSeat { hall: 'chinhDien' | 'tamThe' | 'thienDuong' | 'dienMau' | 'nhaKhach'; x: number; z: number; ry: number }
-export type TourKind = 'bell' | 'zen' | 'guest' | 'release' | 'nhaTo' | 'tower';
+export type TourKind = 'bell' | 'zen' | 'guest' | 'release' | 'nhaTo' | 'tower' | 'lotus' | 'bamboo' | 'duocSu' | 'ngoc';
 export interface TourStop { kind: TourKind; seat?: ChantSeat }
 export const CHANT_SEATS: ChantSeat[] = [
   { hall: 'chinhDien', x: -4.9, z: -35.2, ry: Math.PI },
@@ -217,10 +229,18 @@ const SHIFT_MS = 20 * MIN;
 const REST_MS = 10 * MIN;
 /** NPC duoc nghi giuong: 4 chu tieu quet + tieu danh chuong. */
 const REST_POOL = new Set<Behavior>(['sweepPlaza', 'sweepBridge', 'sweepZen', 'sweepRoad', 'bell']);
-/** Hai giuong tang xa: giuong 0 o x = -44, giuong 1 o x = -38 (tam giuong z = -73.05). */
-const BED_X = [-44, -38];
-const BED_STAND_Z = -72.0;
-const BED_Z = -73.05;
+/** Hai giuong tang xa: giuong 0 o x = -67, giuong 1 o x = -61 (tam giuong z = -76.05).
+ *  Nhà Tăng Xá nay ở (-64,-74) (layout.ts TANG_XA), nội thất giường ở local x ±3.0
+ *  → đời world (-67, -61), z = TANG_XA.z - hz + 0.95 = -76.05. */
+const BED_X = [-67, -61];
+const BED_STAND_Z = -75.0;
+const BED_Z = -76.05;
+/** Deck corridors of the 24/7 water: lotus boardwalk on z = 2 (LOTUS) and the two
+ *  east-river bridges (RIVER.bridges). Đi trên mặt cầu không bị coi là lội nước. */
+const expansionRiverBridges: readonly number[] = RIVER.bridges;
+const LOTUS_DECK_Z = 2;
+const LOTUS_DECK_X0 = LOTUS.x - LOTUS.a - 2;
+const LOTUS_DECK_X1 = LOTUS.x + LOTUS.a + 2;
 /** Nut do thi de quay ve slot quet sau khi nghi. */
 const HOME_NODE: Partial<Record<Behavior, string>> = { sweepPlaza: 'plaza', sweepBridge: 'bridgeS', sweepZen: 'zenGarden', sweepRoad: 'rearKT', bell: 'bellTower' };
 
@@ -230,8 +250,8 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       : def.behavior === 'post' ? (def.post ?? (() => { throw new Error(`post NPC ${def.id} has no post`); })())
       : def.behavior === 'visitor' ? visitorSpot(nodePt('gate'), def)
       : def.behavior === 'wander' ? nodePt('plaza')
-      : def.behavior === 'bell' ? nodePt('bellTower')
-      : def.behavior === 'desk' ? { x: -44.4, z: 35 } // duty chair in Phong Ghi Cong Duc, rotated +90 deg to face East (chair box local (0, -2.4) -> world (-44.4, 35)), npc faces East (ry PI/2)
+       : def.behavior === 'bell' ? nodePt('bellTower')
+      : def.behavior === 'desk' ? { x: 32.6, z: 33 } // duty chair in Phong Ghi Cong Duc at (35,33), rotated +90 deg to face East (chair box local (0, -2.4) -> world (32.6, 33)), npc faces East (ry PI/2)
       : def.behavior === 'sweepZen' ? nodePt('zenGarden')
       : def.behavior === 'sweepRoad' ? nodePt('rearKT')
       : def.behavior === 'sweepBridge' ? { x: SOUTH_END.x - 1.5, z: SOUTH_END.z }
@@ -260,7 +280,17 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
 //   / trong điện (bow|chant ở Chính Điện, hoặc branch ở sân). Tách ≥ 1,2 m với mọi NPC khác.
 // - Wanderer (npc1/npc29): mỗi người 1 node WANDER_NODES khác nhau (bỏ 'gate'), cách nhau ≥ 3 m.
 // Không đụng NPC cố định (vendor, desk, bell, chant, tiểu quét...).
-const SPREAD_ROUTE_POOL = ['bridgeS', 'bridgeN', 'plaza', 'hallFront', 'axisMid', 'pillars', 'corrW', 'dienMau', 'restArea', 'denTrinh', 'psPier', 'zenGarden', 'thienDuong', 'baoThap', 'tamThe', 'westMid', 'eastMid', 'quanYard', 'buddhaYard', 'vuonCay'];
+// Rải khách đến cả các vùng mở rộng: mọi id ở đây đều là ROAD_NODES (gate-reachable).
+// Các node trục giữ trọng số 1, node ngoại vi / Bắc / mở rộng ×3 (kéo ra khỏi trục).
+const SPREAD_ROUTE_POOL = [
+  'bridgeS', 'bridgeN', 'plaza', 'hallFront', 'axisMid', 'pillars', 'corrW', 'dienMau',
+  'restArea', 'denTrinh', 'psPier', 'zenGarden', 'thienDuong', 'baoThap', 'tamThe',
+  'westMid', 'eastMid', 'quanYard', 'buddhaYard', 'vuonCay',
+  // Bổ sung 24/7: vườn rau, tăng xá/hộ tu, hồ sen + đình, sông/đồi hoa, Bắc núi.
+  'farm', 'tinhThat1', 'tinhThat2', 'tinhThat3', 'tangXaDoor', 'lotusPavilion',
+  'lotusBridgeS', 'bamboo', 'riverPathN', 'riverBridgeN', 'riverBridgeS',
+  'duocSuDoor', 'flowerHill', 'ngocBase', 'ngocTop', 'cave', 'cemetery',
+];
 /** Node trục giữa: trọng số 1. Mọi node khác trong pool (Bắc/ngoại vi) có trọng số 3. */
 const SPREAD_ROUTE_CENTER = ['bridgeS', 'bridgeN', 'plaza', 'hallFront', 'axisMid', 'pillars'];
 /** Trọng số bốc node: giữa ×1, Bắc/ngoại vi ×3 (kéo visitor/wanderer mới sinh ra khỏi trục giữa). */
@@ -353,16 +383,29 @@ function spreadVisitors(npcs: Npc[], now: number) {
   });
 }
 
-/** Vị trí hợp lệ: ngoài hồ, trong tường, không dính cột đèn ở sân chùa. */
+/**
+ * Vị trí hợp lệ: ngoài hồ sen / ao / sông, trong tường (có cổng bên ±92,z2),
+ * và tránh vệt lát đèn ở sân trước điện. clampToCompound() đã xử lý tường mới
+ * (WALL.x = 92, sideGateHalf = 2.2 ở shared/campus.ts) nên không hardcode ở đây.
+ */
 function walkable(p: Pt): boolean {
-  if (inLake(p.x, p.z)) return false;
+  if (inLake(p.x, p.z) || expansionWaterBlocked(p.x, p.z)) return false;
   const q = { x: p.x, z: p.z };
   clampToCompound(q);
   return q.x === p.x && q.z === p.z && PLAZA_LAMPS.every((l) => dist(l, p) > 1.1);
 }
 
 /** Public nodes the abbot wanders to (no transit nodes, no garden interior). */
-const WANDER_NODES = ['gate', 'bridgeS', 'bridgeN', 'plaza', 'axisMid', 'hallFront', 'corrW', 'pillars', 'drumTower', 'bellTower', 'quanYard', 'buddhaYard', 'denTrinh', 'restArea', 'dienMau', 'baoThap', 'tamThe', 'zenGarden', 'thienDuong', 'psPier', 'rearKT', 'rearTO', 'rearW', 'rearE', 'westMid', 'westNorth', 'eastMid', 'eastNorth'];
+const WANDER_NODES = [
+  'gate', 'bridgeS', 'bridgeN', 'plaza', 'axisMid', 'hallFront', 'corrW', 'pillars',
+  'drumTower', 'bellTower', 'quanYard', 'buddhaYard', 'denTrinh', 'restArea', 'dienMau',
+  'baoThap', 'tamThe', 'zenGarden', 'thienDuong', 'psPier', 'rearKT', 'rearTO', 'rearW',
+  'rearE', 'westMid', 'westNorth', 'eastMid', 'eastNorth',
+  // 24/7 campus: destinations outside the old wall.
+  'farm', 'farmGate', 'tinhThat1', 'tinhThat3', 'tangXaDoor', 'lotusPavilion',
+  'lotusBridgeS', 'sideGateW', 'sideGateE', 'bamboo', 'riverPathN', 'riverBridgeN',
+  'duocSuDoor', 'flowerHill', 'ngocBase', 'ngocTop', 'cave', 'cemetery',
+];
 /** Bell-roam cycle destinations (npc4 spawns at bellTower, so the cycle starts by leaving it). */
 const BELL_ROAM = ['corrW', 'pillars', 'corrW', 'bellTower'];
 /** ms until the next time in BELL_TIMES (VN clock); wraps to tomorrow's first bell. */
@@ -372,10 +415,10 @@ function nextBellIn(now: number): number {
   return (BELL_TIMES[0] + 24 * 60) * MIN - dayMs;
 }
 
-const WANDER_WEST = ['bellTower', 'zenGarden', 'thienDuong', 'westMid', 'westNorth', 'rearKT', 'rearW', 'baoThap', 'buddhaYard'];
-const WANDER_EAST = ['drumTower', 'denTrinh', 'restArea', 'dienMau', 'psPier', 'eastMid', 'eastNorth', 'rearTO', 'rearE', 'quanYard'];
+const WANDER_WEST = ['drumTower', 'zenGarden', 'thienDuong', 'westMid', 'westNorth', 'rearKT', 'rearW', 'baoThap', 'buddhaYard', 'farm', 'tangXaDoor', 'tinhThat1', 'tinhThat3', 'lotusPavilion', 'sideGateW', 'cave'];
+const WANDER_EAST = ['bellTower', 'denTrinh', 'restArea', 'dienMau', 'psPier', 'eastMid', 'eastNorth', 'rearTO', 'rearE', 'quanYard', 'bamboo', 'riverBridgeS', 'riverBridgeN', 'duocSuDoor', 'flowerHill', 'sideGateE', 'cemetery', 'ngocTop'];
 /** Node phía Bắc (không tính tamThe): wanderer ở giữa bốc các node này ×3. */
-const WANDER_NORTH = ['baoThap', 'zenGarden', 'thienDuong', 'rearKT', 'rearTO', 'westNorth', 'eastNorth'];
+const WANDER_NORTH = ['baoThap', 'zenGarden', 'thienDuong', 'rearKT', 'rearTO', 'westNorth', 'eastNorth', 'ngocBase', 'ngocTop', 'cave', 'cemetery'];
 /** NPC cư trú phía Bắc (Sư Phó): node Bắc và tamThe ×4 bất kể đang đứng ở đâu. */
 const WANDER_NORTH_RESIDENT_ID = 'npc29';
 /** Bốc node đích cho wanderer: ở Tây/Đông thì node cùng bên ×6, tamThe ×2, node giữa ×1, node bên kia ×1; ở giữa thì tamThe ×4, node Bắc ×3, node Tây/Đông còn lại ×2, node giữa ×1. npc29 luôn ưu tiên node Bắc ×4. */
@@ -413,9 +456,11 @@ function pickDest(n: Npc): { to: Pt; route: Pt[] } | null {
         return { to, route: routeFrom(cur, id) };
       }
       case 'sweepPlaza': {
+        // Quảng trường tròn đã bị hồ sen lấn; quét dải đường ngang z=2 trong khuôn viên,
+        // bỏ vùng hồ và giữ trong ±SWEEP_PATH_X để không rơi vào bãi cỏ ngoài đường.
         const a = R(0, Math.PI * 2), r = Math.sqrt(Math.random()) * 6;
-        const p = { x: PLAZA.x + Math.cos(a) * r, z: PLAZA.z + Math.sin(a) * r };
-        if (dist(p, cur) < 0.8 || !walkable(p)) continue;
+        const p = { x: Math.cos(a) * r * 2.2, z: SWEEP_PATH_Z + Math.sin(a) * r * 0.18 };
+        if (Math.abs(p.x) > SWEEP_PATH_X || dist(p, cur) < 0.8 || !walkable(p)) continue;
         return { to: p, route: [p] };
       }
       case 'sweepBridge': {
@@ -441,9 +486,10 @@ function pickDest(n: Npc): { to: Pt; route: Pt[] } | null {
       case 'sweepRoad': {
         // Sweep the rear road z = -46 on the side the NPC is already on (the middle
         // of the rear road does not exist: the Tam The platform occupies x -20..20).
+        // The garden ring moved out to x = ±59 with the 24/7 campus.
         const west = cur.x < 0;
         const sideNode = west ? 'rearKT' : 'rearTO';
-        const x = west ? R(-46, -22) : R(22, 46);
+        const x = west ? R(-57, -22) : R(22, 57);
         const p = { x, z: -46 + R(-1, 1) };
         if (dist(p, cur) < 0.8 || !walkable(p)) continue;
         return { to: p, route: [...routeFrom(cur, sideNode), p] };
@@ -483,10 +529,15 @@ function abbotDecide(n: Npc, now: number) {
   else n.until = now + 5000;
 }
 
-/** Visitor branch points after chant: pier, merit desk door, Tam The platform, north-east and north-west rear roads. */
-const VISITOR_BRANCH = ['psPier', 'phongCDDoor', 'tamThe', 'rearKT', 'rearTO', 'quanYard'] as const;
-/** Trọng số song song với VISITOR_BRANCH: tamThe ×3, rearKT/rearTO/quanYard ×2, psPier/phongCDDoor ×1. quanYard là điểm đến phía Đông. */
-const VISITOR_BRANCH_WEIGHTS = [1, 1, 3, 2, 2, 2];
+/** Visitor branch points after chant: pier, merit desk, Tam The, north-east and
+ *  north-west rear roads, Quan Âm, and the 24/7 expansion (lotus / bamboo / summit).
+ *  Tất cả là ROAD_NODES, đi lại bằng routeFrom() nên không cắt qua hồ hay tường. */
+const VISITOR_BRANCH = [
+  'psPier', 'phongCDDoor', 'tamThe', 'rearKT', 'rearTO', 'quanYard',
+  'restArea', 'lotusPavilion', 'bamboo', 'flowerHill', 'duocSuDoor', 'ngocBase',
+] as const;
+/** Trọng số song song với VISITOR_BRANCH: tamThe ×3, rearKT/rearTO/quanYard ×2, psPier/phongCDDoor ×1. Các điểm mở rộng ×1–2 để không lấn át khu cũ. */
+const VISITOR_BRANCH_WEIGHTS = [1, 1, 3, 2, 2, 2, 1, 2, 2, 1, 1, 1];
 /** Trọng số điểm branch từ vị trí s: trọng số gốc × 30/(30 + khoảng cách từ s). Điểm gần được ưu tiên để chặng đi bộ tới branch ngắn lại, ít cắt qua trục giữa; thiên vị Bắc (tamThe ×3) vẫn giữ. Hằng 30 (m) là khoảng cách mà tại đó hệ số gần giảm còn một nửa. */
 function branchWeight(s: Pt, id: (typeof VISITOR_BRANCH)[number]): number {
   return VISITOR_BRANCH_WEIGHTS[VISITOR_BRANCH.indexOf(id)] * (30 / (30 + dist(s, nodePt(id))));
@@ -547,12 +598,12 @@ function visitorArrive(room: NpcRoom, n: Npc, now: number) {
   }
   else { n.stage = 'gate'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(5000, 9000); }
 }
-/** Tour sau khi tung: 2-3 trong 6 diem (chuong, Thien Duong, Nha Khach, phong sinh, Nha To, Vuon Thap), moi lan chon khac nhau. */
+/** Tour sau khi tung: các điểm cũ + mở rộng 24/7 (hồ sen, rừng trúc, Điện Dược Sư, Chùa Ngọc). */
 const STROLL_CHANCE = 0.9; // ~90% khách đi tour, 10% về thẳng để cổng không vắng (vòng 2: tăng từ 0.75 để kéo dài thời gian ở ngoại vi)
 const TOUR_STOP_MIN = 3; // số điểm dừng tối thiểu mỗi tour (vòng 2: từ 2)
 const TOUR_STOP_MAX = 4; // số điểm dừng tối đa mỗi tour (vòng 2: từ 3)
 const TOUR_BELL_GAP_MS = 20_000;
-const BELL_SPOT: Pt = { x: -34, z: -6 };
+const BELL_SPOT: Pt = { x: 34, z: -6 }; // BELL moved to +34,-6 in layout.ts
 let tourReleaseBird = false;
 const via = (from: Pt, id: string, ...tail: Pt[]): Pt[] => { const r = routeFrom(from, id); return r.length ? [...r, ...tail] : []; };
 function bellOk(room: NpcRoom, now: number): boolean {
@@ -580,6 +631,11 @@ function tourRoute(from: Pt, st: TourStop): Pt[] {
     case 'release': return go('psPier');
     case 'nhaTo': return go('toYard', { x: 36, z: -67.5 });
     case 'tower': return go('toYard', { x: 43.6, z: -58.6 });
+    // 24/7: walk to the new landmarks on the shared road graph (no straight cut).
+    case 'lotus': return go('lotusPavilion');
+    case 'bamboo': return go('bamboo');
+    case 'duocSu': return go('duocSuDoor');
+    case 'ngoc': return go('ngocTop');
   }
 }
 function dropSeat(room: NpcRoom, n: Npc, st: TourStop) {
@@ -629,8 +685,8 @@ function tourBegin(room: NpcRoom, n: Npc, now: number) {
 }
 function startStroll(room: NpcRoom, n: Npc, now: number) {
   if (room.questGuard.has(n.def.id) || Math.random() >= STROLL_CHANCE) { leaveToGate(n); return; }
-  const west: TourKind[] = ['bell', 'zen', 'guest'];
-  const east: TourKind[] = ['release', 'nhaTo', 'tower'];
+  const west: TourKind[] = ['bell', 'zen', 'guest', 'lotus', 'ngoc'];
+  const east: TourKind[] = ['release', 'nhaTo', 'tower', 'bamboo', 'duocSu'];
   const shuffle = (a: TourKind[]): TourKind[] => {
     for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
     return a;
@@ -696,7 +752,8 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
     case 'stroll': {
       if (room.questGuard.has(n.def.id)) { cancelTour(room, n, now); break; }
       const st = n.tourStops[n.tourIdx];
-      if (st && n.tourPhase === 0 && (st.kind === 'release' || st.kind === 'nhaTo' || st.kind === 'tower')) {
+      if (st && n.tourPhase === 0 && (st.kind === 'release' || st.kind === 'nhaTo' || st.kind === 'tower'
+        || st.kind === 'duocSu' || st.kind === 'ngoc')) {
         n.tourPhase = 1; n.phase = 'act';
         if (st.kind === 'release') {
           tourReleaseBird = !tourReleaseBird;
@@ -730,14 +787,15 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
   }
 }
 
-/** Tuyen di nghi: theo do thi toi cong vien, qua san chung toi cua tang xa, roi toi diem dung canh giuong va tam giuong. */
+/** Tuyen di nghi: theo do thi toi xa dac ngang (-59,-59.5), vao Tang Xa moi
+ *  qua tangXaJct (-59,-68.3) → cua Nam (-64,-70.5), roi toi giuong. */
 function restRoute(n: Npc): Pt[] {
   const bedX = BED_X[n.bedId ?? 0];
-  return [...routeFrom(n.state, 'ktGate'), nodePt('ktYard'), nodePt('tangXaDoor'), { x: bedX, z: BED_STAND_Z }, { x: bedX, z: BED_Z }];
+  return [...routeFrom(n.state, 'tangxaMid'), nodePt('tangXaJct'), nodePt('tangXaDoor'), { x: bedX, z: BED_STAND_Z }, { x: bedX, z: BED_Z }];
 }
-/** Tuyen di lam: nguoc lai, tu tam giuong ra cong vien roi theo do thi ve slot quet. */
+/** Tuyen di lam: nguoc lai, tu tam giuong ra cua Nam roi theo do thi ve slot quet. */
 function workRoute(n: Npc, bedX: number): Pt[] {
-  return [{ x: bedX, z: BED_STAND_Z }, nodePt('tangXaDoor'), nodePt('ktYard'), ...routeFrom(nodePt('ktGate'), HOME_NODE[n.homeSlot] ?? 'plaza')];
+  return [{ x: bedX, z: BED_STAND_Z }, nodePt('tangXaDoor'), nodePt('tangXaJct'), ...routeFrom(nodePt('tangxaMid'), HOME_NODE[n.homeSlot] ?? 'plaza')];
 }
 /** Het ca: giu 1 giuong (neu con) roi di nghi; het giuong thi lam tiep, thu lai sau 60 giay. */
 function tryRest(room: NpcRoom, n: Npc, now: number) {
@@ -788,12 +846,14 @@ function incenseRoute(n: Npc, spot: IdleIncenseSpot): Pt[] {
   return [...routeFrom(n.state, spot.via), p];
 }
 
+// Phòng Ghi Công Đức nay ở (35,33) (layout.ts PHONG_CD) và giữ nguyên phép quay +π/2,
+// nên cả vòng đi và ghế trực chỉ dịch theo (+77, −2) so với vị trí cũ (−42,35).
 const NPC6_SPOTS = {
   ring: [
-    { x: -45.2, z: 31.0 }, { x: -41.0, z: 30.8 }, { x: -39.0, z: 31.2 }, { x: -39.0, z: 34.5 },
-    { x: -36.5, z: 35.0 }, { x: -41.5, z: 35.6 }, { x: -42.0, z: 38.6 }, { x: -45.2, z: 38.2 },
-  ], // 0 A, 1 B, 2 C, 3 D, 4 E porch, 5 F, 6 F2, 7 G
-  chair: { x: -44.4, z: 35 },
+    { x: 31.8, z: 29.0 }, { x: 36.0, z: 28.8 }, { x: 38.0, z: 29.2 }, { x: 38.0, z: 32.5 },
+    { x: 40.5, z: 33.0 }, { x: 35.5, z: 33.6 }, { x: 35.0, z: 36.6 }, { x: 31.8, z: 36.2 },
+  ], // 0 A, 1 B, 2 C, 3 D, 4 E porch (east door), 5 F, 6 F2, 7 G
+  chair: { x: 32.6, z: 33 },
   sitAt: [0, 1, 5, 6, 7],
   // waypoints (ring indices) from a sit spot to the nearer of A/G, none cross the desk rect
   via: { 0: [], 1: [0], 5: [6, 7], 6: [7], 7: [] } as Record<number, number[]>,
@@ -1175,9 +1235,13 @@ function step(room: NpcRoom, n: Npc, dt: number, now: number) {
   const k = Math.min(1, (n.speed * dt) / d);
   const q = { x: s.x + (to.x - s.x) * k, z: s.z + (to.z - s.z) * k };
   const onDeck = Math.abs(q.x - BRIDGE.x) <= BRIDGE.hw && q.z >= BRIDGE.z0 && q.z <= BRIDGE.z1;
+  // 24/7 water: koi lake deck, lotus boardwalk (z=2) and the two east-river bridges.
+  const onLotusDeck = Math.abs(q.z - LOTUS_DECK_Z) <= 0.9 && q.x >= LOTUS_DECK_X0 && q.x <= LOTUS_DECK_X1;
+  const onRiverDeck = q.x >= 63 && q.x <= 67 && expansionRiverBridges.some((bz) => Math.abs(q.z - bz) <= 1.0);
   const before = { x: q.x, z: q.z };
   clampToCompound(q);
-  if ((inLake(q.x, q.z) && !onDeck) || q.x !== before.x || q.z !== before.z) {
+  if ((inLake(q.x, q.z) && !onDeck) || (expansionWaterBlocked(q.x, q.z) && !onLotusDeck && !onRiverDeck)
+    || q.x !== before.x || q.z !== before.z) {
     n.route = []; n.phase = 'idle'; s.anim = 'idle'; n.until = now + 1500; return;
   }
   s.ry = Math.atan2(to.x - s.x, to.z - s.z);

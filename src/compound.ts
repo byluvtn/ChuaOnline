@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LAKE, WALL, PLAZA, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS, BAO_THAP } from './layout';
+import { LAKE, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS, BAO_THAP } from './layout';
 import { stoneTexture, vietnameseColumnTexture } from './textures';
 import { loadModel } from './models';
 
@@ -216,8 +216,7 @@ export function removeSolidGrassClumps(scene: THREE.Object3D): number {
 }
 
 /**
- * Mặt sân lát gạch sạch sẽ: một tấm nền đá lớn phủ kín lòng khuôn viên (thay cỏ
- * mọc lổn nhổn), cộng sân quảng trường hình tròn và thảm cỏ phẳng quanh hồ.
+ * Keep the old courtyard paved; the expansion uses planted ground and local paths.
  */
 export function paveCompound(scene: THREE.Scene, opts: { y?: number; material?: THREE.Material } = {}) {
   const y = opts.y ?? 0.045;
@@ -225,24 +224,12 @@ export function paveCompound(scene: THREE.Scene, opts: { y?: number; material?: 
     color: 0xffffff, roughness: 0.72, metalness: 0,
     map: stoneTexture([178, 170, 156], [26, 26], 8),
   });
-  const pave = new THREE.Mesh(new THREE.PlaneGeometry(WALL.x * 2 - 2, WALL.zS - WALL.zN - 2), tileM);
+  const pave = new THREE.Mesh(new THREE.PlaneGeometry(122, 125), tileM);
   pave.name = 'compound-paving';
   pave.rotation.x = -Math.PI / 2;
-  pave.position.set(0, y, (WALL.zS + WALL.zN) / 2);
+  pave.position.set(0, y, -18.5);
   pave.receiveShadow = true;
   scene.add(pave);
-
-  // quảng trường trước chánh điện: viền đá sáng hơn
-  const plazaM = new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.68, metalness: 0,
-    map: stoneTexture([196, 186, 168], [8, 8], 6),
-  });
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(PLAZA.r, 56), plazaM);
-  plaza.name = 'compound-plaza';
-  plaza.rotation.x = -Math.PI / 2;
-  plaza.position.set(PLAZA.x, y + 0.004, PLAZA.z);
-  plaza.receiveShadow = true;
-  scene.add(plaza);
 
   // thảm cỏ phẳng (không khối) quanh hồ sen và sau chánh điện
   const lawnM = new THREE.MeshStandardMaterial({ color: 0x6f9a58, roughness: 0.95, metalness: 0 });
@@ -255,10 +242,10 @@ export function paveCompound(scene: THREE.Scene, opts: { y?: number; material?: 
     m.receiveShadow = true;
     scene.add(m);
   };
-  lawn(LAKE.x - 16, LAKE.z + 2, 7.5, 5.5);
-  lawn(LAKE.x + 16, LAKE.z + 2, 7.5, 5.5);
+  lawn(-16.5, 23, 5, 3.5);
+  lawn(16.5, 23, 5, 3.5);
   lawn(HALL.x, HALL.z - HALL.hz - 7, 20, 4.5);
-  return { pave, plaza };
+  return { pave };
 }
 
 // ------------------------------------------------------------------ 5. cột chữ Việt

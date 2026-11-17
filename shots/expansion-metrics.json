@@ -1,0 +1,339 @@
+{
+  "scene": {
+    "meshes": 6931,
+    "triangles": 3796244
+  },
+  "geometry": [
+    {
+      "name": "expansion-lotus",
+      "meshes": 10,
+      "triangles": 3994
+    },
+    {
+      "name": "expansion-farm",
+      "meshes": 12,
+      "triangles": 13978
+    },
+    {
+      "name": "expansion-tinhThat",
+      "meshes": 7,
+      "triangles": 1164
+    },
+    {
+      "name": "expansion-bamboo",
+      "meshes": 3,
+      "triangles": 9996
+    },
+    {
+      "name": "expansion-duocSu",
+      "meshes": 19,
+      "triangles": 38620
+    },
+    {
+      "name": "expansion-flowerHill",
+      "meshes": 8,
+      "triangles": 24620
+    },
+    {
+      "name": "expansion-river",
+      "meshes": 4,
+      "triangles": 1548
+    },
+    {
+      "name": "expansion-ngocStairs",
+      "meshes": 2,
+      "triangles": 4356
+    },
+    {
+      "name": "expansion-chuaNgoc",
+      "meshes": 16,
+      "triangles": 38020
+    },
+    {
+      "name": "expansion-dongThien",
+      "meshes": 10,
+      "triangles": 1420
+    },
+    {
+      "name": "expansion-pineForest",
+      "meshes": 2,
+      "triangles": 9900
+    },
+    {
+      "name": "expansion-hill",
+      "meshes": 1,
+      "triangles": 2592
+    },
+    {
+      "name": "expansion-nghiaTrang",
+      "meshes": 5,
+      "triangles": 468
+    },
+    {
+      "name": "expansion-signs",
+      "meshes": 16,
+      "triangles": 32
+    }
+  ],
+  "walk": [
+    {
+      "name": "lotus bridge",
+      "samples": 301,
+      "maxPush": 0,
+      "minClearance": 0.030317380372777147,
+      "heightJump": 0
+    },
+    {
+      "name": "east bridge",
+      "samples": 151,
+      "maxPush": 0,
+      "minClearance": 0.7999999999999999,
+      "heightJump": 0.28
+    },
+    {
+      "name": "river north bridge",
+      "samples": 114,
+      "maxPush": 0,
+      "minClearance": 0.8000179003811817,
+      "heightJump": 0.28
+    },
+    {
+      "name": "west gate",
+      "samples": 76,
+      "maxPush": 0,
+      "minClearance": 1.5,
+      "heightJump": 0.28
+    },
+    {
+      "name": "east gate",
+      "samples": 76,
+      "maxPush": 0,
+      "minClearance": 1.5,
+      "heightJump": 0
+    },
+    {
+      "name": "ngoc stairs",
+      "samples": 376,
+      "maxPush": 0,
+      "minClearance": 1.5499999999999972,
+      "heightJump": 0.020066889632107454
+    }
+  ],
+  "routes": [
+    {
+      "name": "farm",
+      "points": 6,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": -76,
+        "z": -42
+      }
+    },
+    {
+      "name": "lotus",
+      "points": 4,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": -78,
+        "z": 2
+      }
+    },
+    {
+      "name": "bamboo",
+      "points": 6,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": 80,
+        "z": -8
+      }
+    },
+    {
+      "name": "duocsu",
+      "points": 7,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": 77,
+        "z": -32
+      }
+    },
+    {
+      "name": "flowers",
+      "points": 5,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": 79,
+        "z": 28
+      }
+    },
+    {
+      "name": "ngoc",
+      "points": 7,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": 0,
+        "z": -112
+      }
+    },
+    {
+      "name": "cave",
+      "points": 5,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": -26,
+        "z": -102
+      }
+    },
+    {
+      "name": "cemetery",
+      "points": 8,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": 50,
+        "z": -90
+      }
+    },
+    {
+      "name": "tangxa",
+      "points": 7,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": -64,
+        "z": -69.5
+      }
+    },
+    {
+      "name": "riverwalk",
+      "points": 7,
+      "fallback": false,
+      "clear": true,
+      "end": {
+        "x": 69,
+        "z": -20
+      }
+    }
+  ],
+  "render": [
+    {
+      "name": "wide",
+      "calls": 6410,
+      "triangles": 3729722,
+      "geometries": 2410,
+      "textures": 179
+    },
+    {
+      "name": "west",
+      "calls": 3250,
+      "triangles": 1930206,
+      "geometries": 2410,
+      "textures": 182
+    },
+    {
+      "name": "east",
+      "calls": 4734,
+      "triangles": 3144932,
+      "geometries": 2410,
+      "textures": 182
+    },
+    {
+      "name": "north",
+      "calls": 653,
+      "triangles": 474566,
+      "geometries": 2410,
+      "textures": 182
+    },
+    {
+      "name": "farm",
+      "calls": 972,
+      "triangles": 538860,
+      "geometries": 2410,
+      "textures": 182
+    },
+    {
+      "name": "monastery",
+      "calls": 617,
+      "triangles": 454316,
+      "geometries": 2410,
+      "textures": 182
+    },
+    {
+      "name": "lotus",
+      "calls": 4540,
+      "triangles": 3105076,
+      "geometries": 2411,
+      "textures": 182
+    },
+    {
+      "name": "bamboo",
+      "calls": 4144,
+      "triangles": 3140656,
+      "geometries": 2422,
+      "textures": 221
+    },
+    {
+      "name": "duocsu",
+      "calls": 1458,
+      "triangles": 1136364,
+      "geometries": 2422,
+      "textures": 221
+    },
+    {
+      "name": "flowers",
+      "calls": 5279,
+      "triangles": 3457310,
+      "geometries": 2422,
+      "textures": 223
+    },
+    {
+      "name": "ngoc",
+      "calls": 69,
+      "triangles": 77734,
+      "geometries": 2422,
+      "textures": 223
+    },
+    {
+      "name": "cave",
+      "calls": 105,
+      "triangles": 81036,
+      "geometries": 2422,
+      "textures": 223
+    },
+    {
+      "name": "pine",
+      "calls": 129,
+      "triangles": 82428,
+      "geometries": 2422,
+      "textures": 223
+    },
+    {
+      "name": "cemetery",
+      "calls": 321,
+      "triangles": 266708,
+      "geometries": 2397,
+      "textures": 221
+    },
+    {
+      "name": "river",
+      "calls": 1542,
+      "triangles": 1226536,
+      "geometries": 2403,
+      "textures": 228
+    },
+    {
+      "name": "koi",
+      "calls": 4454,
+      "triangles": 2727665,
+      "geometries": 2416,
+      "textures": 240
+    }
+  ],
+  "realDeviceFrameTime": null
+}

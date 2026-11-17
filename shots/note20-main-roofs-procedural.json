@@ -1,0 +1,89 @@
+{
+  "variant": "procedural",
+  "device": {
+    "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+    "viewport": [
+      384,
+      716
+    ],
+    "dpr": 2.8125,
+    "hidden": false,
+    "screen": [
+      384,
+      854
+    ]
+  },
+  "roofs": [
+    {
+      "name": "hall-roof-fallback",
+      "source": "procedural-fallback"
+    },
+    {
+      "name": "tam-the-roof-fallback",
+      "source": "procedural-fallback"
+    }
+  ],
+  "conditions": "Note20 Chrome, USB reverse, same static camera, 2s warmup and 8s rAF sample per spot; renderer.render counted for scene, not a GPU timer",
+  "spots": [
+    {
+      "name": "main-court",
+      "frames": 138,
+      "elapsedMs": 8033,
+      "fps": 17.06,
+      "sceneFrames": 138,
+      "renderFps": 17.18,
+      "p95Ms": 66.7,
+      "p99Ms": 66.7,
+      "over50": 70,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": {
+        "calls": 1720,
+        "triangles": 1031330
+      }
+    },
+    {
+      "name": "chinh-dien-near",
+      "frames": 189,
+      "elapsedMs": 8005,
+      "fps": 23.48,
+      "sceneFrames": 189,
+      "renderFps": 23.61,
+      "p95Ms": 50,
+      "p99Ms": 66.6,
+      "over50": 6,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": {
+        "calls": 936,
+        "triangles": 662340
+      }
+    },
+    {
+      "name": "tam-the-near",
+      "frames": 241,
+      "elapsedMs": 8022,
+      "fps": 29.92,
+      "sceneFrames": 241,
+      "renderFps": 30.04,
+      "p95Ms": 33.4,
+      "p99Ms": 33.4,
+      "over50": 0,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false,
+      "sceneRender": {
+        "calls": 388,
+        "triangles": 251732
+      }
+    }
+  ]
+}

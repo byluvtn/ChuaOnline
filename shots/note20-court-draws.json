@@ -1,0 +1,464 @@
+[
+  {
+    "name": "court",
+    "totals": {
+      "calls": 1493,
+      "tris": 1039547
+    },
+    "groups": [
+      {
+        "key": "color:hall",
+        "calls": 351,
+        "tris": 224824,
+        "meshes": 351
+      },
+      {
+        "key": "color:actors",
+        "calls": 321,
+        "tris": 131732,
+        "meshes": 321
+      },
+      {
+        "key": "color:tamThe",
+        "calls": 277,
+        "tris": 149692,
+        "meshes": 262
+      },
+      {
+        "key": "color:koi-pond",
+        "calls": 164,
+        "tris": 14926,
+        "meshes": 110
+      },
+      {
+        "key": "shadow:actors",
+        "calls": 156,
+        "tris": 74090,
+        "meshes": 156
+      },
+      {
+        "key": "shadow:zen-garden",
+        "calls": 146,
+        "tris": 3504,
+        "meshes": 146
+      },
+      {
+        "key": "color:arched-bridge",
+        "calls": 110,
+        "tris": 3216,
+        "meshes": 110
+      },
+      {
+        "key": "shadow:Group#1683",
+        "calls": 87,
+        "tris": 1352,
+        "meshes": 87
+      },
+      {
+        "key": "color:sutra-pillars",
+        "calls": 52,
+        "tris": 3432,
+        "meshes": 52
+      },
+      {
+        "key": "shadow:Group#1933",
+        "calls": 51,
+        "tris": 35188,
+        "meshes": 51
+      },
+      {
+        "key": "shadow:sutra-pillars",
+        "calls": 50,
+        "tris": 3000,
+        "meshes": 50
+      },
+      {
+        "key": "color:Group#157",
+        "calls": 41,
+        "tris": 2228,
+        "meshes": 41
+      },
+      {
+        "key": "shadow:thuy-dinh",
+        "calls": 38,
+        "tris": 2296,
+        "meshes": 38
+      },
+      {
+        "key": "color:expansion",
+        "calls": 38,
+        "tris": 57796,
+        "meshes": 38
+      },
+      {
+        "key": "shadow:Group#3993",
+        "calls": 31,
+        "tris": 151178,
+        "meshes": 31
+      },
+      {
+        "key": "shadow:Group#3934",
+        "calls": 29,
+        "tris": 476,
+        "meshes": 29
+      },
+      {
+        "key": "shadow:arched-bridge",
+        "calls": 28,
+        "tris": 336,
+        "meshes": 28
+      },
+      {
+        "key": "shadow:Group#6166",
+        "calls": 24,
+        "tris": 1016,
+        "meshes": 24
+      },
+      {
+        "key": "shadow:bao-thap",
+        "calls": 23,
+        "tris": 536,
+        "meshes": 23
+      },
+      {
+        "key": "shadow:corridors",
+        "calls": 21,
+        "tris": 568,
+        "meshes": 21
+      },
+      {
+        "key": "shadow:Group#6039",
+        "calls": 21,
+        "tris": 1276,
+        "meshes": 21
+      },
+      {
+        "key": "shadow:Group#6066",
+        "calls": 21,
+        "tris": 432,
+        "meshes": 21
+      },
+      {
+        "key": "shadow:Group#6093",
+        "calls": 20,
+        "tris": 492,
+        "meshes": 20
+      },
+      {
+        "key": "shadow:Group#6196",
+        "calls": 19,
+        "tris": 720,
+        "meshes": 19
+      },
+      {
+        "key": "shadow:Group#6142",
+        "calls": 18,
+        "tris": 488,
+        "meshes": 18
+      },
+      {
+        "key": "shadow:flower-beds",
+        "calls": 17,
+        "tris": 1296,
+        "meshes": 17
+      },
+      {
+        "key": "shadow:Group#6119",
+        "calls": 17,
+        "tris": 348,
+        "meshes": 17
+      },
+      {
+        "key": "shadow:hall",
+        "calls": 16,
+        "tris": 34008,
+        "meshes": 16
+      },
+      {
+        "key": "shadow:koi-pond",
+        "calls": 14,
+        "tris": 2516,
+        "meshes": 14
+      },
+      {
+        "key": "shadow:arhats",
+        "calls": 12,
+        "tris": 591014,
+        "meshes": 12
+      },
+      {
+        "key": "color:corridors",
+        "calls": 10,
+        "tris": 120,
+        "meshes": 10
+      },
+      {
+        "key": "color:trai-duong",
+        "calls": 6,
+        "tris": 890,
+        "meshes": 6
+      },
+      {
+        "key": "shadow:Group#235",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#245",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#270",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      }
+    ],
+    "lightCount": [
+      {
+        "name": "",
+        "type": "HemisphereLight",
+        "shadow": false
+      },
+      {
+        "name": "",
+        "type": "DirectionalLight",
+        "shadow": true
+      }
+    ]
+  },
+  {
+    "name": "near-tam-the",
+    "totals": {
+      "calls": 359,
+      "tris": 321890
+    },
+    "groups": [
+      {
+        "key": "color:tamThe",
+        "calls": 250,
+        "tris": 139336,
+        "meshes": 235
+      },
+      {
+        "key": "shadow:actors",
+        "calls": 156,
+        "tris": 74090,
+        "meshes": 156
+      },
+      {
+        "key": "shadow:zen-garden",
+        "calls": 146,
+        "tris": 3504,
+        "meshes": 146
+      },
+      {
+        "key": "shadow:Group#1683",
+        "calls": 87,
+        "tris": 1352,
+        "meshes": 87
+      },
+      {
+        "key": "color:actors",
+        "calls": 54,
+        "tris": 25924,
+        "meshes": 54
+      },
+      {
+        "key": "shadow:Group#1933",
+        "calls": 51,
+        "tris": 35188,
+        "meshes": 51
+      },
+      {
+        "key": "shadow:sutra-pillars",
+        "calls": 50,
+        "tris": 3000,
+        "meshes": 50
+      },
+      {
+        "key": "shadow:thuy-dinh",
+        "calls": 38,
+        "tris": 2296,
+        "meshes": 38
+      },
+      {
+        "key": "shadow:Group#3993",
+        "calls": 31,
+        "tris": 151178,
+        "meshes": 31
+      },
+      {
+        "key": "shadow:Group#3934",
+        "calls": 29,
+        "tris": 476,
+        "meshes": 29
+      },
+      {
+        "key": "shadow:arched-bridge",
+        "calls": 28,
+        "tris": 336,
+        "meshes": 28
+      },
+      {
+        "key": "shadow:Group#6166",
+        "calls": 24,
+        "tris": 1016,
+        "meshes": 24
+      },
+      {
+        "key": "shadow:bao-thap",
+        "calls": 23,
+        "tris": 536,
+        "meshes": 23
+      },
+      {
+        "key": "shadow:corridors",
+        "calls": 21,
+        "tris": 568,
+        "meshes": 21
+      },
+      {
+        "key": "shadow:Group#6039",
+        "calls": 21,
+        "tris": 1276,
+        "meshes": 21
+      },
+      {
+        "key": "shadow:Group#6066",
+        "calls": 21,
+        "tris": 432,
+        "meshes": 21
+      },
+      {
+        "key": "shadow:Group#6093",
+        "calls": 20,
+        "tris": 492,
+        "meshes": 20
+      },
+      {
+        "key": "color:expansion",
+        "calls": 20,
+        "tris": 19772,
+        "meshes": 20
+      },
+      {
+        "key": "shadow:Group#6196",
+        "calls": 19,
+        "tris": 720,
+        "meshes": 19
+      },
+      {
+        "key": "shadow:Group#6142",
+        "calls": 18,
+        "tris": 488,
+        "meshes": 18
+      },
+      {
+        "key": "shadow:flower-beds",
+        "calls": 17,
+        "tris": 1296,
+        "meshes": 17
+      },
+      {
+        "key": "shadow:Group#6119",
+        "calls": 17,
+        "tris": 348,
+        "meshes": 17
+      },
+      {
+        "key": "shadow:hall",
+        "calls": 16,
+        "tris": 34008,
+        "meshes": 16
+      },
+      {
+        "key": "shadow:koi-pond",
+        "calls": 14,
+        "tris": 2516,
+        "meshes": 14
+      },
+      {
+        "key": "shadow:arhats",
+        "calls": 12,
+        "tris": 591014,
+        "meshes": 12
+      },
+      {
+        "key": "color:hall",
+        "calls": 7,
+        "tris": 33588,
+        "meshes": 7
+      },
+      {
+        "key": "shadow:Group#235",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#245",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#270",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#290",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#305",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#330",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#340",
+        "calls": 4,
+        "tris": 272,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:phong-cong-duc",
+        "calls": 4,
+        "tris": 876,
+        "meshes": 4
+      },
+      {
+        "key": "shadow:Group#3971",
+        "calls": 4,
+        "tris": 48,
+        "meshes": 4
+      }
+    ],
+    "lightCount": [
+      {
+        "name": "",
+        "type": "HemisphereLight",
+        "shadow": false
+      },
+      {
+        "name": "",
+        "type": "DirectionalLight",
+        "shadow": true
+      }
+    ]
+  }
+]

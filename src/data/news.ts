@@ -5,9 +5,35 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 127;
+export const LATEST_NEWS_ID = 130;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Mái Blender cho Chính Điện và Điện Tam Thế',
+    date: '2026-11-17',
+    items: [
+      'Hai điện chính có mái chồng diêm dựng bằng Blender với ngói gân nổi, góc mái cong đầu đao và chi tiết nóc. Chữ Việt, tượng, bậc thang và chỗ ngồi vẫn ở vị trí cũ.',
+      'Nếu model chưa tải được, mái cũ vẫn hiển thị; việc đi lại và tương tác trong điện không thay đổi.',
+    ],
+  },
+  {
+    title: 'Model Blender cho Điện Dược Sư và tịnh thất',
+    date: '2026-11-17',
+    items: [
+      'Điện Dược Sư và ba tịnh thất dùng model Blender với mái cong, diềm ngói, khung gỗ và cửa sổ chấn song. Vị trí, cao độ nền, ghế ngồi và tương tác được giữ nguyên.',
+      'Model tải theo định dạng GLB. Nếu tải lỗi, công trình dùng hình học thay thế để không biến mất khỏi khuôn viên.',
+    ],
+  },
+  {
+    title: 'Mở rộng chùa: hồ sen Tây, sông Đông và Chùa Ngọc',
+    date: '2026-11-17',
+    items: [
+      'Khuôn viên mở rộng tới tường x ±92 và Bắc −122, thêm cổng Tây/Đông. Chuông về Đông, trống về Tây; Bảo Tháp, phòng công đức và khu nghỉ được dời theo quy hoạch. Hồ koi rộng ngang, cầu trục dài hơn và không còn quảng trường tròn.',
+      'Phía Tây có vườn rau, ao sen, khu tăng xá mới cùng ba tịnh thất và hồ sen có đình nghỉ. Phía Đông có rừng trúc, Điện Dược Sư, sông với hai cầu đá và vườn hoa.',
+      'Phía Bắc có đồi Chùa Ngọc với 299 bậc, hai chiếu nghỉ, động thiền, rừng thông và Vườn Tháp mới. Bản đồ và đường NPC được cập nhật theo khuôn viên mới.',
+      'Thêm nhiệm vụ hành hương Chùa Ngọc, thiền hành rừng trúc/bờ sông và cầu an Dược Sư; có điểm thả hoa đăng trên hồ sen Tây và sông Đông.',
+    ],
+  },
   {
     title: 'Chu kỳ ngày/đêm theo giờ thật',
     date: '2026-11-17',

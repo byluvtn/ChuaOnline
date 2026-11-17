@@ -255,8 +255,8 @@ export const MARKET_STALLS: { id: string; x: number; z: number }[] = [
 const Z_CHINH_DIEN: QuestZone = { x0: -17, x1: 17, z0: -42, z1: -22 };
 const Z_TAM_THE: QuestZone = { x0: -20, x1: 20, z0: -80, z1: -56 };
 const Z_THIEN_DUONG: QuestZone = { x: -47, z: -27, r: 7 };
-const Z_BAO_THAP: QuestZone = { x: -30, z: -38, r: 6 };
-const Z_CAU_SEN: QuestZone = { x0: -1.5, x1: 1.5, z0: 14.2, z1: 29.8 };
+const Z_BAO_THAP: QuestZone = { x: -34, z: -15, r: 6 };
+const Z_CAU_SEN: QuestZone = { x0: -1.5, x1: 1.5, z0: 2, z1: 26 };
 const Z_PS_PIER: QuestZone = { x: 30, z: -31, r: 3 };
 
 /** Người giao Q27–Q30. ĐỔI GIVER CHỈ SỬA DÒNG NÀY (quyết định 5 đã chốt: giữ npc38). */
@@ -265,7 +265,7 @@ export const GARDEN_GIVER = 'npc38';
 // NPC quests (daily reset, ids start with nq_)
 export const NPC_QUESTS: QuestDef[] = [
   { id: 'nq_sweep_plaza', label: 'Quét sân chùa', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc2',
-    points: [{ x: -8.5, z: 12 }, { x: 8.5, z: 12 }, { x: -7.5, z: -1 }] },
+    points: [{ x: -16.5, z: 1 }, { x: 16.5, z: 1 }, { x: -7.5, z: -1 }] },
   { id: 'nq_sweep_bridge', label: 'Quét cầu sen', event: 'sweep', target: 2, coins: 15, merit: 10, giver: 'npc3',
     points: [{ x: 0, z: 18 }, { x: 0, z: 26 }] },
   { id: 'nq_sweep_zen', label: 'Quét vườn Thiền', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc7',
@@ -319,7 +319,7 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'gq_harvest', label: 'Thu hoạch đầu mùa', event: 'harvest', target: 1, coins: 25, merit: 12, giver: GARDEN_GIVER },
   // Nhiệm vụ ngày của Sư Ông (npc37) — cửa sổ trượt 3 việc/ngày theo ngày VN (dayKeyICT), xem DQ_POOL/dqTodayIds.
   { id: 'dq_sweep', label: 'Quét sân chùa giúp Tiểu Quét Sân', event: 'sweep', target: 3, coins: 20, merit: 12, giver: 'npc37',
-    points: [{ x: -8.5, z: 12 }, { x: 8.5, z: 12 }, { x: -7.5, z: -1 }] },
+    points: [{ x: -16.5, z: 1 }, { x: 16.5, z: 1 }, { x: -7.5, z: -1 }] },
   { id: 'dq_bow', label: 'Đảnh lễ Tam Thế', event: 'bow', target: 3, coins: 20, merit: 12, giver: 'npc37', zone: Z_TAM_THE },
   { id: 'dq_sutra', label: 'Tụng kinh ở Thiền Đường', event: 'sutra', target: 1, coins: 25, merit: 12, giver: 'npc37', zone: Z_THIEN_DUONG },
   { id: 'dq_incense', label: 'Thắp hương 3 lần', event: 'incense', target: 3, coins: 20, merit: 10, giver: 'npc37' },
@@ -330,6 +330,10 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'dq_bell', label: 'Thỉnh chuông', event: 'talk', target: 2, coins: 15, merit: 8, giver: 'npc37', receiver: 'npc4', steps: ['talk', 'deliver'] },
   { id: 'dq_meditate', label: 'Thiền 2 phút', event: 'meditate', target: 12, coins: 30, merit: 15, giver: 'npc37', zone: Z_THIEN_DUONG },
   { id: 'dq_water', label: 'Tưới 1 cây trong vườn', event: 'water', target: 1, coins: 20, merit: 9, giver: 'npc37' },
+  { id: 'nq_ngoc_pilgrimage', label: 'Hành hương lên Chùa Ngọc', event: 'visit', target: 1, coins: 30, merit: 20, giver: 'npc1', zone: { x: 0, z: -112, r: 2 } },
+  { id: 'nq_bamboo_walk', label: 'Thiền hành trong rừng trúc', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 80, z: -8, r: 3 } },
+  { id: 'nq_river_walk', label: 'Thiền hành bên sông Đông', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 69, z: -20, r: 2 } },
+  { id: 'nq_duocsu_prayer', label: 'Dâng đèn cầu an tại Điện Dược Sư', event: 'lantern', target: 1, coins: 20, merit: 15, giver: 'npc1', zone: { x: 77, z: -38, r: 6 } },
 ];
 
 /** Kho việc Sư Ông (10 việc): mỗi ngày VN hiện đúng 3 việc liên tiếp, cửa sổ trượt

@@ -33,7 +33,7 @@ export interface PlayerState {
 }
 
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }
-export interface Lantern { id: number; pid: number; name: string; wish: string; t: number }
+export interface Lantern { id: number; pid: number; name: string; wish: string; t: number; x?: number; z?: number }
 
 /** Đèn trời: khác Lantern ở chỗ có toạ độ người thả để client tự dựng quả đèn bay lên. */
 export interface SkyLantern { id: number; pid: number; name: string; wish: string; x: number; z: number; t: number }
@@ -66,8 +66,9 @@ export interface Profile {
 export interface ProfileSave { bio: string | null; age: number | null }
 export interface ProfileSaveAck { ok: boolean; error?: string }
 
-export const MAP_HALF = 68;
-export const MAP_Z_MIN = -82;
+export const MAP_HALF = 98;
+export const MAP_Z_MIN = -122;
+export const MAP_Z_MAX = 68;
 export const levelOf = (merit: number) => Math.floor(Math.sqrt(merit / 10)) + 1;
 export const meritForLevel = (lv: number) => (lv - 1) * (lv - 1) * 10;
 

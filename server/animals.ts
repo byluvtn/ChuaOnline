@@ -3,7 +3,7 @@ import { routeFrom, nearestNode, ROAD_NODES, HOUSE_DOORS } from '../shared/roads
 import {
   HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
   NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
-  PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, BRIDGE,
+  PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, BRIDGE, DUOC_SU, NGOC, expansionWaterBlocked,
 } from '../src/layout.js';
 
 type P = { x: number; z: number };
@@ -32,7 +32,7 @@ const LOST_SPOTS: P[] = [
 ];
 // Old first spot (-47,-27) = Thien Duong centre (indoors), moved outside; door is at (-40.5,-27).
 const PERCH_SPOTS: P[] = [{ x: -37, z: -23.5 }, { x: 30, z: -31 }];
-const PLAZA: P = { x: 0, z: 6 };
+const PLAZA: P = { x: 0, z: 1 };
 const OWL_SPEED = 5;
 const OWL_VY = 3;
 
@@ -49,7 +49,7 @@ const route = (from: P, toId: string): P[] =>
 const INDOOR_RECTS = [
   HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
   NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
-  PHONG_CD_PLAT,
+  PHONG_CD_PLAT, DUOC_SU, NGOC,
 ];
 
 export function isIndoors(x: number, z: number): boolean {
@@ -142,7 +142,7 @@ function keepOut(x: number, z: number): boolean {
 /** Walkable destination near p: re-roll jitter (max 10), fallback road node, then PLAZA. */
 function inLakeOffBridge(x: number, z: number): boolean {
   const onBridge = Math.abs(x - BRIDGE.x) < BRIDGE.hw && z >= BRIDGE.z0 && z <= BRIDGE.z1;
-  return inLake(x, z) && !onBridge;
+  return expansionWaterBlocked(x, z) || (inLake(x, z) && !onBridge);
 }
 
 function segClipsLake(a: P, b: P): boolean {
@@ -154,7 +154,7 @@ function segClipsLake(a: P, b: P): boolean {
     // pad 0.3: trigger the detour before the leg actually touches the water;
     // points on the bridge strip are allowed.
     const onBridge = Math.abs(x - BRIDGE.x) < BRIDGE.hw && z >= BRIDGE.z0 && z <= BRIDGE.z1;
-    if (!onBridge && inLake(x, z, 0.3)) return true;
+    if (expansionWaterBlocked(x, z) || (!onBridge && inLake(x, z, 0.3))) return true;
   }
   return false;
 }
@@ -389,7 +389,7 @@ function mkOwl(id: string, R: number, H: number, ang: number): A {
 
 export function createAnimals(room: string): A[] {
   const list = [
-    mk('vang', 'dog', 'Vàng', 0, 6, 1.2), mk('trang', 'dog', 'Trắng', 8, 10, 1.2), mk('lab', 'dog', 'Labrador', -8, 10, 1.2), mk('nau', 'dog', 'Nâu', -12, 6, 1.2), mk('muop', 'cat', 'Mướp', -4, 4, 1.0), mk('bong', 'cat', 'Bông', 4, 8, 1.0), mk('mun', 'cat', 'Mun', 12, 2, 1.0),
+    mk('vang', 'dog', 'Vàng', 0, 1, 1.2), mk('trang', 'dog', 'Trắng', 17, 10, 1.2), mk('lab', 'dog', 'Labrador', -17, 10, 1.2), mk('nau', 'dog', 'Nâu', -16, 6, 1.2), mk('muop', 'cat', 'Mướp', -4, 1, 1.0), mk('bong', 'cat', 'Bông', 4, 1, 1.0), mk('mun', 'cat', 'Mun', 12, 2, 1.0),
     mkOwl('owl1', 30, 18, 0), mkOwl('owl2', 40, 22, 2.1), mkOwl('owl3', 50, 26, 4.2),
     mk('parrot', 'parrot', 'Vẹt', -47, -27, 1.2, { x: -47, z: -27 }),
     mk('chick', 'chick', 'Gà con', 30, -31, 1.2, { x: 30, z: -31 }),

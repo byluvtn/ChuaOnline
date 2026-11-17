@@ -1,0 +1,109 @@
+{
+  "instances": [
+    {
+      "name": "tinh-that-blender",
+      "position": [
+        -67,
+        0,
+        -67
+      ],
+      "size": [
+        4.329999923706055,
+        3.950000047683716,
+        3.7300000190734863
+      ],
+      "minY": 0,
+      "triangles": 2744,
+      "meshes": 6,
+      "materials": 6
+    },
+    {
+      "name": "tinh-that-blender",
+      "position": [
+        -61,
+        0,
+        -67
+      ],
+      "size": [
+        4.329999923706055,
+        3.950000047683716,
+        3.7300000190734863
+      ],
+      "minY": 0,
+      "triangles": 2744,
+      "meshes": 6,
+      "materials": 6
+    },
+    {
+      "name": "tinh-that-blender",
+      "position": [
+        -64,
+        0,
+        -63.8
+      ],
+      "size": [
+        4.329999923706055,
+        3.950000047683716,
+        3.7300000190734863
+      ],
+      "minY": 0,
+      "triangles": 2744,
+      "meshes": 6,
+      "materials": 6
+    },
+    {
+      "name": "dien-duoc-su-blender",
+      "position": [
+        77,
+        0,
+        -38
+      ],
+      "size": [
+        15.130000114440918,
+        10.050000190734863,
+        11.529999732971191
+      ],
+      "minY": 0,
+      "triangles": 13704,
+      "meshes": 6,
+      "materials": 6
+    }
+  ],
+  "fallbacks": [],
+  "routes": [
+    {
+      "name": "duocSu",
+      "fallback": false,
+      "end": {
+        "x": 77,
+        "z": -32
+      }
+    },
+    {
+      "name": "tinhThat",
+      "fallback": false,
+      "end": {
+        "x": -64,
+        "z": -61.4
+      }
+    }
+  ],
+  "seats": 7,
+  "floor": [
+    0.45,
+    0.16
+  ],
+  "zone": "duocSu",
+  "isolatedRender": [
+    {
+      "name": "duoc-su",
+      "calls": 7,
+      "triangles": 13706
+    },
+    {
+      "name": "tinh-that",
+      "calls": 19,
+      "triangles": 8234
+    }
+  ]
+}

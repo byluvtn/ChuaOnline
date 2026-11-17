@@ -4,6 +4,7 @@ import { buildBuddha } from './statues';
 import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import { buildZafuParts } from './zafu';
+import { replaceRoof } from './models';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = HALL.h; // top of platform
@@ -22,7 +23,8 @@ export function buildHall(c: TempleCtx) {
   const W = HALL.hx * 2, D = HALL.hz * 2;
 
   const stoneM = lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [8, 1]) });
-  const add = <T extends THREE.Object3D>(o: T, parent: THREE.Object3D = g) => { parent.add(o); return o; };
+  let roofParent: THREE.Group = g;
+  const add = <T extends THREE.Object3D>(o: T, parent: THREE.Object3D = roofParent) => { parent.add(o); return o; };
   const box = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number, shadow = true, seal = false) => {
     const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
     o.position.set(x, y, z); o.castShadow = shadow; o.receiveShadow = true;
@@ -72,6 +74,11 @@ export function buildHall(c: TempleCtx) {
   box(purW, 0.4, 0.4, c.redM, 0, purY, purD / 2, false); box(purW, 0.4, 0.4, c.redM, 0, purY, -purD / 2, false);
   box(0.4, 0.4, purD, c.redM, purW / 2, purY, 0, false); box(0.4, 0.4, purD, c.redM, -purW / 2, purY, 0, false);
   const roofBaseY = purY + 0.2;
+
+  const roofFallback = new THREE.Group();
+  roofFallback.name = 'hall-roof-fallback';
+  g.add(roofFallback);
+  roofParent = roofFallback;
 
   // ---- mái 3 tầng dạng khối đặc ----
   // hàm cao độ sườn mái tại tỉ lệ t (0 = đỉnh, 1 = chân) — theo đúng roofGeometry
@@ -139,6 +146,8 @@ export function buildHall(c: TempleCtx) {
     horn.position.set(sgn * W * 0.16 * 0.25, top3 + 0.2, 0); horn.rotation.z = -sgn * 0.5; add(horn);
   }
   const fin = new THREE.Mesh(new THREE.ConeGeometry(0.34, 2.0, 8), c.goldM); fin.position.y = top3 + 0.7; add(fin);
+
+  roofParent = g;
 
   // ---- hoành phi ----
   const hpFront = new THREE.Mesh(new THREE.PlaneGeometry(9.0, 2.25), new THREE.MeshBasicMaterial({ map: vietnamesePlaqueTexture('ĐẠI HÙNG BẢO ĐIỆN'), toneMapped: false }));
@@ -237,6 +246,7 @@ export function buildHall(c: TempleCtx) {
     console.warn(`chánh điện: ${seal.filled} khe đã bù, ${seal.remaining.length} khe lớn còn lại`);
     if (import.meta.env.DEV) console.warn('gapdump ' + JSON.stringify(seal.remaining));
   }
+  replaceRoof(g, roofFallback, 'chinh-dien-roof');
   const halos = [mainB, ...sideBs].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
   return { group: g, seats, zones, halos };
 }

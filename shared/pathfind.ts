@@ -1,5 +1,6 @@
 import { ROAD_NODES, ROAD_EDGES, HOUSE_DOORS, type Pt } from './roads';
 import { dijkstra, reconstructPath } from './dijkstra';
+import { WALL } from './campus';
 
 export type Collider = { x: number; z: number; r: number; x2?: number; z2?: number };
 export interface Pathfinder {
@@ -57,9 +58,22 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
   const stamp = new Int32Array(colliders.length);
   let stampId = 0;
 
+  function surfaceClear(ax: number, az: number, bx: number, bz: number): boolean {
+    const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.4));
+    for (let i = 0; i <= n; i++) {
+      const x = ax + (bx - ax) * i / n, z = az + (bz - az) * i / n;
+      if (opts?.avoid?.({ x, z })) return false;
+      if (z < WALL.zN + 0.4) return false;
+      if (Math.abs(z - WALL.zS) < 0.5 && Math.abs(x) > WALL.gate - 0.5) return false;
+      if (Math.abs(Math.abs(x) - WALL.x) < 0.5 && Math.abs(z - WALL.sideGateZ) > WALL.sideGateHalf - 0.5) return false;
+    }
+    return true;
+  }
+
   function segmentClear(ax: number, az: number, bx: number, bz: number): boolean {
     const dx = bx - ax, dz = bz - az;
     const len2 = dx * dx + dz * dz;
+    if (!surfaceClear(ax, az, bx, bz)) return false;
     stampId++;
     const x0 = Math.floor(Math.min(ax, bx) / CELL), x1 = Math.floor(Math.max(ax, bx) / CELL);
     const z0 = Math.floor(Math.min(az, bz) / CELL), z1 = Math.floor(Math.max(az, bz) / CELL);
@@ -90,6 +104,7 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
   function segmentWalkable(ax: number, az: number, bx: number, bz: number): boolean {
     const dx = bx - ax, dz = bz - az;
     const len2 = dx * dx + dz * dz;
+    if (!surfaceClear(ax, az, bx, bz)) return false;
     stampId++;
     const x0 = Math.floor(Math.min(ax, bx) / CELL), x1 = Math.floor(Math.max(ax, bx) / CELL);
     const z0 = Math.floor(Math.min(az, bz) / CELL), z1 = Math.floor(Math.max(az, bz) / CELL);
@@ -135,9 +150,8 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
 
   let lastFallback = false;
 
-  // Tuong compound. PHAI khop voi WALL o src/layout.ts: zS = 45, zN = -82, x = +/-62.
-  // Khong import src/ tu shared/ nen hardcode o day.
-  const WALL_ZS = 45, WALL_ZN = -82, WALL_X = 62;
+  // Use the same perimeter as the scene; crossings are allowed only at actual gates.
+  const WALL_ZS = WALL.zS, WALL_ZN = WALL.zN, WALL_X = WALL.x;
 
   // true neu a va b cung o trong (hoac cung o ngoai) moi tuong cua compound.
   function sameSide(a: Pt, b: Pt): boolean {
@@ -418,6 +432,89 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
     return null;
   }
 
+  // The authored road network is intentionally sparse. A bounded A* fallback
+  // handles new courtyards and narrow openings without routing through water.
+  function gridRoute(from: Pt, to: Pt): Pt[] | null {
+    const step = 0.75, x0 = -97.5, z0 = -121.5, nx = 261, nz = 241, count = nx * nz;
+    const at = (id: number): Pt => ({ x: x0 + id % nx * step, z: z0 + Math.floor(id / nx) * step });
+    const cache = new Int8Array(count);
+    const free = (id: number): boolean => {
+      if (cache[id]) return cache[id] === 1;
+      const p = at(id);
+      const okay = surfaceClear(p.x, p.z, p.x, p.z) && segmentClear(p.x, p.z, p.x, p.z);
+      cache[id] = okay ? 1 : -1; return okay;
+    };
+    const nearest = (p: Pt): number => {
+      const ix = Math.round((p.x - x0) / step), iz = Math.round((p.z - z0) / step);
+      let best = -1, distance = Infinity;
+      for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+        const x = ix + dx, z = iz + dz;
+        if (x < 0 || x >= nx || z < 0 || z >= nz) continue;
+        const id = z * nx + x, q = at(id), d = Math.hypot(q.x - p.x, q.z - p.z);
+        if (d < distance && free(id) && segmentClear(p.x, p.z, q.x, q.z)) { best = id; distance = d; }
+      }
+      return best;
+    };
+    const start = nearest(from), goal = nearest(to);
+    if (start < 0 || goal < 0) return null;
+    const distance = new Float64Array(count); distance.fill(Infinity);
+    const previous = new Int32Array(count); previous.fill(-1);
+    const closed = new Uint8Array(count);
+    const heap: { id: number; cost: number }[] = [];
+    const push = (id: number, cost: number) => {
+      let i = heap.length; heap.push({ id, cost });
+      while (i > 0) { const p = (i - 1) >>> 1; if (heap[p].cost <= cost) break; heap[i] = heap[p]; i = p; }
+      heap[i] = { id, cost };
+    };
+    const pop = () => {
+      const first = heap[0], last = heap.pop()!;
+      if (heap.length) {
+        let i = 0;
+        while (i * 2 + 1 < heap.length) {
+          let c = i * 2 + 1;
+          if (c + 1 < heap.length && heap[c + 1].cost < heap[c].cost) c++;
+          if (heap[c].cost >= last.cost) break;
+          heap[i] = heap[c]; i = c;
+        }
+        heap[i] = last;
+      }
+      return first.id;
+    };
+    const target = at(goal);
+    distance[start] = 0; push(start, 0);
+    while (heap.length) {
+      const u = pop();
+      if (closed[u]) continue;
+      if (u === goal) {
+        const chain: Pt[] = [to];
+        for (let id = goal; id >= 0; id = previous[id]) chain.push(at(id));
+        chain.reverse();
+        const result: Pt[] = [];
+        let fromPt = from, i = 0;
+        while (i < chain.length) {
+          let end = chain.length - 1;
+          while (end > i && !segmentClear(fromPt.x, fromPt.z, chain[end].x, chain[end].z)) end--;
+          result.push(chain[end]); fromPt = chain[end]; i = end + 1;
+        }
+        return result;
+      }
+      closed[u] = 1;
+      const p = at(u), ix = u % nx, iz = Math.floor(u / nx);
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+        if ((!dx && !dz) || ix + dx < 0 || ix + dx >= nx || iz + dz < 0 || iz + dz >= nz) continue;
+        const v = u + dz * nx + dx;
+        if (closed[v] || !free(v)) continue;
+        const next = distance[u] + step * Math.hypot(dx, dz);
+        if (next >= distance[v]) continue;
+        const q = at(v);
+        if (!segmentClear(p.x, p.z, q.x, q.z)) continue;
+        distance[v] = next; previous[v] = u;
+        push(v, next + Math.hypot(q.x - target.x, q.z - target.z));
+      }
+    }
+    return null;
+  }
+
   function findPath(from: Pt, to: Pt): Pt[] {
     // Dich nam tren mat cau (ben trong vong collider vien ho): di qua loi len
     // cau gan phia xuat phat hon (bridgeN / bridgeS) roi di thang len cau toi dich.
@@ -479,6 +576,10 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
     if (local && localLen <= 3 * direct && (lastFallback || localLen <= len)) {
       lastFallback = false;
       return local;
+    }
+    if (lastFallback) {
+      const grid = gridRoute(from, to);
+      if (grid) { lastFallback = false; return grid; }
     }
     if (len <= 3 * direct) return route;
     // Obstacle only near the start: if the detour is >3x the straight distance and the rest of the

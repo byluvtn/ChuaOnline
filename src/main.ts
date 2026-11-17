@@ -7,7 +7,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake } from './layout';
+import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, NGOC, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -27,7 +27,7 @@ import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, type Pt } from '../shared/roads';
 import {
-  MAP_HALF, MAP_Z_MIN, OUTFIT_COLOR, levelOf, meritForLevel,
+  MAP_HALF, MAP_Z_MIN, MAP_Z_MAX, OUTFIT_COLOR, levelOf, meritForLevel,
   type ActionKind, type Anim, type AnimalState, type ChatMessage, type FireworkShow, type Lantern, type NpcAct, type Outfit, type PlayerState, type Profile, type SkyLantern,
 } from '../shared/types';
 
@@ -206,21 +206,36 @@ function lakeRingColliders() {
     const z = LAKE.z + Math.sin(t) * b;
     // Chừa khe hành lang cầu: chỉ bỏ điểm sát hai đầu cầu, không bỏ cả dải theo z
     if (Math.abs(x - BRIDGE.x) < 2 && z >= BRIDGE.z0 - 1 && z <= BRIDGE.z1 + 1) continue;
+    if (x >= -12 && x <= -3 && Math.abs(z - 23) <= 3) continue;
     out.push({ x, z, r: R });
   }
   return out;
 }
 
-const pathfinder = createPathfinder(
-  [...world.colliders, ...lakeRingColliders()],
-  {
-    deck: BRIDGE,
-    // loại điểm nằm trong hồ mà không thuộc mặt cầu (để escapePoint không chọn điểm trong nước)
-    avoid: (p) =>
-      inLake(p.x, p.z) &&
-      !(Math.abs(p.x - BRIDGE.x) < BRIDGE.hw && p.z >= BRIDGE.z0 && p.z <= BRIDGE.z1),
-  },
-);
+let navigationColliderCount = -1;
+let navigation: ReturnType<typeof createPathfinder>;
+function currentNavigation() {
+  if (navigationColliderCount === world.colliders.length) return navigation;
+  navigationColliderCount = world.colliders.length;
+  navigation = createPathfinder(
+    [...world.colliders, ...lakeRingColliders()],
+    {
+      deck: BRIDGE,
+      // loại điểm nằm trong hồ mà không thuộc mặt cầu (để escapePoint không chọn điểm trong nước)
+      avoid: (p) => expansionWaterBlocked(p.x, p.z) || (inPsPond(p.x, p.z) && !onPsPier(p.x, p.z)) ||
+        (p.z > BRIDGE.z0 + 0.35 && p.z < BRIDGE.z1 - 0.35 && Math.abs(p.x - BRIDGE.x) > BRIDGE.hw - 0.15 && Math.abs(p.x - BRIDGE.x) < BRIDGE.hw + 0.15) ||
+        (inLake(p.x, p.z) && !(Math.abs(p.x - BRIDGE.x) < BRIDGE.hw && p.z >= BRIDGE.z0 && p.z <= BRIDGE.z1) &&
+          !(p.x >= -10.6 && p.x <= -4.4 && Math.abs(p.z - 23) <= 1.6)),
+    },
+  );
+  return navigation;
+}
+// Model loading can add colliders after the initial world has been constructed.
+const pathfinder: ReturnType<typeof createPathfinder> = {
+  findPath: (from, to) => currentNavigation().findPath(from, to),
+  segmentClear: (ax, az, bx, bz) => currentNavigation().segmentClear(ax, az, bx, bz),
+  get lastFallback() { return currentNavigation().lastFallback; },
+};
 const post = createPost(renderer, world.scene, camera, isTouch);
 const prewarm = () => {
   const seen = new Set<THREE.Texture>();
@@ -306,6 +321,9 @@ const HOUSE_CAM: Record<string, { dist: number; bump: number }> = {
   tangXa: { dist: 3.4, bump: 0 },
   thienDuong: { dist: 3.4, bump: 0 },
   phongCongDuc: { dist: 3.4, bump: 0 },
+  duocSu: { dist: 3.4, bump: 0 },
+  tinhThat: { dist: 2.3, bump: 0 },
+  dongThien: { dist: 2.6, bump: 0 },
 };
 let clickTarget: THREE.Vector3 | null = null;
 let guideQuestId: string | null = null;
@@ -472,7 +490,7 @@ function addLanternFeed(l: Lantern, fresh: boolean, sky = false) {
   if (fresh) {
     if (!sky) {
       const r = [...remotes.values()].find((x) => x.data.pid === l.pid);
-      world.spawnLantern(r?.char.root.position.x ?? 0, r?.char.root.position.z ?? 8);
+      world.spawnLantern(l.x ?? r?.char.root.position.x ?? 0, l.z ?? r?.char.root.position.z ?? 28);
     }
     audio.play('lantern');
   }
@@ -1327,10 +1345,10 @@ function collide(pos: THREE.Vector3) {
     const d = Math.hypot(dx, dz), min = c.r + 0.4;
     if (d < min && d > 0.0001) { pos.x = cx + (dx / d) * min; pos.z = cz + (dz / d) * min; }
   }
-  world.resolveWater(pos, onDeck);
+  world.resolveWater(pos, onDeck, prevPos);
   clampToCompound(pos);
   pos.x = Math.max(-MAP_HALF, Math.min(MAP_HALF, pos.x));
-  pos.z = Math.max(MAP_Z_MIN, Math.min(MAP_HALF, pos.z));
+  pos.z = Math.max(MAP_Z_MIN, Math.min(MAP_Z_MAX, pos.z));
   prevPos.x = pos.x; prevPos.z = pos.z;
 }
 
@@ -1708,15 +1726,17 @@ const minimapCv = $('minimap') as HTMLCanvasElement;
 const minimapShowBtn = $('minimapShowBtn');
 const MM_POIS: Pt[] = [
   { x: -34, z: -6 }, { x: 34, z: -6 }, { x: 24, z: -24 }, { x: 30, z: -31 },
-  { x: -30, z: -38 }, { x: 0, z: -68 }, { x: 0, z: -32 }, { x: 0, z: 22 },
+  BAO_THAP, { x: 0, z: -68 }, HALL, LAKE, LOTUS, DUOC_SU, NGOC, VUON_THAP,
+  { x: -76, z: -42 }, { x: 80, z: -3 }, { x: 79, z: 28 },
 ];
 let mmStatic: HTMLCanvasElement | null = null;
 let mmStaticSize = 0;
 
 function mmProject(S: number, dpr: number) {
-  const MX0 = -66, MX1 = 66, MZ0 = -88, MZ1 = 64;
+  const MX0 = -100, MX1 = 100, MZ0 = -128, MZ1 = 68;
   const PAD = 4 * dpr;
-  const k = (S - PAD * 2) / Math.max(MX1 - MX0, MZ1 - MZ0);
+  // Fit the diagonal inside the circular mask so neither northern wing is clipped.
+  const k = (S - PAD * 2) / Math.hypot(MX1 - MX0, MZ1 - MZ0);
   const OX = (S - (MX1 - MX0) * k) / 2, OZ = (S - (MZ1 - MZ0) * k) / 2;
   return { k, X: (x: number) => (x - MX0) * k + OX, Z: (z: number) => (z - MZ0) * k + OZ };
 }
@@ -1730,11 +1750,13 @@ function mmBuildStatic(S: number, dpr: number): HTMLCanvasElement {
   g.fillRect(0, 0, S, S);
   g.lineWidth = Math.max(1, dpr);
   g.fillStyle = '#e4e8c4'; g.strokeStyle = '#8a5a2b';
-  g.beginPath(); g.rect(X(-62), Z(-82), 124 * k, 127 * k); g.fill(); g.stroke();
-  g.fillStyle = '#efe3bd';
-  g.beginPath(); g.ellipse(X(0), Z(8), 11.5 * k, 11.5 * k, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.rect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k); g.fill(); g.stroke();
   g.fillStyle = '#8ec6e0'; g.strokeStyle = '#4f8fb0';
-  g.beginPath(); g.ellipse(X(0), Z(22), 9 * k, 6.5 * k, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  for (const p of [LAKE, LOTUS, RIVER.pond]) { g.beginPath(); g.ellipse(X(p.x), Z(p.z), p.a * k, p.b * k, 0, 0, Math.PI * 2); g.fill(); g.stroke(); }
+  g.fillRect(X(RIVER.x0), Z(RIVER.z0), 4 * k, (RIVER.z1 - RIVER.z0) * k);
+  g.fillStyle = '#c8b59a';
+  g.fillRect(X(-BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
+  g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, 30 * k);
   g.fillStyle = '#b5542f'; g.strokeStyle = '#6e2a14';
   g.beginPath(); g.rect(X(-17), Z(-42), 34 * k, 20 * k); g.fill(); g.stroke();
   return c;
@@ -1946,16 +1968,24 @@ function zoneNameOf(x: number, z: number): string {
   if (inRect(-20, 20, -80, -56)) return 'Điện Tam Thế';
   if (near(-47, -27, 8)) return 'Thiền Đường';
   if (near(39, 10, 6)) return 'Điện Mẫu';
-  if (near(-30, -38, 7)) return 'Bảo Tháp';
+  if (near(BAO_THAP.x, BAO_THAP.z, 7)) return 'Bảo Tháp';
   if (near(36, -68, 8)) return 'Nhà Tổ';
   if (near(-47, -61, 8)) return 'Nhà Khách';
   if (near(-29, -61, 8)) return 'Trai Đường';
-  if (near(49, -63, 9)) return 'Vườn Tháp';
-  if (near(-34, -6, 6)) return 'Tháp Chuông';
-  if (near(34, -6, 6)) return 'Tháp Trống';
+  if (near(VUON_THAP.x, VUON_THAP.z, 9)) return 'Vườn Tháp';
+  if (near(BELL.x, BELL.z, 6)) return 'Tháp Chuông';
+  if (near(DRUM.x, DRUM.z, 6)) return 'Gác Trống';
+  if (near(DUOC_SU.x, DUOC_SU.z, 8)) return 'Điện Dược Sư';
+  if (near(NGOC.x, NGOC.z, 6)) return 'Chùa Ngọc';
+  if (near(TANG_XA.x, TANG_XA.z, 8)) return 'Tăng xá';
+  if (near(-76, -42, 14)) return 'Vườn rau';
+  if (near(80, -3, 18)) return 'Rừng trúc';
+  if (near(79, 28, 13)) return 'Vườn hoa';
+  if (near(PHONG_CD.x, PHONG_CD.z, 7)) return 'Phòng ghi công đức';
+  if (near(REST.x, REST.z, 7)) return 'Khu nghỉ';
   if (near(30, -31, 5)) return 'Bến Phóng Sinh';
-  if (inRect(-2, 2, 14, 30)) return 'Cầu Sen';
-  if (near(0, 22, 10)) return 'Hồ Sen';
+  if (inRect(-2, 2, BRIDGE.z0, BRIDGE.z1)) return 'Cầu hồ koi';
+  if (near(LAKE.x, LAKE.z, 14)) return 'Hồ cá koi';
   if (inRect(5, 55, 47, 60)) return 'Chợ';
   if (near(11, 39, 5)) return 'Đền Trình';
   if (inRect(-17, 17, -14, 14)) return 'Sân Chùa';
@@ -2119,6 +2149,10 @@ const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
   chuong: { label: 'Đánh chuông', run: () => { world.ringBell(); audio.play('bow'); } },
   trong: { label: 'Đánh trống', run: () => { world.ringDrum(); audio.play('bow'); } },
   thuyDinh: { label: 'Thả đèn', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
+  lotus: { label: 'Thả đèn hồ sen', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
+  river: { label: 'Thả đèn sông Đông', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
+  duocSu: { label: 'Dâng đèn cầu an', run: () => doAction('lantern', 'Cầu an Dược Sư') },
+  chuaNgoc: { label: 'Dâng hương Chùa Ngọc', run: () => doAction('incense') },
   phongSinh: { label: 'Phóng sinh', run: () => releasePhongSinh() },
   omikuji: { label: 'Xin xăm', run: () => openFortune(panelCtx()) },
 };
@@ -2695,8 +2729,8 @@ function loop(now: number = performance.now()) {
 }
 let lastDrum = 42;
 const LOD_DIST = 30;
-const focusIdle = new THREE.Vector3(0, 0, 8);
+const focusIdle = new THREE.Vector3(0, 0, 28);
 let loadedHidden = false;
 requestAnimationFrame(loop);
 
-if (import.meta.env.DEV) (window as any).__co = { walkTo: (x: number, z: number) => { setSitting(false); clickTarget = new THREE.Vector3(x, 0, z); }, me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr, buildBuddha, buildQuanAm };
+if (import.meta.env.DEV) (window as any).__co = { pathfinder, renderer, post, collide, walkTo: (x: number, z: number) => { setSitting(false); clickTarget = new THREE.Vector3(x, 0, z); }, me: () => me, remotes, world, camera, THREE, audio, openPanel, panelCtx: () => panelCtx(), quests: () => quests, pick: (o: Outfit) => { outfit = o; color = OUTFIT_COLOR[o]; buildPickers(); rebuildPreview(); }, pv: () => pChar, build: (o: Outfit) => buildCharacter(o, OUTFIT_COLOR[o], ''), anim: animateCharacter, pScene, pCam, pr, buildBuddha, buildQuanAm };

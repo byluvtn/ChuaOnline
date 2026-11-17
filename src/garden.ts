@@ -21,8 +21,8 @@ function p(
 }
 
 export const GARDEN_PLACEMENTS: GardenPlacement[] = [
-  p('swing-oak', -8.5, 12, 0, 9.0, null, 0.4),
-  p('swing-oak', 8.5, 12, Math.PI, 9.0, null, 0.4),
+  p('swing-oak', -16.5, 1, 0, 9.0, null, 0.4),
+  p('swing-oak', 16.5, 1, Math.PI, 9.0, null, 0.4),
   p('swing-oak', -7.5, -1, 0, 9.0, null, 0.4),
   p('birch_nt', -40, -22, 0.5, 9.7, null, 0.4),
   p('birch_nt', -42, -34, 3.0, 9.7, null, 0.4),
@@ -31,8 +31,8 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('stone_lantern', -37.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', -30.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', 45, -66, 0, 2.15, null, 0.3),
-  p('stone_lantern', 11, 17, 0, 2.15, null, 0.3),
-  p('stone_lantern', -11, 17, 0, 2.15, null, 0.3),
+  p('stone_lantern', 15.5, 17, 0, 2.15, null, 0.3),
+  p('stone_lantern', -15.5, 17, 0, 2.15, null, 0.3),
   p('stone_lantern', -26, -18, 0, 2.15, null, 0.3),
   p('stone_lantern', 26, -18, 0, 2.15, null, 0.3),
   p('stone_lantern', -25, -32, 0, 2.15, null, 0.3),

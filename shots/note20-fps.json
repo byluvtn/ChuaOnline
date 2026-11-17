@@ -1,0 +1,139 @@
+{
+  "device": {
+    "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+    "screen": [
+      384,
+      854
+    ],
+    "viewport": [
+      384,
+      716
+    ],
+    "dpr": 2.8125,
+    "hidden": false,
+    "webgl": true
+  },
+  "loaded": [
+    "tinh-that-blender",
+    "tinh-that-blender",
+    "tinh-that-blender",
+    "dien-duoc-su-blender"
+  ],
+  "conditions": "Note20 Chrome, screen on, USB reverse, dev Vite, stationary camera, 2s warmup + 8s requestAnimationFrame samples per location; not a GPU timer",
+  "spots": [
+    {
+      "name": "main-court",
+      "elapsedMs": 8002.800000000003,
+      "frames": 154,
+      "fps": 19.12,
+      "avgMs": 52.31,
+      "p95Ms": 66.6,
+      "p99Ms": 83.2,
+      "maxMs": 166.5,
+      "over33": 153,
+      "over50": 17,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "duoc-su-near",
+      "elapsedMs": 8019.5,
+      "frames": 275,
+      "fps": 34.17,
+      "avgMs": 29.27,
+      "p95Ms": 33.4,
+      "p99Ms": 33.4,
+      "maxMs": 50,
+      "over33": 142,
+      "over50": 0,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "duoc-su-far",
+      "elapsedMs": 8008.999999999258,
+      "frames": 262,
+      "fps": 32.59,
+      "avgMs": 30.69,
+      "p95Ms": 33.4,
+      "p99Ms": 33.4,
+      "maxMs": 50,
+      "over33": 158,
+      "over50": 0,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "tinh-that-near",
+      "elapsedMs": 8026.60000000037,
+      "frames": 302,
+      "fps": 37.5,
+      "avgMs": 26.67,
+      "p95Ms": 33.4,
+      "p99Ms": 49.9,
+      "maxMs": 50,
+      "over33": 121,
+      "over50": 0,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "tinh-that-far",
+      "elapsedMs": 8016.299999999988,
+      "frames": 298,
+      "fps": 37.05,
+      "avgMs": 26.99,
+      "p95Ms": 33.4,
+      "p99Ms": 49.9,
+      "maxMs": 50,
+      "over33": 112,
+      "over50": 0,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "ngoc-stairs",
+      "elapsedMs": 8012.799999999261,
+      "frames": 299,
+      "fps": 37.19,
+      "avgMs": 26.89,
+      "p95Ms": 33.4,
+      "p99Ms": 49.9,
+      "maxMs": 50,
+      "over33": 79,
+      "over50": 0,
+      "calls": 1,
+      "triangles": 1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    }
+  ]
+}

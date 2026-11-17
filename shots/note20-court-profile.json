@@ -1,0 +1,395 @@
+{
+  "init": {
+    "agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+    "hidden": false,
+    "viewport": [
+      384,
+      716
+    ],
+    "ratio": 1.5,
+    "buffer": [
+      576,
+      1074
+    ],
+    "shadow": true,
+    "shadowSize": [
+      1024,
+      1024
+    ],
+    "nodes": {
+      "meshes": 6866,
+      "visibleMeshes": 6817,
+      "casters": 2834,
+      "transparent": 289,
+      "objects": 9255,
+      "geometry": 2335,
+      "material": 1076
+    },
+    "memory": {
+      "geometries": 2298,
+      "textures": 235
+    }
+  },
+  "cases": [
+    {
+      "name": "baseline-1",
+      "elapsed": 6039,
+      "frames": 88,
+      "fps": 14.41,
+      "sceneFps": 14.57,
+      "renderCpuMs": 63.91,
+      "sceneCpuMs": 63.31,
+      "updateBudgetMs": 4.71,
+      "calls": 1695,
+      "tris": 1132783,
+      "p95Ms": 83.3,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "hide-main-hall",
+      "elapsed": 6022,
+      "frames": 96,
+      "fps": 15.78,
+      "sceneFps": 15.94,
+      "renderCpuMs": 57.11,
+      "sceneCpuMs": 56.47,
+      "updateBudgetMs": 5.61,
+      "calls": 1325,
+      "tris": 754376,
+      "p95Ms": 66.7,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-hall",
+      "elapsed": 6071,
+      "frames": 87,
+      "fps": 14.17,
+      "sceneFps": 14.33,
+      "renderCpuMs": 65.07,
+      "sceneCpuMs": 64.44,
+      "updateBudgetMs": 4.71,
+      "calls": 1678,
+      "tris": 1111285,
+      "p95Ms": 83.3,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "hide-tam-the",
+      "elapsed": 6010,
+      "frames": 93,
+      "fps": 15.31,
+      "sceneFps": 15.47,
+      "renderCpuMs": 57.66,
+      "sceneCpuMs": 56.99,
+      "updateBudgetMs": 6.97,
+      "calls": 1337,
+      "tris": 889721,
+      "p95Ms": 66.7,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-tam-the",
+      "elapsed": 6011,
+      "frames": 88,
+      "fps": 14.47,
+      "sceneFps": 14.64,
+      "renderCpuMs": 64.05,
+      "sceneCpuMs": 63.46,
+      "updateBudgetMs": 4.25,
+      "calls": 1654,
+      "tris": 1113109,
+      "p95Ms": 83.3,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "freeze-shadow-map",
+      "elapsed": 6005,
+      "frames": 118,
+      "fps": 19.48,
+      "sceneFps": 19.65,
+      "renderCpuMs": 46.82,
+      "sceneCpuMs": 46.18,
+      "updateBudgetMs": 4.07,
+      "calls": 1684,
+      "tris": 1119878,
+      "p95Ms": 66.6,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-shadow",
+      "elapsed": 6047,
+      "frames": 86,
+      "fps": 14.06,
+      "sceneFps": 14.22,
+      "renderCpuMs": 65.46,
+      "sceneCpuMs": 64.82,
+      "updateBudgetMs": 4.86,
+      "calls": 1703,
+      "tris": 1134697,
+      "p95Ms": 83.3,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "no-arhat-shadows",
+      "elapsed": 6062,
+      "frames": 85,
+      "fps": 13.86,
+      "sceneFps": 14.02,
+      "renderCpuMs": 66.65,
+      "sceneCpuMs": 66.01,
+      "updateBudgetMs": 4.67,
+      "calls": 1718,
+      "tris": 1137646,
+      "p95Ms": 83.3,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-arhats",
+      "elapsed": 6021,
+      "frames": 90,
+      "fps": 14.78,
+      "sceneFps": 14.95,
+      "renderCpuMs": 63.44,
+      "sceneCpuMs": 62.83,
+      "updateBudgetMs": 3.46,
+      "calls": 1664,
+      "tris": 1123966,
+      "p95Ms": 83.2,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "no-shadow",
+      "elapsed": 6022,
+      "frames": 130,
+      "fps": 21.42,
+      "sceneFps": 21.59,
+      "renderCpuMs": 39.35,
+      "sceneCpuMs": 38.72,
+      "updateBudgetMs": 6.96,
+      "calls": 1471,
+      "tris": 1044731,
+      "p95Ms": 50.1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-2",
+      "elapsed": 6007,
+      "frames": 90,
+      "fps": 14.82,
+      "sceneFps": 14.98,
+      "renderCpuMs": 59.34,
+      "sceneCpuMs": 58.71,
+      "updateBudgetMs": 7.4,
+      "calls": 1412,
+      "tris": 1025045,
+      "p95Ms": 83.2,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "half-pixels",
+      "elapsed": 6051,
+      "frames": 92,
+      "fps": 15.04,
+      "sceneFps": 15.2,
+      "renderCpuMs": 59.65,
+      "sceneCpuMs": 59.03,
+      "updateBudgetMs": 6.12,
+      "calls": 1430,
+      "tris": 1022816,
+      "p95Ms": 66.7,
+      "buffer": [
+        288,
+        537
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-3",
+      "elapsed": 6026,
+      "frames": 91,
+      "fps": 14.94,
+      "sceneFps": 15.1,
+      "renderCpuMs": 60.02,
+      "sceneCpuMs": 59.38,
+      "updateBudgetMs": 6.2,
+      "calls": 1414,
+      "tris": 1008704,
+      "p95Ms": 66.7,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "no-post",
+      "elapsed": 6045,
+      "frames": 93,
+      "fps": 15.22,
+      "sceneFps": 15.38,
+      "renderCpuMs": 58.74,
+      "sceneCpuMs": 58.74,
+      "updateBudgetMs": 6.26,
+      "calls": 1452,
+      "tris": 1033017,
+      "p95Ms": 66.7,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-4",
+      "elapsed": 6006,
+      "frames": 89,
+      "fps": 14.65,
+      "sceneFps": 14.82,
+      "renderCpuMs": 61.84,
+      "sceneCpuMs": 61.23,
+      "updateBudgetMs": 5.64,
+      "calls": 1533,
+      "tris": 1054122,
+      "p95Ms": 83.2,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "no-npc",
+      "elapsed": 6008,
+      "frames": 103,
+      "fps": 16.98,
+      "sceneFps": 17.14,
+      "renderCpuMs": 51.31,
+      "sceneCpuMs": 50.7,
+      "updateBudgetMs": 7.02,
+      "calls": 1150,
+      "tris": 905233,
+      "p95Ms": 66.7,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-5",
+      "elapsed": 6002,
+      "frames": 90,
+      "fps": 14.83,
+      "sceneFps": 14.99,
+      "renderCpuMs": 62.17,
+      "sceneCpuMs": 61.56,
+      "updateBudgetMs": 4.52,
+      "calls": 1616,
+      "tris": 1089471,
+      "p95Ms": 83.2,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "no-bloom",
+      "elapsed": 6006,
+      "frames": 90,
+      "fps": 14.82,
+      "sceneFps": 14.99,
+      "renderCpuMs": 61.75,
+      "sceneCpuMs": 61.62,
+      "updateBudgetMs": 4.98,
+      "calls": 1586,
+      "tris": 1075600,
+      "p95Ms": 83.1,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "baseline-6",
+      "elapsed": 6035,
+      "frames": 89,
+      "fps": 14.58,
+      "sceneFps": 14.75,
+      "renderCpuMs": 63.51,
+      "sceneCpuMs": 62.9,
+      "updateBudgetMs": 4.29,
+      "calls": 1625,
+      "tris": 1093923,
+      "p95Ms": 83.3,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    },
+    {
+      "name": "no-shadow-no-bloom",
+      "elapsed": 6005,
+      "frames": 123,
+      "fps": 20.32,
+      "sceneFps": 20.48,
+      "renderCpuMs": 40.97,
+      "sceneCpuMs": 40.83,
+      "updateBudgetMs": 7.86,
+      "calls": 1726,
+      "tris": 1130647,
+      "p95Ms": 66.6,
+      "buffer": [
+        576,
+        1074
+      ],
+      "hidden": false
+    }
+  ]
+}

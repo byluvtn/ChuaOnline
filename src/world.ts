@@ -6,7 +6,7 @@ import { fitModel, loadModel } from './models';
 import { paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
 import { glowTexture, grassTexture, petalTexture, signTexture, signTexture2Lines, stoneTexture } from './textures';
 import { geo, outlined, toon } from './toon';
-import { blocked, LAKE, HALL, PLAZA } from './layout';
+import { blocked, LAKE, HALL, LOTUS, RIVER, DUOC_SU } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
 import { buildSeatedBuddhaStatue } from './statue-scan';
 import { buildGarden } from './garden';
@@ -42,7 +42,7 @@ export interface World {
   sun: THREE.DirectionalLight;
   seats: Seat[];
   zoneAt(x: number, z: number): string | null;
-  resolveWater(p: { x: number; z: number }, onDeck?: boolean): void;
+  resolveWater(p: { x: number; z: number }, onDeck?: boolean, prev?: { x: number; z: number }): void;
   groundY(x: number, z: number): number;
   ringBell(): void;
   ringDrum(): void;
@@ -161,7 +161,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     mtnMats.push(mat);
     for (let i = 0; i < 14; i++) {
       const a = (i / 14) * Math.PI * 2 + layer * 0.2;
-      const r = 120 + layer * 22;
+      const r = 185 + layer * 22;
       const m = new THREE.Mesh(new THREE.ConeGeometry(18 + rngSeed(i + layer * 20) * 20, 26 + rngSeed(i * 3 + layer) * 26 - layer * 5, 6), mat);
       m.position.set(Math.cos(a) * r, 8, Math.sin(a) * r);
       m.scale.z = 0.7;
@@ -212,9 +212,9 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     tip.position.y = 0.4; st.add(tip); sticks.add(st);
   }
   altar.add(sticks);
-  altar.position.set(0, 0, -13);
+  altar.position.set(3.4, groundY(3.4, -20.5), -20.5);
   scene.add(altar);
-  colliders.push({ x: 0, z: -13, r: 1.9 });
+  colliders.push({ x: 3.4, z: -20.5, r: 1.9 });
 
   // ---- Trees (rounded canopies) + bushes + flowers (instanced) ----
   const trunkG = new THREE.CylinderGeometry(0.2, 0.34, 2.2, 8);
@@ -279,7 +279,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   // and keeps the post collider 0.13 m off the pillar collider; z=19,26 moved out to
   // x=±9.5 so the posts stand on dry land (the koi lake spans x ±4 at those z).
   // The lamps at (±9.5) hang at x=±8.5, 0.30 m (z=19) / 1.41 m (z=26) off the water.
-  for (const [x, z] of [[-4, 40], [4, 40], [-4, 33], [4, 33], [-9.5, 26], [9.5, 26], [-9.5, 19], [9.5, 19], [-4, 12], [4, 12], [-4, 5], [4, 5], [-4, -2], [4, -2], [-4, -11.3], [4, -11.3], [-4, -16], [4, -16]] as const) addLamp(x, z);
+  for (const [x, z] of [[-4, 40], [4, 40], [-4, 33], [4, 33], [-9.5, 26], [9.5, 26], [-15.5, 19], [15.5, 19], [-15.5, 12], [15.5, 12], [-9, 3], [9, 3], [-4, -2], [4, -2], [-4, -11.3], [4, -11.3], [-4, -16], [4, -16]] as const) addLamp(x, z);
   loadModel('hanging_lantern').then((base) => {
     if (!base) return;
     for (const p of lampSpots) {
@@ -334,12 +334,12 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   }
 
   // ---- Bảng ước nguyện gần sân plaza (prop trang trí, chưa có mechanic) ----
-  colliders.push({ x: 12, z: 6, r: 1.2 });
+  colliders.push({ x: 17, z: 6, r: 1.2 });
   loadModel('ema_rack').then((base) => {
     if (!base) return;
     const inst = base.clone(true);
     inst.rotation.y = -Math.PI / 2;
-    inst.position.set(12, 0, 6);
+    inst.position.set(17, 0, 6);
     scene.add(inst);
   });
 
@@ -355,7 +355,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   const RING_OFF: Record<number, number> = { 1: 0.092, 9: 0.096, 14: -0.036, 16: 0.048 };
   for (let i = 0; i < N; i++) {
     const a = (i / N) * Math.PI * 2 + (RING_OFF[i] ?? 0);
-    const x = Math.cos(a) * 12.5, z = 8 + Math.sin(a) * 12.5, y = 4.6 + Math.sin(i * 1.7) * 0.35;
+    const x = Math.cos(a) * 16, z = LAKE.z + Math.sin(a) * 12, y = 4.6 + Math.sin(i * 1.7) * 0.35;
     const m = new THREE.Mesh(redGeo, redBase); m.scale.set(1, 1.2, 1); m.position.set(x, y, z); scene.add(m); redLanterns.push(m);
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 8), goldM); cap.position.set(x, y + 0.43, z); scene.add(cap);
     const tassel = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.4, 6), lamb(0xe8b64a)); tassel.position.set(x, y - 0.55, z); tassel.rotation.x = Math.PI; scene.add(tassel);
@@ -419,7 +419,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   })();
 
   // ---- Effects: floating lanterns, incense smoke, bursts ----
-  const floaters: { m: THREE.Object3D; vy: number; life: number; max: number; light?: THREE.Sprite; fade?: number }[] = [];
+  const floaters: { m: THREE.Object3D; vy: number; life: number; max: number; light?: THREE.Sprite; fade?: number; river?: boolean; lotus?: boolean; offering?: boolean }[] = [];
   const smoke: { m: THREE.Sprite; life: number; vx: number }[] = [];
   const burst: { m: THREE.Sprite; v: THREE.Vector3; life: number }[] = [];
   const smokeMat = new THREE.SpriteMaterial({ map: glowTexture(), color: 0xdddddd, transparent: true, opacity: 0.5, depthWrite: false });
@@ -437,14 +437,19 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     }
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffa030, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
     spr.scale.setScalar(2.4); grp.add(spr);
-    grp.position.set(x + (Math.random() - 0.5) * 0.6, 1.6, z + (Math.random() - 0.5) * 0.6);
+    const river = Math.abs(x - RIVER.x) < 7 && z >= RIVER.z0 - 2 && z <= 20;
+    const lotus = Math.hypot((x - LOTUS.x) / 14, (z - LOTUS.z) / 12) < 1;
+    const offering = Math.hypot(x - DUOC_SU.x, z - DUOC_SU.z) < 8;
+    grp.scale.setScalar(river || lotus || offering ? 0.45 : 1);
+    grp.position.set(river ? RIVER.x : lotus ? LOTUS.x - 2 : x + (Math.random() - 0.5) * 0.6, river || lotus ? 0.18 : groundY(x, z) + 1.6, river ? Math.min(12, z + 1.8) : lotus ? LOTUS.z : z + (Math.random() - 0.5) * 0.6);
+    if (offering) grp.position.set(DUOC_SU.x + (Math.random() - 0.5) * 2.5, DUOC_SU.y + 1.2, DUOC_SU.z - 1.4);
     scene.add(grp);
-    floaters.push({ m: grp, vy: 0.9 + Math.random() * 0.5, life: 16, max: 16, light: spr });
+    floaters.push({ m: grp, vy: river || lotus || offering ? 0 : 0.9 + Math.random() * 0.5, life: 16, max: 16, light: spr, river, lotus, offering });
   };
   const spawnIncense = (x: number, z: number) => {
     for (let i = 0; i < 8; i++) {
       const s = new THREE.Sprite(smokeMat.clone());
-      s.position.set(x + (Math.random() - 0.5) * 0.5, 1.3 + i * 0.12, z + (Math.random() - 0.5) * 0.5);
+      s.position.set(x + (Math.random() - 0.5) * 0.5, groundY(x, z) + 1.3 + i * 0.12, z + (Math.random() - 0.5) * 0.5);
       s.scale.setScalar(0.35); scene.add(s);
       smoke.push({ m: s, life: 2.2 + Math.random() * 1.2, vx: (Math.random() - 0.5) * 0.3 });
     }
@@ -452,7 +457,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   const spawnBurst = (x: number, z: number, color = 0xffd36b) => {
     for (let i = 0; i < 14; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-      s.scale.setScalar(0.45); s.position.set(x, 1.5, z); scene.add(s);
+      s.scale.setScalar(0.45); s.position.set(x, groundY(x, z) + 1.5, z); scene.add(s);
       const a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 2;
       burst.push({ m: s, v: new THREE.Vector3(Math.cos(a) * sp, 2 + Math.random() * 2, Math.sin(a) * sp), life: 1.1 });
     }
@@ -477,7 +482,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffb04a, transparent: true, opacity: 1, depthWrite: false, blending: THREE.AdditiveBlending }));
     spr.scale.setScalar(3.2); grp.add(spr);
     grp.scale.setScalar(1.5);
-    grp.position.set(x + (Math.random() - 0.5) * 1.4, 2.2, z + (Math.random() - 0.5) * 1.4);
+    grp.position.set(x + (Math.random() - 0.5) * 1.4, groundY(x, z) + 2.2, z + (Math.random() - 0.5) * 1.4);
     scene.add(grp);
     floaters.push({ m: grp, vy: 0.35 + Math.random() * 0.05, life: 45, max: 45, fade: 5, light: spr });
   };
@@ -529,7 +534,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       const spread = isFinale ? 12 : 6;
       const px = x + (Math.random() - 0.5) * spread;
       const pz = z + (Math.random() - 0.5) * spread;
-      const y0 = 1.4, top = 4.8 + Math.random() * 0.6;
+      const base = groundY(px, pz), y0 = base + 1.4, top = base + 4.8 + Math.random() * 0.6;
       const spr = new THREE.Sprite(rocketMat(color));
       spr.scale.setScalar(0.7);
       spr.position.set(px, y0, pz);
@@ -679,7 +684,8 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     for (let i = floaters.length - 1; i >= 0; i--) {
       const f = floaters[i];
       f.m.position.y += f.vy * dt;
-      f.m.position.x += Math.sin(t + i) * 0.25 * dt;
+      if (!f.offering) f.m.position.x += Math.sin(t + i) * (f.river || f.lotus ? 0.035 : 0.25) * dt;
+      if (f.river) f.m.position.z = Math.min(17, f.m.position.z + dt * 0.3);
       f.m.rotation.y += dt * 0.5;
       f.life -= dt;
       if (f.light) (f.light.material as THREE.SpriteMaterial).opacity = Math.min(0.9, f.life / (f.fade ?? 3)) * (0.8 + Math.sin(t * 6 + i) * 0.2);

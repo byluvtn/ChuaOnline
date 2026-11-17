@@ -1,14 +1,11 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
+import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, TINH_THAT, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
+export * from '../shared/campus';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
 export const CORR = { x: 20.5, z0: -19, z1: -1, half: 2.6, y: 0.12 };
-/** Hồ cá koi nay nằm giữa khuôn viên, trên trục Bắc–Nam giữa sân chùa và tam quan. */
-export const LAKE = { x: 0, z: 22, a: 9, b: 6.5 };
-/** Cầu cong bắc qua hồ theo trục z (lối đi chính từ sân chùa ra cổng). */
-export const BRIDGE = { x: 0, z0: 14.2, z1: 29.8, hw: 1.15, peak: 1.4 };
-export const WALL = { x: 62, zN: -82, zS: 45, gate: 4.4 };
-export const BELL = { x: -34, z: -6 };
-export const DRUM = { x: 34, z: -6 };
+export const BELL = { x: 34, z: -6 };
+export const DRUM = { x: -34, z: -6 };
 export const DEN_TRINH = { x: 11, z: 39 };
 // Sàn Đền Trình: temple.ts:1130-1131, dtStone(4.4, 0.35, 3.6), mặt sàn y = 0.35
 export const DEN_TRINH_FLOOR = { x: 11, z: 39, hx: 1.8, hz: 2.2, y: 0.35 };
@@ -21,7 +18,7 @@ export const PATH_Z = 2;
 export const SIDE_X = 28;
 export const PAGODA = { x: 34, z: -15 };
 export const TAM_THE = { x: 0, z: -68 };
-export const BAO_THAP = { x: -30, z: -38 };
+export const BAO_THAP = { x: -34, z: -15 };
 /**
  * Nền Điện Tam Thế: mặt nền đi được cao 3.0 (hx/hz theo trục thế giới), sườn dốc thoải 1.2 quanh nền;
  * thang lớn giữa trục (|x| <= stairW) dốc đều từ y 0 ở zStart lên y 3.0 ở stairTop (world z của bậc trên cùng).
@@ -45,8 +42,8 @@ export const BAO_THAP_PLAT = {
 };
 export const NHA_TO = { x: 36, z: -68 };
 export const NHA_TO_PLAT = { x: NHA_TO.x, z: NHA_TO.z, hx: 6.0, hz: 4.25, y: 0.3, ramp: 0.8 };
-export const TANG_XA = { x: -41, z: -71 };
-export const TANG_XA_PLAT = { x: TANG_XA.x, z: TANG_XA.z, hx: 7.5, hz: 4.0, y: 0.25, ramp: 0.8 };
+export const TANG_XA = { x: -64, z: -74 };
+export const TANG_XA_PLAT = { x: TANG_XA.x, z: TANG_XA.z, hx: 6, hz: 4.0, y: 0.25, ramp: 0.8 };
 export const AM_CO = { x: 53, z: -75 };
 export const AM_CO_PLAT = { x: AM_CO.x, z: AM_CO.z, hx: 3.25, hz: 2.75, y: 0.35, ramp: 0.8 };
 export const DIEN_MAU = { x: 39, z: 10 };
@@ -58,9 +55,9 @@ export const THIEN_DUONG = { x: -47, z: -27 };
 export const THIEN_DUONG_PLAT = { x: THIEN_DUONG.x, z: THIEN_DUONG.z, hx: 6.5, hz: 4.5, y: 0.25, ramp: 0.8 };
 export const TRAI_DUONG = { x: -29, z: -61 };
 export const TRAI_DUONG_PLAT = { x: TRAI_DUONG.x, z: TRAI_DUONG.z, hx: 6.0, hz: 3.75, y: 0.25, ramp: 0.8 };
-export const VUON_THAP = { x: 49, z: -63 };
+export const VUON_THAP = { x: 50, z: -94 };
 export const VUON_THAP_PLAT = { x: VUON_THAP.x, z: VUON_THAP.z, hx: 7.0, hz: 5.0, y: 0.2, ramp: 0.8 };
-export const PHONG_CD = { x: -42, z: 35 };
+export const PHONG_CD = { x: 35, z: 33 };
 export const PHONG_CD_PLAT = { x: PHONG_CD.x, z: PHONG_CD.z, hx: 4.0, hz: 5.5, y: 0.25, ramp: 0.8 };
 /** Viện Khách Tăng (Tây) và Viện Tổ (Đông): hình chữ nhật có rào, cổng ở mặt Nam tại gateX. */
 export const VIEN_KT = { x0: -58, x1: -22, z0: -80, z1: -54, gateX: -30 };
@@ -70,13 +67,13 @@ export const PS = { x: 41, z: -31, w: 30, d: 22 };
 export const PS_POND = { x: 41, z: -31, a: 7.5, b: 5.5 };
 export const PS_PIER = { x0: 25.5, x1: 34, z: -31, hw: 1.5, y: 0.35, ramp: 1.3 };
 export const BUDDHA_YARD = { x: -28, z: 14 };
-/** Sân trước chùa (quảng trường nhỏ) — thu gọn để nhường chỗ cho hồ sen giữa khuôn viên. */
-export const PLAZA = { x: 0, z: 6, r: 8.4 };
-/** Vườn Thiền (góc Tây–Bắc), khu nghỉ bóng cây (Đông–Nam) và hai bồn hoa bên bờ hồ. */
+/** Southern forecourt reference only; the circular plaza has been removed. */
+export const PLAZA = { x: 0, z: 1, r: 0 };
+/** Meditation garden, south-west rest area and the two retained flower beds. */
 export const ZEN = { x: -34, z: -26 };
 // Vườn cát thiền: zen_sand_garden.glb, đế 3.0x2.0 m, scale 2.0, mặt cát GLB y 0.34 x 2 = 0.68
 export const ZEN_GARDEN = { x: ZEN.x, z: ZEN.z, hx: 3.0, hz: 2.0, ry: 0.2, y: 0.68 };
-export const REST = { x: 27, z: 31 };
+export const REST = { x: -35, z: 33 };
 export const FLOWER_BEDS = [{ x: 16.5, z: 23, a: 5, b: 3.5 }, { x: -16.5, z: 23, a: 5, b: 3.5 }];
 
 export function bridgeY(x: number, z: number) {
@@ -89,7 +86,11 @@ export function bridgeY(x: number, z: number) {
 
 /** Ground height under (x, z): hall platform, meditation decks, corridors and bridge are raised. */
 export function groundYBase(x: number, z: number) {
-  let y = 0;
+  let y = expansionGroundY(x, z);
+  if (Math.abs(x - DUOC_SU.x) <= DUOC_SU.hx && Math.abs(z - DUOC_SU.z) <= DUOC_SU.hz) y = Math.max(y, DUOC_SU.y);
+  for (const h of TINH_THAT) if (Math.abs(x - h.x) <= 1.6 && Math.abs(z - h.z) <= 1.25) y = Math.max(y, 0.16);
+  if (x >= -90 && x <= -66 && Math.abs(z - 2) <= 1.1) y = Math.max(y, 0.28);
+  if (x >= 60.5 && x <= 69.5 && RIVER.bridges.some(bz => Math.abs(z - bz) <= RIVER.bridgeHalf)) y = Math.max(y, 0.28);
   const dx = Math.max(Math.abs(x - HALL.x) - HALL.hx, 0), dz = Math.max(Math.abs(z - HALL.z) - HALL.hz, 0);
   // Chính Điện: ba bậc nền hình chữ nhật khớp mesh hall.ts (nền 1.35, tầng 2 cao 0.9, tầng 1 cao 0.45).
   const hm = Math.max(dx, dz);
@@ -178,6 +179,10 @@ export function inLake(x: number, z: number, pad = 0) {
   return ((x - LAKE.x) / a) ** 2 + ((z - LAKE.z) / b) ** 2 < 1;
 }
 
+export function onPsPier(x: number, z: number) {
+  return x >= PS_PIER.x0 && x <= PS_PIER.x1 && Math.abs(z - PS_PIER.z) <= PS_PIER.hw;
+}
+
 export function inPsPond(x: number, z: number, pad = 0) {
   const a = PS_POND.a + pad, b = PS_POND.b + pad;
   return ((x - PS_POND.x) / a) ** 2 + ((z - PS_POND.z) / b) ** 2 < 1;
@@ -186,6 +191,9 @@ export function inPsPond(x: number, z: number, pad = 0) {
 /** Areas where scenery (trees, flowers) must not spawn. */
 export function blocked(x: number, z: number) {
   const ax = Math.abs(x);
+  // Expansion scenery is authored per landmark; keep random scatter off its paths and water.
+  if (ax > 60 || z < -80) return true;
+  if (ax < 7 && z >= 25) return true;
   if (ax < 6 && z > -22) return true;
   if (Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 3.5) return true;
   if (ax < HALL.hx + 5 && Math.abs(z - HALL.z) < HALL.hz + 5) return true;
@@ -196,7 +204,7 @@ export function blocked(x: number, z: number) {
   if (Math.hypot(x - DEN_TRINH.x, z - DEN_TRINH.z) < 5.5) return true;
   if (Math.hypot(x - PAGODA.x, z - PAGODA.z) < 6) return true;
   if (Math.hypot(x - BUDDHA_YARD.x, z - BUDDHA_YARD.z) < 9) return true;
-  if (Math.abs(z - PATH_Z) < 2.5 && ax < 40) return true;
+  if (Math.abs(z - PATH_Z) < 2.5) return true;
   if (Math.abs(x + SIDE_X) < 2.5 && z > -32 && z < PATH_Z + 2.5) return true;
   if (Math.abs(x - SIDE_X) < 2.5 && z > PATH_Z - 2.5 && z < QUAN.z + 2.5) return true;
   if (Math.hypot(x - ZEN.x, z - ZEN.z) < 10.5 || (x < ZEN.x + 11 && z < ZEN.z - 11) || (x < ZEN.x - 9 && z < ZEN.z + 11)) return true;
@@ -229,25 +237,24 @@ export function blocked(x: number, z: number) {
   if (Math.abs(x - BAO_THAP.x) < 2.2 && z > BAO_THAP.z + BAO_THAP_PLAT.step1.z0 - 1 && z < BAO_THAP.z + BAO_THAP_PLAT.step2.z1 + 1) return true;
   if (x < -27 && x > -41 && Math.abs(z + 27) < 2.2) return true;
   if (x > 27 && x < 36 && Math.abs(z - DIEN_MAU.z) < 2.2) return true;
-  // Lối tới cửa Đông của Phòng ghi công đức (cửa tại x = -38.5, z = 35).
-  if (x > -39 && x < -33 && Math.abs(z - PHONG_CD.z) < 2.2) return true;
+  if (x > PHONG_CD.x + 3 && x < PHONG_CD.x + 9 && Math.abs(z - PHONG_CD.z) < 2.2) return true;
   return false;
 }
 
 /** Keep walkers inside the compound walls (the south gate stays open). */
 export function clampToCompound(p: { x: number; z: number }) {
-  p.x = Math.max(-WALL.x + 0.8, Math.min(WALL.x - 0.8, p.x));
-  p.z = Math.max(WALL.zN + 0.8, Math.min(WALL.zS + 13, p.z));
-  if (Math.abs(p.x) > WALL.gate && p.z > WALL.zS - 0.8 && p.z < WALL.zS + 0.8) p.z = p.z < WALL.zS ? WALL.zS - 0.8 : WALL.zS + 0.8;
+  clampCampus(p);
 }
 
 /** Thành cầu: giữ người đi trên mặt cầu, chặn bước ngang qua thành. Trả về true nếu đang trên mặt cầu. */
 export function resolveBridge(p: { x: number; z: number }, prev: { x: number; z: number }): boolean {
   const inZ = (z: number) => z >= BRIDGE.z0 && z <= BRIDGE.z1;
   if (!inZ(p.z)) return false;
+  // Both landings meet the transverse paths; do not treat them as bridge rails.
+  if (p.z <= BRIDGE.z0 + 0.35 || p.z >= BRIDGE.z1 - 0.35) return false;
   const dx = p.x - BRIDGE.x;
   const lim = BRIDGE.hw - 0.15;
-  const wasOn = inZ(prev.z) && Math.abs(prev.x - BRIDGE.x) <= BRIDGE.hw + 0.15;
+  const wasOn = inZ(prev.z) && Math.abs(prev.x - BRIDGE.x) <= BRIDGE.hw + 0.15 && Math.abs(dx) < BRIDGE.hw + 1;
   const enteringFromEnd = !inZ(prev.z) && Math.abs(dx) <= BRIDGE.hw + 0.15;
   if (wasOn || enteringFromEnd) {
     p.x = BRIDGE.x + Math.max(-lim, Math.min(lim, dx));
@@ -258,7 +265,8 @@ export function resolveBridge(p: { x: number; z: number }, prev: { x: number; z:
 }
 
 /** Keep walkers out of the lake except on the bridge deck. */
-export function resolveWater(p: { x: number; z: number }, onDeck = true) {
+export function resolveWater(p: { x: number; z: number }, onDeck = true, prev?: { x: number; z: number }) {
+  resolveExpansionWater(p, prev);
   if (inPsPond(p.x, p.z) && !(p.x >= PS_PIER.x0 - 0.2 && p.x <= PS_PIER.x1 + 0.2 && Math.abs(p.z - PS_PIER.z) <= PS_PIER.hw + 0.2)) {
     const ux = (p.x - PS_POND.x) / PS_POND.a, uz = (p.z - PS_POND.z) / PS_POND.b;
     const l = Math.hypot(ux, uz) || 1;

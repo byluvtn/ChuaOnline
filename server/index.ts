@@ -9,7 +9,7 @@ import {
   type StatKey, type StatsAck, type StatsState,
 } from '../shared/game.js';
 import {
-  MAP_HALF, MAP_Z_MIN, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
+  MAP_HALF, MAP_Z_MIN, MAP_Z_MAX, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
 } from '../shared/types.js';
 import { meritBoost } from '../shared/time.js';
 import * as db from './db.js';
@@ -22,6 +22,7 @@ import {
   FIREWORKS, SKY_LANTERN_COST, SKY_LANTERN_MERIT, SKY_LANTERN_COOLDOWN_MS, SKY_LANTERN_WISH_MAX,
 } from '../shared/game.js';
 import type { FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
+import { clampCampus, expansionWaterBlocked, resolveExpansionWater } from '../shared/campus.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
 // unhandledRejection: chỉ log và tiếp tục chạy (game server phải sống vì người chơi).
@@ -283,7 +284,7 @@ async function advanceNpcQuest(
   } else if (q.event !== ev) {
     return false;
   }
-  if (['bow', 'incense', 'chant', 'sutra', 'visit'].includes(ev) && !inZone((q as any).zone, s.state.x, s.state.z)) return false;
+  if (['bow', 'incense', 'chant', 'sutra', 'visit', 'lantern'].includes(ev) && !inZone((q as any).zone, s.state.x, s.state.z)) return false;
   await db.bumpQuest(s.pid, q.id, q.target, by);
   invalidateQuestCache(s.pid);
   return true;
@@ -460,11 +461,14 @@ io.on('connection', (socket) => {
     const resume = typeof p?.resume === 'string' && p.resume.length >= 8 && p.resume.length <= 64 ? p.resume : undefined;
     const from = saved && resume !== undefined && resume === saved.resume
       && Date.now() - saved.at < RESUME_GRACE_MS && room === saved.room ? saved : undefined;
+    const spawn = { x: from ? from.x : (Math.random() - 0.5) * 6, z: from ? from.z : 28 + Math.random() * 3 };
+    clampCampus(spawn);
+    resolveExpansionWater(spawn);
 
     const state: PlayerState = {
       id: socket.id, name, outfit, color, accessory: prof.accessory,
-      x: from ? Math.max(-MAP_HALF, Math.min(MAP_HALF, from.x)) : (Math.random() - 0.5) * 6,
-      z: from ? Math.max(MAP_Z_MIN, Math.min(MAP_HALF, from.z)) : 8 + Math.random() * 3,
+      x: spawn.x,
+      z: spawn.z,
       ry: from ? from.ry : Math.PI, anim: 'idle', merit: prof.merit,
       title: prof.title ?? defaultTitle(prof.titles),
       pid,
@@ -502,8 +506,11 @@ io.on('connection', (socket) => {
   socket.on('move', async (m: { x: number; z: number; ry: number; anim: Anim }) => {
     const s = me();
     if (!s || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
-    s.state.x = Math.max(-MAP_HALF, Math.min(MAP_HALF, m.x));
-    s.state.z = Math.max(MAP_Z_MIN, Math.min(MAP_HALF, m.z));
+    const next = { x: Math.max(-MAP_HALF, Math.min(MAP_HALF, m.x)), z: Math.max(MAP_Z_MIN, Math.min(MAP_Z_MAX, m.z)) };
+    clampCampus(next);
+    if (expansionWaterBlocked(next.x, next.z)) return;
+    s.state.x = next.x;
+    s.state.z = next.z;
     s.state.ry = Number.isFinite(m.ry) ? m.ry : 0;
     if (ANIMS.includes(m.anim)) s.state.anim = m.anim;
     const now = Date.now();
@@ -560,7 +567,7 @@ io.on('connection', (socket) => {
     s.state.anim = kind;
     io.to(s.room).emit('player:action', { id: s.state.id, kind });
     if (kind === 'lantern') {
-      const l: Lantern = { id: seq++, pid: s.pid, name: s.state.name, wish: clean(wish, 120) || 'Cầu bình an', t: now };
+      const l: Lantern = { id: seq++, pid: s.pid, name: s.state.name, wish: clean(wish, 120) || 'Cầu bình an', t: now, x: s.state.x, z: s.state.z };
       const arr = roomLanterns.get(s.room) ?? [];
       arr.push(l);
       if (arr.length > 200) arr.shift();

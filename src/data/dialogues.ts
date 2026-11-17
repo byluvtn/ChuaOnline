@@ -45,6 +45,16 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questReminder: 'Con lạy Phật ở Chính Điện chưa? Xong rồi quay lại đây gặp thầy nhé.',
     questDone: 'Tốt lắm. Tâm con đã tĩnh hơn rồi đấy, cứ giữ như vậy mà tu tập.',
     questLines: {
+      nq_ngoc_pilgrimage: {
+        offer: 'Con đi vòng qua Điện Tam Thế, theo thang 299 bậc lên Chùa Ngọc rồi quay về gặp thầy nhé.',
+        reminder: 'Chùa Ngọc ở trên đồi phía Bắc, sau Điện Tam Thế. Con đi thong thả thôi.',
+        done: 'Con đã tới đỉnh đồi rồi. Ngồi nghỉ một chút, giữ tâm an nhé.',
+      },
+      nq_duocsu_prayer: {
+        offer: 'Con sang Điện Dược Sư phía Đông, dâng một ngọn đèn cầu bình an rồi về gặp thầy.',
+        reminder: 'Đến Điện Dược Sư, con bấm Dâng đèn cầu an trước bàn thờ nhé.',
+        done: 'Ngọn đèn đã được dâng lên. Thầy chúc con và gia đình bình an.',
+      },
       nq_bow_tamthe: {
         offer: 'Con đảnh lễ Tam Thế ba lạy giúp thầy nhé, lòng có thành thì Phật mới chứng.',
         reminder: 'Ba lạy trước điện Tam Thế con đã lạy xong chưa? Xong rồi quay lại gặp thầy nhé.',
@@ -305,6 +315,18 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     questOffer: 'Vườn Thiền lá phong với lá tre rụng đầy lối đi, thí chủ giúp con quét ba chỗ dưới cây phong và khóm tre nhé.',
     questReminder: 'Còn đống lá dưới cây phong với khóm tre đấy, thí chủ quét nốt giúp con nhé.',
     questDone: 'Vườn sạch rồi, lối đi thông thoáng hẳn! Cảm ơn thí chủ nhiều lắm.',
+    questLines: {
+      nq_bamboo_walk: {
+        offer: 'Thí chủ sang rừng trúc phía Đông, đi một đoạn đường thiền hành rồi quay lại đây nhé.',
+        reminder: 'Đi qua cầu sông Đông trên đường ngang, rồi theo lối đá vào rừng trúc.',
+        done: 'Đi giữa rừng trúc chắc mát lắm. Cảm ơn thí chủ đã ghé kể con nghe.',
+      },
+      nq_river_walk: {
+        offer: 'Thí chủ đi dạo trên bờ Đông sông, tới đoạn giữa rừng trúc và Điện Dược Sư nhé.',
+        reminder: 'Đường bờ sông nằm phía Đông dòng nước; đừng đi xuống lòng sông nhé.',
+        done: 'Nghe nước chảy, đi chậm một chút là lòng nhẹ hơn rồi.',
+      },
+    },
     smallTalk: [
       'Cây phong trong vườn này mùa thu lá đỏ rực, đẹp ơi là đẹp.',
       'Khóm tre sau vườn là do sư ông trồng, gió thổi nghe xào xạc thích lắm.',

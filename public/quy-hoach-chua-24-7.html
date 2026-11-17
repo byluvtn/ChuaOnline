@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chùa Online · Bản đồ mở rộng 24/7</title>
+<style>
+:root{--ink:#233f41;--muted:#596f70;--paper:#edf3ef;--line:#c6d5cd;--new:#18716d;--roof:#945247;--gold:#ae8336}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 "Segoe UI",Arial,sans-serif}header{padding:24px 32px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:24px;background:#f7faf7}h1{font:normal 32px/1.15 Georgia,"Times New Roman",serif;margin:5px 0 8px}p{margin:8px 0}.eyebrow{font:11px Consolas,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--new)}.status{font-size:12px;max-width:270px;border-left:3px solid var(--gold);padding-left:14px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;max-width:1800px;margin:auto}.drawing{min-width:0;padding:18px 22px}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}button,.link{font:inherit;font-size:12px;border:1px solid #a8bdb4;background:#f8fbf8;color:var(--ink);padding:7px 11px;cursor:pointer;border-radius:3px}button:hover,.link:hover{background:#ddebe4}button:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:3px solid #d39b28;outline-offset:3px}.toggle{font-size:12px;margin-left:auto}input{accent-color:var(--new)}.viewport{background:#fcfdf9;border:1px solid var(--line);overflow:auto;max-height:calc(100vh - 220px);min-height:420px}svg{display:block;width:100%;height:auto;min-width:720px}.caption{font-size:12px;color:var(--muted);margin-top:10px}aside{border-left:1px solid var(--line);padding:24px 22px;background:#f5f8f3}aside h2{font:normal 24px Georgia,serif;margin:10px 0}.coord{font:12px Consolas,monospace;color:var(--new);padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.legend{display:grid;gap:8px;margin:18px 0;font-size:12px}.legend span{display:flex;align-items:center;gap:10px}.swatch{width:26px;height:12px;display:inline-block;background:#945247}.new{background:#d9ebe0;border:1px solid #18716d}.water{background:#b9dae1;border:1px solid #5c929c}.old{height:0;border-top:2px dashed #8a9290;background:none}.pin-key{background:#18716d;border-radius:50%;width:18px;height:18px;color:white;text-align:center;font:11px/18px Arial}.places{display:grid;gap:4px;margin-top:12px}.places button{text-align:left;border:0;background:none;padding:6px 0;border-bottom:1px solid #dbe3dc}.places button.active{font-weight:bold;color:var(--new)}details{font-size:12px;border-top:1px solid var(--line);margin-top:20px;padding-top:12px}summary{cursor:pointer;font-weight:600}.note{font-size:12px;color:var(--muted)}.detail{min-height:230px}footer{font-size:11px;padding:14px 32px;color:var(--muted);border-top:1px solid var(--line)}
+@media(max-width:850px){header{padding:20px;display:block}h1{font-size:28px}.status{max-width:none;margin-top:15px}.layout{display:block}.drawing{padding:12px}.viewport{max-height:75vh;min-height:350px}aside{border-left:0;border-top:1px solid var(--line);padding:20px}.detail{min-height:0}.places{grid-template-columns:1fr 1fr;gap:0 16px}.toggle{margin-left:0}footer{padding:14px 20px}}
+@media print{header,aside,.toolbar,footer,.caption{display:none}.layout{display:block}.drawing{padding:0}.viewport{border:0;max-height:none;overflow:visible}svg{width:100%;min-width:0}@page{size:A3 portrait;margin:8mm}}
+</style>
+</head>
+<body>
+<header><div><div class="eyebrow">Chùa Online / Quy hoạch 17.11.2026</div><h1>Bản đồ mở rộng chùa 24/7</h1><p>Mặt bằng theo tọa độ game · Bắc ở trên · 1 đơn vị = 1 mét</p></div><div class="status"><strong>PHƯƠNG ÁN THIẾT KẾ</strong><br>Chưa thi công trong game. Bản vẽ thể hiện cả các lần dời phong thủy, chưa phải hiện trạng.</div></header>
+<main class="layout">
+<section class="drawing" aria-label="Bản vẽ mặt bằng">
+<div class="toolbar"><button id="out" aria-label="Thu nhỏ">−</button><button id="in" aria-label="Phóng to">+</button><button id="fit">Vừa khung</button><button id="download">Tải bản SVG</button><button id="print">In bản đồ</button><label class="toggle"><input id="old" type="checkbox" checked> Ranh cũ / vị trí dời</label></div>
+<div class="viewport" id="viewport"><svg id="map" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1240" role="img" aria-labelledby="map-title map-desc"><title id="map-title">Mặt bằng quy hoạch mở rộng chùa 24/7</title><desc id="map-desc">Khuôn viên 184 × 167 mét, tường x ±92, Bắc z −122, Nam z 45. 11 hạng mục mở rộng, các vị trí phong thủy mới và ranh khuôn viên cũ.</desc></svg></div>
+<div class="caption">Bấm ghim 1–11 hoặc tên trong danh sách để xem tọa độ. Có thể cuộn ngang trên điện thoại; bản SVG tải về giữ nguyên độ nét.</div>
+</section>
+<aside><div class="eyebrow">Sổ chú giải mặt bằng</div><div class="detail" aria-live="polite"><h2 id="detail-title">184 × 167 mét</h2><div class="coord" id="detail-coord">x −92…92 · z −122…45</div><p id="detail-text">Tây dành cho đời sống tăng đoàn và hồ sen. Đông là thờ tự, rừng trúc và nghỉ ngơi. Bắc là núi thiêng, kết thúc trục tại Chùa Ngọc.</p></div>
+<div class="legend"><span><i class="swatch"></i>Công trình giữ / dời theo quy hoạch</span><span><i class="swatch new"></i>Vùng mở rộng, chưa thi công</span><span><i class="swatch water"></i>Mặt nước / cầu bắc qua</span><span><i class="swatch old"></i>Ranh cũ và vị trí giải phóng</span><span><i class="pin-key">1</i>Hạng mục mới, bấm xem chi tiết</span></div>
+<div class="eyebrow">11 hạng mục mở rộng</div><nav class="places" id="places" aria-label="Danh sách hạng mục"></nav>
+<details open><summary>Lưu ý khi đọc bản vẽ</summary><p>Tọa độ, vùng đất và kích thước đã chốt được giữ đúng. Dáng mái, cây, đường nhánh và diện tích công trình chưa có kích thước là ký hiệu minh họa, không phải model 3D.</p><p>Đã vẽ đủ cầu hồ sen Tây tại z = 2, cầu sông Đông tại z = −38 và z = 2. Không có cổng Bắc.</p><p>Thang Ngọc có 299 bậc, 3 đợt 99 + 100 + 100; vạch trên mặt bằng chỉ là ký hiệu. Bề rộng ~4,2 m theo bàn giao; thang Tam Thế hiện tại thực tế rộng 8,4 m theo code (stairW là nửa rộng).</p><p>Thủy Đình giữ (−6,7; 23) sau khi hồ dời: phần bến sẽ nằm sát / ngoài đường bờ mới. Cần xử lý nối bến khi thi công, không tự dời trong bản này.</p></details>
+</aside></main>
+<footer>Nguồn: bàn giao thiết kế ngày 17.11.2026 + đối chiếu src/layout.ts tại 3e28376. Đây là bản vẽ độc lập, không thay đổi game.</footer>
+<script>
+const NS='http://www.w3.org/2000/svg',svg=document.getElementById('map');
+const X=x=>700+x*6,Y=z=>780+z*6;
+function el(tag,attrs={},parent=svg){const n=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);parent.appendChild(n);return n}
+function text(x,y,s,attrs={},parent=svg){const t=el('text',{x,y,...attrs},parent);t.textContent=s;return t}
+function rect(x,z,w,d,attrs={},parent=svg){return el('rect',{x:X(x-w/2),y:Y(z-d/2),width:w*6,height:d*6,...attrs},parent)}
+function line(points,attrs={},parent=svg){return el('polyline',{points:points.map(([x,z])=>`${X(x)},${Y(z)}`).join(' '),fill:'none',...attrs},parent)}
+function oval(x,z,a,b,attrs={},parent=svg){return el('ellipse',{cx:X(x),cy:Y(z),rx:a*6,ry:b*6,...attrs},parent)}
+function label(x,z,s,small=false,parent=svg){return text(X(x),Y(z),s,{'text-anchor':'middle','font-size':small?11:13,'font-weight':small?400:600,fill:'#294c49',stroke:'#fcfdf9','stroke-width':3,'paint-order':'stroke','stroke-linejoin':'round'},parent)}
+function roof(x,z,w,d,name,parent=svg){rect(x,z,w+1,d+1,{fill:'#d6d0bb',stroke:'#aaac91','stroke-width':1},parent);rect(x,z,w,d,{fill:'#ad6c5e',stroke:'#734c43','stroke-width':1.2},parent);line([[x-w/2,z-d/2],[x,z],[x+w/2,z-d/2]],{stroke:'#d7a18a','stroke-width':1},parent);line([[x-w/2,z+d/2],[x,z],[x+w/2,z+d/2]],{stroke:'#d7a18a','stroke-width':1},parent);line([[x-w*.35,z],[x+w*.35,z]],{stroke:'#734c43','stroke-width':2},parent);if(name)label(x,z+d/2+2.5,name,false,parent)}
+function tree(x,z,r=1.6,p=svg){oval(x+.4,z+.4,r,r,{fill:'#203f31',opacity:.1},p);oval(x,z,r,r,{fill:'#88a783',stroke:'#507c64','stroke-width':.7},p);line([[x-.6,z+.5],[x+.5,z-.6]],{stroke:'#b7caaa','stroke-width':.7},p)}
+function water(x,z,a,b,p=svg){oval(x,z,a,b,{fill:'url(#water)',stroke:'#759ba0','stroke-width':1.5},p);oval(x,z,a-.5,b-.5,{fill:'none',stroke:'#e4f1e9','stroke-width':1},p)}
+function bridge(x,z,w,d,p=svg){rect(x,z,w,d,{fill:'url(#deck)',stroke:'#8a876d','stroke-width':1},p);line([[x-w/2,z-d/2],[x-w/2,z+d/2]],{stroke:'#6a7164','stroke-width':2},p);line([[x+w/2,z-d/2],[x+w/2,z+d/2]],{stroke:'#6a7164','stroke-width':2},p)}
+const defs=el('defs');
+const style=el('style',{},defs);style.textContent='text{font-family:Segoe UI,Arial,sans-serif}.pin{cursor:pointer}.pin:hover circle,.pin:focus circle{fill:#ad8336;stroke:#233f41}.pin.selected circle{fill:#ad8336}.old-layer{pointer-events:none}';
+const pattern=el('pattern',{id:'water',width:24,height:15,patternUnits:'userSpaceOnUse'},defs);el('rect',{width:24,height:15,fill:'#bddce0'},pattern);el('path',{d:'M0 8 Q6 4 12 8 T24 8',fill:'none',stroke:'#9fc8cf','stroke-width':.7},pattern);
+const deck=el('pattern',{id:'deck',width:12,height:6,patternUnits:'userSpaceOnUse'},defs);el('rect',{width:12,height:6,fill:'#e7dfc9'},deck);el('path',{d:'M0 5.5H12',stroke:'#b3a98d','stroke-width':.6},deck);
+el('rect',{width:1400,height:1240,fill:'#fcfdf9'});
+text(85,31,'CHÙA ONLINE / MẶT BẰNG QUY HOẠCH',{'font-size':13,'letter-spacing':2,fill:'#294c49'});
+text(1315,31,'17.11.2026 · CHƯA THI CÔNG',{'font-size':11,'text-anchor':'end',fill:'#7b7060'});
+rect(0,-38.5,184,167,{fill:'#edf2e3'});
+rect(-77,-38.5,30,167,{fill:'#e3ecdc'});rect(77,-38.5,30,167,{fill:'#e3ecdc'});rect(0,-102,124,40,{fill:'#e3ecdc'});
+// Metric grid uses the same scale on both axes.
+const grid=el('g',{stroke:'#a6b5a5','stroke-width':.5,opacity:.35});
+for(let x=-90;x<=90;x+=10)line([[x,-122],[x,45]],{},grid);
+for(let z=-120;z<=40;z+=10)line([[-92,z],[92,z]],{},grid);
+for(let x=-80;x<=80;x+=20)text(X(x),Y(45)+33,String(x),{'font-size':11,'text-anchor':'middle',fill:'#6d8077'});
+for(let z=-120;z<=40;z+=20)text(X(-92)-14,Y(z)+4,String(z),{'font-size':11,'text-anchor':'end',fill:'#6d8077'});
+text(X(92),Y(45)+33,'x (m)',{'font-size':11,fill:'#6d8077'});text(X(-92)-18,Y(-122)-12,'z (m)',{'font-size':11,'text-anchor':'end',fill:'#6d8077'});
+// Hills behind Tam The: contours are illustrative, summit coordinates are fixed.
+for(const [w,d] of [[75,35],[61,29],[47,22],[30,14]])oval(0,-104,w/2,d/2,{fill:'none',stroke:'#aabd98','stroke-width':1.3});
+for(let x=-87;x<=87;x+=5)tree(x,-119,1.8);
+for(const side of [-1,1])for(let k=0;k<23;k++){let x=side*(13+(k*7)%26),z=-88-(k*11)%29;tree(x,z,1.25+(k%3)*.3)}
+// Connecting routes are indicative; mandatory water crossings are drawn above water.
+const roads=el('g',{stroke:'#dbd3b9','stroke-width':15,'stroke-linecap':'round','stroke-linejoin':'round'});
+line([[-92,2],[92,2]],{},roads);line([[0,45],[0,26]],{},roads);line([[0,2],[0,-21]],{},roads);line([[-21,-21],[-21,-48],[21,-48],[21,-21]],{},roads);line([[-59,33],[-59,-81],[0,-81],[59,-81],[59,33]],{},roads);line([[-59,-45],[59,-45]],{},roads);
+line([[-59,-66],[-64,-66]],{},roads);line([[-59,-42],[-76,-42]],{},roads);line([[59,-38],[77,-38]],{},roads);line([[80,-38],[80,-22]],{},roads);line([[80,2],[80,28]],{},roads);
+line([[-26,-82],[-31,-89],[-22,-96],[-26,-104]],{'stroke-width':9},roads);line([[26,-82],[32,-91],[21,-100],[26,-108],[7,-112]],{'stroke-width':9},roads);line([[50,-82],[50,-95]],{'stroke-width':9},roads);
+// West garden, unified monastic quarters and lotus lake.
+rect(-76,-42.5,24,25,{fill:'#cbdcaa',stroke:'#839b71','stroke-dasharray':'5 3'});
+for(let k=0;k<6;k++)rect(-80+k*2.6,-45,1.5,12,{fill:k%2?'#91ae73':'#7f9f69',rx:2});
+water(-70,-35,3.2,2.2);roof(-84,-34,4,3,'Kho',svg);label(-76,-57,'Vườn rau + ao sen');
+rect(-64,-70,12,16,{fill:'#d7e6ce',stroke:'#769475','stroke-dasharray':'4 3'});roof(-64,-74,10,5,'');
+for(const z of [-68,-64])roof(-66,z,3.5,2.5,'');roof(-61.5,-66,3,3,'');
+label(-76,-77,'Tăng xá');label(-77,-74,'+ 3 tịnh thất',true);
+water(-78,-2,10,7);for(let k=0;k<10;k++)oval(-85+(k*3)%15,-6+(k*5)%9,.45,.3,{fill:'#7f9f83'});
+bridge(-78,2,22,2.2);roof(-70,5,3.4,3.4,'');label(-77,10,'Hồ sen Tây');label(-70,14,'Đình ngắm sen',true);
+// East river: x 63..67, ending at z 14 and joining the pond at (65,16).
+rect(65,-34,4,96,{fill:'url(#water)',stroke:'#759ba0','stroke-width':1.2});water(65,16,3,4);
+for(const z of [-38,2])bridge(65,z,9,2.4);
+line([[61,-80],[61,-41]],{stroke:'#c7bc9e','stroke-width':5});line([[69,-35],[69,-2]],{stroke:'#c7bc9e','stroke-width':5});
+text(X(65),Y(-58),'SÔNG ĐÔNG',{'font-size':11,'letter-spacing':1.2,'text-anchor':'middle',fill:'#396c77',transform:`rotate(-90 ${X(65)} ${Y(-58)})`});
+rect(80,-3,20,34,{fill:'#ccdfc3',stroke:'#80a38a','stroke-dasharray':'5 3'});
+el('path',{d:`M${X(75)} ${Y(8)} C${X(69)} ${Y(-4)} ${X(90)} ${Y(-18)} ${X(86)} ${Y(3)} S${X(78)} ${Y(12)} ${X(75)} ${Y(8)}`,fill:'none',stroke:'#e6dec6','stroke-width':8});
+for(let k=0;k<35;k++){const x=72+(k*7)%17,z=-18+(k*11)%30;line([[x,z-.7],[x,z+.7]],{stroke:'#54856a','stroke-width':2});oval(x,z-.8,.6,.35,{fill:'#77a47e'})}
+label(80,-23,'Rừng trúc');label(80,18,'Đường thiền hành',true);
+roof(77,-38,12,9,'Điện Dược Sư');label(77,-44.5,'12 × 9 m',true);
+rect(79,27.5,22,25,{fill:'#d4e1bc',stroke:'#99af85','stroke-dasharray':'5 3'});
+for(let k=0;k<18;k++)oval(70+(k*5)%19,21+(k*7)%17,1.2,.65,{fill:['#d29a9d','#d6bf7b','#acb8cf'][k%3]});
+oval(79,27,4.8,3,{fill:'#a8c18c',stroke:'#91ad7e'});label(79,43,'Vườn hoa + đồi cỏ');label(70,22,'Ao cuối sông',true);
+// Northern expansion: one cemetery, cave and summit.
+rect(50,-94,20,24,{fill:'#d7dfce',stroke:'#849b7d','stroke-dasharray':'5 3'});
+for(let k=0;k<8;k++){const x=44+(k%3)*5,z=-102+Math.floor(k/3)*7;rect(x,z,1.6,1.6,{fill:'#a5b2a0',stroke:'#647c6d'});rect(x,z,1,1,{fill:'#d4d9c6',stroke:'#647c6d'})}tree(56,-87,2.7);label(50,-108,'Vườn Tháp mới');
+oval(-26,-104,5.5,4,{fill:'#adb6a8',stroke:'#7c8d81'});oval(-26,-102,2.5,1.6,{fill:'#53695e'});label(-26,-109.5,'Động thiền');
+roof(-29,-90,3,2.6,'');roof(30,-96,3,2.6,'');label(-39,-87,'Nghỉ chân',true);label(35,-93,'Nghỉ chân',true);label(-24,-115,'Rừng thông',true);label(25,-115,'Đường núi',true);
+rect(0,-97,4.2,30,{fill:'url(#deck)',stroke:'#9a9f89'});
+for(const z of [-92,-102])rect(0,z,6,1,{fill:'#e8e0c8',stroke:'#a4a98f'});
+for(const z of [-92,-102])for(const x of [-4,4])oval(x,z,.4,.4,{fill:'#a5ae94'});
+rect(0,-112,9,8,{fill:'#d8dcd0',stroke:'#829184'});for(const w of [6,4,2])rect(0,-112,w,w,{fill:'#a4b5aa',stroke:'#546c65'});
+label(0,-119,'CHÙA NGỌC');label(0,-116,'Đỉnh (0; −112) · nền ~6 m',true);
+label(10,-97,'299 bậc',true);label(11,-94,'99 / 100 / 100',true);
+// Existing grounds, with the approved map-only relocations.
+rect(-40,-67,36,26,{fill:'none',stroke:'#b9aa88','stroke-width':2});rect(41,-67,34,26,{fill:'none',stroke:'#b9aa88','stroke-width':2});
+label(-40,-81,'VIỆN KHÁCH TĂNG');label(41,-81,'VIỆN TỔ');
+roof(-47,-61,12,8.5,'Nhà khách');roof(-29,-61,12,7.5,'Trai đường');roof(36,-68,12,8.5,'Nhà Tổ');roof(53,-75,6.5,5.5,'Am Cổ');
+rect(0,-68,40,24,{fill:'#dddcc9',stroke:'#a9af99'});roof(0,-68,34,17,'');label(0,-68.5,'ĐIỆN TAM THẾ');label(0,-65,'Nền +3,0 m',true);
+rect(0,-53.8,8.4,7.6,{fill:'url(#deck)',stroke:'#a9af99'});label(0,-48,'Thang Tam Thế',true);
+roof(0,-32,34,20,'');label(0,-33,'ĐIỆN PHÁP CHỦ');label(0,-29,'Chính điện · nền +1,35 m',true);
+for(const side of [-1,1]){rect(side*20.5,-10,5.2,18,{fill:'#d9d8c7',stroke:'#b9aa88'});for(let k=0;k<6;k++)oval(side*22.5,-16.5+3*k,.65,.65,{fill:'#b18c41',stroke:'#8a6d32'});text(X(side*20.5),Y(-10),'LA HÁN',{'font-size':10,'text-anchor':'middle',fill:'#6b725d',transform:`rotate(-90 ${X(side*20.5)} ${Y(-10)})`})}
+roof(-47,-27,13,9,'Thiền đường');oval(-34,-26,7,5,{fill:'#d7dfc9',stroke:'#a7b68e'});label(-34,-27,'Vườn Thiền',true);
+oval(-30,-38,6.8,4,{fill:'#d3dfc5',stroke:'#a7b68e'});label(-30,-38,'Vườn thiền',true);label(-30,-35.5,'Đất cũ Bảo Tháp',true);
+water(41,-31,7.5,5.5);bridge(29.75,-31,8.5,3);label(42,-39,'Vườn Phóng Sinh');label(41,-23,'Ao + bến thả',true);
+for(const [x,z,name] of [[-34,-6,'Gác trống'],[34,-6,'Tháp chuông']])roof(x,z,5.6,5.6,name);
+for(const [x,name] of [[-34,'Bảo Tháp'],[34,'Tháp nhỏ']]){oval(x,-15,3.2,3.2,{fill:'#d4cbb3',stroke:'#9e977d'});roof(x,-15,4,4,'');label(x,-20,name)}
+label(0,-2,'SÂN TRƯỚC ĐIỆN',true);
+for(const [x,name] of [[-28,'Sân Phật Tây'],[28,'Sân Quan Âm']]){oval(x,14,7,7,{fill:'#dddcc7',stroke:'#bbb396'});oval(x,14,1.2,1.2,{fill:'#c2a25c',stroke:'#9b823f'});label(x,24,name)}
+roof(39,10,8,6.4,'Điện Mẫu');
+water(0,14,14,10);bridge(0,14,2.3,24);label(0,11,'HỒ CÁ KOI');label(0,14,'a 14 × b 10 m',true);label(0,18,'Cầu trục z 2…26',true);
+roof(-6.7,23,4.4,3.4,'');label(-7,29,'Thủy Đình',true);
+for(const x of [-16.5,16.5]){oval(x,23,5,3.5,{fill:'#ccd6a9',stroke:'#9dac7f'});label(x,29,'Bồn hoa',true)}
+oval(-35,33,7,5,{fill:'#cad9bc',stroke:'#96b28c'});for(const x of [-39,-31])tree(x,32,1.4);label(-35,40,'Khu nghỉ');roof(35,33,8,11,'Phòng ghi công đức');
+roof(11,39,4.4,3.6,'');label(18,42,'Đền Trình',true);
+roof(0,45,8.8,3.2,'');label(0,51,'TAM QUAN · CỔNG NAM (0; 45)');
+// Wall openings are explicit: no gate on the north.
+const wall=el('g',{stroke:'#5d7766','stroke-width':4});
+line([[-92,-122],[92,-122],[92,-.2]],{},wall);line([[92,4.2],[92,45],[4.4,45]],{},wall);line([[-4.4,45],[-92,45],[-92,4.2]],{},wall);line([[-92,-.2],[-92,-122]],{},wall);
+label(-84,20,'Cổng Tây',true);line([[-92,2],[-88,17]],{stroke:'#728a7b','stroke-width':1});label(86,10,'Cổng Đông',true);
+label(0,-124,'TƯỜNG BẮC MỚI z = −122 · KHÔNG MỞ CỔNG',true);
+text(1286,79,'BẮC ↑',{'font-size':13,'text-anchor':'middle',fill:'#294c49'});
+label(-72,-115,'Dải cây hậu chẩm',true);
+const old=el('g',{class:'old-layer',id:'old-layer'});
+rect(0,-18.5,124,127,{fill:'none',stroke:'#8a9290','stroke-width':1.5,'stroke-dasharray':'7 5'},old);
+for(const [x,z,w,d] of [[-41,-71,15,8],[49,-63,14,10]]){rect(x,z,w,d,{fill:'none',stroke:'#8a9290','stroke-dasharray':'4 3'},old);line([[x-w/2,z-d/2],[x+w/2,z+d/2]],{stroke:'#8a9290','stroke-width':1},old)}
+label(-41,-70,'Dời tăng xá',true,old);label(49,-63,'Dời vườn tháp',true,old);label(-60,-83,'Ranh cũ ±62 / −82',true,old);
+// Central axis is a reference line, not a path through shrine interiors.
+line([[0,43],[0,-119]],{stroke:'#ad8336','stroke-width':1.2,'stroke-dasharray':'3 6',opacity:.65});
+text(700,1140,'TÂY · ĐỜI SỐNG TU HÀNH     /     TRỤC THẦN ĐẠO     /     ĐÔNG · THỜ TỰ & NGHỈ NGƠI',{'font-size':13,'letter-spacing':1,'text-anchor':'middle',fill:'#294c49'});
+text(700,1166,'Ranh mới 184 × 167 m · Ranh cũ 124 × 127 m · Mặt bằng theo mét, không phải ảnh game',{'font-size':12,'text-anchor':'middle',fill:'#63786a'});
+// Scale bar and north marker.
+for(let k=0;k<4;k++)el('rect',{x:150+k*30,y:1192,width:30,height:6,fill:k%2?'#e0e8da':'#294c49',stroke:'#294c49','stroke-width':.7});
+for(const [dx,s] of [[0,'0'],[60,'10'],[120,'20 m']])text(150+dx,1220,s,{'font-size':11,'text-anchor':'middle',fill:'#294c49'});
+text(1280,1186,'BẮC',{'font-size':12,'text-anchor':'middle',fill:'#294c49'});el('path',{d:'M1280 1193L1273 1214L1280 1209L1287 1214Z',fill:'#294c49'});
+const items=[
+ [1,'Rừng trúc + đường thiền hành',80,-3,88,-17,'Tâm (80; −3) · x 70…90, z −20…14','Rừng trúc ở phía Đông; vòng đường lát đá và ghế nghỉ. Dành cho nhiệm vụ thiền hành ngoài trời. Dáng đường và cây là minh họa.'],
+ [2,'Vườn rau chùa + ao sen',-76,-42,-88,-52,'Tâm (−76; −42) · x −88…−64, z −55…−30','Luống rau, ao sen nhỏ, kho nông cụ; gắn chấp tác hái rau và rota R5.2. Bố trí nội bộ là minh họa.'],
+ [3,'Tăng xá + 3 tịnh thất',-64,-70,-70,-61,'x −70…−58 · z −78…−62','Cư xá tăng đoàn thống nhất. Dời toàn bộ tăng xá khỏi vị trí (−41; −71) trong Viện Khách Tăng; đất cũ để trống. Vùng mới vượt qua tường Tây cũ theo đúng số đã chốt.'],
+ [4,'Hồ sen Tây + đình ngắm sen',-78,-2,-88,-8,'Hồ (−78; −2), a 10 × b 7 · đình (−70; 5)','Cầu tại z = 2 nối đường ngang tới cổng Tây, không để hồ cắt đường. Điểm thả đèn hoa đăng thứ hai. Đình chưa có kích thước thi công.'],
+ [5,'Điện Dược Sư',77,-38,87,-41,'(77; −38) · nền 12 × 9 m','Điện cầu an sức khỏe, dâng đèn Dược Sư. Cầu đá qua sông tại z = −38 nối khuôn viên cũ đến điện.'],
+ [6,'Vườn hoa + đồi cỏ',79,28,88,35,'Tâm (79; 28) · x 68…90, z 15…40','Sân cỏ, hoa bốn mùa, ghế đá. Ao cuối sông (65; 16) nằm ở góc Tây-Bắc; không tự kéo dài sông về phía Nam.'],
+ [7,'Đồi Chùa Ngọc + 299 bậc',0,-112,-7,-108,'Đỉnh (0; −112) · thang z −82…−112 · nền ~6 m','Thang dài 30 m, rộng ~4,2 m, 299 bậc chia 99 + 100 + 100, hai chiếu nghỉ. Chùa granite ba tầng cao dự kiến 7–8 m, cần kiểm chứng khi thi công. Không mở cổng Bắc.'],
+ [8,'Động thiền',-26,-104,-35,-104,'(−26; −104)','Hang đá kiểu động Hương Tích, điểm hành hương yên tĩnh. Hình hang trên mặt bằng chỉ là ký hiệu, chưa có kích thước hay model.'],
+ [9,'Rừng thông + đường núi',26,-101,36,-111,'Hai dải x ±(12…40) · z −86…−118','Đường núi uốn lượn với hai nhà nghỉ chân. Đường nhánh không lấn trục thang Chùa Ngọc. Hình đường và cây là minh họa.'],
+ [10,'Vườn Tháp mới',50,-94,58,-104,'x 40…60 · z −106…−82','Một khu tháp mộ duy nhất, dời toàn bộ khỏi (49; −63) trong Viện Tổ; có tháp mộ và cây cổ thụ. Bảo Tháp không đặt tại đây: Bảo Tháp ở (−34; −15).'],
+ [11,'Sông Đông',65,-58,68,-55,'x 63…67 · z −82…14 · ao (65; 16)','Sông rộng ~4 m giữa Viện Tổ và Điện Dược Sư. Cầu Bắc z = −38, cầu Giữa z = 2 bắt buộc thông tới cổng Đông. Điểm hoa đăng thứ ba và đường thiền hành ven sông.']
+];
+function select(item){const [id,name]=item;document.getElementById('detail-title').textContent=`${id}. ${name}`;document.getElementById('detail-coord').textContent=item[6];document.getElementById('detail-text').textContent=item[7];document.querySelectorAll('.pin').forEach(p=>p.classList.toggle('selected',p.dataset.id===String(id)));document.querySelectorAll('#places button').forEach(b=>b.classList.toggle('active',b.dataset.id===String(id)))}
+const pins=el('g');
+for(const item of items){const [id,name,x,z,px,pz]=item;line([[x,z],[px,pz]],{stroke:'#18716d','stroke-width':1.2},pins);const p=el('g',{class:'pin','data-id':id,tabindex:0,role:'button','aria-label':`${id}. ${name}`},pins);el('circle',{cx:X(px),cy:Y(pz),r:13,fill:'#18716d',stroke:'#fcfdf9','stroke-width':2},p);text(X(px),Y(pz)+4.5,String(id),{'text-anchor':'middle','font-size':12,'font-weight':700,fill:'#fff'},p);p.addEventListener('click',()=>select(item));p.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(item)}});const b=document.createElement('button');b.dataset.id=id;b.textContent=`${id}. ${name}`;b.addEventListener('click',()=>select(item));document.getElementById('places').appendChild(b)}
+let zoom=1;function scale(n){zoom=Math.min(3,Math.max(1,n));svg.style.width=zoom===1?'100%':`${zoom*100}%`}
+document.getElementById('in').onclick=()=>scale(zoom+.25);document.getElementById('out').onclick=()=>scale(zoom-.25);document.getElementById('fit').onclick=()=>scale(1);
+document.getElementById('old').onchange=e=>document.getElementById('old-layer').style.display=e.target.checked?'':'none';document.getElementById('print').onclick=()=>window.print();
+document.getElementById('download').onclick=()=>{const copy=svg.cloneNode(true);copy.removeAttribute('style');copy.setAttribute('width','1400');copy.setAttribute('height','1240');const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)],{type:'image/svg+xml;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='ban-do-mo-rong-chua-24-7.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+</script>
+</body>
+</html>

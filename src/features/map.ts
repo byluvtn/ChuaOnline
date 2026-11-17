@@ -2,15 +2,16 @@ import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 import { PLACES, type Place } from '../data/places';
+import { LOTUS, RIVER, DUOC_SU, NGOC, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
 export function openMap(ctx: MenuCtx) {
   openCustomPanel('Bản đồ chùa', (body) => {
-    const SIZE = 440;
+    const SIZE = 700;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const cv = h('canvas', { class: 'tmap', width: SIZE * dpr, height: SIZE * dpr, 'aria-label': 'Bản đồ chùa, bấm vào địa điểm để đi tới' });
     const g = cv.getContext('2d')!;
     const PAD = 16 * dpr;
-    const MX0 = -66, MX1 = 66, MZ0 = -88, MZ1 = 64;
+    const MX0 = -100, MX1 = 100, MZ0 = -128, MZ1 = 68;
     const k = (SIZE * dpr - PAD * 2) / Math.max(MX1 - MX0, MZ1 - MZ0);
     const OX = (SIZE * dpr - (MX1 - MX0) * k) / 2, OZ = (SIZE * dpr - (MZ1 - MZ0) * k) / 2;
     const X = (x: number) => (x - MX0) * k + OX;
@@ -24,8 +25,8 @@ export function openMap(ctx: MenuCtx) {
       if (stroke) { g.strokeStyle = stroke; g.lineWidth = dpr; g.stroke(); }
     };
     const label = (t: string, x: number, z: number, color = '#4a2e18') => {
-      g.font = `600 ${11 * dpr}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.lineWidth = 3 * dpr; g.strokeStyle = 'rgba(253,248,234,.85)'; g.strokeText(t, X(x), Z(z));
+      g.font = `600 ${12 * dpr}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.lineWidth = 3 * dpr; g.strokeStyle = color === '#fff3dc' ? '#6e2a14' : 'rgba(253,248,234,.85)'; g.strokeText(t, X(x), Z(z));
       g.fillStyle = color; g.fillText(t, X(x), Z(z));
     };
     const drawStatic = () => {
@@ -48,8 +49,21 @@ export function openMap(ctx: MenuCtx) {
       rect(PS_PIER.x0, PS_PIER.z - PS_PIER.hw, PS_PIER.x1, PS_PIER.z + PS_PIER.hw, '#a9733c', '#6e4a22');
       // corridors
       for (const s of [-1, 1]) rect(s * CORR.x - CORR.half, CORR.z0, s * CORR.x + CORR.half, CORR.z1, '#d9b98c', '#a97c4a');
-      // plaza
-      ellipse(0, 8, 11.5, 11.5, '#efe3bd', '#c9a96a');
+      // Expansion: no circular plaza remains under the enlarged koi pond.
+      rect(-92, PATH_Z - 1.1, 92, PATH_Z + 1.1, '#e8d6a4');
+      for (const side of [-1, 1]) rect(side * 92 - 1, -0.2, side * 92 + 1, 4.2, '#e8d6a4');
+      ellipse(0, -103, 40, 18, '#a8bf8e', '#7d9b6c');
+      rect(-NGOC.stairHalf, -112, NGOC.stairHalf, -82, '#d4d1bd', '#8b9684');
+      ellipse(LOTUS.x, LOTUS.z, LOTUS.a, LOTUS.b, '#8ec6e0', '#4f8fb0');
+      rect(-90, 0.9, -66, 3.1, '#d9c6a2', '#8a8270');
+      rect(RIVER.x0, RIVER.z0, RIVER.x1, RIVER.z1, '#8ec6e0', '#4f8fb0');
+      ellipse(65, 16, 3, 4, '#8ec6e0', '#4f8fb0');
+      for (const z of RIVER.bridges) rect(60.5, z - 1.4, 69.5, z + 1.4, '#d9c6a2', '#8a8270');
+      rect(FARM.x - 12, -55, FARM.x + 12, -30, '#a3bd79', '#7d9b6c');
+      rect(BAMBOO.x - 10, -20, BAMBOO.x + 10, 14, '#91b690');
+      rect(FLOWER_HILL.x - 11, 15, FLOWER_HILL.x + 11, 40, '#c2d59f');
+      ellipse(CAVE.x, CAVE.z, 5, 3, '#879a85');
+      for (const p of TINH_THAT) rect(p.x - 1.6, p.z - 1.25, p.x + 1.6, p.z + 1.25, '#9c6648');
       // decks
       for (const s of [-1, 1]) {
         const xa = s > 0 ? DECK.x0 : -DECK.x1, xb = s > 0 ? DECK.x1 : -DECK.x0;
@@ -61,12 +75,14 @@ export function openMap(ctx: MenuCtx) {
       ellipse(LAKE.x, LAKE.z, LAKE.a, LAKE.b, '#8ec6e0', '#4f8fb0');
       rect(BRIDGE.x - BRIDGE.hw, BRIDGE.z0, BRIDGE.x + BRIDGE.hw, BRIDGE.z1, '#a9733c', '#6e4a22');
       // towers
-      for (const [p, c] of [[BELL, '#8a5a2b'], [QUAN, '#e6e0d0'], [PAGODA, '#b5542f'], [BAO_THAP, '#d9c27a']] as const) ellipse(p.x, p.z, 2.2, 2.2, c, '#4a2e18');
+      for (const [p, c] of [[BELL, '#8a5a2b'], [DRUM, '#8a5a2b'], [QUAN, '#e6e0d0'], [PAGODA, '#b5542f'], [BAO_THAP, '#d9c27a']] as const) ellipse(p.x, p.z, 2.2, 2.2, c, '#4a2e18');
       const plat = (p: { x: number; z: number; hx: number; hz: number }, fill = '#b5542f', stroke = '#6e2a14') =>
         rect(p.x - p.hx, p.z - p.hz, p.x + p.hx, p.z + p.hz, fill, stroke);
       plat(NHA_TO_PLAT); plat(TANG_XA_PLAT); plat(TRAI_DUONG_PLAT);
       plat({ x: NHA_KHACH.x, z: NHA_KHACH.z, hx: 6.0, hz: 4.25 });
       plat(PHONG_CD_PLAT);
+      plat(DUOC_SU); plat(NGOC, '#a7b5ad');
+      ellipse(REST.x, REST.z, 6, 4, '#acc895');
       plat({ x: THIEN_DUONG.x, z: THIEN_DUONG.z, hx: 6.5, hz: 4.5 });
       plat(TAM_THE_PLAT, '#b5542f', '#6e2a14');
       plat(AM_CO_PLAT, '#9a7a4a', '#4a2e18');
@@ -76,7 +92,7 @@ export function openMap(ctx: MenuCtx) {
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 4.5, 4.5, '#e8d9a0', '#c9a96a');
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 1.4, 1.4, '#e8b64a', '#8a5a2b');
       label('Chánh điện', HALL.x, HALL.z, '#fff3dc');
-      const LABEL_DZ: Record<string, number> = { 'Hồ cá koi': 0, 'Cầu cong': -7, 'Điện Tam Thế': -7, 'Bảo tháp': 4.5, 'Vườn Tháp': -3.5, 'Nhà Tổ': 4, 'Sân thiền trái': -2.5, 'Sân thiền phải': -2.5 };
+      const LABEL_DZ: Record<string, number> = { 'Hồ cá koi': 2.5, 'Cầu cong': -7, 'Điện Tam Thế': -7, 'Bảo tháp': -6, 'Tháp cảnh': -5, 'Gác trống': 2, 'Vườn Tháp': -3.5, 'Nhà Tổ': 4, 'Sân thiền trái': -2.5, 'Sân thiền phải': -2.5, 'Chùa Ngọc': -7, 'Rừng thông': -3, 'Động thiền': -5, 'Tăng xá': -6, 'Tịnh thất': 4, 'Rừng trúc': -10, 'Sông Đông': 6 };
       for (const p of PLACES.slice(1)) label(p.name, p.x, p.z + (p.name in LABEL_DZ ? LABEL_DZ[p.name] : p.r > 4 ? 0 : 4));
       label('Bắc', 0, WALL.zN - 2.5); label('Nam', 0, WALL.zS + 3.6);
     };
