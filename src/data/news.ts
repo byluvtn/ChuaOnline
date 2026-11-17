@@ -276,7 +276,7 @@ export const NEWS: NewsItem[] = [
     ],
   },
   {
-    title: 'Bảng thông báo: xoay ra cổng, bấm để đọc',
+    title: 'Đèn lồng đỏ dời khỏi cột đá và đèn đá, không còn chồng chéo',
     date: '2026-11-15',
     items: [
       'Đèn lồng đỏ ở quảng trường và vườn Thiền đã dời khỏi các cột đá khắc kinh, đèn đá, lá sồi và hồ cá: không còn cảnh đèn chồng lên cột hay treo xuyên qua đèn đá.',
