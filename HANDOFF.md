@@ -9,6 +9,58 @@
 ## Commit gần nhất: 7a70bf1 (fix admin log, 2026-11-17) — HANDOFF bắt kịp tới tin 129
 Push lên `origin/main` (byluvtn/ChuaOnline).
 
+## Việc để lại làm sau ở nhà (user dặn 2026-11-17 17:00)
+
+### 1. Phân tán NPC khỏi khu giữa (CHƯA LÀM)
+
+- Vấn đề (user quan sát 2026-11-17): NPC tập trung đông ở giữa
+  (quảng trường/cầu/sân điện); luồng đi của NPC là vào cổng → qua cầu
+  → thắp hương → qua cầu về.
+- Nguyên nhân đã biết: `server/npcs.ts` đã có `SPREAD_ROUTE_POOL`
+  (20 điểm, gồm `tamThe`) + `pickDest` với logic qua cầu khi đổi phía
+  Nam/Bắc, nhưng cầu là đường duy nhất qua lại Nam/Bắc nên NPC luôn
+  dồn về trục giữa; pool có nhiều điểm giữa (plaza, hallFront,
+  axisMid, pillars, bridgeS, bridgeN).
+- Việc làm: giảm mật độ NPC ở giữa, tăng ở Điện Tam Thế + khu Bắc
+  (sân Tam Thế, vườn tháp, am, hành lang Bắc) và xung quanh (vườn
+  thiền, hồ, Điện Mẫu, sân Phật/Quan Âm). Gợi ý: trọng số pool lệch
+  về Bắc/ngoại vi, thời gian dừng lâu hơn ở Tam Thế, một số NPC
+  "cư trú" quanh Tam Thế ít về giữa.
+- Giữ nguyên: 37 NPC, behavior (tụng kinh, đánh chuông, dialogue,
+  nhiệm vụ) — chỉ đổi PHÂN BỔ + ĐIỂM ĐẾN, không đổi hệ thống.
+- File: `server/npcs.ts` (+ `shared/roads.ts` nếu cần thêm node đường).
+- Nghiệm thu: đếm NPC theo vùng trước/sau (server đang chạy) hoặc
+  ảnh chụp minimap/sân giữa/sân Tam Thế cho thấy NPC rải ra;
+  `npx tsc --noEmit` phải PASS. Không thêm mục tin (chỉnh cân bằng,
+  không phải tính năng mới).
+- Lưu ý: Lux đã cho agent làm thử lúc 16:53 nhưng user bảo dừng để
+  về nhà tự làm — agent tắt khi mới đang clone, chưa viết code nào.
+
+### 2. Đợt 3 còn lại: 3.15 + 3.16 (CHƯA LÀM)
+
+- Bối cảnh: Đợt 3 (sửa lỗi theo `AUDIT.md`) đã xong 3.1–3.13, 3.14
+  đang làm dở lúc viết handoff này; Lux push 3.1–3.14 lên main trong
+  ngày 2026-11-17 — kiểm tra `git log` để xác nhận trước khi làm
+  3.15/3.16. Mô tả lỗi đầy đủ ở `AUDIT.md` (gốc repo, mục #30/#31/#57).
+- **3.15 Service worker (#30, #31).** #30: `public/sw.js` — mọi
+  navigation ghi đè khóa `'/'` kể cả phản hồi lỗi; cache không đổi
+  phiên bản nên bundle cũ tích lũy → kiểm `res.ok`, cache có phiên
+  bản, chỉ cache đúng pathname `/`. #31: SW chỉ đăng ký trong
+  `initMenu` (sau đăng nhập) → đăng ký SW trước đăng nhập. File:
+  `public/sw.js`, `src/menu.ts`, `src/main.ts`. Ghi chú: có thể gộp
+  vào R4.2 (PWA) thay vì làm riêng.
+- **3.16 Deploy (#57) — CẦN ĐÁNH GIÁ LẠI.** Spec gốc: thêm
+  `concurrency` cho workflow, ghim action thay `@master`, sửa comment
+  nhắc Turso sai bối cảnh (file `.github/workflows/deploy-fly.yml`,
+  `fly.toml`). NHƯNG game đã chuyển khỏi Fly sang Oracle ngày
+  2026-11-17: workflow deploy-fly.yml ĐÃ TẮT, deploy giờ qua auto-pull
+  trên Oracle (kéo main mỗi 5 phút + restart). #57 viết cho thời Fly
+  nên phần lớn đã lỗi thời — session ở nhà quyết: (a) xóa hẳn
+  deploy-fly.yml + fly.toml (Fly đã chết, máy đã dừng), hay (b) để
+  nguyên trạng thái tắt. Vấn đề restart-khi-push giờ nằm ở auto-pull
+  Oracle: nó restart cả khi push chỉ đổi tài liệu — cải tiến sau:
+  thêm lọc đường dẫn (bỏ qua push chỉ có file `.md`).
+
 ---
 
 ## Round 1 — tượng, kiến trúc, hồ, trời, sân, chữ Việt (XONG)
