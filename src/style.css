@@ -64,7 +64,7 @@ textarea { height: 96px; resize: none; margin: 8px 0; }
 @keyframes scroll { to { transform: translateX(-100%); } }
 #profile { top: 42px; left: 12px; display: flex; gap: 10px; align-items: center; padding: 8px 16px 8px 8px; border-radius: 34px; cursor: pointer; }
 .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #fbe7a8, #d9a02e); color: var(--brown); font-weight: 800; font-size: 19px; box-shadow: 0 0 0 2px rgba(255,255,255,.4); }
-#donateMarquee { top: 146px; left: 50%; transform: translateX(-50%); width: min(92vw, 560px); height: 30px; overflow: hidden; white-space: nowrap; border-radius: 15px; background: linear-gradient(90deg, rgba(120,32,16,.92), rgba(168,56,26,.92), rgba(120,32,16,.92)); color: #ffd966; font-size: 13px; line-height: 30px; box-shadow: 0 2px 10px rgba(0,0,0,.3); opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+#donateMarquee { top: 230px; left: 50%; transform: translateX(-50%); width: min(92vw, 560px); height: 30px; overflow: hidden; white-space: nowrap; border-radius: 15px; background: linear-gradient(90deg, rgba(120,32,16,.92), rgba(168,56,26,.92), rgba(120,32,16,.92)); color: #ffd966; font-size: 13px; line-height: 30px; box-shadow: 0 2px 10px rgba(0,0,0,.3); opacity: 0; transition: opacity .6s ease; pointer-events: none; }
 #donateMarquee[hidden] { display: none; }
 #donateMarquee.show { opacity: 1; }
 #donateMarquee span { display: inline-block; padding-left: 100%; animation: donateScroll 10s linear forwards; }
@@ -223,7 +223,14 @@ table.rank td:last-child { text-align: right; font-weight: 700; }
   #donateMarquee { top: 226px; font-size: 11px; height: 22px; line-height: 22px; border-radius: 11px; }
   .bar { width: 80px; height: 5px; margin-top: 3px; }
 }
-@media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; }
+  /* Tắt hẳn animation (kể cả entrance ngắn): hiện ngay ở trạng thái cuối. */
+  .lotus, .overlay, .card, #msgs p, #lanternList .item, #coins.bump, .float { animation: none !important; }
+  /* Marquee + level-up giữ trạng thái tĩnh NHÌN THẤY ĐƯỢC (animation gốc kết thúc ở trạng thái ẩn). */
+  #marquee span, #donateMarquee span { animation: none !important; padding-left: 0; }
+  #levelup { animation: none !important; opacity: 1; }
+}
 
 #couplet { position: fixed; left: 50%; bottom: 96px; transform: translate(-50%, 12px); width: min(240px, 82vw); max-width: min(420px, 88vw); max-height: 30vh; overflow-y: auto; padding: 8px 36px 10px 12px; border-radius: 14px; background: rgba(46,16,10,.82); border: 1px solid rgba(232,182,74,.55); backdrop-filter: blur(8px); color: #f6e7c8; text-align: center; opacity: 0; pointer-events: none; transition: opacity .5s, transform .5s var(--ease); z-index: 11; }
 #couplet.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }

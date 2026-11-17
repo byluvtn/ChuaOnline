@@ -26,18 +26,24 @@ export function createPost(renderer: THREE.WebGLRenderer, scene: THREE.Scene, ca
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const size = renderer.getSize(new THREE.Vector2());
-  const target = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: lite ? 0 : 4 });
-  const composer = new EffectComposer(renderer, target);
-  composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), lite ? 0.35 : 0.5, 0.65, 0.88);
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
-  composer.addPass(new ShaderPass(GradeShader));
+  let composer: EffectComposer | null = null;
+  const ensure = (): EffectComposer => {
+    if (composer) return composer;
+    const s = renderer.getSize(new THREE.Vector2());
+    const target = new THREE.WebGLRenderTarget(s.x, s.y, { type: THREE.HalfFloatType, samples: lite ? 0 : 4 });
+    composer = new EffectComposer(renderer, target);
+    composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(bloom);
+    composer.addPass(new OutputPass());
+    composer.addPass(new ShaderPass(GradeShader));
+    return composer;
+  };
 
   const post: Post = {
     enabled: true, bloom,
-    render() { post.enabled ? composer.render() : renderer.render(scene, camera); },
-    resize(w, h) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); },
+    render() { if (!post.enabled) { renderer.render(scene, camera); return; } ensure().render(); },
+    resize(w, h) { if (!composer) return; composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); },
   };
   return post;
 }

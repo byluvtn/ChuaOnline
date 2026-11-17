@@ -1,9 +1,19 @@
 // Procedural temple sounds (WebAudio). No assets needed.
+import { settings, setSetting, onSettings } from './settings';
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
-let muted = (() => { try { return localStorage.getItem('co:mute') === '1'; } catch { return false; } })();
+// Một nguồn trạng thái âm thanh duy nhất: settings (sound/volume). Key cũ co:mute
+// chỉ dùng để di trú một lần rồi xóa.
+try {
+  const legacy = localStorage.getItem('co:mute');
+  if (legacy !== null) {
+    if (legacy === '1') setSetting('sound', false);
+    localStorage.removeItem('co:mute');
+  }
+} catch { /* storage blocked */ }
+let muted = !settings.sound;
+let vol = settings.volume;
 let ambientOn = false;
-let vol = 1;
 let bgm: HTMLAudioElement | null = null;
 const BGM_GAIN = 0.3;
 const applyBgm = () => { if (bgm) bgm.volume = muted ? 0 : Math.min(1, BGM_GAIN * vol); };
@@ -74,20 +84,21 @@ function boom() {
   tone(70, 0.5, 0.25, 'sine', 0, 40);
 }
 
+const applyLevels = () => {
+  if (master && ctx) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.05);
+  applyBgm();
+};
+onSettings((s) => {
+  muted = !s.sound;
+  vol = s.volume;
+  applyLevels();
+  if (!muted && bgm && bgm.paused && !document.hidden) void bgm.play().catch(() => {});
+});
+
 export const audio = {
   isMuted: () => muted,
-  setMuted(v: boolean) {
-    muted = v;
-    try { localStorage.setItem('co:mute', v ? '1' : '0'); } catch { /* storage blocked */ }
-    if (master && ctx) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.05);
-    applyBgm();
-    if (!v && bgm && bgm.paused && !document.hidden) void bgm.play().catch(() => {});
-  },
-  setVolume(v: number) {
-    vol = Math.max(0, Math.min(1, v));
-    if (master && ctx) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.05);
-    applyBgm();
-  },
+  setMuted(v: boolean) { setSetting('sound', !v); },
+  setVolume(v: number) { setSetting('volume', Math.max(0, Math.min(1, v))); },
   unlock() { ensure(); },
   play(name: 'bow' | 'incense' | 'chant' | 'lantern' | 'coin' | 'levelup' | 'click' | 'moh' | 'firework') {
     if (muted) return;
