@@ -5,9 +5,19 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 126;
+export const LATEST_NEWS_ID = 127;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chu kỳ ngày/đêm theo giờ thật',
+    date: '2026-11-17',
+    items: [
+      'Bầu trời ở phòng Vô Lượng và Từ Bi nay đổi dần theo giờ thật trên máy bạn: rạng sáng quanh 5h, ban ngày từ 6h đến 17h, hoàng hôn 17–19h, ban đêm 19h–5h. Màu trời, sương mù, núi xa và hướng nắng chuyển mượt, không còn nhảy cục.',
+      'Ban đêm có trăng sáng với quầng sáng dịu, hàng trăm vì sao lấp lánh, và mây trôi chuyển sang sắc xanh xám ánh trăng.',
+      'Đèn lồng và đom đóm sáng dần khi trời tối, dịu lại khi trời sáng.',
+      'Phòng An Lạc vẫn giữ đêm cố định — nơi đẹp nhất để thả đèn trời và bắn pháo hoa.',
+    ],
+  },
   {
     title: 'Đèn trời & pháo hoa',
     date: '2026-11-17',
