@@ -1469,7 +1469,6 @@ export function buildTemple(c: TempleCtx) {
   pathRect(BAO_THAP.x - 1.2, BAO_THAP.z + BAO_THAP_PLAT.step2.z1, BAO_THAP.x + 1.2, ZEN.z - 1);
   pathRect(THIEN_DUONG.x + THIEN_DUONG_PLAT.hx, THIEN_DUONG.z - 1.2, -SIDE_X - 1.2, THIEN_DUONG.z + 1.2);
   pathRect(28, 8.8, 35, 11.2);
-  pathRect(-43.2, 39.5, -40.8, 42.2);
   pathRect(-48, -59.2, -27, -56.8);
   pathRect(-42.2, -67, -39.8, -58);
   pathRect(27, -59.2, 50, -56.8);
