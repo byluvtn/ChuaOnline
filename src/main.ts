@@ -7,7 +7,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { clampToCompound, resolveBridge, LAKE, BRIDGE, inLake } from './layout';
+import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -20,6 +20,7 @@ import { renderGardenTrees, setGardenGateBoard } from './vuoncay';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
+import type { QuestErrorCode } from '../shared/game';
 import { ACTION_RULES, CHAIN_QUESTS, GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEEDS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
 import { weekKey } from '../shared/time';
 import { DIALOGUES } from './data/dialogues';
@@ -464,7 +465,7 @@ function addLanternFeed(l: Lantern, fresh: boolean, sky = false) {
   while (list.childElementCount > 30) list.lastElementChild!.remove();
   if (fresh) {
     if (!sky) {
-      const r = [...remotes.values()].find((x) => x.data.name === l.name);
+      const r = [...remotes.values()].find((x) => x.data.pid === l.pid);
       world.spawnLantern(r?.char.root.position.x ?? 0, r?.char.root.position.z ?? 8);
     }
     audio.play('lantern');
@@ -668,7 +669,7 @@ function connect() {
   s.on('lantern', (l: Lantern) => addLanternFeed(l, true));
   s.on('sky:lantern', (l: SkyLantern) => {
     world.spawnSkyLantern(l.x, l.z);
-    addLanternFeed({ id: l.id, name: l.name + ' · đèn trời', wish: l.wish, t: l.t }, true, true);
+    addLanternFeed({ id: l.id, pid: l.pid, name: l.name + ' · đèn trời', wish: l.wish, t: l.t }, true, true);
   });
   s.on('firework:show', (f: FireworkShow) => { world.spawnFirework(f.x, f.z, f.size); audio.play('firework'); });
   s.on('donation', (d: { name: string; amount: number; text: string }) => {
@@ -1006,22 +1007,28 @@ type SeatT = (typeof world.seats)[number];
 type BowGroup = 'chinhDien' | 'tamThe' | 'thienDuong' | 'dienMau';
 const inBox = (x: number, z: number, x0: number, x1: number, z0: number, z1: number) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
 
-/** Nhóm điện của một đệm (bbox tường minh, không dùng world.zoneAt). Đệm sân thiền thuộc nhóm Chính Điện. */
-function seatGroup(x: number, z: number): BowGroup | null {
-  if (inBox(x, z, 35, 41, 8, 12)) return 'dienMau';
-  if (inBox(x, z, -20, 20, -78, -58)) return 'tamThe';
-  if (Math.hypot(x + 47, z + 27) <= 8) return 'thienDuong';
-  if (Math.abs(x) <= 17 && z >= -42 && z <= -6) return 'chinhDien';
+/** Bán kính vùng Thiền Đường (hình tròn quanh tâm điện, bao cả sân trước — không chỉ bệ nền). */
+const THIEN_DUONG_R = 8;
+/** Đệm sân thiền (z tới -6) vẫn tính nhóm Chính Điện khi chọn đệm lạy. */
+const CHINH_DIEN_SEAT_Z1 = -6;
+/** Vùng điện của một điểm — MỘT nguồn duy nhất cho seatGroup + insideHall,
+ *  suy ra từ bệ nền vật lý trong layout.ts (Tam Thế z -80..-56, Điện Mẫu theo
+ *  DIEN_MAU_PLAT, Chính Điện theo HALL). Chỉ khác nhau ở biên Nam Chính Điện:
+ *  chọn đệm lạy thì tới -6 (sân thiền), đứng trong điện thì tới mép bệ -22. */
+function hallRegion(x: number, z: number, chinhDienZ1: number): BowGroup | null {
+  if (inBox(x, z, DIEN_MAU_PLAT.x - DIEN_MAU_PLAT.hx, DIEN_MAU_PLAT.x + DIEN_MAU_PLAT.hx, DIEN_MAU_PLAT.z - DIEN_MAU_PLAT.hz, DIEN_MAU_PLAT.z + DIEN_MAU_PLAT.hz)) return 'dienMau';
+  if (inBox(x, z, TAM_THE_PLAT.x - TAM_THE_PLAT.hx, TAM_THE_PLAT.x + TAM_THE_PLAT.hx, TAM_THE_PLAT.z - TAM_THE_PLAT.hz, TAM_THE_PLAT.z + TAM_THE_PLAT.hz)) return 'tamThe';
+  if (Math.hypot(x - THIEN_DUONG.x, z - THIEN_DUONG.z) <= THIEN_DUONG_R) return 'thienDuong';
+  if (inBox(x, z, HALL.x - HALL.hx, HALL.x + HALL.hx, HALL.z - HALL.hz, chinhDienZ1)) return 'chinhDien';
   return null;
 }
-
+/** Nhóm điện của một đệm (đệm sân thiền thuộc nhóm Chính Điện). */
+function seatGroup(x: number, z: number): BowGroup | null {
+  return hallRegion(x, z, CHINH_DIEN_SEAT_Z1);
+}
 /** Người chơi đang đứng trong bbox của điện nào (sân thiền ngoài trời không tính). */
 function insideHall(x: number, z: number): BowGroup | null {
-  if (inBox(x, z, 35, 41, 8, 12)) return 'dienMau';
-  if (inBox(x, z, -20, 20, -78, -58)) return 'tamThe';
-  if (Math.hypot(x + 47, z + 27) <= 8) return 'thienDuong';
-  if (inBox(x, z, -17, 17, -42, -22)) return 'chinhDien';
-  return null;
+  return hallRegion(x, z, HALL.z + HALL.hz);
 }
 
 function seatTaken(st: { x: number; z: number }): boolean {
@@ -1281,6 +1288,7 @@ $('actions').appendChild(adminBtn);
 
 // ---------- Loop ----------
 const clock = new THREE.Clock();
+let lastSentMove = { x: 0, z: 0, ry: 0, anim: '' };
 let lastSend = 0;
 const tmp = new THREE.Vector3();
 
@@ -1825,14 +1833,14 @@ function startGuide(qid: string): void {
   // vì updateSweep chỉ quét nhiệm vụ đã nhận — nếu không, guide đi tới nơi rồi
   // đứng im, không bao giờ cầm chổi (bug sweep v3, user 11:09 15/11).
   if (q && !q.accepted && !q.claimed && (qid.startsWith('nq_') || qid.startsWith('dq_') || qid.startsWith('c_'))) {
-    socket?.emit('quest:accept', qid, (r: { ok: boolean; error?: string }) => {
+    socket?.emit('quest:accept', qid, (r: { ok: boolean; error?: string; code?: QuestErrorCode }) => {
       if (r.ok) {
         // Lật accepted tại chỗ, không chờ push 'quests' (push mất thì lại kẹt — đúng lỗi news 89).
         const qq = quests.find((x) => x.id === qid);
         if (qq) qq.accepted = true;
         return;
       }
-      if (r.error === 'Đã nhận hoặc đã hoàn thành nhiệm vụ này') return; // đã nhận (race) — quests push sẽ cập nhật
+      if (r.code === 'already_accepted') return; // đã nhận (race) — quests push sẽ cập nhật
       if (guideQuestId === qid) stopGuide();
       toast(r.error ?? 'Lỗi');
     });
@@ -1992,7 +2000,7 @@ function updateSweep(now: number): void {
       sweepState = null;
       lastSwept = { qid: s.qid, x: s.point.x, z: s.point.z };
       lastSweptAt = now;
-      socket.emit('quest:sweep', { qid: s.qid, point: s.point }, (r: { ok: boolean; error?: string; progress?: number }) => {
+      socket.emit('quest:sweep', { qid: s.qid, point: s.point }, (r: { ok: boolean; error?: string; progress?: number; code?: QuestErrorCode }) => {
         const applyProgress = (): boolean => {
           if (typeof r.progress !== 'number') return false;
           const q = quests.find((x) => x.id === s.qid);
@@ -2005,7 +2013,7 @@ function updateSweep(now: number): void {
           return false;
         };
         if (r.ok) { applyProgress(); return; }
-        if (r.error === 'Điểm này đã quét rồi') {
+        if (r.code === 'already_swept') {
           if (applyProgress()) { lastSwept = null; return; }
         }
         lastSwept = null;
@@ -2570,8 +2578,11 @@ function loop(now: number = performance.now()) {
     const myAct: NpcAct | null = me.anim === 'chant' ? 'chant' : sitting ? 'meditate' : null;
     if (myAct !== me.act) { me.act = myAct; refreshLabel(me); }
 
-    if (now - lastSend > 60) {
+    const moved = Math.abs(root.position.x - lastSentMove.x) > 0.01 || Math.abs(root.position.z - lastSentMove.z) > 0.01
+      || Math.abs(me.ry - lastSentMove.ry) > 0.01 || me.anim !== lastSentMove.anim;
+    if ((moved && now - lastSend > 60) || now - lastSend >= 1000) {
       lastSend = now;
+      lastSentMove = { x: root.position.x, z: root.position.z, ry: me.ry, anim: me.anim };
       socket.volatile.emit('move', { x: root.position.x, z: root.position.z, ry: me.ry, anim: me.anim });
     }
 

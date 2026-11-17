@@ -560,7 +560,7 @@ io.on('connection', (socket) => {
     s.state.anim = kind;
     io.to(s.room).emit('player:action', { id: s.state.id, kind });
     if (kind === 'lantern') {
-      const l: Lantern = { id: seq++, name: s.state.name, wish: clean(wish, 120) || 'Cầu bình an', t: now };
+      const l: Lantern = { id: seq++, pid: s.pid, name: s.state.name, wish: clean(wish, 120) || 'Cầu bình an', t: now };
       const arr = roomLanterns.get(s.room) ?? [];
       arr.push(l);
       if (arr.length > 200) arr.shift();
@@ -588,7 +588,7 @@ io.on('connection', (socket) => {
     if (!paid) return reply({ ok: false, error: 'Không đủ xu' });
     s.last.sky = now;
     const l: SkyLantern = {
-      id: seq++, name: s.state.name,
+      id: seq++, pid: s.pid, name: s.state.name,
       wish: cleanLine(wish, SKY_LANTERN_WISH_MAX) || 'Cầu bình an',
       x: s.state.x, z: s.state.z, t: now,
     };
@@ -682,9 +682,10 @@ io.on('connection', (socket) => {
     io.to(s.room).emit('player:look', { id: s.state.id, accessory: s.state.accessory });
   });
 
-  socket.on('quest:accept', async (qid: string, cb?: (r: { ok: boolean; error?: string }) => void) => {
+  type QuestErrorCode = import('../shared/game').QuestErrorCode;
+  socket.on('quest:accept', async (qid: string, cb?: (r: { ok: boolean; error?: string; code?: QuestErrorCode }) => void) => {
     const s = me();
-    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    const reply = (r: { ok: boolean; error?: string; code?: QuestErrorCode }) => { if (typeof cb === 'function') cb(r); };
     const q = typeof qid === 'string' ? findQuestDef(qid) : undefined;
     if (!s || !q || !isNpcQuest(q)) return reply({ ok: false, error: 'Nhiệm vụ không hợp lệ' });
     if (q.id.startsWith('dq_') && !dqTodayIds().includes(q.id)) return reply({ ok: false, error: 'Việc này không phải việc hôm nay' });
@@ -692,7 +693,7 @@ io.on('connection', (socket) => {
     const byId = new Map(rows.map((r) => [r.quest_id, r]));
     const req = (q as any).requires as string | undefined;
     if (req && !byId.get(req)?.claimed) return reply({ ok: false, error: 'Chưa mở khóa nhiệm vụ này' });
-    if (byId.has(q.id)) return reply({ ok: false, error: 'Đã nhận hoặc đã hoàn thành nhiệm vụ này' });
+    if (byId.has(q.id)) return reply({ ok: false, error: 'Đã nhận hoặc đã hoàn thành nhiệm vụ này', code: 'already_accepted' });
     await db.acceptQuest(s.pid, q.id);
     const steps = (q as any).steps as QuestEvent[] | undefined;
     if (steps?.[0] === 'talk' || (!steps && q.event === 'talk')) await db.bumpQuest(s.pid, q.id, q.target, 1);
@@ -705,10 +706,10 @@ io.on('connection', (socket) => {
 
   socket.on('quest:sweep', async (
     payload: { qid: string; point: { x: number; z: number } },
-    cb?: (r: { ok: boolean; error?: string; progress?: number }) => void,
+    cb?: (r: { ok: boolean; error?: string; progress?: number; code?: QuestErrorCode }) => void,
   ) => {
     const s = me();
-    const reply = (r: { ok: boolean; error?: string; progress?: number }) => { if (typeof cb === 'function') cb(r); };
+    const reply = (r: { ok: boolean; error?: string; progress?: number; code?: QuestErrorCode }) => { if (typeof cb === 'function') cb(r); };
     const q = payload && typeof payload.qid === 'string' ? findQuestDef(payload.qid) : undefined;
     const pt = payload?.point;
     if (!s || !q || !isNpcQuest(q) || !pt || typeof pt.x !== 'number' || typeof pt.z !== 'number') {
@@ -722,7 +723,7 @@ io.on('connection', (socket) => {
     const key = `${q.id}:${pt.x},${pt.z}`;
     if (set.has(key)) {
       const cur = await cachedQuestRows(s);
-      return reply({ ok: false, error: 'Điểm này đã quét rồi', progress: cur.find((r) => r.quest_id === q.id)?.progress ?? 0 });
+      return reply({ ok: false, error: 'Điểm này đã quét rồi', code: 'already_swept', progress: cur.find((r) => r.quest_id === q.id)?.progress ?? 0 });
     }
     const rows = await cachedQuestRows(s);
     const ok = await advanceNpcQuest(s, q, 'sweep', 1, rows);

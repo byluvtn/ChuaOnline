@@ -548,6 +548,9 @@ export interface SpinAck {
   used?: boolean;
 }
 
+/** Mã lỗi có rẽ nhánh ở client (Fable #26) — client KHÔNG so chuỗi error nữa. */
+export type QuestErrorCode = 'already_accepted' | 'already_swept';
+
 export interface SpinSegment {
   /** Nhãn ngắn in trên ô vòng quay. */
   label: string;
