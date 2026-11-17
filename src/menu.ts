@@ -165,6 +165,17 @@ export function initMenu(ctx: MenuCtx): void {
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { scroller.scrollLeft += e.deltaY; e.preventDefault(); }
   }, { passive: false });
 
+  // fade the bar edges while buttons are hidden in that direction (the scrollbar is hidden)
+  const updateFade = () => {
+    const max = scroller.scrollWidth - scroller.clientWidth;
+    scroller.classList.toggle('fade-l', scroller.scrollLeft > 2);
+    scroller.classList.toggle('fade-r', scroller.scrollLeft < max - 2);
+  };
+  scroller.addEventListener('scroll', updateFade, { passive: true });
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(updateFade).observe(scroller);
+  else window.addEventListener('resize', updateFade);
+  updateFade();
+
   // settings -> audio
   onSettings((s, changed) => {
     audio.setVolume(s.volume);
