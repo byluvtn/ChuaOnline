@@ -75,7 +75,7 @@ pCam.position.set(0, 1.4, 5.5);
 pCam.lookAt(0, 1.12, 0);
 let pChar = null as Character | null;
 function rebuildPreview() {
-  if (pChar) pScene.remove(pChar.root);
+  if (pChar) { pScene.remove(pChar.root); pChar.dispose(); }
   pChar = buildCharacter(outfit, color, '');
   pChar.label.visible = false;
   pChar.setAccessory(profile?.accessory ?? null);
@@ -700,6 +700,8 @@ $('enter').onclick = async () => {
     localStorage.setItem('co:outfit', outfit);
     localStorage.setItem('co:color', color);
     previewRunning = false;
+    if (pChar) { pScene.remove(pChar.root); pChar.dispose(); pChar = null; }
+    pr.dispose(); pr.forceContextLoss();
     $('login').hidden = true;
     $('hud').hidden = false;
     $('joystick').hidden = !isTouch;
@@ -1889,6 +1891,14 @@ function updateGuidePath(): void {
   // Cap the discs at 40: if the route is longer, take every Nth waypoint.
   const step = Math.max(1, Math.ceil(pts.length / 40));
   const sampled = pts.filter((_, i) => i % step === 0 || i === pts.length - 1);
+  const doomed = new Set<{ dispose(): void }>();
+  guideGroup.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry) doomed.add(m.geometry);
+    const mat = m.material as THREE.Material | THREE.Material[] | undefined;
+    if (Array.isArray(mat)) mat.forEach((x) => doomed.add(x)); else if (mat) doomed.add(mat);
+  });
+  doomed.forEach((x) => x.dispose());
   guideGroup.clear();
   const linePts = sampled.map((w) => new THREE.Vector3(w.x, world.groundY(w.x, w.z) + 0.08, w.z));
   const lineGeo = new THREE.BufferGeometry().setFromPoints(linePts);

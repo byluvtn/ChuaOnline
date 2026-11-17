@@ -310,6 +310,8 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const blob = new THREE.Mesh(geo('blob', () => new THREE.PlaneGeometry(1.5, 1.5)),
     new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }));
   blob.rotation.x = -Math.PI / 2; blob.position.y = 0.07; blob.renderOrder = 1;
+  const ownMats: THREE.Material[] = []; // fresh per-character materials, released in dispose()
+  const ownGeos: THREE.BufferGeometry[] = []; // fresh per-character geometries, released in dispose()
   root.add(blob);
 
   const robeC = new THREE.Color(color);
@@ -350,6 +352,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   if (outfit === 'female') { // lotus embroidery on the wearer's left chest
     const dec = new THREE.Mesh(geo('embroidery', () => new THREE.PlaneGeometry(0.15, 0.15)),
       new THREE.MeshToonMaterial({ map: embroideryTexture(), transparent: true, gradientMap: null as any }));
+    ownMats.push(dec.material as THREE.Material);
     dec.position.set(0.125, 0.8, rAt(0.8) * Math.cos(0.4) + 0.006); dec.rotation.y = 0.4;
     robeGroup.add(dec);
   }
@@ -359,6 +362,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   if (outfit === 'nun') head.scale.x = 1.04;
   const face = new THREE.Mesh(geo('faceCap', () => new THREE.SphereGeometry(HR * 1.004, 40, 30, Math.PI / 2 - 0.85, 1.7, 0.7, 1.7)),
     new THREE.MeshToonMaterial({ map: faceTexture(outfit, false, opts?.role === 'abbot'), emissive: 0x4a2c16, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  ownMats.push(face.material as THREE.Material);
   face.renderOrder = 2; face.raycast = () => {};
   head.add(face);
   const faceOpen = faceTexture(outfit, false, opts?.role === 'abbot'), faceShut = faceTexture(outfit, true, opts?.role === 'abbot');
@@ -487,7 +491,9 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     }
     const beads = mesh(mergeGeometries(parts), tmat(0x5c3421), body, 0, 0, 0, false);
     outlined(beads, 0.008);
+    ownGeos.push((beads as THREE.Mesh).geometry);
     const cord = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.filter((_, i) => i % 15 === 0), true), 120, 0.008, 5, true);
+    ownGeos.push(cord);
     mesh(cord, tmat(0x3a2012), body, 0, 0, 0, false);
   } else if (outfit === 'nun') {
     const n = 16, rad = 0.047 / 2;
@@ -500,7 +506,8 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       b.translate(Math.cos(a) * 0.27, 1.03 - 0.17 * front * front - 0.02 * (1 - front), Math.sin(a) * 0.2 + 0.07);
       parts.push(b);
     }
-    mesh(mergeGeometries(parts), bm, body, 0, 0, 0, false);
+    const nunBeads = mesh(mergeGeometries(parts), bm, body, 0, 0, 0, false);
+    ownGeos.push((nunBeads as THREE.Mesh).geometry);
   }
 
   // ---- arms: shoulder pivot -> upper sleeve -> elbow -> short round wrist sleeve + round flat hand (no fingers) ----
@@ -573,7 +580,9 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   for (let i = -1; i <= 1; i++) { // three incense sticks, red glowing tips
     const st = new THREE.Group(); st.position.set(i * 0.016, 0.02, 0); st.rotation.z = -i * 0.1; holdInc.add(st);
     mesh(geo('stick', () => new THREE.CylinderGeometry(0.0065, 0.0065, 0.212, 5)), tmat(0x8a4b2a), st, 0, 0.106, 0, false);
-    mesh(geo('stickTip', () => new THREE.CylinderGeometry(0.0085, 0.0085, 0.04, 5)), new THREE.MeshBasicMaterial({ color: 0xc8372d }), st, 0, 0.205, 0, false);
+    const tipMat = new THREE.MeshBasicMaterial({ color: 0xc8372d });
+    ownMats.push(tipMat);
+    mesh(geo('stickTip', () => new THREE.CylinderGeometry(0.0085, 0.0085, 0.04, 5)), tipMat, st, 0, 0.205, 0, false);
   }
   const petalM = tmat(0xf0aec4, { emissive: 0x3a1020 });
   if (outfit === 'nun' || outfit === 'monk') { // lotus bud: three curved petals
@@ -596,6 +605,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const garmentState: { current: GarmentState | null } = { current: null };
   let accGroup: THREE.Group | null = null;
   let accOwned = false; // accGroup do builder mới tạo -> được phép dispose
+  const accMats: THREE.Material[] = []; // fresh hao_quang materials (inside the non-owned accessory group)
   const suitBuilders: Record<string, () => THREE.Group> = {
     ao_dai_hong_sen: buildAoDaiHongSenV3,
     ao_dai_vang_nhat: buildAoDaiVangNhatV3,
@@ -605,6 +615,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   };
   const setAccessory = (id: string | null) => {
     if (accGroup) { body.remove(accGroup); if (accOwned) disposeGarment(accGroup); accGroup = null; accOwned = false; }
+    if (accMats.length) { accMats.forEach((m) => m.dispose()); accMats.length = 0; }
     if (garmentState.current) { body.remove(garmentState.current.group); disposeGarment(garmentState.current.group); }
     garmentState.current = null;
     const isHat = id === 'non_la' || id === 'khan_dong';
@@ -648,9 +659,11 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       }
       mesh(geo('petalC', () => new THREE.SphereGeometry(0.1, 10, 8)), tmat(0xffd35a, { emissive: 0x553300 }), g, 0, 2.13, 0, false);
     } else if (id === 'hao_quang') {
-      const ring = mesh(geo('halo', () => new THREE.TorusGeometry(0.78, 0.04, 8, 40)),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd36b).multiplyScalar(2.2) }), g, 0, 1.68, -0.55, false);
-      mesh(geo('haloD', () => new THREE.CircleGeometry(0.76, 32)), new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.22, side: THREE.DoubleSide }), ring, 0, 0, -0.01, false);
+      const haloMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd36b).multiplyScalar(2.2) });
+      const haloDMat = new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.22, side: THREE.DoubleSide });
+      accMats.push(haloMat, haloDMat);
+      const ring = mesh(geo('halo', () => new THREE.TorusGeometry(0.78, 0.04, 8, 40)), haloMat, g, 0, 1.68, -0.55, false);
+      mesh(geo('haloD', () => new THREE.CircleGeometry(0.76, 32)), haloDMat, ring, 0, 0, -0.01, false);
     } else if (id === 'khan_do') {
       const red = tmat(0xcc2a1e);
       const sc = mesh(geo('scarf', () => new THREE.TorusGeometry(0.31, 0.085, 10, 24)), red, g, 0, 1.12, 0, false);
@@ -730,7 +743,14 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
       B.sprite.visible = true;
       c.bubbleUntil = performance.now() + 5500 + shown.join('').length * 40;
     },
-    dispose() { L.tex.dispose(); B.tex.dispose(); (L.sprite.material as THREE.Material).dispose(); (B.sprite.material as THREE.Material).dispose(); if (garmentState.current) { disposeGarment(garmentState.current.group); garmentState.current = null; } blob.material.dispose(); },
+    dispose() {
+      setAccessory(null);
+      L.tex.dispose(); B.tex.dispose();
+      (L.sprite.material as THREE.Material).dispose(); (B.sprite.material as THREE.Material).dispose();
+      blob.material.dispose();
+      ownMats.forEach((m) => m.dispose());
+      ownGeos.forEach((g) => g.dispose());
+    },
     head, cane: !!opts?.cane, beard: beardGroup, holdStaff,
   };
   return c;
