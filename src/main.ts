@@ -7,7 +7,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, NGOC, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU } from './layout';
+import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, NGOC, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -25,7 +25,7 @@ import { ACTION_RULES, CHAIN_QUESTS, GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEE
 import { weekKey } from '../shared/time';
 import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
-import { nearestNode, routeFrom, type Pt } from '../shared/roads';
+import { nearestNode, routeFrom, ROAD_NODES, ROAD_EDGES, type Pt } from '../shared/roads';
 import {
   MAP_HALF, MAP_Z_MIN, MAP_Z_MAX, OUTFIT_COLOR, levelOf, meritForLevel,
   type ActionKind, type Anim, type AnimalState, type ChatMessage, type FireworkShow, type Lantern, type NpcAct, type Outfit, type PlayerState, type Profile, type SkyLantern,
@@ -1724,42 +1724,26 @@ function npcPos(id: string | undefined): Pt | null {
 const minimapWrap = $('minimapWrap');
 const minimapCv = $('minimap') as HTMLCanvasElement;
 const minimapShowBtn = $('minimapShowBtn');
-const MM_POIS: Pt[] = [
-  { x: -34, z: -6 }, { x: 34, z: -6 }, { x: 24, z: -24 }, { x: 30, z: -31 },
-  BAO_THAP, { x: 0, z: -68 }, HALL, LAKE, LOTUS, DUOC_SU, NGOC, VUON_THAP,
-  { x: -76, z: -42 }, { x: 80, z: -3 }, { x: 79, z: 28 },
+const MM_BUILDINGS = [
+  { x: HALL.x, z: HALL.z, hx: HALL.hx, hz: HALL.hz, label: 'Chính Điện' },
+  { ...TAM_THE_PLAT, label: 'Tam Thế' }, { ...DIEN_MAU_PLAT, label: 'Điện Mẫu' },
+  { ...THIEN_DUONG_PLAT, label: 'Thiền Đường' }, { ...TRAI_DUONG_PLAT, label: 'Trai Đường' },
+  { ...NHA_KHACH_PLAT, label: 'Nhà Khách' }, { ...NHA_TO_PLAT, label: 'Nhà Tổ' },
+  { ...TANG_XA_PLAT, label: 'Tăng Xá' }, { ...AM_CO_PLAT, label: 'Am Cổ' },
+  { ...VUON_THAP_PLAT, label: 'Vườn Tháp' }, { ...PHONG_CD_PLAT, label: 'Ghi Công Đức' },
+  { x: DUOC_SU.x, z: DUOC_SU.z, hx: DUOC_SU.hx, hz: DUOC_SU.hz, label: 'Dược Sư' },
+  { x: NGOC.x, z: NGOC.z, hx: NGOC.hx, hz: NGOC.hz, label: 'Chùa Ngọc' },
 ];
-let mmStatic: HTMLCanvasElement | null = null;
-let mmStaticSize = 0;
+const MM_ROADS = new Map(ROAD_NODES.map((n) => [n.id, n]));
 
-function mmProject(S: number, dpr: number) {
-  const MX0 = -100, MX1 = 100, MZ0 = -128, MZ1 = 68;
-  const PAD = 4 * dpr;
-  // Fit the diagonal inside the circular mask so neither northern wing is clipped.
-  const k = (S - PAD * 2) / Math.hypot(MX1 - MX0, MZ1 - MZ0);
-  const OX = (S - (MX1 - MX0) * k) / 2, OZ = (S - (MZ1 - MZ0) * k) / 2;
-  return { k, X: (x: number) => (x - MX0) * k + OX, Z: (z: number) => (z - MZ0) * k + OZ };
-}
-
-function mmBuildStatic(S: number, dpr: number): HTMLCanvasElement {
-  const c = document.createElement('canvas');
-  c.width = S; c.height = S;
-  const g = c.getContext('2d')!;
-  const { k, X, Z } = mmProject(S, dpr);
-  g.fillStyle = '#c9d9a8';
-  g.fillRect(0, 0, S, S);
-  g.lineWidth = Math.max(1, dpr);
-  g.fillStyle = '#e4e8c4'; g.strokeStyle = '#8a5a2b';
-  g.beginPath(); g.rect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k); g.fill(); g.stroke();
-  g.fillStyle = '#8ec6e0'; g.strokeStyle = '#4f8fb0';
-  for (const p of [LAKE, LOTUS, RIVER.pond]) { g.beginPath(); g.ellipse(X(p.x), Z(p.z), p.a * k, p.b * k, 0, 0, Math.PI * 2); g.fill(); g.stroke(); }
-  g.fillRect(X(RIVER.x0), Z(RIVER.z0), 4 * k, (RIVER.z1 - RIVER.z0) * k);
-  g.fillStyle = '#c8b59a';
-  g.fillRect(X(-BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
-  g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, 30 * k);
-  g.fillStyle = '#b5542f'; g.strokeStyle = '#6e2a14';
-  g.beginPath(); g.rect(X(-17), Z(-42), 34 * k, 20 * k); g.fill(); g.stroke();
-  return c;
+function mmQuestNpc(q: QuestState): string | undefined {
+  if (!q.accepted || q.claimed) return;
+  if (q.progress >= q.target) return q.giver;
+  const def = questDef(q.id);
+  const step = currentStep(q);
+  if (step === 'talk') return q.giver;
+  if (step === 'deliver') return def?.receiver;
+  if (def?.event === 'talk' && !def.steps) return q.giver;
 }
 
 function drawMinimap() {
@@ -1768,34 +1752,73 @@ function drawMinimap() {
   const S = Math.round(minimapWrap.clientWidth * dpr);
   if (S <= 0) return;
   if (minimapCv.width !== S) { minimapCv.width = S; minimapCv.height = S; }
-  if (!mmStatic || mmStaticSize !== S) { mmStatic = mmBuildStatic(S, dpr); mmStaticSize = S; }
   const g = minimapCv.getContext('2d');
   if (!g) return;
-  const { X, Z } = mmProject(S, dpr);
+  const mx = me.char.root.position.x, mz = me.char.root.position.z;
+  const k = S / 150;
+  const X = (x: number) => S / 2 + (x - mx) * k;
+  const Z = (z: number) => S / 2 + (z - mz) * k;
   g.clearRect(0, 0, S, S);
   g.save();
   g.beginPath(); g.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); g.clip();
-  g.drawImage(mmStatic, 0, 0);
+  g.fillStyle = '#b8cba6'; g.fillRect(0, 0, S, S);
+  g.fillStyle = '#e5e8cb';
+  g.fillRect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k);
+  g.strokeStyle = '#765a39'; g.lineWidth = 1.5 * dpr;
+  g.strokeRect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k);
+  g.strokeStyle = '#d4c5a3'; g.lineWidth = Math.max(2, 3 * k);
+  g.lineCap = 'round'; g.beginPath();
+  for (const [from, to] of ROAD_EDGES) {
+    const a = MM_ROADS.get(from), b = MM_ROADS.get(to);
+    if (a && b) { g.moveTo(X(a.x), Z(a.z)); g.lineTo(X(b.x), Z(b.z)); }
+  }
+  g.stroke();
+  g.fillStyle = '#89bed0'; g.strokeStyle = '#5392a5'; g.lineWidth = dpr;
+  for (const p of [LAKE, LOTUS, FARM_POND, PS_POND, RIVER.pond]) {
+    g.beginPath(); g.ellipse(X(p.x), Z(p.z), p.a * k, p.b * k, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+  }
+  g.fillRect(X(RIVER.x0), Z(RIVER.z0), (RIVER.x1 - RIVER.x0) * k, (RIVER.z1 - RIVER.z0) * k);
+  g.fillStyle = '#d6b994';
+  g.fillRect(X(-BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
+  g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, (NGOC.stairStart - NGOC.stairTop) * k);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `600 ${8 * dpr}px sans-serif`;
+  for (const b of MM_BUILDINGS) {
+    g.fillStyle = '#ac7651'; g.strokeStyle = '#765039'; g.lineWidth = dpr;
+    g.beginPath(); g.rect(X(b.x - b.hx), Z(b.z - b.hz), b.hx * 2 * k, b.hz * 2 * k); g.fill(); g.stroke();
+    if (Math.abs(X(b.x) - S / 2) < S * .43 && Math.abs(Z(b.z) - S / 2) < S * .43 && b.hx * 2 * k > g.measureText(b.label).width + 3 * dpr) {
+      g.fillStyle = '#fff7e6'; g.fillText(b.label, X(b.x), Z(b.z));
+    }
+  }
+  g.fillStyle = '#8d663e';
+  for (const p of [BAO_THAP, BELL, DRUM]) { g.beginPath(); g.arc(X(p.x), Z(p.z), 3 * k, 0, Math.PI * 2); g.fill(); }
   g.font = `700 ${9 * dpr}px sans-serif`;
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = '#6e2a14';
+  g.fillStyle = '#573c2a';
   g.fillText('Bắc', S / 2, 10 * dpr);
   const dot = (x: number, z: number, rad: number, fill: string) => {
     g.beginPath(); g.arc(X(x), Z(z), rad * dpr, 0, Math.PI * 2);
     g.fillStyle = fill; g.fill();
     g.lineWidth = Math.max(1, dpr * 0.8); g.strokeStyle = '#fff'; g.stroke();
   };
-  for (const p of MM_POIS) dot(p.x, p.z, 2.5, '#7a4a12');
-  for (const [id, r] of remotes) {
-    if (id === myId || !r.data.npc) continue;
-    dot(r.char.root.position.x, r.char.root.position.z, 3, '#e8b64a');
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 250);
+  const neededNpcs = new Set(quests.map(mmQuestNpc).filter((id): id is string => !!id));
+  for (const id of neededNpcs) {
+    const r = remotes.get(id);
+    if (!r?.data.npc) continue;
+    const x = r.char.root.position.x, z = r.char.root.position.z;
+    const dx = X(x) - S / 2, dz = Z(z) - S / 2;
+    const scale = Math.min(1, (S / 2 - 11 * dpr) / Math.max(1, Math.hypot(dx, dz)));
+    const px = S / 2 + dx * scale, pz = S / 2 + dz * scale;
+    g.beginPath(); g.arc(px, pz, (5 + 4 * pulse) * dpr, 0, Math.PI * 2);
+    g.strokeStyle = `rgba(255,176,36,${0.9 - 0.4 * pulse})`; g.lineWidth = 2 * dpr; g.stroke();
+    g.beginPath(); g.arc(px, pz, 3.5 * dpr, 0, Math.PI * 2);
+    g.fillStyle = '#f5a623'; g.fill(); g.strokeStyle = '#fff'; g.lineWidth = dpr; g.stroke();
   }
   for (const [id, r] of remotes) {
     if (id === myId || r.data.npc) continue;
-    dot(r.char.root.position.x, r.char.root.position.z, 3, '#2f6fb0');
+    dot(r.char.root.position.x, r.char.root.position.z, 2.5, '#2f6fb0');
   }
-  const mx = me.char.root.position.x, mz = me.char.root.position.z;
-  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 250);
   g.beginPath(); g.arc(X(mx), Z(mz), (5.5 + 3 * pulse) * dpr, 0, Math.PI * 2);
   g.strokeStyle = `rgba(217,70,122,${(0.65 - 0.4 * pulse).toFixed(2)})`;
   g.lineWidth = Math.max(1, 1.5 * dpr); g.stroke();
