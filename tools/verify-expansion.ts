@@ -13,6 +13,18 @@ assert.deepEqual([BELL.x, DRUM.x, BAO_THAP.x, BAO_THAP.z], [34, -34, -34, -15]);
 assert.deepEqual(TANG_XA, { x: -64, z: -74 });
 assert.deepEqual(VUON_THAP, { x: 50, z: -94 });
 assert.deepEqual([LAKE.z, LAKE.a, LAKE.b, BRIDGE.z0, BRIDGE.z1], [14, 14, 10, 2, 26]);
+assert.equal(BRIDGE.hw * 2, 4.6);
+for (const side of [-1, 1]) {
+  const x = BRIDGE.x + side * (BRIDGE.hw - 0.3);
+  const prev = { x, z: LAKE.z - 0.1 }, step = { x, z: LAKE.z };
+  resolveWater(step, resolveBridge(step, prev), prev);
+  assert.deepEqual(step, { x, z: LAKE.z }, 'the widened deck stays walkable close to either rail');
+  assert.equal(groundY(x, LAKE.z), groundY(BRIDGE.x, LAKE.z));
+  assert(nearWalkway(x, BRIDGE.z0, 0) && nearWalkway(x, BRIDGE.z1 + 0.5, 0));
+  const overRail = { x: BRIDGE.x + side * (BRIDGE.hw + 0.05), z: LAKE.z };
+  assert(resolveBridge(overRail, step));
+  assert(Math.abs(overRail.x - BRIDGE.x) < BRIDGE.hw, 'the new rail still keeps walkers on the deck');
+}
 const profile = ngocStepProfile();
 const offDeck = { x: -78, z: 2.91 }, onDeck = { x: -78, z: 2.89 };
 resolveWater(offDeck, false, onDeck);

@@ -78,6 +78,7 @@ export const FLOWER_BEDS = [{ x: 16.5, z: 23, a: 5, b: 3.5 }, { x: -16.5, z: 23,
 /** Actual stone footprints, shared by the renderer and scenery placement. */
 export const MAIN_COURT = [-20, -42, 20, 2] as const;
 export const NGOC_APPROACH = [NGOC.x - 4.5, NGOC.stairStart, NGOC.x + 4.5, NORTH_WALK_Z - 1.2] as const;
+const bridgeApproachHalf = BRIDGE.hw + 0.25;
 export const WALKWAY_RECTS = [
   [-WALL.x - 4, PATH_Z - 1.1, WALL.x + 4, PATH_Z + 1.1],
   [SIDE_X - 1.2, PATH_Z, SIDE_X + 1.2, QUAN.z],
@@ -86,8 +87,8 @@ export const WALKWAY_RECTS = [
   [DRUM.x, DRUM.z - 1.2, -SIDE_X, DRUM.z + 1.2],
   [SIDE_X, BELL.z - 1.2, BELL.x, BELL.z + 1.2],
   [SIDE_X - 1.2, BELL.z, SIDE_X + 1.2, PATH_Z],
-  [BRIDGE.x - 1.4, BRIDGE.z1 - 0.4, BRIDGE.x + 1.4, WALL.zS],
-  [BRIDGE.x + 1.4, DEN_TRINH.z - 1.2, DEN_TRINH.x - 2.6, DEN_TRINH.z + 1.2],
+  [BRIDGE.x - bridgeApproachHalf, BRIDGE.z1 - 0.4, BRIDGE.x + bridgeApproachHalf, WALL.zS],
+  [BRIDGE.x + bridgeApproachHalf, DEN_TRINH.z - 1.2, DEN_TRINH.x - 2.6, DEN_TRINH.z + 1.2],
   [-SIDE_X - 1.2, ZEN.z, -SIDE_X + 1.2, PATH_Z],
   [-58, -48, 58, -43], [-1.2, -51, 1.2, -42],
   [VIEN_KT.gateX - 1.2, -58, VIEN_KT.gateX + 1.2, -43],
@@ -101,7 +102,7 @@ export const WALKWAY_RECTS = [
   [THIEN_DUONG.x + THIEN_DUONG_PLAT.hx, THIEN_DUONG.z - 1.2, -SIDE_X - 1.2, THIEN_DUONG.z + 1.2],
   [28, 8.8, 35, 11.2], [-48, -59.2, -27, -56.8], [-42.2, -67, -39.8, -58],
   [27, -59.2, 50, -56.8], [34.8, -63.75, 37.2, -58],
-  [REST.x + 2, REST.z - 1.2, BRIDGE.x - 1.4, REST.z + 1.2],
+  [REST.x + 2, REST.z - 1.2, BRIDGE.x - bridgeApproachHalf, REST.z + 1.2],
   [-65.2, -70.5, -62.8, -67.3], [-72.5, -69.5, -58.5, -67.3],
   [TINH_THAT[0].x - 1, TINH_THAT_LANE_Z - 1, -70.5, TINH_THAT_LANE_Z + 1],
   ...TINH_THAT.map(({ x, z }): [number, number, number, number] => [x - 0.72, z + 1.25, x + 0.72, TINH_THAT_LANE_Z]),

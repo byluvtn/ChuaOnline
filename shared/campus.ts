@@ -2,7 +2,7 @@
 export const WALL = { x: 92, zN: -130, zS: 45, gate: 4.4, sideGateZ: 2, sideGateHalf: 2.2 };
 export const MAP_Z_MIN = WALL.zN;
 export const LAKE = { x: 0, z: 14, a: 14, b: 10 };
-export const BRIDGE = { x: 0, z0: 2, z1: 26, hw: 1.15, peak: 1.4 };
+export const BRIDGE = { x: 0, z0: 2, z1: 26, hw: 2.3, peak: 1.4 };
 export const LOTUS = { x: -78, z: -2, a: 10, b: 7 };
 export const LOTUS_PAVILION = { x: -70, z: 5 };
 export const RIVER = { x: 65, x0: 63, x1: 67, z0: -82, z1: 14, pond: { x: 65, z: 16, a: 3, b: 4 }, bridges: [-38, 2], bridgeHalf: 1.4 };

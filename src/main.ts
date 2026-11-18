@@ -210,7 +210,7 @@ function lakeRingColliders() {
     const x = LAKE.x + Math.cos(t) * a;
     const z = LAKE.z + Math.sin(t) * b;
     // Chừa khe hành lang cầu: chỉ bỏ điểm sát hai đầu cầu, không bỏ cả dải theo z
-    if (Math.abs(x - BRIDGE.x) < 2 && z >= BRIDGE.z0 - 1 && z <= BRIDGE.z1 + 1) continue;
+    if (Math.abs(x - BRIDGE.x) < BRIDGE.hw + R + 0.55 && z >= BRIDGE.z0 - 1 && z <= BRIDGE.z1 + 1) continue;
     if (x >= -12 && x <= -3 && Math.abs(z - 23) <= 3) continue;
     out.push({ x, z, r: R });
   }
@@ -1797,7 +1797,7 @@ function drawMinimap() {
   }
   g.fillRect(X(RIVER.x0), Z(RIVER.z0), (RIVER.x1 - RIVER.x0) * k, (RIVER.z1 - RIVER.z0) * k);
   g.fillStyle = '#d6b994';
-  g.fillRect(X(-BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
+  g.fillRect(X(BRIDGE.x - BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
   g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, (NGOC.stairStart - NGOC.stairTop) * k);
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `600 ${8 * dpr}px sans-serif`;
@@ -2025,7 +2025,7 @@ function zoneNameOf(x: number, z: number): string {
   if (near(PHONG_CD.x, PHONG_CD.z, 7)) return 'Phòng ghi công đức';
   if (near(REST.x, REST.z, 7)) return 'Khu nghỉ';
   if (near(30, -31, 5)) return 'Bến Phóng Sinh';
-  if (inRect(-2, 2, BRIDGE.z0, BRIDGE.z1)) return 'Cầu hồ koi';
+  if (inRect(BRIDGE.x - BRIDGE.hw, BRIDGE.x + BRIDGE.hw, BRIDGE.z0, BRIDGE.z1)) return 'Cầu hồ koi';
   if (near(LAKE.x, LAKE.z, 14)) return 'Hồ cá koi';
   if (inRect(5, 55, 47, 60)) return 'Chợ';
   if (near(11, 39, 5)) return 'Đền Trình';

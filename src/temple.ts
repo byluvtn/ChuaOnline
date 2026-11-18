@@ -935,25 +935,31 @@ export function buildTemple(c: TempleCtx) {
   const water = new THREE.Mesh(new THREE.CircleGeometry(1, 56), waterMat);
   water.scale.set(LAKE.a, LAKE.b, 1); water.rotation.x = -Math.PI / 2; water.position.y = 0.14; pond.add(water);
   const rimStone = lamb(0x8b7a64, { map: stoneTexture([140, 128, 110], [14, 1], 3) });
-  const rimPts: THREE.Vector3[] = [];
-  for (let i = 0; i <= 64; i++) { const a = (i / 64) * Math.PI * 2; rimPts.push(new THREE.Vector3(Math.cos(a) * (LAKE.a + 0.3), 0, Math.sin(a) * (LAKE.b + 0.3))); }
-  const rimCurve = new THREE.CatmullRomCurve3(rimPts, true);
-  const rim = new THREE.Mesh(new THREE.TubeGeometry(rimCurve, 128, 0.42, 8, true), rimStone);
-  rim.scale.y = 0.8; rim.position.y = 0.2; rim.castShadow = true; rim.receiveShadow = true; pond.add(rim);
+  const rimRadius = 0.42;
+  const rimEnd = Math.acos((BRIDGE.hw + rimRadius) / (LAKE.a + 0.3));
+  // Split the rim at both bridge landings so the stone curb never crosses the deck.
+  for (const center of [0, Math.PI]) {
+    const pts = Array.from({ length: 33 }, (_, i) => {
+      const a = center + (i / 16 - 1) * rimEnd;
+      return new THREE.Vector3(Math.cos(a) * (LAKE.a + 0.3), 0, Math.sin(a) * (LAKE.b + 0.3));
+    });
+    const rim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, rimRadius, 8), rimStone);
+    rim.scale.y = 0.8; rim.position.y = 0.2; rim.castShadow = true; rim.receiveShadow = true; pond.add(rim);
+  }
   const rocks = lamb(0x6e675c, { flatShading: true });
   for (let i = 0; i < 16; i++) {
-    if (i === 4 || i === 12) continue; // bỏ đá lấn hành lang cầu
     const a = (i / 16) * Math.PI * 2 + 0.2, rr = 0.5 + ((i * 37) % 10) / 14;
-    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0), rocks);
     const rx = Math.cos(a) * (LAKE.a + 0.9), rz = Math.sin(a) * (LAKE.b + 0.9);
+    if (Math.abs(LAKE.x + rx - BRIDGE.x) < BRIDGE.hw + rr + 0.3) continue;
     if (LAKE.x + rx < PIER.x1 && Math.abs(LAKE.z + rz - PIER.z) < PIER.hw + rr + 0.6) continue;
+    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0), rocks);
     r.position.set(rx, rr * 0.3, rz); r.scale.y = 0.65; r.rotation.set(i, i * 2, 0); r.castShadow = true; pond.add(r);
   }
   const padM = lamb(0x2f8f45), flM = lamb(0xff93b8, { emissive: 0x401324 });
   for (let i = 0; i < 22; i++) {
     const a = ((i * 2.399) % (Math.PI * 2)), rr = Math.sqrt(((i * 0.618) % 1)) * 0.82;
     const x = Math.cos(a) * rr * LAKE.a, z = Math.sin(a) * rr * LAKE.b;
-    if (Math.abs(x - BRIDGE.x) < 1.8) continue;      // chừa lối cầu
+    if (Math.abs(LAKE.x + x - BRIDGE.x) < BRIDGE.hw + 0.65) continue;
     const pad = new THREE.Mesh(new THREE.CircleGeometry(0.55, 14, 0.4, 5.6), padM);
     pad.rotation.x = -Math.PI / 2; pad.position.set(x, 0.16, z); pond.add(pad);
     if (i % 2 === 0) for (let q = 0; q < 6; q++) {
@@ -1014,9 +1020,9 @@ export function buildTemple(c: TempleCtx) {
   }
   for (const sz of [-1, 1]) { // piers
     const pz = (BRIDGE.z0 + BRIDGE.z1) / 2 + sz * 4.6;
-    for (const s of [-1, 1]) {
+    for (const s of [-1, 0, 1]) {
       const pier = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.6, 8), lamb(0x6b6458));
-      pier.position.set(BRIDGE.x + s * (bw - 0.2), bridgeY(BRIDGE.x, pz) - 0.8, pz); bridge.add(pier);
+      pier.position.set(BRIDGE.x + s * (bw - 0.2), bridgeY(BRIDGE.x, pz) - 0.89, pz); bridge.add(pier);
     }
   }
   const apexZ = (BRIDGE.z0 + BRIDGE.z1) / 2;
