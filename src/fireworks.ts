@@ -283,7 +283,7 @@ export function createFireworks(scene: THREE.Scene, renderer: THREE.WebGLRendere
         const shot: Shot = { x: x + ox, z: z + oz, y: ground + .477,
           dx: isShape ? -ox : (Math.random() - .5) * wide,
           dz: isShape ? -oz : (Math.random() - .5) * wide,
-          rise: isShape ? 3.22 : 4.3 + Math.random() * .58,
+          rise: (isShape ? 3.22 : 4.3 + Math.random() * .58) * 1.2,
           delay: finale ? (finaleStart - 1) * gap + SHAPE_LIFE + (i - finaleStart) * .24 : i * gap,
           kind, palette: PALETTES[i % PALETTES.length], strength: isShape ? 1 : finale ? .72 : size === 'small' ? .62 : .86 };
         if (i === 0) launch(shot, 0);
