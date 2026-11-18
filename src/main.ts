@@ -187,6 +187,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
 const world = createWorld(renderer);
+world.setCamera(camera);
 initAnimals(world.scene, () => settings.showNames);
 
 /** Vòng collider viền hồ — CHỈ dành cho pathfinder (không vào world.colliders). */

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createBurst, DRAGON_SHOW_TYPES, isShapeType, type BurstType, type ShaderBurst } from './fireworks';
 import { MAP_HALF } from '../shared/types';
 import type { FireworkSize } from '../shared/types';
 import { FIREWORKS } from '../shared/game';
@@ -35,8 +36,10 @@ export interface World {
   spawnBurst(x: number, z: number, color?: number): void;
   /** Đèn trời: bay thẳng lên từ (x,z), sống ~45s, mờ dần 5s cuối. */
   spawnSkyLantern(x: number, z: number): void;
-  /** Pháo hoa: rocket bay lên rồi nổ thành cầu sprite; size quyết định số quả + nhịp. */
+  /** Pháo hoa: rocket bay lên rồi nổ thành vệt sáng shader; size quyết định số quả + nhịp. */
   spawnFirework(x: number, z: number, size: FireworkSize): void;
+  /** Lưu camera để quả pháo hình (rồng/phượng) dựng mặt phẳng vuông góc hướng nhìn. */
+  setCamera(cam: THREE.Camera): void;
   setMood(room: string): void;
   altar: THREE.Vector3;
   sun: THREE.DirectionalLight;
@@ -469,6 +472,10 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   // Màn có nhịp nổ >= 3s được coi là show lớn (rồng phượng) và có thêm màn kết.
   const FINALE_MIN_GAP_MS = 3000;
   const FINALE_SHELLS = 3;
+  // Kiểu nổ cho các quả giữa màn (cỡ nhỏ/to), xoay vòng. Quả đầu, quả cuối và màn kết luôn là 'sphere' (đời 2,0s)
+  // để tổng thời lượng show khớp công thức ghi trong shared/game.ts. Show rồng dùng bảng DRAGON_SHOW_TYPES
+  // riêng (quả 9 rồng, quả 10 phượng; phượng đời 3,1s, tàn ~58,1s vẫn trong lock 65s).
+  const MID_BURSTS: readonly BurstType[] = ['ring', 'willow', 'crackle'];
 
   /** Đèn trời: bay chậm (vy ~0,4), nhóm phóng 1,5x, sống 45s, mờ dần 5s cuối. Tái dùng model + glow của đèn hồ. */
   const spawnSkyLantern = (x: number, z: number) => {
@@ -488,9 +495,6 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   };
 
   // Rocket materials are shared per color (rockets never mutate opacity).
-  // Sparks keep one material per sprite: the update loop fades EACH spark by
-  // writing material.opacity from its own remaining life — sharing would make
-  // all sparks of one color fade in lockstep.
   const rocketMatCache = new Map<number, THREE.SpriteMaterial>();
   const rocketMat = (color: number) => {
     let m = rocketMatCache.get(color);
@@ -501,23 +505,15 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     return m;
   };
 
-  // Tàn pháo (sprite toả cầu) + rocket đang chờ/bay lên.
-  const sparks: { m: THREE.Sprite; v: THREE.Vector3; life: number }[] = [];
-  const rockets: { m: THREE.Sprite; x: number; z: number; top: number; vy: number; delay: number; color: number }[] = [];
+  // Quả pháo đang nổ (shader, mỗi quả 1-2 THREE.Points) + rocket đang chờ/bay lên.
+  const bursts: ShaderBurst[] = [];
+  // Camera lúc nổ, để quả hình (rồng/phượng) dựng mặt phẳng vuông góc hướng nhìn. Chưa set thì dùng mặt phẳng XY.
+  let fireworkCamera: THREE.Camera | null = null;
+  const rockets: { m: THREE.Sprite; x: number; z: number; top: number; vy: number; delay: number; color: number; burst: BurstType }[] = [];
 
-  /** Một quả nổ tại (x, y, z): 24-40 sprite toả hình cầu, tốc độ 4-9, trọng lực 6, sống 1,5-2,5s. */
-  const explodeShell = (x: number, y: number, z: number, color: number) => {
-    const n = 24 + Math.floor(Math.random() * 17);
-    for (let i = 0; i < n; i++) {
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
-      s.scale.setScalar(0.7 + Math.random() * 0.45);
-      s.position.set(x, y, z);
-      scene.add(s);
-      const up = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2;
-      const rr = Math.sqrt(Math.max(0, 1 - up * up));
-      const sp = 4 + Math.random() * 5;
-      sparks.push({ m: s, v: new THREE.Vector3(rr * Math.cos(a) * sp, up * sp, rr * Math.sin(a) * sp), life: 1.5 + Math.random() });
-    }
+  /** Một quả nổ tại (x, y, z). Chuyển động, vệt sáng và nhấp nháy do shader trong fireworks.ts lo. */
+  const explodeShell = (x: number, y: number, z: number, color: number, type: BurstType) => {
+    bursts.push(createBurst(scene, { x, y, z, color, type, pixelRatio: renderer.getPixelRatio(), camera: fireworkCamera }));
   };
 
   /** Bắn 1 màn pháo hoa tại (x, z). Không phát âm thanh - main.ts lo phần âm khi nhận broadcast. */
@@ -531,16 +527,28 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       const isFinale = i >= shells;
       const delay = isFinale ? lastAt + 1 : (i * gapMs) / 1000;
       const color = FW_COLORS[i % FW_COLORS.length];
+      // Show rồng: 8 quả đầu xoay vòng, quả 9 = rồng, quả 10 = phượng; màn kết (i >= 10) = sphere.
+      // Cỡ nhỏ/to: quả đầu + quả cuối = sphere (đời 2,0s) để tổng thời lượng khớp công thức trong shared/game.ts.
+      const burst: BurstType = size === 'dragon'
+        ? (i < DRAGON_SHOW_TYPES.length ? DRAGON_SHOW_TYPES[i] : 'sphere')
+        : (i === 0 || i >= shells - 1 ? 'sphere' : MID_BURSTS[(i - 1) % MID_BURSTS.length]);
       const spread = isFinale ? 12 : 6;
       const px = x + (Math.random() - 0.5) * spread;
       const pz = z + (Math.random() - 0.5) * spread;
-      const base = groundY(px, pz), y0 = base + 1.4, top = base + 4.8 + Math.random() * 0.6;
+      const base = groundY(px, pz), y0 = base + 1.4;
+      // Quả hình (rồng/phượng) nổ thấp hơn (tâm ~3,9 thay vì ~5,1): với follow cam mặc định
+      // (cao ~5,4, nhìn xuống ~26°) tâm y=5 đã nằm ở mép trên khung hình (NDC y≈1,0) nên nửa
+      // trên con rồng bị cắt; tâm ~3,9 cho cả hình 2,3m vào khung (NDC y≈0,5–1,0 ở 10m).
+      // Quả thường giữ nguyên độ cao cũ.
+      const top = isShapeType(burst)
+        ? base + 3.7 + Math.random() * 0.4
+        : base + 4.8 + Math.random() * 0.6;
       const spr = new THREE.Sprite(rocketMat(color));
       spr.scale.setScalar(0.7);
       spr.position.set(px, y0, pz);
       spr.visible = delay <= 0;
       scene.add(spr);
-      rockets.push({ m: spr, x: px, z: pz, top, vy: (top - y0) / (0.9 + Math.random() * 0.25), delay, color });
+      rockets.push({ m: spr, x: px, z: pz, top, vy: (top - y0) / (0.9 + Math.random() * 0.25), delay, color, burst });
     }
   };
   // always-on smoke from the urn
@@ -707,13 +715,9 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       (b.m.material as THREE.SpriteMaterial).opacity = Math.max(0, b.life);
       if (b.life <= 0) { scene.remove(b.m); (b.m.material as THREE.Material).dispose(); burst.splice(i, 1); }
     }
-    for (let i = sparks.length - 1; i >= 0; i--) {
-      const s = sparks[i];
-      s.v.y -= 6 * dt;
-      s.m.position.addScaledVector(s.v, dt);
-      s.life -= dt;
-      (s.m.material as THREE.SpriteMaterial).opacity = Math.max(0, Math.min(1, s.life));
-      if (s.life <= 0) { scene.remove(s.m); (s.m.material as THREE.Material).dispose(); sparks.splice(i, 1); }
+    for (let i = bursts.length - 1; i >= 0; i--) {
+      const b = bursts[i];
+      if (!b.update(dt)) { b.dispose(); bursts.splice(i, 1); }
     }
     for (let i = rockets.length - 1; i >= 0; i--) {
       const r = rockets[i];
@@ -724,7 +728,7 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       }
       r.m.position.y += r.vy * dt;
       if (r.m.position.y >= r.top) {
-        explodeShell(r.x, r.top, r.z, r.color);
+        explodeShell(r.x, r.top, r.z, r.color, r.burst);
         scene.remove(r.m);
         rockets.splice(i, 1);
       }
@@ -735,5 +739,5 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     skyU.sunDir.value.copy(cur.sunOff).normalize();
   };
 
-  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, spawnSkyLantern, spawnFirework, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard, setStele: temple.setStele, noticeBoard: temple.noticeBoard };
+  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, spawnSkyLantern, spawnFirework, setCamera(cam: THREE.Camera) { fireworkCamera = cam; }, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard, setStele: temple.setStele, noticeBoard: temple.noticeBoard };
 }

@@ -9,11 +9,13 @@ export const LATEST_NEWS_ID = 131;
 
 export const NEWS: NewsItem[] = [
   {
-    title: 'Tượng, Bảo Tháp và vườn chùa được dựng lại bằng Blender',
+    title: 'Pháo hoa mới: vệt sáng lấp lánh, 4 kiểu nổ',
     date: '2026-11-18',
     items: [
-      'Tượng Phật Tổ và Quan Âm trên hai bệ đối diện được dát vàng bóng như tượng hành lang. Bảo Tháp, đình sen và Thiền Đường có kiến trúc Blender, giữ nguyên lối đi và tương tác.',
-      'Cây sồi ở sân, cây trong vườn và một phần rừng thông Chùa Ngọc có thân cành, tán lá mới. Khi model không tải được, cảnh giữ bản dự phòng.',
+      'Pháo hoa được làm lại hoàn toàn: mỗi tia có vệt sáng kéo dài và nhấp nháy lấp lánh trước khi tắt.',
+      '4 kiểu nổ luân phiên trong một màn: cầu, vòng, liễu rủ và nổ lách tách.',
+      'Pháo nhỏ bắn trọn trong 6 giây, pháo lớn trong 12 giây. Giá các loại pháo giữ nguyên.',
+      'Pháo hoa rồng phượng (1500 xu): 8 quả đầu nổ thường, quả 9 nổ thành hình rồng, quả 10 nổ thành hình phượng kết màn.',
     ],
   },
   {
