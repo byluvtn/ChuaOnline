@@ -7,8 +7,9 @@ import { buildExpansion } from './expansion';
 import {
   NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, WALL, WALKWAY_RECTS, nearWalkway, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
-import { buildArhat, buildBuddha, buildQuanAm } from './statues';
+import { buildArhat, buildQuanAm } from './statues';
 import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
+import { buildCourtyardBuddha, buildCourtyardGuanyin } from './statue-courtyard';
 import { loadModel, fitModel, replaceModel } from './models';
 import { makeGoldMaterial } from './statue-scan';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -308,30 +309,25 @@ export function buildTemple(c: TempleCtx) {
   glowSpr(0, drumTower.by + 3.2, 0, 3, 0xffb040, 0.45, drumTower.t);
   zones.push({ x: DRUM.x, z: DRUM.z, r: 7, id: 'trong' });
 
-  // ---- Quan Âm statue in the eastern yard (đối xứng sân tượng Phật Tổ phía Tây) ----
-  const yardStatueGold = makeGoldMaterial(c.renderer);
-  const qyard = new THREE.Group();
-  for (let i = 0; i < 3; i++) {
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(4.2 - i * 0.5, 4.5 - i * 0.5, 0.4, 8), stoneM);
-    t.position.y = 0.2 + i * 0.4; t.castShadow = t.receiveShadow = true; t.userData.sealable = true; qyard.add(t);
-  }
-  const quanAm = buildQuanAm(); quanAm.scale.setScalar(1.15); quanAm.position.y = 1.2; qyard.add(quanAm);
-  replaceModel(qyard, quanAm, 'guanyin-sculpted', 4.9, yardStatueGold, 'base');
-  qyard.position.set(QUAN.x, 0, QUAN.z); qyard.rotation.y = -Math.PI * 0.5 - 0.3; scene.add(qyard);
-  sealArchitectureJoints(qyard, { maxGap: 0.3 });
-  colliders.push({ x: QUAN.x, z: QUAN.z, r: 4 });
-
-  // ---- big Buddha in the western yard ----
-  const yard = new THREE.Group();
-  for (let i = 0; i < 3; i++) {
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(4.2 - i * 0.5, 4.5 - i * 0.5, 0.4, 8), stoneM);
-    t.position.y = 0.2 + i * 0.4; t.castShadow = t.receiveShadow = true; t.userData.sealable = true; yard.add(t);
-  }
-  const bigB = buildBuddha(); bigB.scale.setScalar(1.15); bigB.position.y = 1.2; yard.add(bigB);
-  replaceModel(yard, bigB, 'buddha-sculpted', 6.15, yardStatueGold);
-  yard.position.set(BUDDHA_YARD.x, 0, BUDDHA_YARD.z); yard.rotation.y = Math.PI * 0.5 + 0.3; scene.add(yard);
-  sealArchitectureJoints(yard, { maxGap: 0.3 });
-  colliders.push({ x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 4 });
+  // ---- Quan Am in the eastern yard, Buddha in the western yard ----
+  const placeYardStatue = (build: (radius: number) => THREE.Group, { x, z }: { x: number; z: number }, yaw: number) => {
+    const yard = new THREE.Group();
+    const topRadii = [4.2, 3.7, 3.2];
+    const sides = 8, stepHeight = 0.4;
+    topRadii.forEach((r, i) => {
+      const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r + 0.3, stepHeight, sides), stoneM);
+      t.position.y = (i + 0.5) * stepHeight; t.castShadow = t.receiveShadow = true; t.userData.sealable = true; yard.add(t);
+    });
+    // Leave a rim inside the flat edges of the octagonal platform, not its corners.
+    const statue = build(topRadii[topRadii.length - 1] * Math.cos(Math.PI / sides) * 0.9);
+    statue.position.y = topRadii.length * stepHeight;
+    yard.add(statue);
+    yard.position.set(x, 0, z); yard.rotation.y = yaw; scene.add(yard);
+    sealArchitectureJoints(yard, { maxGap: 0.3 });
+    colliders.push({ x, z, r: 4 });
+  };
+  placeYardStatue(buildCourtyardGuanyin, QUAN, -Math.PI * 0.5 - 0.3);
+  placeYardStatue(buildCourtyardBuddha, BUDDHA_YARD, Math.PI * 0.5 + 0.3);
 
   // ---- tháp nhỏ (model 3D, 5 tầng, mái đỏ) ----
   const pagoda = new THREE.Group();
@@ -1596,7 +1592,7 @@ export function buildTemple(c: TempleCtx) {
   let ring = 0, drumHit = 0;
   const ringBell = () => { ring = 1; };
   const ringDrum = () => { drumHit = 1; };
-  const halos = [...hall.halos, ...tamThe.halos, bigB.getObjectByName('halo')!, quanAm.getObjectByName('halo')!].filter(Boolean);
+  const halos = [...hall.halos, ...tamThe.halos].filter(Boolean);
   const update = (t: number, dt: number) => {
     ring = Math.max(0, ring - dt * 0.25);
     bellPivot.rotation.z = Math.sin(t * 2.6) * 0.5 * ring * ring + Math.sin(t * 0.5) * 0.015;
