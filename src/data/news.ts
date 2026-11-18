@@ -5,9 +5,27 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 137;
+export const LATEST_NEWS_ID = 139;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Hào quang thiền định: thiền 10 phút có hào quang, 20 phút có hào quang lớn',
+    date: '2026-11-18',
+    items: [
+      'Ngồi thiền liên tục 10 phút: hào quang vàng hiện trên đầu. Ngồi liên tục 20 phút: hào quang lớn, sáng hơn.',
+      'Hào quang chỉ có trong ngày — qua 00:00 sẽ tắt, hôm sau thiền lại để có hào quang mới.',
+      'Hào quang không còn bán trong shop — chỉ thiền định mới có.',
+      'Sư Ông, Sư Thầy và Sư Phó có hào quang mặc định.',
+    ],
+  },
+  {
+    title: 'Bồ đoàn cánh sen mới, chỗ ngồi thiền thoáng hơn',
+    date: '2026-11-18',
+    items: [
+      'Đệm thiền trong các điện đổi thành bồ đoàn cánh sen: đệm đỏ ôm trong hai vòng cánh hồng nở.',
+      'Các đệm xếp thưa hơn, mỗi người một khoảng riêng để ngồi thiền thoải mái.',
+    ],
+  },
   {
     title: 'Tượng chibi mới trong Chính Điện, Điện Tam Thế và hành lang',
     date: '2026-11-18',

@@ -368,6 +368,8 @@ function addPlayer(p: PlayerState) {
   char.setLabel(p.name, p.npc ? undefined : levelOf(p.merit), p.id === myId, p.npc ? undefined : (p.title ? titleName(p.title) : undefined));
   char.label.visible = settings.showNames;
   char.setAccessory(p.accessory);
+  if (p.npc && p.role === 'abbot') char.setHalo(1);
+  else if (!p.npc) char.setHalo(p.halo ?? 0);
   char.root.position.set(p.x, 0, p.z);
   if (p.npc) char.root.visible = settings.showNpcs;
   world.scene.add(char.root);
@@ -457,12 +459,19 @@ function updateProfileHud() {
 function updateQuestDot() {
   $('questDot').hidden = !quests.some((q) => q.progress >= q.target && !q.claimed);
 }
+let myHalo: 0 | 1 | 2 = 0;
+let mySitSince: number | null = null;
 function updateMeditationHud() {
   const b = $('medBanner');
   if (!meditation.sitting) { b.hidden = true; return; }
   b.hidden = false;
   b.classList.toggle('bonus', meditation.bonus);
-  b.textContent = `Tĩnh lặng cả chùa: ${meditation.sitting} người đang thiền · ${meditation.minutes}/${meditation.goal} phút` + (meditation.bonus ? ' · Thiền tập thể x2' : ' · cần 3 người để x2');
+  let haloText = '';
+  if (mySitSince !== null) {
+    const m = Math.floor((Date.now() - mySitSince) / 60000);
+    haloText = myHalo === 2 ? ' · Hào quang lớn đã hiện' : myHalo === 1 ? ` · Hào quang lớn: ${m}/20 phút` : ` · Hào quang của bạn: ${m}/10 phút`;
+  }
+  b.textContent = `Tĩnh lặng cả chùa: ${meditation.sitting} người đang thiền · ${meditation.minutes}/${meditation.goal} phút` + (meditation.bonus ? ' · Thiền tập thể x2' : ' · cần 3 người để x2') + haloText;
 }
 const chatLog: ChatMessage[] = [];
 function addChat(m: ChatMessage) {
@@ -662,6 +671,16 @@ function connect() {
     remotes.delete(id);
   });
   s.on('player:look', ({ id, accessory }: { id: string; accessory: string | null }) => remotes.get(id)?.char.setAccessory(accessory));
+  s.on('player:halo', ({ id, level }: { id: string; level: 0 | 1 | 2 }) => { const r = remotes.get(id); if (!r || r.data.npc) return; r.data.halo = level; r.char.setHalo(level); });
+  s.on('halo', ({ level, reason }: { level: 0 | 1 | 2; reason: 'grant' | 'reset' | 'join' }) => {
+    if (reason === 'grant' && level > myHalo) {
+      toast(level === 1 ? 'Hào quang đã hiện trên đầu bạn! Thiền tiếp tới 20 phút để có hào quang lớn.' : 'Hào quang lớn đã hiện — 20 phút thiền định!');
+    } else if (reason === 'reset' && myHalo > 0) {
+      toast('Đã qua ngày mới — hào quang tắt, thiền lại để có hào quang mới.');
+    }
+    myHalo = level;
+    if (me) me.char.setHalo(level);
+  });
   const STALL_VENDORS: { stall: string; npc: string; x: number; z: number }[] = [
     { stall: 'stall_fruit', npc: 'npc15', x: 7, z: 57 },
     { stall: 'stall_cake', npc: 'npc16', x: 12, z: 57 },
@@ -2676,6 +2695,7 @@ function loop(now: number = performance.now()) {
     collide(root.position);
     root.position.y += (world.groundY(root.position.x, root.position.z) - root.position.y) * Math.min(1, dt * 14);
     me.anim = now < myActionUntil ? me.anim : sitting ? 'sit' : moving ? (running ? 'run' : 'walk') : 'idle';
+    if (me.anim === 'sit') { if (mySitSince === null) mySitSince = Date.now(); } else mySitSince = null;
     // Trạng thái của chính mình: tụng kinh → 'chant', ngồi thiền → 'meditate'; chỉ vẽ lại khi đổi.
     const myAct: NpcAct | null = me.anim === 'chant' ? 'chant' : sitting ? 'meditate' : null;
     if (myAct !== me.act) { me.act = myAct; refreshLabel(me); }

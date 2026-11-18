@@ -76,9 +76,9 @@ export function buildTemple(c: TempleCtx) {
   // ---- meditation decks: bồ đoàn cùng cỡ điện chính, xếp thưa ----
   const woodM = lamb(0xffffff, { map: woodTexture([5, 3]) });
   const matM = lamb(0xe8b83a, { roughness: 0.95 });
-  // bước hàng 1.5 → 1.9, bước cột 1.3 → 1.7 → 7×7 chỗ mỗi dãy (98 chỗ cả hai dãy)
-  const rows = [-17.6, -15.7, -13.8, -11.9, -10.0, -8.1, -6.2];
-  const cols = [5.7, 7.4, 9.1, 10.8, 12.5, 14.2, 15.9];
+  // bước hàng 2.2, bước cột 2.0 → 6×6 chỗ mỗi dãy (72 chỗ cả hai dãy)
+  const rows = [-17.6, -15.4, -13.2, -11.0, -8.8, -6.6];
+  const cols = [5.7, 7.7, 9.7, 11.7, 13.7, 15.7];
   const nSeats = rows.length * cols.length * 2;
   const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.43, 0.04, 1.36), matM, nSeats);
   const deckZafuPos: { x: number; z: number }[] = [];
@@ -868,7 +868,7 @@ export function buildTemple(c: TempleCtx) {
       const b = mk(g), y0 = THIEN_DUONG_PLAT.y, hxL = tdH.hx, hzL = tdH.hz;
       b(hxL * 2, 0.08, (hzL - 0.8) - (-hzL + 0.1), 0, y0 + 0.04, ((hzL - 0.8) + (-hzL + 0.1)) / 2, woodM);
       const tdZPos: { x: number; z: number }[] = [];
-      for (const lx of [-1.2, 1.2]) for (const lz of [-3.4, -1.9, -0.4, 1.1, 2.6]) {
+      for (const lx of [-1.2, 1.2]) for (const lz of [-3.4, -1.4, 0.6, 2.6]) {
         b(1.18, 0.04, 1.18, lx, y0 + 0.1, lz, matM);
         tdZPos.push({ x: lx, z: lz });
         const w = twd(lx, lz);

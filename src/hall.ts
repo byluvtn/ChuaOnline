@@ -239,9 +239,9 @@ export function buildHall(c: TempleCtx) {
 
   // ---- meditation seats inside (clear central aisle) ----
   const matM = lamb(0xe8b83a, { roughness: 0.95 });
-  const rows = [-3.2, -1.4, 0.4, 2.2, 4.0, 5.8], cols = [3.4, 4.9, 6.4, 7.9, 9.4, 10.9, 12.4, 13.9];
+  const rows = [-3.2, -1.0, 1.2, 3.4, 5.6], cols = [3.4, 5.5, 7.6, 9.7, 11.8, 13.9];
   const n = rows.length * cols.length * 2;
-  const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.22, 0.04, 1.22), matM, n);
+  const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.04, 1.5), matM, n);
   const zafuPos: { x: number; z: number }[] = [];
   let k = 0;
   for (const s of [-1, 1]) for (const z of rows) for (const x of cols) {

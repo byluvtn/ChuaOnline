@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import {
-  ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GARDEN_GOOD_CHANCE, GARDEN_GOOD_HARVEST_COINS, GARDEN_GOOD_SEEDS, GARDEN_HARVEST_MERIT, GARDEN_PLOTS, GARDEN_SEEDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS,
+  ACTION_RULES, CHAIN_QUESTS, CHECKIN_REWARDS, GARDEN_GOOD_CHANCE, GARDEN_GOOD_HARVEST_COINS, GARDEN_GOOD_SEEDS, GARDEN_HARVEST_MERIT, GARDEN_PLOTS, GARDEN_SEEDS, GROUP_MEDITATE_MIN, ITEM_BY_ID, LEVEL_BONUS, MARKET_STALLS, MEDITATE_GOAL_MIN, MEDITATE_TICK_MS, HALO_TIER1_SEC, HALO_TIER2_SEC,
   NPC_QUESTS, QUESTS, ROOMS, ROOM_CAPACITY, SPIN_SEGMENTS, STAT_MILESTONES, SUTRAS, WEEKLY_QUESTS, drawSpinSegment, gardenSeedOf, defaultTitle, titleName, dqTodayIds,
   type BeadsAck, type BeadsState, type CheckinAck, type GardenPlotState, type GiftAck, type MailAck, type MilestoneEvent, type QuestEvent, type QuestState, type RankRow, type RoomInfo, type SpinAck, type SpinState,
   type StatKey, type StatsAck, type StatsState,
@@ -11,7 +11,7 @@ import {
 import {
   MAP_HALF, MAP_Z_MIN, MAP_Z_MAX, levelOf, meritForLevel, type ActionKind, type Anim, type ChatMessage, type Lantern, type Outfit, type PlayerState,
 } from '../shared/types.js';
-import { meritBoost } from '../shared/time.js';
+import { dayKeyICT, meritBoost } from '../shared/time.js';
 import * as db from './db.js';
 import { gardenSeedGiftSent, harvestGardenRow, listGardenRows, plantGardenRow, waterGardenRow } from './garden.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
@@ -129,6 +129,12 @@ interface Session {
   /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
   beadStart?: number;
   questCache?: { rows: Awaited<ReturnType<typeof db.questRows>>; at: number };
+  /** mốc bắt đầu lần ngồi thiền liên tục hiện tại (chỉ trong bộ nhớ) */
+  sitSince?: number;
+  /** khóa ngày của haloLevel đang giữ */
+  haloDay?: string;
+  /** tầng hào quang thiền trong ngày */
+  haloLevel?: 0 | 1 | 2;
 }
 const sessions = new Map<string, Session>();
 const roomChat = new Map<string, ChatMessage[]>();
@@ -433,6 +439,7 @@ io.on('connection', (socket) => {
   socket.on('join', async (p: { name?: string; outfit?: Outfit; color?: string; room?: string; resume?: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
     const prof = await db.getProfile(pid);
     if (!prof) return socket.disconnect(true);
+    const haloLevel = await db.getHaloLevel(pid);
     const old = sessions.get(socket.id);
     if (old) leaveRoom(old);
 
@@ -472,11 +479,13 @@ io.on('connection', (socket) => {
       ry: from ? from.ry : Math.PI, anim: 'idle', merit: prof.merit,
       title: prof.title ?? defaultTitle(prof.titles),
       pid,
+      halo: haloLevel,
     };
     const s: Session = old ?? { pid, state, room, socket, last: {} };
     s.state = state;
     s.room = room;
     s.resume = resume;
+    s.haloDay = dayKeyICT(); s.haloLevel = haloLevel; s.sitSince = undefined;
     sessions.set(socket.id, s);
     socket.join(room);
 
@@ -497,6 +506,7 @@ io.on('connection', (socket) => {
     socket.emit('beads', { rewarded: await db.minigameCount(pid, 'lanhat') } satisfies BeadsState);
     socket.emit('boost', meritBoost(new Date()));
     socket.emit('stats', await currentStatsState(pid));
+    socket.emit('halo', { level: haloLevel, reason: 'join' });
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
@@ -1454,6 +1464,17 @@ setInterval(async () => {
   meditateTickRunning = true;
   try {
     for (const r of ROOMS) {
+      const today = dayKeyICT();
+      for (const s of roomSessions(r.id)) {
+        if (s.state.anim !== 'sit') s.sitSince = undefined;
+        if (s.haloDay !== today) {
+          if ((s.haloLevel ?? 0) > 0) {
+            s.socket.emit('halo', { level: 0, reason: 'reset' });
+            s.socket.to(r.id).emit('player:halo', { id: s.state.id, level: 0 });
+          }
+          s.haloDay = today; s.haloLevel = 0; s.sitSince = undefined;
+        }
+      }
       const sitting = roomSessions(r.id).filter((s) => s.state.anim === 'sit');
       if (!sitting.length) { io.to(r.id).emit('meditation', meditationInfo(r.id)); continue; }
       const bonus = sitting.length >= GROUP_MEDITATE_MIN;
@@ -1466,6 +1487,15 @@ setInterval(async () => {
           await questEvent(s, 'meditate');
           await countStatSafe(s, 'meditate_sec', MEDITATE_TICK_MS / 1000);
           db.dbBackgroundResult();
+          if (!s.sitSince) s.sitSince = Date.now();
+          const elapsed = (Date.now() - s.sitSince) / 1000;
+          const target = elapsed >= HALO_TIER2_SEC ? 2 : elapsed >= HALO_TIER1_SEC ? 1 : 0;
+          if (target > (s.haloLevel ?? 0)) {
+            s.haloLevel = target as 0 | 1 | 2;
+            await db.setHaloLevel(s.pid, s.haloLevel);
+            s.socket.emit('halo', { level: target, reason: 'grant' });
+            s.socket.to(r.id).emit('player:halo', { id: s.state.id, level: target });
+          }
         } catch (e) {
           db.dbBackgroundResult(e);
           console.warn('[meditate]', (e as Error).message);

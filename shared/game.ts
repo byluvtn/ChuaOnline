@@ -97,7 +97,6 @@ export const ITEMS: ShopItem[] = [
   // ---- Mây
   { id: 'may_lan', name: 'Mây lành', desc: 'Dải mây trắng quanh người.', price: 140, kind: 'accessory', icon: '☁️', category: 'may', minLevel: 3 },
   // ---- Linh thú
-  { id: 'hao_quang', name: 'Hào quang', desc: 'Vòng sáng vàng sau đầu.', price: 300, kind: 'accessory', icon: '✨', category: 'linh_thu', minLevel: 4 },
   { id: 'linh_thu_ky_lan', name: 'Kỳ lân', desc: 'Linh thú kỳ lân đi theo.', price: 500, kind: 'accessory', icon: '🦄', category: 'linh_thu', minLevel: 5 },
   // ---- Diều
   { id: 'dieu_sen', name: 'Diều sen', desc: 'Diều hình hoa sen.', price: 75, kind: 'accessory', icon: '🪁', category: 'dieu' },
@@ -430,6 +429,8 @@ export const ROOMS = [
 export const ROOM_CAPACITY = 60;
 
 export const MEDITATE_TICK_MS = 10_000;
+export const HALO_TIER1_SEC = 600;  // 10 phút ngồi liên tục
+export const HALO_TIER2_SEC = 1200; // 20 phút ngồi liên tục
 export const GROUP_MEDITATE_MIN = 3;
 export const MEDITATE_GOAL_MIN = 500;
 

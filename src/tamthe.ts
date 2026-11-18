@@ -307,9 +307,9 @@ export function buildTamThe(c: TempleCtx) {
   lanterns.count = li; add(lanterns);
 
   const matM = lamb(0xe8b83a, { roughness: 0.95 });
-  const rows = [-0.4, 1.4, 3.2, 5.0], cols = [3.2, 4.7, 6.2, 7.7, 9.2, 10.7];
+  const rows = [-0.4, 2.3, 5.0], cols = [3.2, 5.7, 8.2, 10.7];
   const n = rows.length * cols.length * 2;
-  const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.22, 0.04, 1.22), matM, n);
+  const mats = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 0.04, 1.5), matM, n);
   const zafuPos: { x: number; z: number }[] = [];
   let k2 = 0;
   for (const s of [-1, 1]) for (const z of rows) for (const x of cols) {

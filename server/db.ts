@@ -231,6 +231,12 @@ CREATE TABLE IF NOT EXISTS fortune_daily (
   n INTEGER NOT NULL,
   PRIMARY KEY (player_id, day_key)
 );
+CREATE TABLE IF NOT EXISTS halo_daily (
+  player_id INTEGER NOT NULL,
+  day_key TEXT NOT NULL,
+  level INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (player_id, day_key)
+);
 CREATE TABLE IF NOT EXISTS feedback (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
@@ -1040,6 +1046,17 @@ export async function saveFortune(id: number, n: number): Promise<number> {
     args: [id, dayKeyICT(), n],
   });
   return (await getFortuneToday(id)) ?? n;
+}
+export const getHaloLevel = async (id: number): Promise<0 | 1 | 2> => {
+  const r = (await db.execute({ sql: 'SELECT level FROM halo_daily WHERE player_id = ? AND day_key = ?', args: [id, dayKeyICT()] })).rows[0] as unknown as { level: number } | undefined;
+  return r ? (Number(r.level) as 0 | 1 | 2) : 0;
+};
+/** Lưu tầng hào quang của hôm nay (ghi đè khi tăng tầng). */
+export async function setHaloLevel(id: number, level: 0 | 1 | 2): Promise<void> {
+  await db.execute({
+    sql: 'INSERT OR REPLACE INTO halo_daily (player_id, day_key, level) VALUES (?,?,?)',
+    args: [id, dayKeyICT(), level],
+  });
 }
 
 // ---- feedback ----

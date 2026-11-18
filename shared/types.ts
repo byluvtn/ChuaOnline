@@ -30,6 +30,8 @@ export interface PlayerState {
   pid?: number;
   /** hoạt động đang làm (máy chủ suy ra); chỉ để hiện dòng trạng thái */
   act?: NpcAct | null;
+  /** tầng hào quang thiền trong ngày (0 = không có); chỉ người chơi có, NPC không có */
+  halo?: 0 | 1 | 2;
 }
 
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }

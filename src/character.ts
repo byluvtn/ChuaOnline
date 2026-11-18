@@ -100,6 +100,7 @@ export interface Character {
   bubbleUntil: number;
   setLabel(name: string, level?: number, isMe?: boolean, title?: string, status?: string): void;
   setAccessory(id: string | null): void;
+  setHalo(level: 0 | 1 | 2): void;
   say(text: string): void;
   dispose(): void;
 }
@@ -674,6 +675,26 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     body.add(g);
   };
 
+  let haloGroup: THREE.Group | null = null;
+  const haloMats: THREE.Material[] = []; // Giải phóng vật liệu khi đổi tầng hoặc hủy nhân vật.
+  const setHalo = (level: 0 | 1 | 2) => {
+    if (haloGroup) { body.remove(haloGroup); haloGroup = null; }
+    if (haloMats.length) { haloMats.forEach((m) => m.dispose()); haloMats.length = 0; }
+    if (level === 0) return;
+    const g = new THREE.Group();
+    const isBig = level === 2;
+    const haloMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffd36b).multiplyScalar(isBig ? 3.0 : 2.2) });
+    const haloDMat = new THREE.MeshBasicMaterial({ color: 0xffe9a8, transparent: true, opacity: isBig ? 0.30 : 0.22, side: THREE.DoubleSide });
+    haloMats.push(haloMat, haloDMat);
+    const ringKey = isBig ? 'haloRing2' : 'haloRing1';
+    const discKey = isBig ? 'haloDisc2' : 'haloDisc1';
+    const ring = mesh(geo(ringKey, () => new THREE.TorusGeometry(0.78, isBig ? 0.055 : 0.04, 8, 40)), haloMat, g, 0, 1.68, -0.55, false);
+    mesh(geo(discKey, () => new THREE.CircleGeometry(0.76, 32)), haloDMat, ring, 0, 0, -0.01, false);
+    if (isBig) g.scale.setScalar(1.35);
+    haloGroup = g;
+    body.add(g);
+  };
+
   // Name label + chat bubble (constant on-screen size)
   const L = makeLabelSprite(opts?.role ? 144 : 192); // NPC: nhãn cao 144 (chỗ cho dòng trạng thái); người chơi: 192 (trạng thái trên cả danh hiệu)
   L.sprite.center.set(0.5, opts?.role ? 1 / 3 : 0.25); // neo 48px từ đáy canvas ở mọi chiều cao → chip tên không dịch chỗ
@@ -703,7 +724,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
 
   const c: Character = {
     root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, shinL, shinR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
-    setLabel, setAccessory,
+    setLabel, setAccessory, setHalo,
     garment: garmentState,
     say(text: string) {
       const g = B.canvas.getContext('2d')!;
@@ -745,6 +766,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
     },
     dispose() {
       setAccessory(null);
+      setHalo(0);
       L.tex.dispose(); B.tex.dispose();
       (L.sprite.material as THREE.Material).dispose(); (B.sprite.material as THREE.Material).dispose();
       blob.material.dispose();
