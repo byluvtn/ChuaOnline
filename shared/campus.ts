@@ -1,4 +1,7 @@
 // Shared by scene, movement, server rules and pathfinding. Coordinates are metres.
+export const ZAFU_SCALE = 1.5;
+export const ZAFU_RADIUS = 0.38;
+export const ZAFU_HEIGHT = 0.10;
 export const WALL = { x: 92, zN: -130, zS: 45, gate: 4.4, sideGateZ: 2, sideGateHalf: 2.2 };
 export const MAP_Z_MIN = WALL.zN;
 export const LAKE = { x: 0, z: 14, a: 14, b: 10 };

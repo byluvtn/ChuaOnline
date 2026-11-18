@@ -1,93 +1,72 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { ZAFU_SCALE } from '../shared/campus';
 
-export interface ZafuParts {
-  body: THREE.InstancedMesh;
-  ring: THREE.InstancedMesh;
-  button: THREE.InstancedMesh;
+export interface ZafuPosition {
+  x: number;
+  z: number;
+  y?: number;
+  depthRadius?: number;
+  radius?: number;
+  height?: number;
+  ry?: number;
 }
 
-interface ZafuGeo {
-  body: THREE.BufferGeometry;
-  ring: THREE.BufferGeometry;
-  button: THREE.BufferGeometry;
-}
+const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.84 });
+let geometry: THREE.BufferGeometry | undefined;
 
-const RED = 0xa0201a;
-const GOLD = 0xe8b83a;
-const BASE_DISC_H = 0.02;
-
-// Vật liệu và geometry dùng chung ở cấp module.
-const bodyMat = new THREE.MeshStandardMaterial({ color: RED, roughness: 0.8 });
-const goldMat = new THREE.MeshStandardMaterial({ color: GOLD, roughness: 0.6 });
-const geoCache = new Map<string, ZafuGeo>();
-
-function getGeo(radius: number, height: number): ZafuGeo {
-  const key = `${radius}|${height}`;
-  const hit = geoCache.get(key);
-  if (hit) return hit;
-
-  const half = height / 2;
-
-  // Thân: cầu dẹt, tâm tại gốc local. Cộng đĩa đáy mỏng để không hở khe với chiếu.
-  const sphere = new THREE.SphereGeometry(radius, 24, 16);
-  sphere.scale(1, half / radius, 1);
-  const disc = new THREE.CylinderGeometry(radius, radius, BASE_DISC_H, 24);
-  disc.translate(0, -half + BASE_DISC_H / 2, 0);
-  const body = mergeGeometries([sphere, disc], false);
-  sphere.dispose();
-  disc.dispose();
-  if (!body) throw new Error('zafu: mergeGeometries failed');
-
-  // Vòng khâu: nằm ngang tại mặt phẳng rộng nhất của thân.
-  const ring = new THREE.TorusGeometry(radius * 0.97, 0.018, 8, 32);
-  ring.rotateX(Math.PI / 2);
-
-  // Nút giữa mặt trên.
-  const button = new THREE.SphereGeometry(radius * 0.12, 12, 8);
-  button.scale(1, 0.5, 1);
-
-  const geo: ZafuGeo = { body, ring, button };
-  geoCache.set(key, geo);
-  return geo;
-}
-
-/**
- * Tạo bộ 3 InstancedMesh (thân, vòng khâu, nút) cho một site.
- * radius/height: họ A (0.38, 0.10) hoặc họ B (0.49, 0.12).
- * topY: cao độ mặt đệm (cùng giá trị top của đệm trụ cũ).
- * positions: tọa độ x/z từng đệm (giữ nguyên như đệm cũ).
- * Lưu ý: nếu add vào group có mergeStaticByMaterial thì phải add SAU lệnh merge.
- */
-export function buildZafuParts(
-  radius: number,
-  height: number,
-  topY: number,
-  positions: { x: number; z: number }[],
-): ZafuParts {
-  const geo = getGeo(radius, height);
-  const n = positions.length;
-
-  const body = new THREE.InstancedMesh(geo.body, bodyMat, n);
-  const ring = new THREE.InstancedMesh(geo.ring, goldMat, n);
-  const button = new THREE.InstancedMesh(geo.button, goldMat, n);
-
-  const bodyY = topY - height / 2;
-  const buttonY = topY - 0.005;
-  const m = new THREE.Matrix4();
-
-  for (let i = 0; i < n; i++) {
-    const { x, z } = positions[i];
-    body.setMatrixAt(i, m.makeTranslation(x, bodyY, z));
-    ring.setMatrixAt(i, m.makeTranslation(x, bodyY, z));
-    button.setMatrixAt(i, m.makeTranslation(x, buttonY, z));
+function lotusCushion() {
+  if (geometry) return geometry;
+  const parts: THREE.BufferGeometry[] = [];
+  const tint = (g: THREE.BufferGeometry, hex: number) => {
+    const c = new THREE.Color(hex);
+    const color = new Float32Array(g.getAttribute('position').count * 3);
+    for (let i = 0; i < color.length; i += 3) c.toArray(color, i);
+    g.setAttribute('color', new THREE.BufferAttribute(color, 3));
+    parts.push(g);
+  };
+  const turn = (profile: [number, number][], hex: number) => {
+    tint(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24), hex);
+  };
+  turn([[0,0],[.68,0],[.82,.12],[.88,.34],[.81,.49],[0,.49]], 0xa94d65);
+  turn([[0,.40],[.69,.40],[.79,.58],[.76,.80],[.65,.96],[.46,1],[0,1]], 0xe797a8);
+  for (const row of [0, 1]) {
+    const count = row === 0 ? 12 : 10;
+    for (let i = 0; i < count; i++) {
+      const a = (i + row * 0.5) / count * 2 * Math.PI;
+      const petal = new THREE.SphereGeometry(1, 8, 4);
+      const p = petal.getAttribute('position');
+      for (let j = 0; j < p.count; j++) {
+        const u = (p.getZ(j) + 1) / 2;
+        p.setXYZ(j, p.getX(j) * (.235 - .09 * u),
+          p.getY(j) * .13 + (row === 0 ? .38 - .16 * u : .48 + .39 * u),
+          row === 0 ? .60 + .4 * u : .59 + .31 * u);
+      }
+      p.needsUpdate = true;
+      petal.computeVertexNormals();
+      petal.rotateY(a);
+      tint(petal, row === 0 ? (i % 2 ? 0xc86880 : 0xd9778b) : (i % 2 ? 0xf29eaa : 0xf6a8b4));
+    }
   }
-  body.instanceMatrix.needsUpdate = true;
-  ring.instanceMatrix.needsUpdate = true;
-  button.instanceMatrix.needsUpdate = true;
+  geometry = mergeGeometries(parts)!;
+  parts.forEach(g => g.dispose());
+  return geometry;
+}
 
-  body.receiveShadow = true;
-  ring.receiveShadow = true;
-  button.receiveShadow = true;
-  return { body, ring, button };
+/** Sizes refer to the old cushion. Scale from its floor contact, not its center. */
+export function buildZafu(radius: number, height: number, baseY: number, positions: readonly ZafuPosition[]) {
+  const cushions = new THREE.InstancedMesh(lotusCushion(), material, positions.length);
+  cushions.name = 'zafu-lotus';
+  cushions.receiveShadow = true;
+  const transform = new THREE.Object3D();
+  positions.forEach((p, i) => {
+    const r = p.radius ?? radius;
+    transform.position.set(p.x, p.y ?? baseY, p.z);
+    transform.rotation.y = p.ry ?? 0;
+    transform.scale.set(r * ZAFU_SCALE, (p.height ?? height) * ZAFU_SCALE, (p.depthRadius ?? r) * ZAFU_SCALE);
+    transform.updateMatrix();
+    cushions.setMatrixAt(i, transform.matrix);
+  });
+  cushions.instanceMatrix.needsUpdate = true;
+  return cushions;
 }

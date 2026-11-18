@@ -2195,9 +2195,17 @@ function releasePhongSinh(): void {
 }
 
 const zoneBtn = $('zoneBtn');
+function strikeTower(kind: 'bell' | 'drum', direct = false) {
+  const bell = kind === 'bell';
+  if (bell) world.ringBell(); else world.ringDrum();
+  const origin = bell ? BELL : DRUM;
+  const listener = me?.char.root.position;
+  const dist = listener ? Math.hypot(listener.x - origin.x, listener.z - origin.z) : Infinity;
+  audio.strike(kind, direct ? 1 : 0.7 / (1 + (dist / 28) ** 2));
+}
 const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
-  chuong: { label: 'Đánh chuông', run: () => { world.ringBell(); audio.play('bow'); } },
-  trong: { label: 'Đánh trống', run: () => { world.ringDrum(); audio.play('bow'); } },
+  chuong: { label: 'Đánh chuông', run: () => strikeTower('bell', true) },
+  trong: { label: 'Đánh trống', run: () => strikeTower('drum', true) },
   thuyDinh: { label: 'Thả đèn', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
   lotus: { label: 'Thả đèn hồ sen', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
   river: { label: 'Thả đèn sông Đông', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
@@ -2734,7 +2742,7 @@ function loop(now: number = performance.now()) {
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân
         if (Math.hypot(r.char.root.position.x - px, r.char.root.position.z - pz) > 0.004 || r.lastMoveAt === undefined) r.lastMoveAt = now;
         if (r.anim === 'walk' && now - r.lastMoveAt > 500) r.anim = 'idle';
-        if (r.data.npc && r.anim === 'ring' && (r.prevAnim !== 'ring' || now - (r.lastRingAt ?? 0) > 4000)) { r.lastRingAt = now; world.ringBell(); audio.play('bow'); }
+        if (r.anim === 'ring' && (r.prevAnim !== 'ring' || now - (r.lastRingAt ?? 0) > 4000)) { r.lastRingAt = now; strikeTower('bell'); }
         r.prevAnim = r.anim;
       }
     }
@@ -2752,9 +2760,14 @@ function loop(now: number = performance.now()) {
       r.lodAt = t; r.lodAnim = r.anim;
     }
     animateCharacter(r.char, r.anim, t);
+    if (r.anim === 'sit') {
+      const { x, z } = r.char.root.position;
+      const seat = world.seats.find(s => s.sitY !== undefined && Math.abs(s.x - x) < 0.18 && Math.abs(s.z - z) < 0.18);
+      if (seat?.sitY !== undefined) r.char.body.position.y += Math.max(0, seat.sitY - r.char.root.position.y);
+    }
   });
 
-  if (t - lastDrum > 45) { lastDrum = t; if (me) { world.ringDrum(); audio.play('bow'); } }
+  if (t - lastDrum > 45) { lastDrum = t; if (me) strikeTower('drum'); }
   updateTeacherBtn();
   updateTalkBtn();
   updateDonorBtn();

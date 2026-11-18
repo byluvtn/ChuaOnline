@@ -13,10 +13,11 @@
  * chung theo đúng định dạng vòng tròn { x, z, r }.
  */
 import * as THREE from 'three';
+import { buildZafu, type ZafuPosition } from './zafu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, TINH_THAT,
-  expansionGroundY, ngocHillGroundY, ngocStepProfile,
+  expansionGroundY, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
 import { fitModel, loadModel } from './models';
@@ -260,6 +261,11 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   };
   /** Ghế ngồi: y do main lấy từ world.groundY, nên đệm/ghế luôn đặt sát đất (như bồ đoàn). */
   const addSeat = (x: number, z: number, ry: number, rest = false) => seats.push({ x, z, ry, rest });
+  const meditationPads: ZafuPosition[] = [];
+  const meditationPad = (x: number, z: number, ry: number, w: number, depth: number, y: number) => {
+    meditationPads.push({ x, z, ry, radius: w / 2, depthRadius: depth / 2, y });
+    seats.push({ x, z, ry, rest: true, sitY: y + 0.14 * ZAFU_SCALE });
+  };
   /** Đệm/ghế thấp sát đất: người ngồi ở cao độ groundY như bồ đoàn trong chùa. */
   const seatPad = (x: number, z: number, ry: number, rest = true, w = 1.1, d = 0.9, key: MatKey = 'stone') => {
     addBox(key, w, 0.14, d, x, walkY(x, z) + 0.07, z, ry);
@@ -472,7 +478,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       roof.position.set(x, 0, z);
       architecture.add(roof);
       addBox('wood', 2.0, 0.05, 1.6, x, 0.19, z);
-      seatPad(x, z + 0.5, 0, true, 0.9, 0.8, 'darkWood');
+      meditationPad(x, z + 0.5, 0, 0.9, 0.8, 0.215);
       addSign('TỊNH THẤT', 1.5, 0.4, x, 2.18, z + 1.20);
       zones.push({ x, z, r: 4, id: 'tinhThat' });
       flush('tinhThat-furniture');
@@ -610,10 +616,9 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       solid(lx, lz, 0.3);
     }
     addSign('ĐIỆN DƯỢC SƯ', 3.4, 0.65, x, beamY - 0.35, z + fz + 0.4);
-    seatPad(x - 3.2, z + 0.6, Math.PI, true);
-    seatPad(x + 3.2, z + 0.6, Math.PI, true);
-    seatPad(x - 3.2, z - 2.2, Math.PI, true);
-    seatPad(x + 3.2, z - 2.2, Math.PI, true);
+    for (const dx of [-3.2, 3.2]) for (const dz of [0.6, -2.2]) {
+      meditationPad(x + dx, z + dz, Math.PI, 1.1, 0.9, y);
+    }
     zones.push({ x, z, r: 8, id: 'duocSu' });
     const { group } = flush('duocSu');
     group.add(mergeStatue(buddha));
@@ -909,8 +914,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     wallLine(cx + 2.4, cz - 3.1, cx + 2.4, cz + 0.6, 0.4, 0.6);
     wallLine(cx - 2.4, cz - 3.1, cx + 2.4, cz - 3.1, 0.4, 0.6);
     solid(cx, cz - 2.9, 0.9);
-    seatPad(cx - 1.2, cz - 1.0, 0, true, 0.9, 0.8);
-    seatPad(cx + 1.2, cz - 1.0, 0, true, 0.9, 0.8);
+    for (const dx of [-1.2, 1.2]) meditationPad(cx + dx, cz - 1, 0, 0.9, 0.8, yb + 0.08);
     addSign('ĐỘNG THIỀN', 2.2, 0.55, cx, yb + 3.5, cz + 0.8);
     zones.push({ x: cx, z: cz, r: 7, id: 'dongThien' });
 
@@ -1040,6 +1044,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     root.add(g);
   }
 
+  root.add(buildZafu(0.38, 0.14, 0, meditationPads));
   c.scene.add(root);
   if (import.meta.env.DEV) {
     const meshes: string[] = [];

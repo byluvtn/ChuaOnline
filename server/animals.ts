@@ -4,6 +4,7 @@ import {
   HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
   NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
   PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, BRIDGE, DUOC_SU, NGOC_HALL, expansionWaterBlocked,
+  ZAFU_RADIUS, ZAFU_SCALE,
 } from '../src/layout.js';
 
 type P = { x: number; z: number };
@@ -61,9 +62,9 @@ export function isIndoors(x: number, z: number): boolean {
 // Rule: no destination and no path segment may lie inside
 //   (a) an INDOOR_RECT (house rectangle), except by passing through its door,
 //   (b) a raised meditation DECK (no door: walkers go around the nearest corner),
-//   (c) a zafu ring (radius ZAFU_R = 0.38 + 0.4 = 0.78).
+//   (c) a zafu footprint plus clearance for the animal's body.
 // The Bao Thap circle is NOT keep-out (it is an outdoor courtyard).
-const ZAFU_R = 0.38 + 0.4;
+const ZAFU_R = ZAFU_RADIUS * ZAFU_SCALE + 0.4;
 
 // Rect -> door (only the 7 rects that have a door in HOUSE_DOORS).
 const door = (id: string): P => { const d = HOUSE_DOORS.find((d) => d.id === id)!; return { x: d.x, z: d.z }; };
@@ -83,12 +84,15 @@ const DECK_RECTS = [1, -1].map((side) => {
   return { x: (x0 + x1) / 2, z: (DECK.z0 + DECK.z1) / 2, hx: (x1 - x0) / 2, hz: (DECK.z1 - DECK.z0) / 2 };
 });
 
-// All 212 zafu: Chinh Dien 96 + decks 98 + Thien Duong 12 + Dien Mau 2 + Am Co 1 + Thuy Dinh 3.
+// Indoor and deck cushions with fixed layouts.
 const ZAFU_RINGS: P[] = (() => {
   const out: P[] = [];
   // Chinh Dien (src/hall.ts): 6 rows x 8 cols x 2 sides = 96
   for (const s of [-1, 1]) for (const z of [-3.2, -1.4, 0.4, 2.2, 4.0, 5.8])
     for (const x of [3.4, 4.9, 6.4, 7.9, 9.4, 10.9, 12.4, 13.9]) out.push({ x: HALL.x + s * x, z: HALL.z + z });
+  // Tam The (src/tamthe.ts): 4 rows x 6 cols x 2 sides = 48
+  for (const s of [-1, 1]) for (const z of [-0.4, 1.4, 3.2, 5.0])
+    for (const x of [3.2, 4.7, 6.2, 7.7, 9.2, 10.7]) out.push({ x: TAM_THE_PLAT.x + s * x, z: TAM_THE_PLAT.z + z });
   // Outdoor decks (src/temple.ts): 7 x 7 x 2 sides = 98
   for (const s of [-1, 1]) for (const z of [-17.6, -15.7, -13.8, -11.9, -10.0, -8.1, -6.2])
     for (const x of [5.7, 7.4, 9.1, 10.8, 12.5, 14.2, 15.9]) out.push({ x: s * x, z });

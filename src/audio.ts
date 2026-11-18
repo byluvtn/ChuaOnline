@@ -78,6 +78,43 @@ function tone(freq: number, dur: number, gain: number, type: OscillatorType = 's
 function bell(base: number, gain = 0.18, dur = 3.2) {
   [1, 2.76, 5.4, 8.93].forEach((m, i) => tone(base * m, dur / (1 + i * 0.7), gain / (1 + i * 1.3)));
 }
+type TempleStrike = 'bell' | 'drum';
+let strikeNoise: AudioBuffer | undefined;
+let lastTempleStrike = -1;
+
+function templeStrike(kind: TempleStrike, strength: number) {
+  const c = ensure(), now = c.currentTime;
+  if (now - lastTempleStrike < 0.24) return;
+  lastTempleStrike = now;
+  if (!strikeNoise) {
+    strikeNoise = c.createBuffer(1, Math.ceil(c.sampleRate * 0.24), c.sampleRate);
+    const samples = strikeNoise.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+  }
+  const source = c.createBufferSource(), filter = c.createBiquadFilter(), envelope = c.createGain();
+  const isBell = kind === 'bell';
+  source.buffer = strikeNoise;
+  filter.type = 'bandpass';
+  filter.frequency.value = isBell ? 2350 : 620;
+  filter.Q.value = isBell ? 1.1 : 0.65;
+  envelope.gain.setValueAtTime(0, now);
+  envelope.gain.linearRampToValueAtTime((isBell ? 0.16 : 0.34) * strength, now + 0.003);
+  envelope.gain.exponentialRampToValueAtTime(0.0001, now + (isBell ? 0.12 : 0.16));
+  source.connect(filter).connect(envelope).connect(master!);
+  source.start(now);
+
+  if (isBell) {
+    for (const [freq, gain, dur] of [[174, 0.29, 5.6], [349, 0.17, 3.7], [423, 0.13, 3.1],
+      [668, 0.10, 2.35], [711, 0.07, 1.7], [1101, 0.065, 1.15], [1860, 0.029, 0.48]]) {
+      tone(freq, dur, gain * strength);
+    }
+  } else {
+    tone(112, 0.65, 0.40 * strength, 'sine', 0, 68);
+    tone(199, 0.38, 0.19 * strength, 'sine', 0, 146);
+    tone(317, 0.23, 0.13 * strength, 'sine', 0, 248);
+    tone(540, 0.13, 0.075 * strength, 'sine', 0, 410);
+  }
+}
 let fireworkNoise: AudioBuffer | undefined;
 function fireworkSound(phase: 'launch' | 'burst', strength: number, crackle: boolean) {
   const c = ensure();
@@ -127,6 +164,9 @@ export const audio = {
   setMuted(v: boolean) { setSetting('sound', !v); },
   setVolume(v: number) { setSetting('volume', Math.max(0, Math.min(1, v))); },
   unlock() { ensure(); },
+  strike(kind: TempleStrike, strength = 1) {
+    if (!muted && vol > 0 && strength >= 0.05 && !document.hidden) templeStrike(kind, Math.min(1, strength));
+  },
   firework(phase: 'launch' | 'burst', strength: number, crackle = false) {
     if (!muted && vol > 0 && strength > .02 && !document.hidden) fireworkSound(phase, strength, crackle);
   },
