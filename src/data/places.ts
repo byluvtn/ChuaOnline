@@ -1,5 +1,5 @@
-import { BAO_THAP, BELL, DRUM, BRIDGE, BUDDHA_YARD, DECK, HALL, LAKE, PAGODA, PLAZA, QUAN, TAM_THE, THIEN_DUONG, VUON_THAP, WALL, ZEN, PHONG_CD, REST, TANG_XA } from '../layout';
-import { NGOC } from '../../shared/campus';
+import { BAO_THAP, BELL, DRUM, BRIDGE, BUDDHA_YARD, DECK, HALL, LAKE, PAGODA, PLAZA, QUAN, TAM_THE, THIEN_DUONG, VUON_THAP, WALL, ZEN, REST, TANG_XA } from '../layout';
+import { NGOC, PHONG_CD_DOOR, TINH_THAT, TINH_THAT_LANE_Z } from '../../shared/campus';
 
 export interface Place { name: string; x: number; z: number; r: number; ly?: number }
 
@@ -22,7 +22,7 @@ export const PLACES: Place[] = [
   { name: 'Am Cổ', x: 50, z: -72, r: 4 },
   { name: 'Vườn Tháp', x: VUON_THAP.x, z: VUON_THAP.z + 4, r: 4 },
   { name: 'Thiền đường', x: THIEN_DUONG.x, z: -27, r: 4 },
-  { name: 'Phòng Ghi Công Đức', x: PHONG_CD.x + 4.5, z: PHONG_CD.z, r: 4 },
+  { name: 'Phòng Ghi Công Đức', ...PHONG_CD_DOOR, r: 4 },
   { name: 'Khu nghỉ', x: REST.x, z: REST.z, r: 4 },
   { name: 'Vườn Phóng Sinh', x: 30, z: -31, r: 4 },
   { name: 'Điện Mẫu', x: 39, z: 10, r: 4 },
@@ -32,7 +32,7 @@ export const PLACES: Place[] = [
   { name: 'Tam quan', x: 0, z: WALL.zS - 4, r: 4 },
   { name: 'Rừng trúc', x: 80, z: 2, r: 5 },
   { name: 'Vườn rau chùa', x: -76, z: -42, r: 6 },
-  { name: 'Tịnh thất', x: -64, z: -61.4, r: 3 },
+  { name: 'Tịnh thất', x: TINH_THAT[1].x, z: TINH_THAT_LANE_Z, r: 3 },
   { name: 'Hồ sen Tây', x: -78, z: 2, r: 5 },
   { name: 'Đình ngắm sen', x: -70, z: 5, r: 3 },
   { name: 'Điện Dược Sư', x: 77, z: -32, r: 4 },

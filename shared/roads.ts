@@ -14,7 +14,7 @@
 //   koi lake (0, 14) a 14 Ã— b 10 â†’ water z 4â€¦24, bridge deck z 2â€¦26 (x Â±1.15)
 //   bell tower (+34, âˆ’6) Â· drum tower (âˆ’34, âˆ’6)
 //   Báº£o ThÃ¡p (âˆ’34, âˆ’15): octagon platform out to r â‰ˆ 6.8, south steps z âˆ’10â€¦âˆ’8.2
-//   khu nghá»‰ (âˆ’35, 33) Â· PhÃ²ng Ghi CÃ´ng Äá»©c (35, 33), door faces EAST at (39.5, 33)
+//   rest area (-35, 33), merit office (35, 33), west door (30.5, 33)
 //   TÄƒng XÃ¡ (âˆ’64, âˆ’74) with its south door (âˆ’64, âˆ’70.5); three tá»‹nh tháº¥t at
 //   (âˆ’67,âˆ’67), (âˆ’61,âˆ’67), (âˆ’64,âˆ’63.8). The OLD TÄƒng XÃ¡ site (âˆ’41, âˆ’71) is empty:
 //   no node and no edge goes there any more.
@@ -60,7 +60,7 @@
 //     the koi lake.
 
 import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
-import { NGOC, NORTH_WALK_Z } from './campus';
+import { NGOC, NORTH_WALK_Z, PHONG_CD_DOOR, TINH_THAT, TINH_THAT_LANE_Z } from './campus';
 
 export type Pt = { x: number; z: number }
 
@@ -135,9 +135,9 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'baoThap', x: -34, z: -7.6 },
   { id: 'baoE', x: -25, z: -11 },
   { id: 'baoW', x: -41, z: -11 },
-  { id: 'phongCDDoor', x: 39.5, z: 33 }, // PhÃ²ng Ghi CÃ´ng Äá»©c, EAST door
-  { id: 'phongCDLane', x: 47, z: 33 },
-  { id: 'phongCDN', x: 52, z: 12 },
+  { id: 'phongCDDoor', ...PHONG_CD_DOOR },
+  { id: 'phongCDLane', x: PHONG_CD_DOOR.x - 3.2, z: PHONG_CD_DOOR.z },
+  { id: 'phongCDSouth', x: PHONG_CD_DOOR.x - 3.2, z: 41.5 },
   // â”€â”€ VÆ°á»n TÃ¢y (ornamental garden) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'gateW', x: -10.6, z: 40.7 },
   { id: 'vuonCayE', x: -37.8, z: 28.4 },
@@ -214,20 +214,12 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'tangXaJct', x: -64, z: -69.5 }, // south lane node in front of TÄƒng XÃ¡ (clear of its SE corner post at -59,-71.5 r1.14)
   { id: 'tangxaMid', x: -59, z: -59.5 }, // west of the Viá»‡n KhÃ¡ch TÄƒng fence (x âˆ’58)
   { id: 'tangXaDoor', x: -64, z: -70.5 }, // TÄƒng XÃ¡ (âˆ’64,âˆ’74) south door
-  { id: 'westOuterN', x: -72, z: -59.5 }, // outer lane west of the fence, clear of the huts
-  { id: 'westOuterM', x: -72, z: -65 }, // turns in to the tá»‹nh tháº¥t front lane
-  { id: 'westOuterS', x: -72, z: -79 }, // outer lane, north of TÄƒng XÃ¡'s rear wall
-  // Tá»‹nh tháº¥t front lane runs south of the huts (their south wall line is z âˆ’65.95),
-  // so every hut approach is a straight walk along z = âˆ’65 and never crosses a wall.
-  { id: 'tinhThatJct', x: -64, z: -69 },
-  { id: 'tinhThatW', x: -70.5, z: -69 },
-  { id: 'tinhThatFrontW', x: -70.5, z: -64.5 },
-  { id: 'tinhThatFrontE', x: -58.8, z: -64.5 },
-  { id: 'tinhThatFront3', x: -60.5, z: -61.4 },
-  { id: 'tinhThat1', x: -67, z: -65 }, // south front of the hut at (âˆ’67,âˆ’67)
-  { id: 'tinhThat2', x: -60.8, z: -65 }, // south front of the hut at (âˆ’61,âˆ’67)
-  { id: 'tinhThatE', x: -60.5, z: -63.5 }, // east lane past tá»‹nh tháº¥t 3 (spans x âˆ’65.6â€¦âˆ’62.4)
-  { id: 'tinhThat3', x: -64, z: -61.4 }, // south front of the hut at (âˆ’64,âˆ’63.8)
+  { id: 'westOuterN', x: -71.5, z: -59.5 },
+  { id: 'westOuterM', x: -71.5, z: -68.4 },
+  { id: 'westOuterS', x: -71.5, z: -79 },
+  { id: 'tinhThatJct', x: -71.5, z: TINH_THAT_LANE_Z },
+  { id: 'tangXaApproach', x: -64, z: -68.4 },
+  ...TINH_THAT.map(({ x }, i) => ({ id: `tinhThat${i + 1}`, x, z: TINH_THAT_LANE_Z })),
   // â”€â”€ EAST BRANCH: river, rá»«ng trÃºc, Äiá»‡n DÆ°á»£c SÆ°, vÆ°á»n hoa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'riverBankW', x: 61, z: 2 },
   { id: 'riverBridgeS', x: 65, z: 2 }, // bridge over the east river on the cross path
@@ -277,7 +269,7 @@ export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
   { id: 'amCo', x: 53, z: -72.25 },
   { id: 'tangXa', x: -64, z: -70.5 },
   { id: 'thienDuong', x: -40.5, z: -27 },
-  { id: 'phongCongDuc', x: 39.5, z: 33 },
+  { id: 'phongCongDuc', ...PHONG_CD_DOOR },
   { id: 'nhaTo', x: 36, z: -64.75 },
   { id: 'duocSu', x: 77, z: -32 },
 ]
@@ -325,7 +317,7 @@ export const ROAD_EDGES: [string, string][] = [
   ['zenIn', 'zenGarden'], ['zenGarden', 'thienDuong'], ['zenIn', 'zenW'], ['zenW', 'zenE2'],
   ['zenE2', 'zenE1'], ['zenE1', 'hallFront'],
   // â”€â”€ PhÃ²ng Ghi CÃ´ng Äá»©c â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['phongCDDoor', 'phongCDLane'], ['phongCDLane', 'phongCDN'], ['phongCDN', 'pathE4'],
+  ['phongCDDoor', 'phongCDLane'], ['phongCDLane', 'phongCDSouth'], ['phongCDSouth', 'denE2'],
   // â”€â”€ VÆ°á»n TÃ¢y â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['gate', 'gateW'], ['gateW', 'vuonCayE'], ['vuonCayE', 'vuonCay'],
   ['vuonCay', 'vuonCayIn'], ['vuonCayIn', 'vuonCayE2'], ['vuonCayE2', 'vuonCayLane'],
@@ -344,16 +336,12 @@ export const ROAD_EDGES: [string, string][] = [
   ['lotusBridgeE', 'lotusNE'], ['lotusNE', 'westRingN'],
   ['westRingN', 'rearW'],
   ['rearW', 'farmGate'], ['farmGate', 'farm'], // fence gate only, never over the farm fence
-  ['rearW', 'tangxaMid'], ['tangxaMid', 'tinhThatE'],
-  ['tinhThatE', 'tinhThatFrontE'], ['tinhThatFrontE', 'tinhThat2'],
-  ['tinhThatE', 'tinhThatFront3'], ['tinhThatFront3', 'tinhThat3'],
-  ['tinhThatJct', 'tangXaJct'], ['tangXaJct', 'tangXaDoor'],
-  ['tinhThatJct', 'tinhThatW'], ['tinhThatW', 'westOuterM'],
-  ['westOuterM', 'tinhThatFrontW'], ['tinhThatFrontW', 'tinhThat1'],
-  // Outer lane at x = âˆ’72 goes round the north side of TÄƒng XÃ¡: hub â†’ westOuterN â†’
-  // westOuterM â†’ tá»‹nh tháº¥t lane, and westOuterN â†’ westOuterS â†’ westRearGate, so the
-  // ring never has to squeeze past the hall's rear corner at (âˆ’59, âˆ’71.5).
-  ['tangxaMid', 'westOuterN'], ['westOuterM', 'westOuterN'], ['westOuterN', 'westOuterS'],
+  ['rearW', 'tangxaMid'], ['tangxaMid', 'tangXaApproach'],
+  ['tangXaApproach', 'tangXaJct'], ['tangXaJct', 'tangXaDoor'],
+  ['tangXaApproach', 'westOuterM'], ['westOuterM', 'tinhThatJct'],
+  ['tinhThatJct', 'tinhThat3'], ['tinhThat3', 'tinhThat2'], ['tinhThat2', 'tinhThat1'],
+  // Northbound lane runs between the huts and Tang Xa before joining the rear loop.
+  ['tangxaMid', 'westOuterN'], ['westOuterM', 'westOuterN'], ['tinhThatJct', 'westOuterS'],
   ['westOuterS', 'westRearGate'],
   // â”€â”€ EAST BRANCH: river crossings, rá»«ng trÃºc, Äiá»‡n DÆ°á»£c SÆ°, vÆ°á»n hoa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['riverBankW', 'riverBridgeS'], ['riverBridgeS', 'riverBankE'], // river bridge at z = 2

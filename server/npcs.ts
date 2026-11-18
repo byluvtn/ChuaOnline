@@ -1,5 +1,5 @@
 import { BRIDGE, HALL, PLAZA, clampToCompound, inLake } from '../src/layout.js';
-import { LOTUS, RIVER, expansionWaterBlocked } from '../shared/campus.js';
+import { LOTUS, RIVER, PHONG_CD_YAW, phongCdWorld, expansionWaterBlocked } from '../shared/campus.js';
 import { ROAD_NODES, roadRoute, routeFrom } from '../shared/roads.js';
 import type { ActionKind, Anim, NpcAct, Outfit, PlayerState } from '../shared/types.js';
 import type { Pt } from '../shared/roads.js';
@@ -251,7 +251,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       : def.behavior === 'visitor' ? visitorSpot(nodePt('gate'), def)
       : def.behavior === 'wander' ? nodePt('plaza')
        : def.behavior === 'bell' ? nodePt('bellTower')
-      : def.behavior === 'desk' ? { x: 32.6, z: 33 } // duty chair in Phong Ghi Cong Duc at (35,33), rotated +90 deg to face East (chair box local (0, -2.4) -> world (32.6, 33)), npc faces East (ry PI/2)
+      : def.behavior === 'desk' ? phongCdWorld(0, -2.4)
       : def.behavior === 'sweepZen' ? nodePt('zenGarden')
       : def.behavior === 'sweepRoad' ? nodePt('rearKT')
       : def.behavior === 'sweepBridge' ? { x: SOUTH_END.x - 1.5, z: SOUTH_END.z }
@@ -261,7 +261,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
       shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, tourStops: [], tourIdx: 0, tourPhase: 0, homeSlot: def.behavior, gone: false, goneUntil: 0,
-      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? Math.PI / 2 : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post && def.post.z >= 47 ? Math.PI : def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
+      state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? PHONG_CD_YAW : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post && def.post.z >= 47 ? Math.PI : def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
   spreadVisitors(npcs, now);
@@ -846,14 +846,13 @@ function incenseRoute(n: Npc, spot: IdleIncenseSpot): Pt[] {
   return [...routeFrom(n.state, spot.via), p];
 }
 
-// Phòng Ghi Công Đức nay ở (35,33) (layout.ts PHONG_CD) và giữ nguyên phép quay +π/2,
-// nên cả vòng đi và ghế trực chỉ dịch theo (+77, −2) so với vị trí cũ (−42,35).
+// Keep the clerk's walk and chair in the same local frame as the furniture.
 const NPC6_SPOTS = {
   ring: [
-    { x: 31.8, z: 29.0 }, { x: 36.0, z: 28.8 }, { x: 38.0, z: 29.2 }, { x: 38.0, z: 32.5 },
-    { x: 40.5, z: 33.0 }, { x: 35.5, z: 33.6 }, { x: 35.0, z: 36.6 }, { x: 31.8, z: 36.2 },
-  ], // 0 A, 1 B, 2 C, 3 D, 4 E porch (east door), 5 F, 6 F2, 7 G
-  chair: { x: 32.6, z: 33 },
+    phongCdWorld(4.0, -3.2), phongCdWorld(4.2, 1.0), phongCdWorld(3.8, 3.0), phongCdWorld(0.5, 3.0),
+    phongCdWorld(0, 5.5), phongCdWorld(-0.6, 0.5), phongCdWorld(-3.6, 0), phongCdWorld(-3.2, -3.2),
+  ],
+  chair: phongCdWorld(0, -2.4),
   sitAt: [0, 1, 5, 6, 7],
   // waypoints (ring indices) from a sit spot to the nearer of A/G, none cross the desk rect
   via: { 0: [], 1: [0], 5: [6, 7], 6: [7], 7: [] } as Record<number, number[]>,
@@ -870,7 +869,7 @@ function npc6Arrive(n: Npc, s: PlayerState, now: number) {
   n.phase = 'idle';
   if (st.toChair) {
     st.toChair = false; st.seated = true; n.mode = 'sitting';
-    s.anim = 'sit'; s.ry = Math.PI / 2; n.until = now + R(40000, 60000);
+    s.anim = 'sit'; s.ry = PHONG_CD_YAW; n.until = now + R(40000, 60000);
     return;
   }
   n.mode = 'normal'; s.anim = 'idle'; n.until = now + R(5000, 10000);

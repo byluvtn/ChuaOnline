@@ -10,6 +10,8 @@ import {
 import { buildArhat, buildQuanAm } from './statues';
 import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
 import { buildCourtyardBuddha, buildCourtyardGuanyin } from './statue-courtyard';
+import { duocSuRoof, duocSuStyle } from './duoc-su-style';
+import { PHONG_CD_YAW, phongCdWorld } from '../shared/campus';
 import { loadModel, fitModel, replaceModel } from './models';
 import { makeGoldMaterial } from './statue-scan';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
@@ -454,7 +456,7 @@ export function buildTemple(c: TempleCtx) {
     const buckets = new Map<THREE.Material, THREE.Mesh[]>();
     root.traverse((o) => {
       const m = o as THREE.Mesh;
-      if (!m.isMesh || Array.isArray(m.material) || m.userData.inscription) return;
+      if (!m.isMesh || Array.isArray(m.material) || m.userData.inscription || m.parent?.name === 'duoc-su-style-roof') return;
       const list = buckets.get(m.material) ?? [];
       list.push(m); buckets.set(m.material, list);
     });
@@ -476,19 +478,18 @@ export function buildTemple(c: TempleCtx) {
     }
   };
 
-  // ---- Am Cổ (góc Tây–Bắc): am nhỏ mái ngói rêu phong, mở mặt Đông (lối vào từ vườn Thiền), tường hậu + hai tường bên có cửa sổ ----
+  // ---- Am Cổ: giữ gian mở và hai cửa sổ bên ----
   const amCo = new THREE.Group();
   amCo.name = 'am-co';
   const acStone = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
     m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; amCo.add(m); return m;
   };
-  const acWood = lamb(0x5a3a22, { roughness: 0.85 });
-  const acMoss = lamb(0x5f7a4a, { roughness: 1 });
+  const { timber: acWood, plaster: dsPlaster, stone: dsStone } = duocSuStyle;
   const AP = AM_CO_PLAT;
   // Nhóm amCo xoay -90 độ, nên nền dựng hoán đổi hx/hz để mặt nền ngoài đời vẫn là
   // 6.5 (x) x 5.5 (z), khớp groundY() dùng AM_CO_PLAT.
-  acStone(AP.hz * 2, AP.y, AP.hx * 2, 0, AP.y / 2, 0);
+  acStone(AP.hz * 2, AP.y, AP.hx * 2, 0, AP.y / 2, 0, dsStone);
   const acBase = AP.y;
   const acH = 2.6, acHx = 2.2, acHz = 1.8;
   for (const [px, pz] of [[-acHx, -acHz], [acHx, -acHz], [-acHx, acHz], [acHx, acHz]] as [number, number][]) {
@@ -498,18 +499,14 @@ export function buildTemple(c: TempleCtx) {
   }
   const acY0 = acBase + 0.2 - 0.05, acY1 = acY0 + acH;
   const acWin = { c: 0, w: 1.2, s: acY0 + 0.9, t: acY0 + 2.0 };
-  for (const sz of [-acHz, acHz]) windowWall(acStone, 'x', sz, 2 * acHx - 0.2, 0.2, acY0, acY1, acWin, c.wallM, acWood);
-  acStone(0.2, acH, 2 * acHz - 0.2, -acHx, acBase + 0.2 + acH / 2 - 0.05, 0, c.wallM);
+  for (const sz of [-acHz, acHz]) windowWall(acStone, 'x', sz, 2 * acHx - 0.2, 0.2, acY0, acY1, acWin, dsPlaster, duocSuStyle.darkwood);
+  acStone(0.2, acH, 2 * acHz - 0.2, -acHx, acBase + 0.2 + acH / 2 - 0.05, 0, dsPlaster);
   const acBeamY = acBase + 0.2 + acH + 0.05;
   for (const s of [-acHz, acHz]) { const b = new THREE.Mesh(new THREE.BoxGeometry(2 * acHx + 0.6, 0.24, 0.26), acWood); b.position.set(0, acBeamY, s); b.castShadow = true; b.userData.sealable = true; amCo.add(b); }
   for (const s of [-acHx, acHx]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 2 * acHz + 0.6), acWood); b.position.set(s, acBeamY, 0); b.castShadow = true; b.userData.sealable = true; amCo.add(b); }
-  const acRoofH = 1.7, acRoofY = acBeamY + 0.12 + acRoofH / 2 - 0.2;
-  const acRoof = new THREE.Mesh(c.roofGeometry(6.4, 5.2, acRoofH, 0.5), c.tileM);
-  acRoof.position.y = acRoofY; acRoof.castShadow = true; acRoof.userData.sealable = true; amCo.add(acRoof);
-  const acMossCap = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.1, 1.2), acMoss);
-  acMossCap.position.set(0.4, acRoofY + acRoofH / 2 - 0.35, 0.3); amCo.add(acMossCap);
-  const acFin = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.7, 8), c.goldM);
-  acFin.position.y = acRoofY + acRoofH / 2 + 0.25; acFin.userData.sealable = true; amCo.add(acFin);
+  const acRoof = duocSuRoof(5.2, 6.4, acBeamY + 0.10, 1.32);
+  acRoof.rotation.y = Math.PI / 2;
+  amCo.add(acRoof);
   const acSign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.5), new THREE.MeshBasicMaterial({ map: signTexture('AM CỔ') }));
   acSign.position.set(acHx + 0.2, acBeamY - 0.4, 0); acSign.rotation.y = Math.PI / 2; amCo.add(acSign);
   for (let i = 0; i < 2; i++) labelBoard(amCo, COUPLETS.amCo.am[i].split(',')[0], 0.4, 2.0, acHx + 0.22, acBase + 1.5, i ? acHz : -acHz, Math.PI / 2);
@@ -595,46 +592,48 @@ export function buildTemple(c: TempleCtx) {
   zones.push({ x: VUON_THAP.x, z: VUON_THAP.z, r: 8, id: 'vuonThap' });
 
   // ---- Nhà Tổ + Tăng xá (sau Điện Tam Thế): hai dãy nhà mái ngói, cửa quay về hướng Nam ----
-  const buildHouse = (name: string, at: { x: number; z: number }, plat: { hx: number; hz: number; y: number }, sign: string, zoneId: string, wide: number, deep: number, openFront = false) => {
+  const buildHouse = (name: string, plat: { hx: number; hz: number; y: number }, sign: string, wide: number, deep: number, openFront = false) => {
     const g = new THREE.Group(); g.name = name;
     const st = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
       m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; g.add(m); return m;
     };
-    st(plat.hx * 2, plat.y, plat.hz * 2, 0, plat.y / 2, 0);
+    const { timber, darkwood, plaster, gold } = duocSuStyle;
+    st(plat.hx * 2, plat.y, plat.hz * 2, 0, plat.y / 2, 0, dsStone);
     const base = plat.y, colH = 3.0, hx = wide, hz = deep;
     const corners: [number, number][] = [[-hx, -hz], [hx, -hz], [-hx, hz], [hx, hz]];
     for (const [px, pz] of corners) {
-      st(0.55, 0.2, 0.55, px, base + 0.1, pz);
-      const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.19, colH + 0.1, 10), c.redM);
+      st(0.55, 0.2, 0.55, px, base + 0.1, pz, dsStone);
+      const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, colH + 0.1, 12), timber);
       pl.position.set(px, base + 0.2 + colH / 2 - 0.05, pz); pl.castShadow = true; pl.userData.sealable = true; g.add(pl);
+      st(0.62, 0.14, 0.62, px, base + 0.18 + colH, pz, gold);
+      const brace = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.64, 0.13), darkwood);
+      brace.rotation.z = Math.sign(px) * 0.65;
+      brace.position.set(px - Math.sign(px) * 0.22, base + colH - 0.08, pz);
+      brace.castShadow = true; g.add(brace);
     }
     const wy = base + 0.2 + colH / 2 - 0.05;
-    st(2 * hx - 0.2, colH, 0.22, 0, wy, -hz, c.wallM);
+    st(2 * hx - 0.2, colH, 0.22, 0, wy, -hz, plaster);
     if (openFront) {
       const y0 = base + 0.2 - 0.05;
       const win = { c: 0, w: 1.6, s: y0 + 1.0, t: y0 + 2.2 };
-      for (const sx of [-hx, hx]) windowWall(st, 'z', sx, 2 * hz - 0.2, 0.22, y0, y0 + colH, win, c.wallM, c.redM);
+      for (const sx of [-hx, hx]) windowWall(st, 'z', sx, 2 * hz - 0.2, 0.22, y0, y0 + colH, win, plaster, darkwood);
     } else {
-      st(0.22, colH, 2 * hz - 0.2, -hx, wy, 0, c.wallM);
-      st(0.22, colH, 2 * hz - 0.2, hx, wy, 0, c.wallM);
-      st(hx - 0.9, colH, 0.22, -(hx + 0.9) / 2, wy, hz, c.wallM);
-      st(hx - 0.9, colH, 0.22, (hx + 0.9) / 2, wy, hz, c.wallM);
-      st(1.8, 0.7, 0.22, 0, base + 0.2 + colH - 0.4, hz, c.wallM);
+      st(0.22, colH, 2 * hz - 0.2, -hx, wy, 0, plaster);
+      st(0.22, colH, 2 * hz - 0.2, hx, wy, 0, plaster);
+      st(hx - 0.9, colH, 0.22, -(hx + 0.9) / 2, wy, hz, plaster);
+      st(hx - 0.9, colH, 0.22, (hx + 0.9) / 2, wy, hz, plaster);
+      st(1.8, 0.7, 0.22, 0, base + 0.2 + colH - 0.4, hz, plaster);
     }
     const beamY = base + 0.2 + colH + 0.05;
-    for (const s of [-hz, hz]) { const b = new THREE.Mesh(new THREE.BoxGeometry(2 * hx + 0.7, 0.26, 0.28), c.redM); b.position.set(0, beamY, s); b.castShadow = true; b.userData.sealable = true; g.add(b); }
-    for (const s of [-hx, hx]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.26, 2 * hz + 0.7), c.redM); b.position.set(s, beamY, 0); b.castShadow = true; b.userData.sealable = true; g.add(b); }
-    const roofH = 1.9, roofY = beamY + 0.13 + roofH / 2 - 0.2;
-    const roof = new THREE.Mesh(c.roofGeometry(2 * hx + 2.4, 2 * hz + 2.0, roofH, 0.6), c.tileM);
-    roof.position.y = roofY; roof.castShadow = true; roof.userData.sealable = true; g.add(roof);
-    const ridge = new THREE.Mesh(new THREE.BoxGeometry(2 * hx - 0.6, 0.2, 0.3), c.goldM);
-    ridge.position.y = roofY + roofH / 2 - 0.05; ridge.userData.sealable = true; g.add(ridge);
+    for (const s of [-hz, hz]) st(2 * hx + 0.7, 0.27, 0.34, 0, beamY, s, timber);
+    for (const s of [-hx, hx]) st(0.34, 0.27, 2 * hz + 0.7, s, beamY, 0, timber);
+    g.add(duocSuRoof(2 * hx + 2.4, 2 * hz + 2.0, beamY + 0.10, THREE.MathUtils.clamp((hx + hz) * 0.24, 1.35, 2.2)));
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
     sg.position.set(0, beamY - 0.5, hz + 0.25); g.add(sg);
-    return { g, hx, hz, corners, sign: sg };
+    return { g, hx, hz };
   };
-  const nt = buildHouse('nha-to', NHA_TO, NHA_TO_PLAT, 'NHÀ TỔ', 'nhaTo', 4.6, 3.25, true);
+  const nt = buildHouse('nha-to', NHA_TO_PLAT, 'NHÀ TỔ', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nt.g, COUPLETS.nhaTo.am[i].split(',')[0], 0.42, 2.2, i ? nt.hx : -nt.hx, NHA_TO_PLAT.y + 1.7, nt.hz + 0.22);
   nt.g.position.set(NHA_TO.x, 0, NHA_TO.z); scene.add(nt.g);
   const ntSeal = sealArchitectureJoints(nt.g, { maxGap: 0.5 });
@@ -650,7 +649,7 @@ export function buildTemple(c: TempleCtx) {
   }
   zones.push({ x: NHA_TO.x, z: NHA_TO.z, r: 7, id: 'nhaTo' });
 
-  const tx = buildHouse('tang-xa', TANG_XA, TANG_XA_PLAT, 'TĂNG XÁ', 'tangXa', 5.0, 2.5);
+  const tx = buildHouse('tang-xa', TANG_XA_PLAT, 'TĂNG XÁ', 5.0, 2.5);
   for (let i = 0; i < 2; i++) labelBoard(tx.g, COUPLETS.tangXa.am[i].split(',')[0], 0.42, 2.2, i ? 1.2 : -1.2, TANG_XA_PLAT.y + 1.7, tx.hz + 0.2);
   tx.g.position.set(TANG_XA.x, 0, TANG_XA.z); scene.add(tx.g);
   const txSeal = sealArchitectureJoints(tx.g, { maxGap: 0.5 });
@@ -674,7 +673,7 @@ export function buildTemple(c: TempleCtx) {
   zones.push({ x: TANG_XA.x, z: TANG_XA.z, r: 7, id: 'tangXa' });
 
   const extraHouse = (name: string, at: { x: number; z: number }, plat: { hx: number; hz: number; y: number }, sign: string, zoneId: string, wide: number, deep: number, openFront: boolean) => {
-    const h = buildHouse(name, at, plat, sign, zoneId, wide, deep, openFront);
+    const h = buildHouse(name, plat, sign, wide, deep, openFront);
     h.g.position.set(at.x, 0, at.z); scene.add(h.g);
     const sl = sealArchitectureJoints(h.g, { maxGap: 0.5 });
     if (import.meta.env.DEV) console.warn(`gapdump ${name}: filled=${sl.filled} remaining=${sl.remaining.length}`);
@@ -739,20 +738,13 @@ export function buildTemple(c: TempleCtx) {
   }
   const nk = extraHouse('nha-khach', NHA_KHACH, NHA_KHACH_PLAT, 'NHÀ KHÁCH', 'nhaKhach', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nk.g, COUPLETS.nhaKhach.am[i].split(',')[0], 0.42, 2.2, i ? nk.hx : -nk.hx, NHA_KHACH_PLAT.y + 1.7, nk.hz + 0.22);
-  const tdH = buildHouse('thien-duong', THIEN_DUONG, { hx: THIEN_DUONG_PLAT.hz, hz: THIEN_DUONG_PLAT.hx, y: THIEN_DUONG_PLAT.y }, 'THIỀN ĐƯỜNG', 'thienDuong', 3.1, 5.1, true);
+  const tdH = buildHouse('thien-duong', { hx: THIEN_DUONG_PLAT.hz, hz: THIEN_DUONG_PLAT.hx, y: THIEN_DUONG_PLAT.y }, 'THIỀN ĐƯỜNG', 3.1, 5.1, true);
   for (let i = 0; i < 2; i++) labelBoard(tdH.g, COUPLETS.thienDuong.am[i].split(',')[0], 0.42, 2.2, i ? tdH.hx : -tdH.hx, THIEN_DUONG_PLAT.y + 1.7, tdH.hz + 0.22);
   tdH.g.rotation.y = Math.PI / 2;
   tdH.g.position.set(THIEN_DUONG.x, 0, THIEN_DUONG.z); scene.add(tdH.g);
   const tdSealH = sealArchitectureJoints(tdH.g, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump thien-duong: filled=${tdSealH.filled} remaining=${tdSealH.remaining.length}`);
   mergeStaticByMaterial(tdH.g);
-  // The sign and couplet canvases stay live for later text updates.
-  const tdShell = new THREE.Group();
-  for (const child of [...tdH.g.children]) {
-    if (child instanceof THREE.Mesh && child !== tdH.sign && !child.userData.inscription) tdShell.add(child);
-  }
-  tdH.g.add(tdShell);
-  replaceModel(tdH.g, tdShell, 'thien-duong-blender');
   {
     const tw = (lx: number, lz: number) => ({ x: THIEN_DUONG.x + lz, z: THIEN_DUONG.z - lx });
     {
@@ -769,21 +761,19 @@ export function buildTemple(c: TempleCtx) {
   void td;
   const trd = extraHouse('trai-duong', TRAI_DUONG, TRAI_DUONG_PLAT, 'TRAI ĐƯỜNG', 'traiDuong', 4.6, 2.75, true);
   for (let i = 0; i < 2; i++) labelBoard(trd.g, COUPLETS.traiDuong.am[i].split(',')[0], 0.42, 2.2, i ? trd.hx : -trd.hx, TRAI_DUONG_PLAT.y + 1.7, trd.hz + 0.22);
-  const pcd = buildHouse('phong-cong-duc', PHONG_CD, { hx: PHONG_CD_PLAT.hz, hz: PHONG_CD_PLAT.hx, y: PHONG_CD_PLAT.y }, 'PHÒNG GHI CÔNG ĐỨC', 'phongCongDuc', 5.1, 3.5, true);
-  // Mặt mở xoay +90 độ về hướng Đông (lối vào chính). Nền truyền bản hoán đổi hx/hz vì mesh nền nằm trong group xoay (như Thiền Đường): nhà 7.0 x 10.2 trên nền 8 x 11 theo trục thế giới.
-  pcd.g.rotation.y = Math.PI / 2;
+  const pcd = buildHouse('phong-cong-duc', { hx: PHONG_CD_PLAT.hz, hz: PHONG_CD_PLAT.hx, y: PHONG_CD_PLAT.y }, 'PHÒNG GHI CÔNG ĐỨC', 5.1, 3.5, true);
+  pcd.g.rotation.y = PHONG_CD_YAW;
   pcd.g.position.set(PHONG_CD.x, 0, PHONG_CD.z); scene.add(pcd.g);
   const pcdSeal = sealArchitectureJoints(pcd.g, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump phong-cong-duc: filled=${pcdSeal.filled} remaining=${pcdSeal.remaining.length}`);
   mergeStaticByMaterial(pcd.g);
   {
-    const tw = (lx: number, lz: number) => ({ x: PHONG_CD.x + lz, z: PHONG_CD.z - lx });
     const n = Math.round(pcd.hx / 0.9), sn = (2 * pcd.hx) / n, rn = sn / 2 - 0.4;
     const rnb = rn + 0.15;
     const k = Math.max(1, Math.round((2 * pcd.hz - sn / 2) / 2.2 - 0.5)), sw = (2 * pcd.hz - sn / 2) / (k + 0.5), rw = sw / 2 - 0.4;
     const rwb = rw + 0.15;
-    for (let i = 0; i <= n; i++) colliders.push({ ...tw(-pcd.hx + i * sn, -pcd.hz), r: rnb });
-    for (let j = 0; j <= k; j++) { const lz = -pcd.hz + sn / 2 + sw / 2 + j * sw; colliders.push({ ...tw(-pcd.hx, lz), r: rwb }, { ...tw(pcd.hx, lz), r: rwb }); }
+    for (let i = 0; i <= n; i++) colliders.push({ ...phongCdWorld(-pcd.hx + i * sn, -pcd.hz), r: rnb });
+    for (let j = 0; j <= k; j++) { const lz = -pcd.hz + sn / 2 + sw / 2 + j * sw; colliders.push({ ...phongCdWorld(-pcd.hx, lz), r: rwb }, { ...phongCdWorld(pcd.hx, lz), r: rwb }); }
   }
   zones.push({ x: PHONG_CD.x, z: PHONG_CD.z, r: 7, id: 'phongCongDuc' });
   void pcd;
@@ -911,7 +901,7 @@ export function buildTemple(c: TempleCtx) {
     // --- Phòng ghi công đức: bàn dài + ghế trực + kệ sổ ---
     {
       const g = mkIn('phong-cong-duc-in', PHONG_CD), b = mk(g), y0 = PHONG_CD_PLAT.y, hxp = pcd.hx;
-      g.rotation.y = Math.PI / 2;
+      g.rotation.y = pcd.g.rotation.y;
       b(3.0, 0.06, 1.0, 0, y0 + 0.72, -1.5, woodM);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) b(0.1, 0.72, 0.1, sx * 1.4, y0 + 0.36, -1.5 + sz * 0.4, woodM);
       b(0.4, 0.05, 0.3, -0.6, y0 + 0.78, -1.5, paperM);
@@ -924,7 +914,7 @@ export function buildTemple(c: TempleCtx) {
       for (const sz of [-0.85, 0.85]) b(0.5, 1.1, 0.06, kx, y0 + 0.55, sz, woodM);
       for (let i = 0; i < 6; i++) b(0.2, 0.05, 0.28, kx, y0 + 0.55 + (i % 2) * 0.6 + 0.02, -0.7 + i * 0.28, paperM);
       cyl(g, 0.06, 0.06, 0.12, kx, y0 + 1.19, 0.75, inkM, 10);
-      // Hòm công đức (to gấp 3): local (-2.8, 2.5) trong g xoay +π/2 → world (-39.5, 37.8), ngay trong cửa Đông, bên trái khi nhìn vào (phía Nam). Nắp có khe bỏ xu, khóa vàng quay về Đông.
+      // Hòm công đức ngay bên trong cửa Tây.
       loadModel('offering_box').then((base) => {
         if (!base) return;
         const inst = base.clone(true);
@@ -934,13 +924,9 @@ export function buildTemple(c: TempleCtx) {
       });
       mergeStaticByMaterial(g); scene.add(g);
       // desk: r 0.1 -> 0.3 để blocking chồng nhau, hết seam
-      for (const lz of [-2.0, -1.0]) for (const lx of [-1.5, -0.5, 0.5, 1.5]) colliders.push({ x: PHONG_CD.x + lz, z: PHONG_CD.z - lx, r: 0.3 });
-      // Kệ sổ: mesh ở local (kx, 0), dài 1.8 theo local z → world x = PHONG_CD.x ± 0.45 (2 vòng chồng nhau phủ đủ chiều dài).
-      for (const lx of [-0.45, 0.45]) colliders.push({ x: PHONG_CD.x + lx, z: PHONG_CD.z - kx, r: 0.4 });
-      // Đôn nhỏ: mesh ở local (0, -2.4) → world (PHONG_CD.x - 2.4, PHONG_CD.z) = (-44.4, 35).
-      colliders.push({ x: PHONG_CD.x - 2.4, z: PHONG_CD.z, r: 0.3 });
-      // Collider hòm công đức: mesh ở local (-2.8, 2.5) trong g xoay +π/2 → world (PHONG_CD.x + lz, PHONG_CD.z − lx) = (-39.5, 37.8).
-      colliders.push({ x: PHONG_CD.x + 2.5, z: PHONG_CD.z + 2.8, r: 1.2 });
+      for (const lz of [-2.0, -1.0]) for (const lx of [-1.5, -0.5, 0.5, 1.5]) colliders.push({ ...phongCdWorld(lx, lz), r: 0.3 });
+      for (const lz of [-0.45, 0.45]) colliders.push({ ...phongCdWorld(kx, lz), r: 0.4 });
+      colliders.push({ ...phongCdWorld(0, -2.4), r: 0.3 }, { ...phongCdWorld(-2.8, 2.5), r: 1.2 });
     }
   }
 
@@ -1277,36 +1263,34 @@ export function buildTemple(c: TempleCtx) {
 
   // ---- Đền Trình (đền nhỏ một gian trong cổng, phía Đông) ----
   const denT = new THREE.Group();
+  denT.name = 'den-trinh';
   const dtStone = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = stoneM) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
     m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; denT.add(m); return m;
   };
-  dtStone(4.4, 0.35, 3.6, 0, 0.175, 0);
+  dtStone(4.4, 0.35, 3.6, 0, 0.175, 0, dsStone);
   const dtBase = 0.35, dtColH = 2.4;
   for (const [px, pz] of [[-1.9, -1.5], [1.9, -1.5], [-1.9, 1.5], [1.9, 1.5]] as [number, number][]) {
-    const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, dtColH, 12), c.redM);
+    const pl = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, dtColH, 12), duocSuStyle.timber);
     pl.position.set(px, dtBase + dtColH / 2, pz); pl.castShadow = true; pl.userData.sealable = true; denT.add(pl);
     dtStone(0.5, 0.18, 0.5, px, dtBase + 0.09, pz);
+    dtStone(0.5, 0.13, 0.5, px, dtBase + dtColH, pz, duocSuStyle.gold);
     const v = new THREE.Vector3(px, 0, pz).applyAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
     colliders.push({ x: DEN_TRINH.x + v.x, z: DEN_TRINH.z + v.z, r: 0.25 });
   }
-  dtStone(4.0, dtColH, 0.2, 0, dtBase + dtColH / 2, -1.6, c.wallM);
-  dtStone(0.2, 1.1, 3.0, -2.0, dtBase + 0.55, 0, c.wallM);
-  dtStone(0.2, 1.1, 3.0, 2.0, dtBase + 0.55, 0, c.wallM);
+  dtStone(4.0, dtColH, 0.2, 0, dtBase + dtColH / 2, -1.6, dsPlaster);
+  for (const x of [-2, 2]) windowWall(dtStone, 'z', x, 3.0, 0.2, dtBase, dtBase + dtColH,
+    { c: 0, w: 1.2, s: dtBase + 0.82, t: dtBase + 1.95 }, dsPlaster, duocSuStyle.darkwood);
   const dtBeam = dtBase + dtColH + 0.12;
   for (const s of [-1.5, 1.5]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.24, 0.26), c.redM);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.24, 0.26), duocSuStyle.timber);
     b.position.set(0, dtBeam, s); b.castShadow = true; b.userData.sealable = true; denT.add(b);
   }
   for (const s of [-1.9, 1.9]) {
-    const b = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 3.3), c.redM);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 3.3), duocSuStyle.timber);
     b.position.set(s, dtBeam, 0); b.castShadow = true; b.userData.sealable = true; denT.add(b);
   }
-  const dtRoofH = 1.5, dtRoofY = dtBeam + 0.12 + dtRoofH / 2 - 0.2;
-  const dtRoof = new THREE.Mesh(c.roofGeometry(5.6, 4.6, dtRoofH, 0.6), c.tileM);
-  dtRoof.position.y = dtRoofY; dtRoof.castShadow = true; dtRoof.userData.sealable = true; denT.add(dtRoof);
-  const dtFin = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.8, 8), c.goldM);
-  dtFin.position.y = dtRoofY + dtRoofH / 2 + 0.3; dtFin.userData.sealable = true; denT.add(dtFin);
+  denT.add(duocSuRoof(5.6, 4.6, dtBeam + 0.10, 1.2));
   dtStone(1.6, 0.7, 1.2, 0, dtBase + 0.35, -1.0);
   const dtCenser = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.28, 14), c.goldM);
   dtCenser.position.set(0, dtBase + 0.14, -0.2); dtCenser.castShadow = true; denT.add(dtCenser);
@@ -1594,6 +1578,7 @@ export function buildTemple(c: TempleCtx) {
   const ringDrum = () => { drumHit = 1; };
   const halos = [...hall.halos, ...tamThe.halos].filter(Boolean);
   const update = (t: number, dt: number) => {
+    expansion.update(t);
     ring = Math.max(0, ring - dt * 0.25);
     bellPivot.rotation.z = Math.sin(t * 2.6) * 0.5 * ring * ring + Math.sin(t * 0.5) * 0.015;
     drumHit = Math.max(0, drumHit - dt * 2.5);

@@ -14,7 +14,12 @@ export const CAVE = { x: -26, z: -104 };
 export const DUOC_SU = { x: 77, z: -38, hx: 6, hz: 4.5, y: 0.45 };
 export const NGOC = { x: 0, z: -120, y: 6, hx: 5, hz: 4, stairStart: -90, stairTop: -120, stairHalf: 2.1, steps: 299, landingDepth: 1 };
 export const NORTH_WALK_Z = -82;
-export const TINH_THAT = [{ x: -67, z: -67 }, { x: -61, z: -67 }, { x: -64, z: -63.8 }];
+export const TINH_THAT = [{ x: -84, z: -74 }, { x: -79, z: -74 }, { x: -74, z: -74 }];
+export const TINH_THAT_LANE_Z = TINH_THAT[0].z + 2.6;
+export const PHONG_CD = { x: 35, z: 33 };
+export const PHONG_CD_YAW = -Math.PI / 2;
+export const PHONG_CD_DOOR = { x: PHONG_CD.x - 4.5, z: PHONG_CD.z };
+export const phongCdWorld = (x: number, z: number) => ({ x: PHONG_CD.x - z, z: PHONG_CD.z + x });
 
 export function ngocStepProfile(): { z0: number; z1: number; y: number }[] {
   const result = [];

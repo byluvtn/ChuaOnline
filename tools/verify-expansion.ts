@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { WALL, LAKE, BRIDGE, NGOC, NORTH_WALK_Z, RIVER, expansionGroundY, expansionWaterBlocked, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, NGOC, NORTH_WALK_Z, RIVER, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
 import { MAP_HALF, MAP_Z_MIN, MAP_Z_MAX } from '../shared/types';
 import { clampToCompound, resolveBridge, resolveWater, groundY, nearWalkway, NGOC_APPROACH, WALKWAY_RECTS, TAM_THE_PLAT, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP } from '../src/layout';
-import { ROAD_NODES, ROAD_EDGES, roadPath } from '../shared/roads';
+import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath } from '../shared/roads';
 import { createPathfinder } from '../shared/pathfind';
 import { NPC_QUESTS } from '../shared/game';
 import { createAnimals } from '../server/animals';
@@ -50,6 +50,18 @@ assert.equal(groundY(77, -38), 0.45);
 assert.equal(groundY(-64, -74), 0.25);
 assert.equal(groundY(50, -94), 0.2);
 assert.equal(groundY(35, 33), 0.25);
+assert(PHONG_CD_DOOR.x < PHONG_CD.x && PHONG_CD_YAW === -Math.PI / 2);
+assert.deepEqual(phongCdWorld(0, 4.5), PHONG_CD_DOOR);
+assert.deepEqual(HOUSE_DOORS.find(p => p.id === 'phongCongDuc'), { id: 'phongCongDuc', ...PHONG_CD_DOOR });
+assert(nearWalkway(PHONG_CD_DOOR.x, PHONG_CD_DOOR.z, 0));
+assert.equal(TINH_THAT.length, 3);
+for (const [{ x, z }, i] of TINH_THAT.map((p, i) => [p, i] as const)) {
+  assert(x + 2.1 < TANG_XA.x - 6 && !expansionWaterBlocked(x, z));
+  assert.equal(groundY(x, z), 0.16);
+  assert(nearWalkway(x, TINH_THAT_LANE_Z, 0));
+  const id = `tinhThat${i + 1}`;
+  assert.deepEqual(ROAD_NODES.find(n => n.id === id), { id, x, z: TINH_THAT_LANE_Z });
+}
 assert.equal(groundY(-41, -71), 0);
 assert.equal(groundY(49, -63), 0);
 for (const quest of NPC_QUESTS) for (const p of quest.points ?? []) {

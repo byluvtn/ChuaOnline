@@ -1,5 +1,5 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
-import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, NGOC, NORTH_WALK_Z, TINH_THAT, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, NGOC, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
@@ -57,7 +57,6 @@ export const TRAI_DUONG = { x: -29, z: -61 };
 export const TRAI_DUONG_PLAT = { x: TRAI_DUONG.x, z: TRAI_DUONG.z, hx: 6.0, hz: 3.75, y: 0.25, ramp: 0.8 };
 export const VUON_THAP = { x: 50, z: -94 };
 export const VUON_THAP_PLAT = { x: VUON_THAP.x, z: VUON_THAP.z, hx: 7.0, hz: 5.0, y: 0.2, ramp: 0.8 };
-export const PHONG_CD = { x: 35, z: 33 };
 export const PHONG_CD_PLAT = { x: PHONG_CD.x, z: PHONG_CD.z, hx: 4.0, hz: 5.5, y: 0.25, ramp: 0.8 };
 /** Viện Khách Tăng (Tây) và Viện Tổ (Đông): hình chữ nhật có rào, cổng ở mặt Nam tại gateX. */
 export const VIEN_KT = { x0: -58, x1: -22, z0: -80, z1: -54, gateX: -30 };
@@ -94,7 +93,8 @@ export const WALKWAY_RECTS = [
   [VIEN_KT.gateX - 1.2, -58, VIEN_KT.gateX + 1.2, -43],
   [VIEN_TO.gateX - 1.2, -58, VIEN_TO.gateX + 1.2, -43],
   [-60.3, -78, -57.7, 41], [57.7, -78, 60.3, 41], [-58, 39.8, 58, 42.2],
-  [PHONG_CD.x - 1.2, 27, PHONG_CD.x + 1.2, 31.5],
+  [PHONG_CD_DOOR.x - 3.2, PHONG_CD.z - 1.2, PHONG_CD_PLAT.x - PHONG_CD_PLAT.hx, PHONG_CD.z + 1.2],
+  [PHONG_CD_DOOR.x - 4.2, PHONG_CD.z, PHONG_CD_DOOR.x - 2.2, 41],
   [19.8, -31, 22.2, -19], [19.8, -32.2, 25.5, -29.8],
   [50.3, -31, 52.7, -23], [33, -25.2, 52.7, -22.8],
   [BAO_THAP.x - 1.2, ZEN.z - 1, BAO_THAP.x + 1.2, BAO_THAP.z - BAO_THAP_PLAT.r - 1],
@@ -102,8 +102,10 @@ export const WALKWAY_RECTS = [
   [28, 8.8, 35, 11.2], [-48, -59.2, -27, -56.8], [-42.2, -67, -39.8, -58],
   [27, -59.2, 50, -56.8], [34.8, -63.75, 37.2, -58],
   [REST.x + 2, REST.z - 1.2, BRIDGE.x - 1.4, REST.z + 1.2],
-  [-65.2, -69.5, -58.5, -67.1], [-65.2, -70.5, -62.8, -62],
-  [-77.2, -67.1, -74.8, 1], [-76, -43.2, -59, -40.8], [-76, -68.3, -64, -65.9],
+  [-65.2, -70.5, -62.8, -67.3], [-72.5, -69.5, -58.5, -67.3],
+  [TINH_THAT[0].x - 1, TINH_THAT_LANE_Z - 1, -70.5, TINH_THAT_LANE_Z + 1],
+  ...TINH_THAT.map(({ x, z }): [number, number, number, number] => [x - 0.72, z + 1.25, x + 0.72, TINH_THAT_LANE_Z]),
+  [-72.5, -79, -70.5, -59.5], [-77.2, -67.1, -74.8, 1], [-76, -43.2, -59, -40.8],
   [59, -39.2, 69, -36.8], [67.8, -38, 70.2, -31.5], [69, -32.7, 77, -30.3],
   [75.8, -33.5, 78.2, 2], [77.8, 2, 80.2, 28],
   [-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2],
@@ -280,7 +282,7 @@ export function blocked(x: number, z: number) {
   if (Math.abs(x - BAO_THAP.x) < 2.2 && z > BAO_THAP.z + BAO_THAP_PLAT.step1.z0 - 1 && z < BAO_THAP.z + BAO_THAP_PLAT.step2.z1 + 1) return true;
   if (x < -27 && x > -41 && Math.abs(z + 27) < 2.2) return true;
   if (x > 27 && x < 36 && Math.abs(z - DIEN_MAU.z) < 2.2) return true;
-  if (x > PHONG_CD.x + 3 && x < PHONG_CD.x + 9 && Math.abs(z - PHONG_CD.z) < 2.2) return true;
+  if (x > PHONG_CD_DOOR.x - 5 && x < PHONG_CD.x - 3 && Math.abs(z - PHONG_CD.z) < 2.2) return true;
   return false;
 }
 
