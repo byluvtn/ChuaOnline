@@ -5,9 +5,17 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 135;
+export const LATEST_NEWS_ID = 136;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thác Bản Giốc mới ở đầu nguồn sông Đông',
+    date: '2026-11-18',
+    items: [
+      'Đầu nguồn sông Đông có thác 3 tầng mới kiểu Bản Giốc: nước chia dòng quanh đảo đá xanh, hồ ngọc bích giữa các tầng, núi đá vôi làm nền.',
+      'Đi dọc bờ sông Đông về phía Bắc để ngắm toàn cảnh thác.',
+    ],
+  },
   {
     title: 'Cập nhật ba gói pháo hoa',
     date: '2026-11-18',

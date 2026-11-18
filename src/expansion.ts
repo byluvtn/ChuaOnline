@@ -712,8 +712,10 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     group.add(waterRect(x0, x1, z0, z1));
     group.add(waterEllipse(RIVER.pond.x, RIVER.pond.z, RIVER.pond.a, RIVER.pond.b));
     group.add(waterfall.group);
-    solid(RIVER.x, RIVER.z0 - 2.5, 1.95);
-    for (const dx of [-1.8, 1.8]) solid(RIVER.x + dx, RIVER.z0 - 2.05, 1.12);
+    // Keep the walkable banks out of the footprint except where they meet the cliff.
+    wallLine(RIVER.x - 5.6, RIVER.z0 - 1.96, RIVER.x + 5.6, RIVER.z0 - 1.96, 1.12, 1.5);
+    for (const dx of [-5.55, 5.65]) wallLine(RIVER.x + dx, RIVER.z0 - 3, RIVER.x + dx, RIVER.z0 - 13.4, 1.55, 1.7);
+    wallLine(RIVER.x - 5.55, RIVER.z0 - 13.4, RIVER.x + 5.65, RIVER.z0 - 13.4, 1.55, 1.7);
   }
 
   // =====================================================================================
