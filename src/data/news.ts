@@ -5,9 +5,18 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 136;
+export const LATEST_NEWS_ID = 137;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tượng chibi mới trong Chính Điện, Điện Tam Thế và hành lang',
+    date: '2026-11-18',
+    items: [
+      'Chính Điện có đủ 5 tượng chibi: A Di Đà ở giữa, Văn Thù — Phổ Hiền hai bên, Địa Tạng — Dược Sư ngoài cùng.',
+      'Điện Tam Thế có đủ bộ ba Quá Khứ — Hiện Tại — Vị Lai: Nhiên Đăng, Thích Ca, Di Lặc.',
+      'Hai hành lang thay tượng scan vàng bằng tượng chibi đứng.',
+    ],
+  },
   {
     title: 'Thác Bản Giốc mới ở đầu nguồn sông Đông',
     date: '2026-11-18',

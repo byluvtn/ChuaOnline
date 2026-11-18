@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { TAM_THE, TAM_THE_PLAT } from './layout';
-import { buildBuddha } from './statues';
+import { buildBuddha, measureBuddhaHeight } from './statues';
 import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import { buildZafuParts } from './zafu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { replaceRoof } from './models';
+import { replaceModel, replaceRoof } from './models';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = TAM_THE_PLAT.y;
@@ -16,7 +16,7 @@ const COLUMN_LABELS = [
   'Một niệm tỉnh thức sáng soi, mười phương muôn cõi về nương cửa thiền',
 ];
 
-/** Điện Tam Thế: điện lớn nhất chùa, nền cao 3.0, mái 3 tầng, thờ A Di Đà - Thích Ca - Di Lặc. */
+/** Điện Tam Thế: điện lớn nhất chùa, nền cao 3.0, mái 3 tầng, thờ Nhiên Đăng - Thích Ca - Di Lặc. */
 export function buildTamThe(c: TempleCtx) {
   const { scene, colliders, lamb } = c;
   const g = new THREE.Group();
@@ -255,13 +255,20 @@ export function buildTamThe(c: TempleCtx) {
   for (let i = -5; i <= 5; i++) colliders.push({ x: TAM_THE.x + i * 2.2, z: TAM_THE.z + altarZ, r: 1.6 });
 
   const lead = buildBuddha();
-  const place = (x: number, s: number, ry: number) => { const b = lead.clone(true); b.scale.setScalar(s); b.position.set(x, altarY, altarZ); b.rotation.y = ry; add(b); return b; };
-  const mainB = place(0, 1.2, 0);
-  const amidaB = place(-7.6, 0.92, 0.12);
-  const diLacB = place(7.6, 0.92, -0.12);
-  amidaB.name = 'amida'; diLacB.name = 'dilac';
-  const diLacBelly = new THREE.Mesh(new THREE.SphereGeometry(0.7, 20, 16), lamb(0xe9c987, { roughness: 0.55 }));
-  diLacBelly.scale.set(1.15, 0.9, 0.8); diLacBelly.position.set(7.6, altarY + 2.05 * 0.92, altarZ + 0.95 * 0.92 - 0.1); add(diLacBelly);
+  const height = measureBuddhaHeight(lead);
+  const place = (asset: string, x: number, s: number, ry: number, fallbackName = lead.name) => {
+    const b = lead.clone(true);
+    b.name = fallbackName;
+    b.scale.setScalar(s);
+    b.position.set(x, altarY, altarZ);
+    b.rotation.y = ry;
+    g.add(b);
+    replaceModel(g, b, asset, height * s, undefined, 'base');
+    return b;
+  };
+  const mainB = place('chibi-thich-ca', 0, 1.2, 0);
+  const nhienDangB = place('chibi-nhien-dang', -7.6, 0.92, 0.12, 'nhien-dang');
+  const diLacB = place('chibi-di-lac', 7.6, 0.92, -0.12, 'dilac');
 
   const tableZ = -HZ + 6.2;
   box(10, 0.16, 1.6, lamb(0x7a1c12), 0, BASE + 1.1, tableZ);
@@ -321,6 +328,6 @@ export function buildTamThe(c: TempleCtx) {
     if (import.meta.env.DEV) console.warn('gapdump ' + JSON.stringify(seal.remaining));
   }
   replaceRoof(g, roofFallback, 'dien-tam-the-roof');
-  const halos = [mainB, amidaB, diLacB].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
+  const halos = [mainB, nhienDangB, diLacB].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
   return { group: g, seats, zones, halos };
 }

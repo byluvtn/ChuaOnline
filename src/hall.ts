@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { HALL } from './layout';
-import { buildBuddha } from './statues';
+import { buildBuddha, measureBuddhaHeight } from './statues';
 import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import { buildZafuParts } from './zafu';
-import { replaceRoof } from './models';
+import { replaceModel, replaceRoof } from './models';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const BASE = HALL.h; // top of platform
@@ -12,7 +12,7 @@ const BASE = HALL.h; // top of platform
 /** Câu đối tiếng Việt treo trên hai cột tiền đường (thay chữ Hán). */
 const COLUMN_LABELS = ['Cửa thiền rộng mở đón người về nương Phật', 'Lòng tịnh an nhiên nghe chuông vọng núi xa'];
 
-/** Open-sided main hall (chính điện): columns + roof only, meditation seating inside, altar with Tam Thế Phật. */
+/** Open-sided main hall (chính điện) with meditation seating and a five-statue altar. */
 export function buildHall(c: TempleCtx) {
   const { scene, colliders, lamb } = c;
   const g = new THREE.Group();
@@ -183,9 +183,23 @@ export function buildHall(c: TempleCtx) {
   for (let i = -5; i <= 5; i++) colliders.push({ x: HALL.x + i * 2.3, z: HALL.z + altarZ, r: 1.6 });
 
   const lead = buildBuddha();
-  const place = (x: number, s: number, ry: number) => { const b = lead.clone(true); b.scale.setScalar(s); b.position.set(x, altarY, altarZ); b.rotation.y = ry; add(b); return b; };
-  const mainB = place(0, 0.95, 0);
-  const sideBs = [place(-7.2, 0.72, 0.15), place(7.2, 0.72, -0.15), place(-11.2, 0.5, 0.3), place(11.2, 0.5, -0.3)];
+  const height = measureBuddhaHeight(lead);
+  const place = (asset: string, x: number, s: number, ry: number) => {
+    const b = lead.clone(true);
+    b.scale.setScalar(s);
+    b.position.set(x, altarY, altarZ);
+    b.rotation.y = ry;
+    g.add(b);
+    replaceModel(g, b, asset, height * s, undefined, 'base');
+    return b;
+  };
+  const statues = [
+    place('chibi-a-di-da', 0, 0.95, 0),
+    place('chibi-van-thu', -7.2, 0.72, 0.15),
+    place('chibi-pho-hien', 7.2, 0.72, -0.15),
+    place('chibi-dia-tang', -11.2, 0.5, 0.3),
+    place('chibi-duoc-su', 11.2, 0.5, -0.3),
+  ];
 
   // offering table
   const tableZ = -HALL.hz + 5.3;
@@ -247,6 +261,6 @@ export function buildHall(c: TempleCtx) {
     if (import.meta.env.DEV) console.warn('gapdump ' + JSON.stringify(seal.remaining));
   }
   replaceRoof(g, roofFallback, 'chinh-dien-roof');
-  const halos = [mainB, ...sideBs].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
+  const halos = statues.map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
   return { group: g, seats, zones, halos };
 }

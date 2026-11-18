@@ -1,64 +1,19 @@
 import * as THREE from 'three';
-import { loadModel } from './models';
-import { makeGoldMaterial } from './statue-scan';
+import { fitModel, loadModel } from './models';
 
-export const CORRIDOR_STATUE_NAMES = ['arhat-binh', 'monk-go', 'guanyin-ngoi', 'guanyin-go-minh'] as const;
+export const CORRIDOR_STATUE_NAMES = ['chibi-quan-am', 'chibi-van-thu', 'chibi-pho-hien', 'chibi-dia-tang'] as const;
 
 export const TARGET_HEIGHT = 1.6;
 
-// Bbox tính từ POSITION của mọi đỉnh qua matrixWorld (không dùng Box3.setFromObject vì nó
-// biến đổi bbox cục bộ của geometry nên có thể cao hơn thực tế khi node bị xoay/tịnh tiến).
-function vertexBox(root: THREE.Object3D): THREE.Box3 {
-  const box = new THREE.Box3();
-  const v = new THREE.Vector3();
-  root.updateMatrixWorld(true);
-  root.traverse((o) => {
-    const m = o as THREE.Mesh;
-    if (!m.isMesh) return;
-    const pos = (m.geometry as THREE.BufferGeometry).getAttribute('position');
-    if (!pos) return;
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
-      box.expandByPoint(v);
-    }
-  });
-  return box;
-}
-
 const FACE_OFFSET: Record<(typeof CORRIDOR_STATUE_NAMES)[number], number> = {
-  'arhat-binh': 0,
-  'monk-go': 0,
-  'guanyin-ngoi': 0,
-  'guanyin-go-minh': 0,
+  'chibi-quan-am': 0,
+  'chibi-van-thu': 0,
+  'chibi-pho-hien': 0,
+  'chibi-dia-tang': 0,
 };
 
-const UPRIGHT_X: Partial<Record<(typeof CORRIDOR_STATUE_NAMES)[number], number>> = {
-  'arhat-binh': -Math.PI / 2,
-};
-
-function prepare(model: THREE.Group, gold: THREE.Material, offset: number, uprightX = 0): THREE.Group {
-  const inst = model.clone(true);
-  inst.traverse((o) => {
-    const m = o as THREE.Mesh;
-    if (m.isMesh) { m.material = gold; m.castShadow = true; m.receiveShadow = true; }
-  });
-  if (uprightX) inst.rotation.x = uprightX;
-  inst.updateMatrixWorld(true);
-  const box = vertexBox(inst);
-  const h = box.max.y - box.min.y;
-  const k = h > 0 && Number.isFinite(h) ? TARGET_HEIGHT / h : 1;
-  inst.scale.multiplyScalar(k);
-  inst.updateMatrixWorld(true);
-  const box2 = vertexBox(inst);
-  if (!box2.isEmpty()) {
-    const center = box2.getCenter(new THREE.Vector3());
-    inst.position.x -= center.x;
-    inst.position.z -= center.z;
-    inst.position.y -= box2.min.y;
-  }
-  inst.updateMatrixWorld(true);
-  const turn = new THREE.Group();
-  turn.add(inst);
+function prepare(model: THREE.Group, offset: number): THREE.Group {
+  const turn = fitModel(model.clone(true), TARGET_HEIGHT, 'base');
   turn.rotation.y = offset;
   const wrap = new THREE.Group();
   wrap.add(turn);
@@ -66,19 +21,17 @@ function prepare(model: THREE.Group, gold: THREE.Material, offset: number, uprig
 }
 
 /**
- * Tải 4 tượng scan, đổ vàng bóng. Trả về 4 mẫu (null nếu lỗi) để temple.ts clone;
+ * Tải 4 tượng chibi đứng với màu gốc. Trả về 4 mẫu (null nếu thiếu) để temple.ts clone;
  * mẫu null → temple.ts dùng tượng chibi buildArhat làm fallback.
  */
 export function buildCorridorStatues(
-  renderer: THREE.WebGLRenderer,
   onLate?: (models: (THREE.Group | null)[]) => void,
 ): Promise<(THREE.Group | null)[]> {
-  const gold = makeGoldMaterial(renderer);
-  return Promise.all(CORRIDOR_STATUE_NAMES.map((name) => buildOne(name, gold))).then((models) => {
+  return Promise.all(CORRIDOR_STATUE_NAMES.map(buildOne)).then((models) => {
     // Mạng yếu: tượng nào còn null thì thử tải lại đúng 1 lần sau 20 s rồi báo qua onLate.
     if (onLate && models.some((m) => !m)) {
       setTimeout(() => {
-        Promise.all(CORRIDOR_STATUE_NAMES.map((name, i) => models[i] ?? buildOne(name, gold))).then(onLate);
+        Promise.all(CORRIDOR_STATUE_NAMES.map((name, i) => models[i] ?? buildOne(name))).then(onLate);
       }, RETRY_AFTER_MS);
     }
     return models;
@@ -87,11 +40,10 @@ export function buildCorridorStatues(
 
 const RETRY_AFTER_MS = 20000;
 
-async function buildOne(name: (typeof CORRIDOR_STATUE_NAMES)[number], gold: THREE.Material): Promise<THREE.Group | null> {
+async function buildOne(name: (typeof CORRIDOR_STATUE_NAMES)[number]): Promise<THREE.Group | null> {
   try {
     const model = await loadModel(name);
-    if (!model) { console.warn(`${name}.glb không tải được, dùng tượng chibi dự phòng`); return null; }
-    return prepare(model, gold, FACE_OFFSET[name], UPRIGHT_X[name] ?? 0);
+    return model ? prepare(model, FACE_OFFSET[name]) : null;
   } catch (e) {
     console.warn(`${name}: lỗi dựng tượng`, e);
     return null;

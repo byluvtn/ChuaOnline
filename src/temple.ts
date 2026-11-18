@@ -8,7 +8,7 @@ import {
   NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, WALL, WALKWAY_RECTS, nearWalkway, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
 import { buildArhat, buildQuanAm } from './statues';
-import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
+import { buildCorridorStatues } from './statue-corridor';
 import { buildCourtyardBuddha, buildCourtyardGuanyin } from './statue-courtyard';
 import { duocSuRoof, duocSuStyle } from './duoc-su-style';
 import { PHONG_CD_YAW, phongCdWorld } from '../shared/campus';
@@ -176,7 +176,7 @@ export function buildTemple(c: TempleCtx) {
   }
   let corridorLateResolve!: (models: (THREE.Group | null)[]) => void;
   const corridorLateP = new Promise<(THREE.Group | null)[]>((res) => { corridorLateResolve = res; });
-  const corridorStatuesP = buildCorridorStatues(c.renderer, corridorLateResolve);
+  const corridorStatuesP = buildCorridorStatues(corridorLateResolve);
   const corridorDone = new Set<number>();
   const applyCorridorStatues = (models: (THREE.Group | null)[]) => {
     corridorSlots.forEach((s, si) => {
@@ -702,7 +702,7 @@ export function buildTemple(c: TempleCtx) {
     }
     const dmZafu = buildZafuParts(0.38, 0.10, y0 + 0.24, dmZafuPos);
     for (const zm of [dmZafu.body, dmZafu.ring, dmZafu.button]) { zm.castShadow = true; dm.g.add(zm); }
-    // Tượng Quan Âm ngồi (GLB guanyin-ngoi, cùng pipeline tượng hành lang) trên bệ đá sau 2 bồ đoàn, mặt ra cửa (+z).
+    // Giữ tượng scan Quan Âm ngồi phủ vàng ở Điện Mẫu, độc lập với tượng chibi hành lang.
     const gmZ = 8.65;
     const gmLz = gmZ - DIEN_MAU.z;
     const gmPed = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.5), arhatPedM);
@@ -711,23 +711,31 @@ export function buildTemple(c: TempleCtx) {
     gmFallback.position.set(0, y0 + 0.55, gmLz);
     dm.g.add(gmFallback);
     colliders.push({ x: DIEN_MAU.x, z: gmZ, r: 0.85 });
-    const gmIdx = CORRIDOR_STATUE_NAMES.indexOf('guanyin-ngoi');
-    let gmDone = false;
-    const applyGm = (models: (THREE.Group | null)[]) => {
-      const m = models[gmIdx];
-      if (!m || gmDone) return;
-      gmDone = true;
-      const inst = m.clone(true);
-      inst.position.set(0, y0 + 0.55, gmLz);
-      inst.rotation.y = 0;
-      dm.g.add(inst);
+    const loadGm = async (retry: boolean) => {
+      const model = await loadModel('guanyin-ngoi');
+      if (!model) {
+        if (retry) setTimeout(() => { void loadGmSafely(false); }, 20000);
+        return;
+      }
+      const inst = model.clone(true);
+      const gold = makeGoldMaterial(c.renderer);
+      inst.traverse((o) => { if (o instanceof THREE.Mesh) o.material = gold; });
+      const box = new THREE.Box3().setFromObject(inst, true);
+      const h = box.max.y - box.min.y;
+      inst.scale.multiplyScalar(h > 0 && Number.isFinite(h) ? 1.6 / h : 1);
+      box.setFromObject(inst, true);
+      const center = box.getCenter(new THREE.Vector3());
+      inst.position.x -= center.x;
+      inst.position.z -= center.z;
+      if (!box.isEmpty()) inst.position.y -= box.min.y;
+      const wrap = new THREE.Group();
+      wrap.add(inst);
+      wrap.position.copy(gmFallback.position);
+      dm.g.add(wrap);
       dm.g.remove(gmFallback);
     };
-    corridorStatuesP.then((models) => {
-      if (!models[gmIdx]) console.warn('dien-mau: guanyin-ngoi không có, giữ tượng chibi buildQuanAm (thử lại sau 20 s)');
-      applyGm(models);
-    }).catch((e) => { console.warn('dien-mau: lỗi dựng tượng, giữ tượng chibi', e); });
-    corridorLateP.then(applyGm).catch((e) => { console.warn('dien-mau: lỗi tải lại tượng, giữ tượng chibi', e); });
+    const loadGmSafely = (retry: boolean) => loadGm(retry).catch((e) => console.warn('dien-mau: lỗi dựng tượng, giữ tượng chibi', e));
+    void loadGmSafely(true);
   }
   const nk = extraHouse('nha-khach', NHA_KHACH, NHA_KHACH_PLAT, 'NHÀ KHÁCH', 'nhaKhach', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nk.g, COUPLETS.nhaKhach.am[i].split(',')[0], 0.42, 2.2, i ? nk.hx : -nk.hx, NHA_KHACH_PLAT.y + 1.7, nk.hz + 0.22);

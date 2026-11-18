@@ -269,6 +269,15 @@ export function buildBuddha(): THREE.Group {
   return buddhaGroup;
 }
 
+/** Measure the figure and its sculpted halo, not the billboard glow. */
+export function measureBuddhaHeight(buddha: THREE.Group): number {
+  const box = new THREE.Box3();
+  for (const child of buddha.children) {
+    if (!(child instanceof THREE.Sprite)) box.expandByObject(child, true);
+  }
+  return box.max.y - box.min.y;
+}
+
 // =====================================================================
 //  ĐẦU QUAN ÂM v4 — mặt 3D bằng mesh (không dùng texture 2D)
 // =====================================================================
