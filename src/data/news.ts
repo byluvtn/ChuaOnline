@@ -5,9 +5,17 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 134;
+export const LATEST_NEWS_ID = 135;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Cập nhật ba gói pháo hoa',
+    date: '2026-11-18',
+    items: [
+      'Pháo hoa nhỏ: 100 xu, 6 quả. Pháo hoa to: 200 xu, 12 quả.',
+      'Pháo hoa rồng phượng: 1.000 xu, 20 quả tính cả loạt kết. Khi bắn, tin hệ thống được gửi đến mọi phòng chùa.',
+    ],
+  },
   {
     title: 'Pháo hoa rồng phượng: vảy sáng và cánh lửa',
     date: '2026-11-18',

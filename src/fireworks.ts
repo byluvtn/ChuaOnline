@@ -9,9 +9,8 @@ export type BurstType = Regular | FireworkShape;
 const ROCKET_TIME = 1;
 const SHAPE_LIFE = 3.1;
 const TAU = Math.PI * 2;
-const SHOW_ORDER: readonly BurstType[] = [
-  'sphere', 'ring', 'willow', 'crackle', 'ring', 'willow', 'crackle', 'ring', 'dragon', 'phoenix',
-];
+const BURST_CYCLE = ['ring', 'willow', 'crackle'] as const;
+const FINALE_SHELLS = 3;
 const PALETTES = [
   [0xff401e, 0xffd987, 0xfff0bd], [0x7955ff, 0x9ceaff, 0xe7f7ff],
   [0xe34a23, 0xffc651, 0xffedaa], [0xc62367, 0xff8198, 0xffedd5],
@@ -263,7 +262,8 @@ export function createFireworks(scene: THREE.Scene, renderer: THREE.WebGLRendere
   return {
     spawn(x: number, z: number, size: FireworkSize) {
       const cfg = FIREWORKS[size], gap = cfg.intervalMs / 1000;
-      const count = cfg.shells + (size === 'dragon' ? 3 : 0);
+      const count = cfg.shells;
+      const finaleStart = size === 'dragon' ? count - FINALE_SHELLS : count;
       const ground = groundY(x, z);
       launcherModel ??= makeLauncher();
       const group = launcherModel.clone();
@@ -271,9 +271,12 @@ export function createFireworks(scene: THREE.Scene, renderer: THREE.WebGLRendere
       scene.add(group);
       launchers.push({ group, life: cfg.lockMs / 1000 });
       for (let i = 0; i < count; i++) {
-        const finale = i >= cfg.shells;
-        const kind = size === 'dragon' ? (SHOW_ORDER[i] ?? 'sphere')
-          : i === 0 || i === cfg.shells - 1 ? 'sphere' : (['ring', 'willow', 'crackle'] as const)[(i - 1) % 3];
+        const finale = i >= finaleStart;
+        let kind: BurstType;
+        if (size === 'dragon' && i === finaleStart - 2) kind = 'dragon';
+        else if (size === 'dragon' && i === finaleStart - 1) kind = 'phoenix';
+        else if (finale || i === 0 || i === count - 1) kind = 'sphere';
+        else kind = BURST_CYCLE[(i - 1) % BURST_CYCLE.length];
         const wide = finale ? 5.2 : 3.6;
         const isShape = kind === 'dragon' || kind === 'phoenix';
         const ox = (i % 3 - 1) * .24, oz = (Math.floor(i / 3) % 3 - 1) * .19;
@@ -281,7 +284,7 @@ export function createFireworks(scene: THREE.Scene, renderer: THREE.WebGLRendere
           dx: isShape ? -ox : (Math.random() - .5) * wide,
           dz: isShape ? -oz : (Math.random() - .5) * wide,
           rise: isShape ? 3.22 : 4.3 + Math.random() * .58,
-          delay: finale ? (cfg.shells - 1) * gap + SHAPE_LIFE + (i - cfg.shells) * .24 : i * gap,
+          delay: finale ? (finaleStart - 1) * gap + SHAPE_LIFE + (i - finaleStart) * .24 : i * gap,
           kind, palette: PALETTES[i % PALETTES.length], strength: isShape ? 1 : finale ? .72 : size === 'small' ? .62 : .86 };
         if (i === 0) launch(shot, 0);
         else pending.push(shot);

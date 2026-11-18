@@ -6,6 +6,11 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
+## Cập nhật ba gói pháo hoa (2026-11-18)
+
+- Gói nhỏ 100 xu / 6 quả, gói to 200 xu / 12 quả, gói rồng phượng 1.000 xu / 20 quả tính cả ba quả kết. Menu và máy chủ lấy giá từ `FIREWORKS`.
+- Chỉ hiện hiệu ứng ở phòng bắn. Tin hệ thống của gói rồng phượng gửi đến mọi phòng. `LATEST_NEWS_ID` 134 → 135.
+
 ## Làm rõ pháo hoa rồng phượng (2026-11-18)
 
 - `src/fireworks.ts` dùng một `THREE.Points` cho mỗi quả, dựng vệt sáng bằng shader. Các nét rồng và phượng từ `src/data/firework-shapes.ts` hướng về camera và có viền tương phản.

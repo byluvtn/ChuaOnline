@@ -872,7 +872,7 @@ io.on('connection', (socket) => {
     await pushQuests(s);
   });
 
-  // ---- Pháo hoa: nhỏ 100 / lớn 300 / rồng phượng 1500 xu, chỉ ngoài sân, khoá 1 màn/phòng ----
+  // ---- Pháo hoa: chỉ ngoài sân, mỗi phòng chạy một màn tại một thời điểm ----
   socket.on('firework:launch', async (size: unknown, cb?: (r: { ok: boolean; coins?: number; error?: string }) => void) => {
     const s = me();
     const reply = (r: { ok: boolean; coins?: number; error?: string }) => { if (typeof cb === 'function') cb(r); };
@@ -895,11 +895,13 @@ io.on('connection', (socket) => {
     io.to(s.room).emit('firework:show', show);
     if (kind === 'dragon') {
       const msg: ChatMessage = { id: seq++, name: '', text: `🎆 ${s.state.name} vừa bắn pháo hoa rồng phượng!`, t: now, sys: true };
-      const arr = roomChat.get(s.room) ?? [];
-      arr.push(msg);
-      if (arr.length > 100) arr.shift();
-      roomChat.set(s.room, arr);
-      io.to(s.room).emit('chat', msg);
+      for (const room of ROOMS) {
+        const arr = roomChat.get(room.id) ?? [];
+        arr.push(msg);
+        if (arr.length > 100) arr.shift();
+        roomChat.set(room.id, arr);
+        io.to(room.id).emit('chat', msg);
+      }
     }
     const p = await db.getWallet(s.pid);
     reply({ ok: true, coins: p?.coins ?? 0 });

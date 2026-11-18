@@ -85,9 +85,9 @@ export function openFestivals(ctx: Pick<MenuCtx, 'socket' | 'profile' | 'toast'>
           closePanel();
         });
       }),
-      btn(`Pháo hoa nhỏ — ${FIREWORKS.small.cost.toLocaleString('vi-VN')} xu (3 quả)`, () => launch('small')),
-      btn(`Pháo hoa lớn — ${FIREWORKS.large.cost.toLocaleString('vi-VN')} xu (6 quả)`, () => launch('large')),
-      btn(`Pháo hoa rồng phượng — ${FIREWORKS.dragon.cost.toLocaleString('vi-VN')} xu (10 quả, 1 phút, báo cả chùa)`, () => launch('dragon')),
+      btn(`Pháo hoa nhỏ: ${FIREWORKS.small.cost.toLocaleString('vi-VN')} xu (${FIREWORKS.small.shells} quả)`, () => launch('small')),
+      btn(`Pháo hoa to: ${FIREWORKS.large.cost.toLocaleString('vi-VN')} xu (${FIREWORKS.large.shells} quả)`, () => launch('large')),
+      btn(`Pháo hoa rồng phượng: ${FIREWORKS.dragon.cost.toLocaleString('vi-VN')} xu (${FIREWORKS.dragon.shells} quả, báo cả chùa)`, () => launch('dragon')),
     ));
     const rows = FESTIVALS.map((f) => ({ f, d: daysUntil(f) }));
     rows.sort((a, b) => (a.d ?? 999) - (b.d ?? 999));

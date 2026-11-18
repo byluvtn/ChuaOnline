@@ -16,12 +16,10 @@ export const SKY_LANTERN_MERIT = 2;
 export const SKY_LANTERN_COOLDOWN_MS = 60_000;
 export const SKY_LANTERN_WISH_MAX = 60;
 
-// Thời lượng show ≈ (shells − 1) × intervalMs + ~1,0s tên lửa bay + đời quả cuối (sphere 2,0s).
-// small: 2 × 1,5 + 1 + 2 = 6s (= lockMs); large: 5 × 1,8 + 1 + 2 = 12s (= lockMs). Dragon giữ lịch cũ.
 export const FIREWORKS = {
-  small: { cost: 100, shells: 3, intervalMs: 1500, cooldownMs: 30_000, lockMs: 6_000 },
-  large: { cost: 300, shells: 6, intervalMs: 1800, cooldownMs: 30_000, lockMs: 12_000 },
-  dragon: { cost: 1500, shells: 10, intervalMs: 6000, cooldownMs: 300_000, lockMs: 65_000 },
+  small: { cost: 100, shells: 6, intervalMs: 600, cooldownMs: 30_000, lockMs: 6_000 },
+  large: { cost: 200, shells: 12, intervalMs: 1800, cooldownMs: 30_000, lockMs: 23_000 },
+  dragon: { cost: 1000, shells: 20, intervalMs: 3500, cooldownMs: 300_000, lockMs: 65_000 },
 } as const;
 
 export type ShopCategory =
