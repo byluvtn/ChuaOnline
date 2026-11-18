@@ -100,8 +100,7 @@ export function buildTemple(c: TempleCtx) {
   // ---- covered corridors (hành lang) ----
   const corridor = new THREE.Group(); corridor.name = 'corridors'; scene.add(corridor);
   const pillarG = new THREE.CylinderGeometry(0.17, 0.2, 3.95, 10), baseG = new THREE.BoxGeometry(0.5, 0.22, 0.5);
-  const slabG = new THREE.BoxGeometry(3.4, 0.16, CORR.z1 - CORR.z0 + 1.2);
-  const roofM = lamb(0xb4502c, { roughness: 0.6 }), stoneBase = lamb(0x6b6458);
+  const corridorCapG = new THREE.BoxGeometry(0.48, 0.12, 0.48);
   const floorT = stoneTexture([158, 150, 138], [2, 8]);
   const spacing = 3.6, zs: number[] = [];
   for (let z = CORR.z0 + 0.6; z <= CORR.z1 - 0.4; z += spacing) zs.push(z);
@@ -115,22 +114,23 @@ export function buildTemple(c: TempleCtx) {
     for (const off of [-2.4, 2.4]) {
       for (const z of zs) {
         // cột ăn sâu vào nền 0.22 để không hở chân cột, và chạm đáy xà phía trên
-        const p = new THREE.Mesh(pillarG, c.redM); p.position.set(cx + off, CORR.y + 1.875, z); p.castShadow = true;
+        const p = new THREE.Mesh(pillarG, duocSuStyle.timber); p.position.set(cx + off, CORR.y + 1.875, z); p.castShadow = true;
         p.userData.sealable = true; p.name = 'corridor-pillar'; corridor.add(p);
-        const b = new THREE.Mesh(baseG, stoneBase); b.position.set(cx + off, CORR.y + 0.11, z);
+        const b = new THREE.Mesh(baseG, duocSuStyle.stone); b.position.set(cx + off, CORR.y + 0.11, z);
         b.userData.sealable = true; corridor.add(b);
+        const cap = new THREE.Mesh(corridorCapG, duocSuStyle.gold);
+        cap.position.set(cx + off, CORR.y + 3.72, z); cap.castShadow = true; corridor.add(cap);
         colliders.push({ x: cx + off, z, r: 0.22 });
       }
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, len + 0.6), c.redM);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.32, len + 0.6), duocSuStyle.timber);
       rail.position.set(cx + off, CORR.y + 3.89, zc); rail.castShadow = true; rail.userData.sealable = true; corridor.add(rail);
     }
-    for (const s of [-1, 1]) {
-      const slab = new THREE.Mesh(slabG, roofM);
-      slab.position.set(cx + s * 1.62, CORR.y + 4.51, zc); slab.rotation.z = -s * 0.45; slab.castShadow = true;
-      slab.userData.sealable = true; corridor.add(slab);
-    }
-    const ridge = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, len + 1.3), c.goldM);
-    ridge.position.set(cx, CORR.y + 5.19, zc); ridge.userData.sealable = true; corridor.add(ridge);
+    const soffit = new THREE.Mesh(new THREE.BoxGeometry(5.16, 0.38, len + 0.6), duocSuStyle.darkwood);
+    soffit.position.set(cx, CORR.y + 4.16, zc); soffit.castShadow = soffit.receiveShadow = true; corridor.add(soffit);
+    const roof = duocSuRoof(len + 1.3, 6.5, CORR.y + 3.99, 1.35);
+    roof.rotation.y = Math.PI / 2;
+    roof.position.set(cx, 0, zc);
+    corridor.add(roof);
     for (const z of zs) for (const off of [-1.65, 1.65]) {
       d.position.set(cx + off, CORR.y + 3.40, z + spacing / 2); d.scale.set(1, 1.2, 1); d.updateMatrix(); lanterns.setMatrixAt(li++, d.matrix);
     }
@@ -196,66 +196,59 @@ export function buildTemple(c: TempleCtx) {
   if (import.meta.env.DEV) console.warn(`gapdump arhats: filled=${arhatSeal.filled} remaining=${arhatSeal.remaining.length} ` + JSON.stringify(arhatSeal.remaining));
 
   // ---- bell tower ----
-  const tower = (x: number, z: number, ry: number, sign: string, coupletId?: keyof typeof COUPLETS) => {
+  const tower = (x: number, z: number, ry: number, sign: string, kind: 'chuong' | 'trong') => {
     const t = new THREE.Group();
+    t.name = kind === 'chuong' ? 'thap-chuong' : 'gac-trong';
+    const stoneMat = kind === 'chuong' ? duocSuStyle.stone : stoneM;
+    const timber = kind === 'chuong' ? duocSuStyle.timber : c.redM;
     for (let i = 0; i < 2; i++) {
-      const st = new THREE.Mesh(new THREE.BoxGeometry(5.6 - i * 0.7, 0.4, 5.6 - i * 0.7), stoneM);
+      const st = new THREE.Mesh(new THREE.BoxGeometry(5.6 - i * 0.7, 0.4, 5.6 - i * 0.7), stoneMat);
       st.position.y = 0.2 + i * 0.4; st.castShadow = st.receiveShadow = true; st.userData.sealable = true; t.add(st);
     }
-    /*
-     * NGÔN NGỮ KẾT CẤU CHUẨN CHO MỌI THÁP (chuông, trống và các tháp sau này):
-     *   bệ đá 2 tầng → chân cột đá → cột đỏ → xà dưới → xà trên → đấu củng (khối đỡ)
-     *   → vành xà đỡ mái → mái tầng 1 → cổ mái vuông → mái tầng 2 → cổ chóp → chóp vàng.
-     * Quy tắc: mỗi cấu kiện phải CHẠM (hoặc ăn sâu vào) cấu kiện liền kề theo chiều đứng,
-     * không cấu kiện nào lơ lửng; mọi mối nối đều đánh dấu sealable để sealArchitectureJoints bù.
-     */
+    // Keep the two platforms and column rings aligned with the existing colliders.
     const by = 0.8, H = 1.9, P: [number, number][] = [[-H, -H], [H, -H], [-H, H], [H, H]];
-    const stone = (w: number, h: number, dp: number, x: number, y: number, z: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), stoneM);
-      m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; m.userData.sealable = true; t.add(m); return m;
-    };
-    const red = (w: number, h: number, dp: number, x: number, y: number, z: number) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), c.redM);
-      m.position.set(x, y, z); m.castShadow = true; m.userData.sealable = true; t.add(m); return m;
+    const box = (w: number, h: number, dp: number, x: number, y: number, z: number, mat: THREE.Material = timber) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dp), mat);
+      m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = kind === 'chuong' || mat === stoneMat;
+      m.userData.sealable = true; t.add(m);
     };
     const colBase = by + 0.3, colTop = by + 4.5;
     for (const [px, pz] of P) {
-      stone(0.72, 0.4, 0.72, px, by + 0.2, pz);
-      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, colTop - colBase + 0.1, 12), c.redM);
+      box(0.72, 0.4, 0.72, px, by + 0.2, pz, stoneMat);
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, colTop - colBase + 0.1, 12), timber);
       p.position.set(px, (colBase + colTop) / 2, pz); p.castShadow = true; p.userData.sealable = true; t.add(p);
     }
     const beamLow = by + 3.3, beamHigh = by + 4.45;
     for (const y of [beamLow, beamHigh]) for (const s of [-H, H]) {
-      red(2 * H + 0.5, 0.24, 0.26, 0, y, s);
-      red(0.26, 0.24, 2 * H + 0.5, s, y, 0);
+      box(2 * H + 0.5, 0.24, 0.26, 0, y, s);
+      box(0.26, 0.24, 2 * H + 0.5, s, y, 0);
     }
-    for (const [px, pz] of P) red(0.6, 0.3, 0.6, px, beamHigh + 0.26, pz);
+    for (const [px, pz] of P) box(0.6, 0.3, 0.6, px, beamHigh + 0.26, pz, kind === 'chuong' ? duocSuStyle.gold : timber);
     const ringY = beamHigh + 0.55;
     for (const s of [-H, H]) {
-      red(2 * H + 1.2, 0.2, 0.34, 0, ringY, s);
-      red(0.34, 0.2, 2 * H + 1.2, s, ringY, 0);
+      box(2 * H + 1.2, 0.2, 0.34, 0, ringY, s);
+      box(0.34, 0.2, 2 * H + 1.2, s, ringY, 0);
     }
-    const r1H = 2.1, r1Y = ringY + 0.1 + r1H / 2 - 0.2;
-    const r1 = new THREE.Mesh(c.roofGeometry(8.2, 8.2, r1H, 0.8), c.tileM); r1.position.y = r1Y; r1.castShadow = true; r1.userData.sealable = true; t.add(r1);
-    // cổ mái đặc: 4 tường đỏ bịt kín vành khuyên giữa mái 1 và mái 2
-    // (chân 5,4 × 5,4 = đúng chân mái 2; đáy chôn vào sườn mái 1, đỉnh chạm chân mái 2)
-    for (const s of [-1, 1]) {
-      red(5.4, 2.6, 0.3, 0, ringY + 1.7, s * 2.55);
-      red(0.3, 2.6, 5.4, s * 2.55, ringY + 1.7, 0);
+    if (kind === 'chuong') {
+      box(4.5, 0.63, 4.5, 0, ringY + 0.35, 0, duocSuStyle.darkwood);
+      t.add(duocSuRoof(7.5, 7.5, ringY + 0.05, 2.25));
+    } else {
+      const r1H = 2.1, r1Y = ringY + 0.1 + r1H / 2 - 0.2;
+      const r1 = new THREE.Mesh(c.roofGeometry(8.2, 8.2, r1H, 0.8), c.tileM); r1.position.y = r1Y; r1.castShadow = true; r1.userData.sealable = true; t.add(r1);
+      for (const s of [-1, 1]) {
+        box(5.4, 2.6, 0.3, 0, ringY + 1.7, s * 2.55);
+        box(0.3, 2.6, 5.4, s * 2.55, ringY + 1.7, 0);
+      }
+      const r2H = 1.5, r2Y = ringY + 3.75;
+      const r2 = new THREE.Mesh(c.roofGeometry(5.4, 5.4, r2H, 0.55), c.tileM); r2.position.y = r2Y; r2.castShadow = true; r2.userData.sealable = true; t.add(r2);
+      const finBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.4, 8), c.goldM);
+      finBase.position.y = r2Y + r2H / 2 + 0.1; finBase.userData.sealable = true; t.add(finBase);
+      const fin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.1, 8), c.goldM);
+      fin.position.y = r2Y + r2H / 2 + 0.6; fin.userData.sealable = true; t.add(fin);
     }
-    const r2H = 1.5, r2Y = ringY + 3.75;
-    const r2 = new THREE.Mesh(c.roofGeometry(5.4, 5.4, r2H, 0.55), c.tileM); r2.position.y = r2Y; r2.castShadow = true; r2.userData.sealable = true; t.add(r2);
-    const finBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.28, 0.4, 8), c.goldM);
-    finBase.position.y = r2Y + r2H / 2 + 0.1; finBase.userData.sealable = true; t.add(finBase);
-    const fin = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.1, 8), c.goldM);
-    fin.position.y = r2Y + r2H / 2 + 0.6; fin.userData.sealable = true; t.add(fin);
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.7), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
     sg.position.set(0, beamHigh - 0.55, H + 0.3); t.add(sg);
-    if (coupletId) {
-      for (let i = 0; i < 2; i++) {
-        labelBoard(t, COLUMN_LABELS[coupletId as 'chuong' | 'trong'][i], 0.46, 2.6, i ? -1.9 : 1.9, by + 2.25, 2.19);
-      }
-    }
+    for (let i = 0; i < 2; i++) labelBoard(t, COLUMN_LABELS[kind][i], 0.46, 2.6, i ? -1.9 : 1.9, by + 2.25, 2.19);
     t.position.set(x, 0, z); t.rotation.y = ry; scene.add(t);
     const seal = sealArchitectureJoints(t, { maxGap: 0.5 });
     if (import.meta.env.DEV) console.warn(`gapdump tower ${sign}: filled=${seal.filled} remaining=${seal.remaining.length} ` + JSON.stringify(seal.remaining));
@@ -1052,21 +1045,23 @@ export function buildTemple(c: TempleCtx) {
     pile.position.set(px, (top + bottom) / 2, PIER.z + s * 1.45); pile.castShadow = true; thuy.add(pile);
   }
   const FL = PIER_FLOOR, flTop = FL.y;
-  tdSeal(new THREE.Mesh(new THREE.BoxGeometry(FL.hx * 2, flTop - PIER.y, FL.hz * 2), stoneM)).position.set(FL.x, (flTop + PIER.y) / 2, FL.z);
+  tdSeal(new THREE.Mesh(new THREE.BoxGeometry(FL.hx * 2, flTop - PIER.y, FL.hz * 2), duocSuStyle.stone)).position.set(FL.x, (flTop + PIER.y) / 2, FL.z);
   const tdCols: [number, number][] = [[-1.9, -1.4], [1.9, -1.4], [-1.9, 1.4], [1.9, 1.4]];
   const tdColH = 2.6;
   for (const [px, pz] of tdCols) {
-    const col = tdSeal(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, tdColH, 12), c.redM));
+    const col = tdSeal(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, tdColH, 12), duocSuStyle.timber));
     col.position.set(FL.x + px, flTop + tdColH / 2, FL.z + pz);
-    tdSeal(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), stoneM)).position.set(FL.x + px, flTop + 0.09, FL.z + pz);
+    tdSeal(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.5), duocSuStyle.stone)).position.set(FL.x + px, flTop + 0.09, FL.z + pz);
+    tdSeal(new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.12, 0.46), duocSuStyle.gold)).position.set(FL.x + px, flTop + tdColH - 0.05, FL.z + pz);
     colliders.push({ x: FL.x + px, z: FL.z + pz, r: 0.25 });
   }
   const tdBeamY = flTop + tdColH + 0.12;
-  for (const s of [-1.4, 1.4]) tdSeal(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.24, 0.26), c.redM)).position.set(FL.x, tdBeamY, FL.z + s);
-  for (const s of [-1.9, 1.9]) tdSeal(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 3.3), c.redM)).position.set(FL.x + s, tdBeamY, FL.z);
-  const tdRoofH = 1.6, tdRoofY = tdBeamY + 0.12 + tdRoofH / 2 - 0.2;
-  tdSeal(new THREE.Mesh(c.roofGeometry(5.8, 5.0, tdRoofH, 0.6), c.tileM)).position.set(FL.x, tdRoofY, FL.z);
-  tdSeal(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.9, 8), c.goldM)).position.set(FL.x, tdRoofY + tdRoofH / 2 + 0.3, FL.z);
+  for (const s of [-1.4, 1.4]) tdSeal(new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.24, 0.26), duocSuStyle.timber)).position.set(FL.x, tdBeamY, FL.z + s);
+  for (const s of [-1.9, 1.9]) tdSeal(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.24, 3.3), duocSuStyle.timber)).position.set(FL.x + s, tdBeamY, FL.z);
+  tdSeal(new THREE.Mesh(new THREE.BoxGeometry(4.23, 0.36, 3.25), duocSuStyle.darkwood)).position.set(FL.x, tdBeamY + 0.24, FL.z);
+  const tdRoof = duocSuRoof(5.8, 5.0, tdBeamY + 0.06, 1.4);
+  tdRoof.position.set(FL.x, 0, FL.z);
+  thuy.add(tdRoof);
   const tdSign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.55), new THREE.MeshBasicMaterial({ map: signTexture('THỦY ĐÌNH') }));
   tdSign.position.set(FL.x + 1.95, tdBeamY - 0.45, FL.z); tdSign.rotation.y = Math.PI / 2; thuy.add(tdSign);
   const tdLamp = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), c.redBase);
@@ -1074,18 +1069,18 @@ export function buildTemple(c: TempleCtx) {
   glowSpr(tdLamp.position.x, tdLamp.position.y, tdLamp.position.z, 2, 0xff4a28, 0.5);
   const railY = flTop + 0.55;
   const rail = (x: number, z: number, w: number, dp: number) => {
-    const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, dp), c.redM);
+    const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, dp), duocSuStyle.timber);
     r.position.set(x, railY, z); r.castShadow = true; thuy.add(r);
   };
   rail(FL.x + 0.2, FL.z - FL.hz + 0.05, FL.hx * 2 - 0.4, 0.1);
   rail(FL.x + 0.2, FL.z + FL.hz - 0.05, FL.hx * 2 - 0.4, 0.1);
   rail(FL.x + FL.hx - 0.05, FL.z, 0.1, FL.hz * 2);
   for (let px = FL.x - FL.hx + 0.6; px <= FL.x + FL.hx - 0.1; px += 1.2) for (const s of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), c.redM);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), duocSuStyle.timber);
     post.position.set(px, flTop + 0.3, FL.z + s * (FL.hz - 0.05)); thuy.add(post);
   }
   for (let pz = FL.z - FL.hz + 0.6; pz <= FL.z + FL.hz - 0.5; pz += 1.2) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), c.redM);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), duocSuStyle.timber);
     post.position.set(FL.x + FL.hx - 0.05, flTop + 0.3, pz); thuy.add(post);
   }
   for (let px = FL.x - FL.hx + 0.6; px <= FL.x + FL.hx; px += 0.8) for (const s of [-1, 1]) colliders.push({ x: px, z: FL.z + s * FL.hz, r: 0.2 });
@@ -1111,6 +1106,7 @@ export function buildTemple(c: TempleCtx) {
   // ---- perimeter wall + tam quan gate ----
   const wallStone = lamb(0xe9dcc0, { roughness: 0.9 });
   const capM = lamb(0xb4502c);
+  const stoneBase = lamb(0x6b6458);
   const wallSeg = (x0: number, z0: number, x1: number, z1: number) => {
     const len = Math.hypot(x1 - x0, z1 - z0), ang = Math.atan2(z1 - z0, x1 - x0);
     const w = new THREE.Mesh(new THREE.BoxGeometry(len, 1.6, 0.5), wallStone);
