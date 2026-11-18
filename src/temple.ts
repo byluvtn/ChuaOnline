@@ -9,7 +9,7 @@ import {
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
-import { loadModel, fitModel } from './models';
+import { loadModel, fitModel, replaceModel } from './models';
 import { makeGoldMaterial } from './statue-scan';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
 import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
@@ -309,12 +309,14 @@ export function buildTemple(c: TempleCtx) {
   zones.push({ x: DRUM.x, z: DRUM.z, r: 7, id: 'trong' });
 
   // ---- Quan Âm statue in the eastern yard (đối xứng sân tượng Phật Tổ phía Tây) ----
+  const yardStatueGold = makeGoldMaterial(c.renderer);
   const qyard = new THREE.Group();
   for (let i = 0; i < 3; i++) {
     const t = new THREE.Mesh(new THREE.CylinderGeometry(4.2 - i * 0.5, 4.5 - i * 0.5, 0.4, 8), stoneM);
     t.position.y = 0.2 + i * 0.4; t.castShadow = t.receiveShadow = true; t.userData.sealable = true; qyard.add(t);
   }
   const quanAm = buildQuanAm(); quanAm.scale.setScalar(1.15); quanAm.position.y = 1.2; qyard.add(quanAm);
+  replaceModel(qyard, quanAm, 'guanyin-sculpted', 4.9, yardStatueGold, 'base');
   qyard.position.set(QUAN.x, 0, QUAN.z); qyard.rotation.y = -Math.PI * 0.5 - 0.3; scene.add(qyard);
   sealArchitectureJoints(qyard, { maxGap: 0.3 });
   colliders.push({ x: QUAN.x, z: QUAN.z, r: 4 });
@@ -326,6 +328,7 @@ export function buildTemple(c: TempleCtx) {
     t.position.y = 0.2 + i * 0.4; t.castShadow = t.receiveShadow = true; t.userData.sealable = true; yard.add(t);
   }
   const bigB = buildBuddha(); bigB.scale.setScalar(1.15); bigB.position.y = 1.2; yard.add(bigB);
+  replaceModel(yard, bigB, 'buddha-sculpted', 6.15, yardStatueGold);
   yard.position.set(BUDDHA_YARD.x, 0, BUDDHA_YARD.z); yard.rotation.y = Math.PI * 0.5 + 0.3; scene.add(yard);
   sealArchitectureJoints(yard, { maxGap: 0.3 });
   colliders.push({ x: BUDDHA_YARD.x, z: BUDDHA_YARD.z, r: 4 });
@@ -357,6 +360,7 @@ export function buildTemple(c: TempleCtx) {
   // ---- Bảo Tháp thờ xá lợi (phía Tây Điện Tam Thế) — tháp đá bát giác nhiều tầng, cao ~26 m ----
   const baoThap = new THREE.Group();
   baoThap.name = 'bao-thap';
+  const btShell = new THREE.Group();
   const btSeal = <T extends THREE.Mesh>(m: T) => { m.castShadow = m.receiveShadow = true; m.userData.sealable = true; baoThap.add(m); return m; };
   /*
    * Nền 2 tầng thấp + bậc thềm phía Nam: mặt nền đi được cao 0.9 (đúng BAO_THAP_PLAT.y),
@@ -377,30 +381,33 @@ export function buildTemple(c: TempleCtx) {
   let btY = btFloorY;
   for (let i = 0; i < BT_TIERS; i++) {
     const r = 3.6 - i * 0.34;
-    const body = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.86, r * 0.92, btTierH * 0.62, 8), stoneM));
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.86, r * 0.92, btTierH * 0.62, 8), stoneM); btShell.add(body);
     body.position.y = btY + btTierH * 0.31; body.rotation.y = Math.PI / 8;
-    const band = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.9, r * 0.9, 0.16, 8), c.goldM));
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.9, r * 0.9, 0.16, 8), c.goldM); btShell.add(band);
     band.position.y = btY + btTierH * 0.62 + 0.08; band.rotation.y = Math.PI / 8;
-    const roof = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.52, r * 1.28, btTierH * 0.34, 8), c.tileM));
+    const roof = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.52, r * 1.28, btTierH * 0.34, 8), c.tileM); btShell.add(roof);
     roof.position.y = btY + btTierH * 0.62 + 0.16 + btTierH * 0.17; roof.rotation.y = Math.PI / 8;
     btY += btTierH;
   }
   const btTopR = 3.6 - (BT_TIERS - 1) * 0.34;
-  const btKnob = btSeal(new THREE.Mesh(new THREE.CylinderGeometry(btTopR * 0.22, btTopR * 0.4, 0.5, 8), c.goldM));
+  const btKnob = new THREE.Mesh(new THREE.CylinderGeometry(btTopR * 0.22, btTopR * 0.4, 0.5, 8), c.goldM); btShell.add(btKnob);
   btKnob.position.y = btY + 0.25;
-  const btOrb = btSeal(new THREE.Mesh(new THREE.SphereGeometry(btTopR * 0.34, 14, 10), c.goldM));
+  const btOrb = new THREE.Mesh(new THREE.SphereGeometry(btTopR * 0.34, 14, 10), c.goldM); btShell.add(btOrb);
   btOrb.position.y = btY + 0.5 + btTopR * 0.28;
-  const btSpire = btSeal(new THREE.Mesh(new THREE.ConeGeometry(btTopR * 0.2, 3.4, 8), c.goldM));
+  const btSpire = new THREE.Mesh(new THREE.ConeGeometry(btTopR * 0.2, 3.4, 8), c.goldM); btShell.add(btSpire);
   btSpire.position.y = btY + 0.5 + btTopR * 0.56 + 1.4;
   // cửa nhỏ duy nhất ở tầng trệt, quay về hướng Nam (+z)
   const btDoorR = 3.6 * 0.92;
   const btDoorFrame = btSeal(new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.7, 0.3), c.redM));
-  btDoorFrame.position.set(0, btFloorY + 0.85, btDoorR * Math.cos(Math.PI / 8) - 0.02);
+  btDoorFrame.position.set(0, btFloorY + 0.85, btDoorR * Math.cos(Math.PI / 8) + 0.24);
   const btDoor = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, 0.12), lamb(0x1a1410));
-  btDoor.position.set(0, btFloorY + 0.78, btDoorR * Math.cos(Math.PI / 8) + 0.16);
+  btDoor.position.set(0, btFloorY + 0.78, btDoorR * Math.cos(Math.PI / 8) + 0.41);
   baoThap.add(btDoor);
+  baoThap.add(btShell);
+  btShell.traverse(o => { if (o instanceof THREE.Mesh) o.castShadow = o.receiveShadow = true; });
   baoThap.position.set(BAO_THAP.x, 0, BAO_THAP.z); scene.add(baoThap);
   sealArchitectureJoints(baoThap, { maxGap: 0.5 });
+  replaceModel(baoThap, btShell, 'bao-thap-blender');
   // collider thân tháp: vòng các trụ sát thân, chừa hẳn lối vào cửa Nam (|x| <= stepW, z > 0)
   for (let i = 0; i < 16; i++) {
     const a = i / 16 * Math.PI * 2;
@@ -629,7 +636,7 @@ export function buildTemple(c: TempleCtx) {
     ridge.position.y = roofY + roofH / 2 - 0.05; ridge.userData.sealable = true; g.add(ridge);
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), new THREE.MeshBasicMaterial({ map: signTexture(sign) }));
     sg.position.set(0, beamY - 0.5, hz + 0.25); g.add(sg);
-    return { g, hx, hz, corners };
+    return { g, hx, hz, corners, sign: sg };
   };
   const nt = buildHouse('nha-to', NHA_TO, NHA_TO_PLAT, 'NHÀ TỔ', 'nhaTo', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nt.g, COUPLETS.nhaTo.am[i].split(',')[0], 0.42, 2.2, i ? nt.hx : -nt.hx, NHA_TO_PLAT.y + 1.7, nt.hz + 0.22);
@@ -743,6 +750,13 @@ export function buildTemple(c: TempleCtx) {
   const tdSealH = sealArchitectureJoints(tdH.g, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump thien-duong: filled=${tdSealH.filled} remaining=${tdSealH.remaining.length}`);
   mergeStaticByMaterial(tdH.g);
+  // The sign and couplet canvases stay live for later text updates.
+  const tdShell = new THREE.Group();
+  for (const child of [...tdH.g.children]) {
+    if (child instanceof THREE.Mesh && child !== tdH.sign && !child.userData.inscription) tdShell.add(child);
+  }
+  tdH.g.add(tdShell);
+  replaceModel(tdH.g, tdShell, 'thien-duong-blender');
   {
     const tw = (lx: number, lz: number) => ({ x: THIEN_DUONG.x + lz, z: THIEN_DUONG.z - lx });
     {

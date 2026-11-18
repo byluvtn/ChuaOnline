@@ -19,7 +19,7 @@ import {
   expansionGroundY, ngocStepProfile,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
-import { loadModel } from './models';
+import { fitModel, loadModel } from './models';
 import { grassTexture, glowTexture, signTexture, stoneTexture, woodTexture } from './textures';
 import type { Seat, TempleCtx, Zone } from './temple';
 
@@ -57,6 +57,27 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
 
   const root = new THREE.Group();
   root.name = 'expansion';
+  const placeTree = (name: string, x: number, z: number, height: number) => {
+    const fallback = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.28, height * 0.45, 6), c.lamb(0x5b4836));
+    trunk.position.y = height * 0.225; fallback.add(trunk);
+    for (let i = 0; i < 3; i++) {
+      const crown = new THREE.Mesh(name === 'pine-natural'
+        ? new THREE.ConeGeometry(1.8 - i * 0.35, height * (0.5 - i * 0.08), 7)
+        : new THREE.IcosahedronGeometry(1.65, 1), c.lamb(name === 'pine-natural' ? 0x365946 : 0x426d3d));
+      crown.position.set(name === 'pine-natural' ? 0 : (i - 1) * 0.9, height * (0.48 + i * 0.18), 0); fallback.add(crown);
+    }
+    fallback.position.set(x, expansionGroundY(x, z), z);
+    root.add(fallback);
+    void loadModel(name).then(model => {
+      if (!model) return;
+      const tree = fitModel(model.clone(true), height);
+      tree.position.set(x, expansionGroundY(x, z), z);
+      root.add(tree);
+      root.remove(fallback);
+      fallback.traverse(o => { if (o instanceof THREE.Mesh) { o.geometry.dispose(); (o.material as THREE.Material).dispose(); } });
+    }).catch(() => {});
+  };
 
   // ------------------------------------------------------------------ vật liệu
   const stoneM = c.lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [3, 1]) });
@@ -296,6 +317,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
       addDisc('pad', 0.34 + rand() * 0.26, 7, px, 0.135, pz, rand() * 6);
       if (i % 4 === 0) addSphere('flowerA', 0.13, px, 0.3, pz);
     }
+    flush('lotus-pond');
   }
   {
     // Cầu đá ngang hồ: x -90..-66 tại z = 2, mặt cầu y = 0.28 (khớp groundYBase)
@@ -309,6 +331,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
     }
     // trụ đá đỡ cầu (nằm dưới mặt cầu, không tạo collider trên lối đi)
     for (const px of [-84, -78, -72]) addBox('stoneDark', 0.9, 0.9, 2.4, px, -0.15, zc);
+    flush('lotus-bridge');
   }
   {
     // Đình ngắm sen: sàn lát sát đất (người chơi đứng ở y = 0), cửa vào góc Tây-Nam
@@ -322,6 +345,8 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
       wallLine(px + ox - w / 2, pz + oz - d / 2, px + ox + w / 2, pz + oz + d / 2, 0.2, 0.55);
     }
     const top = openHall(px, pz, base, 1.9, 1.9, 2.5, 6.4, 6.0, 1.6, 0, 'red', [[-1.9, 1.9]]);
+    const { group: pavilionShell } = flush('dinhSen-architecture');
+    replaceArchitecture(pavilionShell, 'dinh-sen-blender', px, pz);
     addSign('ĐÌNH SEN', 1.7, 0.44, px, top - 1.0, pz + 2.02);
     seatPad(px, pz + 1.4, Math.PI, true, 1.0, 0.8, 'darkWood');
     seatPad(px + 1.1, pz, -Math.PI / 2, true, 0.9, 0.8, 'darkWood');
@@ -600,8 +625,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
       }
     }
     for (const [tx, tz] of [[72.6, 26.6], [86.6, 26.0], [83, 17.6]] as const) {
-      addCyl('trunk', 0.22, 0.36, 2.6, 7, tx, 1.3, tz);
-      for (let k = 0; k < 3; k++) addSphere('leaf', 2.0 - k * 0.35, tx + (k - 1) * 0.45, 3.4 + k * 0.7, tz + k * 0.15);
+      placeTree('oak-natural', tx, tz, 5.9);
       solid(tx, tz, 0.55);
     }
     // lối lát từ bờ sông vào vườn
@@ -811,10 +835,13 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
       placed++;
       const h = 5.4 + rand() * 4.2;
       const yb = expansionGroundY(px, pz);
-      addCyl('trunk', 0.2, 0.34, h * 0.45, 6, px, yb + h * 0.225, pz);
-      for (let k = 0; k < 3; k++) {
-        const ch = h * 0.52 * (1 - k * 0.18);
-        addCone('pine', 1.85 - k * 0.42, ch, 7, px, yb + h * 0.3 + k * h * 0.22, pz);
+      if (placed <= 8) placeTree('pine-natural', px, pz, h);
+      else {
+        addCyl('trunk', 0.2, 0.34, h * 0.45, 6, px, yb + h * 0.225, pz);
+        for (let k = 0; k < 3; k++) {
+          const ch = h * 0.52 * (1 - k * 0.18);
+          addCone('pine', 1.85 - k * 0.42, ch, 7, px, yb + h * 0.3 + k * h * 0.22, pz);
+        }
       }
       solid(px, pz, 0.42);
     }

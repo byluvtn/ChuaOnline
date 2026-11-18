@@ -5,9 +5,17 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 130;
+export const LATEST_NEWS_ID = 131;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tượng, Bảo Tháp và vườn chùa được dựng lại bằng Blender',
+    date: '2026-11-18',
+    items: [
+      'Tượng Phật Tổ và Quan Âm trên hai bệ đối diện được dát vàng bóng như tượng hành lang. Bảo Tháp, đình sen và Thiền Đường có kiến trúc Blender, giữ nguyên lối đi và tương tác.',
+      'Cây sồi ở sân, cây trong vườn và một phần rừng thông Chùa Ngọc có thân cành, tán lá mới. Khi model không tải được, cảnh giữ bản dự phòng.',
+    ],
+  },
   {
     title: 'Mái Blender cho Chính Điện và Điện Tam Thế',
     date: '2026-11-17',

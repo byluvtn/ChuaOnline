@@ -36,6 +36,25 @@ export function replaceRoof(parent: THREE.Group, fallback: THREE.Group, name: st
   }).catch(error => console.warn(`Roof ${name}: keeping fallback`, error));
 }
 
+/** Replace a complete static model while preserving an immediately visible fallback. */
+export function replaceModel(parent: THREE.Group, fallback: THREE.Object3D, name: string, height?: number, material?: THREE.Material, anchor?: 'base'): void {
+  fallback.userData.asset = name;
+  fallback.userData.source = 'procedural-fallback';
+  void loadModel(name).then(model => {
+    if (!model || fallback.parent !== parent) return;
+    const instance = height === undefined ? model.clone(true) : fitModel(model.clone(true), height, anchor);
+    instance.name = name;
+    instance.position.copy(fallback.position);
+    instance.rotation.copy(fallback.rotation);
+    if (height === undefined) instance.scale.copy(fallback.scale);
+    if (material) instance.traverse(o => { if (o instanceof THREE.Mesh) o.material = material; });
+    instance.userData.source = 'blender';
+    parent.add(instance);
+    parent.remove(fallback);
+    // Procedural geometry can be shared by other instances; leave its buffers cached.
+  }).catch(error => console.warn(`Model ${name}: keeping fallback`, error));
+}
+
 const RETRY_DELAYS_MS = [2000, 5000]; // 3 lần thử: ngay, +2 s, +5 s
 
 async function loadOnce(name: string): Promise<THREE.Group | null> {
@@ -61,12 +80,31 @@ async function loadWithRetry(name: string): Promise<THREE.Group | null> {
 }
 
 /** Scales model so its bounding-box height equals `height`, and sits it on y=0. */
-export function fitModel(model: THREE.Object3D, height: number): THREE.Object3D {
-  const box = new THREE.Box3().setFromObject(model);
+export function fitModel(model: THREE.Object3D, height: number, anchor?: 'base'): THREE.Object3D {
+  const box = new THREE.Box3().setFromObject(model, anchor === 'base');
   const size = box.getSize(new THREE.Vector3());
   const k = size.y > 0 ? height / size.y : 1;
   model.scale.multiplyScalar(k);
-  const b2 = new THREE.Box3().setFromObject(model);
+  const b2 = new THREE.Box3().setFromObject(model, anchor === 'base');
+  if (anchor === 'base') {
+    // Center the contact area, not the silhouette (which may include an outstretched hand).
+    const base = new THREE.Box3();
+    const point = new THREE.Vector3();
+    model.traverse(o => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const positions = o.geometry.getAttribute('position');
+      if (!positions) return;
+      for (let i = 0; i < positions.count; i++) {
+        point.fromBufferAttribute(positions, i).applyMatrix4(o.matrixWorld);
+        if (point.y <= b2.min.y + 0.15) base.expandByPoint(point);
+      }
+    });
+    if (!base.isEmpty()) {
+      const center = base.getCenter(point);
+      model.position.x -= center.x;
+      model.position.z -= center.z;
+    }
+  }
   model.position.y -= b2.min.y;
   const wrap = new THREE.Group();
   wrap.add(model);

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { loadModel } from './models';
+import { makeGoldMaterial } from './statue-scan';
 
 export const CORRIDOR_STATUE_NAMES = ['arhat-binh', 'monk-go', 'guanyin-ngoi', 'guanyin-go-minh'] as const;
 
@@ -35,17 +35,6 @@ const FACE_OFFSET: Record<(typeof CORRIDOR_STATUE_NAMES)[number], number> = {
 const UPRIGHT_X: Partial<Record<(typeof CORRIDOR_STATUE_NAMES)[number], number>> = {
   'arhat-binh': -Math.PI / 2,
 };
-
-let goldEnv: THREE.Texture | null = null;
-
-function getGoldEnv(renderer: THREE.WebGLRenderer): THREE.Texture {
-  if (!goldEnv) {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    goldEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
-  }
-  return goldEnv;
-}
 
 function prepare(model: THREE.Group, gold: THREE.Material, offset: number, uprightX = 0): THREE.Group {
   const inst = model.clone(true);
@@ -84,9 +73,7 @@ export function buildCorridorStatues(
   renderer: THREE.WebGLRenderer,
   onLate?: (models: (THREE.Group | null)[]) => void,
 ): Promise<(THREE.Group | null)[]> {
-  const gold = new THREE.MeshStandardMaterial({
-    color: 0xd4af37, metalness: 1.0, roughness: 0.2, envMap: getGoldEnv(renderer), envMapIntensity: 1.0,
-  });
+  const gold = makeGoldMaterial(renderer);
   return Promise.all(CORRIDOR_STATUE_NAMES.map((name) => buildOne(name, gold))).then((models) => {
     // Mạng yếu: tượng nào còn null thì thử tải lại đúng 1 lần sau 20 s rồi báo qua onLate.
     if (onLate && models.some((m) => !m)) {

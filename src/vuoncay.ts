@@ -236,9 +236,9 @@ let pendingStates: GardenPlotState[] | null = null;
 
 const STAGE_FILE: Record<GardenSpecies, [string, string]> = {
   // [file giai đoạn 2 (non, 1.4 m), file giai đoạn 3–4 (nhỡ 2.4 m / lớn 3.5 m)]
-  soi: ['oak-sapling', 'oak-tree'],
-  thong: ['pine-sapling', 'pine-tree'],
-  bo_de: ['oak-sapling', 'oak-tree'],
+  soi: ['oak-sapling', 'oak-natural'],
+  thong: ['pine-sapling', 'pine-natural'],
+  bo_de: ['oak-sapling', 'oak-natural'],
 };
 const STAGE_HEIGHT = [0, 0.35, 1.4, 2.4, 3.5];
 const SPROUT_LEAF: Record<GardenSpecies, number> = {
@@ -378,7 +378,7 @@ async function renderGardenTreesNow(states: GardenPlotState[]): Promise<boolean>
     } else {
       const [sap, tree] = STAGE_FILE[st.species];
       const file = st.stage === 2 ? sap : tree;
-      const src = await loadModel(file);
+      const src = await loadModel(file) ?? (st.stage > 2 ? await loadModel(st.species === 'thong' ? 'pine-tree' : 'oak-tree') : null);
       if (!src) { ok = false; continue; }
       model = src.clone(true);
       const leafColor = st.wilted ? 0x8a6a3a : (st.species === 'bo_de' ? 0x9ab84a : null);

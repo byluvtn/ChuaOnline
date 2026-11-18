@@ -10,19 +10,19 @@ const PED_H = 0.55;
 const TARGET_HEIGHT = 1.6;
 const COLLIDER_R = 1.2;
 
-let goldEnv: THREE.Texture | null = null;
-
-function getGoldEnv(renderer: THREE.WebGLRenderer): THREE.Texture {
-  if (!goldEnv) {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    goldEnv = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
-  }
-  return goldEnv;
-}
+const goldMaterials = new WeakMap<THREE.WebGLRenderer, THREE.MeshStandardMaterial>();
 
 export function makeGoldMaterial(renderer: THREE.WebGLRenderer): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1.0, roughness: 0.2, envMap: getGoldEnv(renderer), envMapIntensity: 1.0 });
+  const cached = goldMaterials.get(renderer);
+  if (cached) return cached;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const room = new RoomEnvironment();
+  const envMap = pmrem.fromScene(room, 0.04).texture;
+  room.dispose();
+  pmrem.dispose();
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1.0, roughness: 0.2, envMap, envMapIntensity: 1.0 });
+  goldMaterials.set(renderer, gold);
+  return gold;
 }
 
 export function buildSeatedBuddhaStatue(

@@ -6,6 +6,14 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
+## Remodel tượng và cảnh quan bằng Blender (2026-11-18, local)
+
+- Blender 5.3 tạo 7 GLB từ `tools/build-sacred-assets.py`; file nguồn `tools/blender/sacred-assets.blend`, số liệu `tools/blender/sacred-assets-audit.json`. Tái xuất tại gốc repo: `& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --factory-startup --python tools/build-sacred-assets.py`.
+- `public/models/{buddha-sculpted,guanyin-sculpted,bao-thap-blender,dinh-sen-blender,thien-duong-blender,oak-natural,pine-natural}.glb`: gốc tọa độ mét/Y-up; có nguồn chỉnh sửa Blender. Hai tượng sân dựa trên scan `seated-buddha.glb` và `guanyin-ngoi.glb` có sẵn, decimate từ ~151k/~200k còn ~18k tam giác mỗi tượng, **giữ texture gốc** và file GLB cỡ 4,9/2,2 MB. Năm model kiến trúc/cây dùng màu PBR không texture rời. Tháp chỉ thay thân, giữ bệ đi bộ/bậc/collider; đình sen giữ ghế/biển/cầu; Thiền Đường giữ biển/câu đối/nội thất/zone; sồi và một số thông thay tán dạng khối cũ. GLB lỗi vẫn có bản dự phòng.
+- `npm run build` và `$env:STEPS='./steps-sacred-assets.mjs'; node shot.mjs ../shots/sacred http://localhost:5173/ 1100 760` chạy từ `tools` để xem số mesh/tam giác, vùng/thềm và render cô lập 5 công trình. Thêm `BLOCK_SACRED=1` để chặn 5 GLB và kiểm chứng cả 5 fallback. Chưa đo FPS trên điện thoại với bộ model mới. Tượng có dữ liệu scan thật nhưng **kiến trúc/cây chưa phải phục dựng đúng địa điểm ngoài đời** vì chưa có ảnh và kích thước công trình thực làm đối chiếu.
+- Tin mới `LATEST_NEWS_ID` 130 → 131.
+- Hai tượng scan tại sân Đông/Tây dùng chung vật liệu vàng bóng và map phản xạ với tượng hành lang. GLB nguồn vẫn giữ texture scan. Kiểm tra trình duyệt xác nhận cả hai quay vào sân, giữ bệ và collider cũ; đáy lưới Quan Âm được căn theo tâm bệ, không theo gốc GLB.
+
 ## Mái Blender Chính Điện và Điện Tam Thế (2026-11-17, local)
 
 - Dựng hai mái ba tầng chồng diêm riêng trong Blender 5.3, mái cong, góc đầu đao, gân ngói, bờ nóc, song trang trí cổ diêm, bánh xe pháp luân. Nguồn chỉnh sửa `tools/blender/main-roofs.blend`; tái xuất bằng `& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --factory-startup --python tools/build-main-roofs.py`.

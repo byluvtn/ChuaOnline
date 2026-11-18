@@ -21,9 +21,9 @@ function p(
 }
 
 export const GARDEN_PLACEMENTS: GardenPlacement[] = [
-  p('swing-oak', -16.5, 1, 0, 9.0, null, 0.4),
-  p('swing-oak', 16.5, 1, Math.PI, 9.0, null, 0.4),
-  p('swing-oak', -7.5, -1, 0, 9.0, null, 0.4),
+  p('oak-natural', -16.5, 1, 0, 9.0, null, 0.4),
+  p('oak-natural', 16.5, 1, Math.PI, 9.0, null, 0.4),
+  p('oak-natural', -7.5, -1, 0, 9.0, null, 0.4),
   p('birch_nt', -40, -22, 0.5, 9.7, null, 0.4),
   p('birch_nt', -42, -34, 3.0, 9.7, null, 0.4),
   p('bamboo_cluster', -41, -36.5, 1.1, 4.4, null, 0.4),
@@ -39,9 +39,9 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('stone_lantern', 28, -30, 0, 2.15, null, 0.3),
   p('pagoda', 53, -66, 0, 5.1, null, 1.3),
   p('zen_sand_garden', -34, -26, 0.2, null, 2.0, null),
-  p('broadleaf-oak', 42, 39, 2.1, 9.1, null, 0.5),
+  p('oak-natural', 42, 39, 2.1, 9.1, null, 0.5),
   p('oak_nt', 10, 28, 0.9, 8.9, null, 0.8),
-  p('swing-oak', -48, -15, 0, 9.0, null, 0.4),
+  p('oak-natural', -48, -15, 0, 9.0, null, 0.4),
   p('cenji-ancient-tree', 40, 20, 0.4, null, 1.0, 1.5),
   p('wooden_bench', 35.5, 20, Math.PI / 2, null, 1.125, 0.5),
   p('willow-sketchfab-S', -14, 30, 0.4, 13, null, 1.0),
@@ -124,7 +124,8 @@ export function buildGarden(
   const names = Array.from(new Set(GARDEN_PLACEMENTS.map((g) => g.name)));
   for (const name of names) {
     loadModel(name)
-      .then((base) => {
+      .then(async (loaded) => {
+        const base = loaded ?? (name === 'oak-natural' ? await loadModel('swing-oak') : null);
         if (!base) {
           console.warn(name + '.glb khong tai duoc');
           return;
