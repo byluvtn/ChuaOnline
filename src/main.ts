@@ -1425,7 +1425,7 @@ function questLinesFor(npcId: string, qid: string): { offer: string; reminder: s
   return { offer: dlg?.questOffer ?? '', reminder: dlg?.questReminder ?? '', done: dlg?.questDone ?? '' };
 }
 function npcQuests(npcId: string): QuestState[] {
-  return quests.filter((q) => q.giver === npcId);
+  return quests.filter((q) => q.giver === npcId || (q.accepted && !q.claimed && currentStep(q) === 'deliver' && questDef(q.id)?.receiver === npcId));
 }
 function questDef(qid: string) {
   return ALL_NPC_QUESTS.find((d) => d.id === qid);
@@ -1610,6 +1610,15 @@ let guideSide: { x: number; z: number } | null = null;
 let guideStepKey = '';
 function resetGuideProgress(): void {
   guideBestD = Infinity; guideBestT = 0; guideStallN = 0; guideSide = null; guideFeedPD = Infinity;
+}
+function guideRemaining(p: Pt): number {
+  if (!guideTarget) return 0;
+  let distance = 0, prev = p;
+  for (const w of guideWaypoints) {
+    distance += Math.hypot(w.x - prev.x, w.z - prev.z);
+    prev = w;
+  }
+  return distance + Math.hypot(guideTarget.x - prev.x, guideTarget.z - prev.z);
 }
 function guideGiveUp() {
   if (guideWaypoints.length > 1) guideWaypoints.shift();
@@ -2024,7 +2033,14 @@ function updateTracker(): void {
   const p = me.char.root.position;
   const dx = guideTarget.x - p.x, dz = guideTarget.z - p.z;
   const d = Math.hypot(dx, dz);
-  if (d < 1.5 && !sweepGuideKeepAlive(q, p.x, p.z)) { stopGuide(); return; }
+  if (d < 1.5 && !sweepGuideKeepAlive(q, p.x, p.z)) {
+    const fresh = questTarget(q);
+    if (fresh && Math.hypot(fresh.x - p.x, fresh.z - p.z) < 1.5) {
+      if (mmQuestNpc(q)) { qt.style.display = 'none'; return; }
+      stopGuide(); return;
+    }
+    if (fresh) { guideTarget = fresh; updateGuidePath(); resetGuideProgress(); clickTarget = null; pathTarget = null; pathQueue = []; }
+  }
   qt.style.display = 'flex';
   const label = qt.querySelector('.qt-label');
   const dist = qt.querySelector('.qt-dist');
@@ -2490,17 +2506,19 @@ function loop(now: number = performance.now()) {
         guideRefreshT = 0;
         const ox = guideTarget.x, oz = guideTarget.z;
         updateGuideTarget();
-        if (guideTarget && Math.hypot(guideTarget.x - ox, guideTarget.z - oz) > 1) updateGuidePath();
+        if (guideTarget && Math.hypot(guideTarget.x - ox, guideTarget.z - oz) > 1) {
+          updateGuidePath();
+          resetGuideProgress();
+          clickTarget = null; pathTarget = null; pathQueue = [];
+          guideFeedN = 0; guideStuckN = 0;
+        }
       }
-      // Theo doi TIEN DO toi dich (khac voi do chuyen dong): truot vong quanh
-      // vat can hay ping-pong giua 2 node deu doi vi tri lien tuc nhung khong
-      // lai gan dich — watchdog do chuyen dong khong thay duoc. Chi reset
-      // guideStuckN khi khoang cach toi dich cai thien (khong reset khi nguoi
-      // choi nhuc nhich bat ky nua — do la loi lam re-plan mai khong giveUp).
-      // Bo qua khi da o trong tam trigger 1,5 m (dang dung quet / cho, khong phai ket).
+      // Track progress along the actual route: a valid detour around a building
+      // can temporarily increase the straight-line distance to the destination.
       const dT = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
+      const remaining = guideRemaining(p);
       guideBestT += dt;
-      if (dT < guideBestD - 0.5) { guideBestD = dT; guideBestT = 0; guideStuckN = 0; guideFeedN = 0; }
+      if (remaining < guideBestD - 0.5) { guideBestD = remaining; guideBestT = 0; guideStuckN = 0; guideFeedN = 0; }
       else if (guideBestT > 6 && dT >= 1.5) {
         guideBestT = 0;
         if (++guideStallN >= 2) {
@@ -2536,7 +2554,10 @@ function loop(now: number = performance.now()) {
       const d = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
       if (d < 1.5) {
         const gq = quests.find((x) => x.id === guideQuestId);
-        if (gq && sweepGuideKeepAlive(gq, p.x, p.z)) {
+        const fresh = gq ? questTarget(gq) : null;
+        if (fresh && Math.hypot(fresh.x - p.x, fresh.z - p.z) >= 1.5) {
+          guideTarget = fresh; updateGuidePath(); resetGuideProgress();
+        } else if (gq && (sweepGuideKeepAlive(gq, p.x, p.z) || mmQuestNpc(gq))) {
           // diem quet: giu guide song de updateSweep quet; event quests se doi target sang diem ke tiep
           clickTarget = null; pathTarget = null; pathQueue.length = 0;
         } else { stopGuide(); }
@@ -2547,10 +2568,9 @@ function loop(now: number = performance.now()) {
         else {
           let fx = wp.x, fz = wp.z;
           if (guideWaypoints.length <= 1) { fx = guideTarget.x - (guideTarget.x - p.x) / d * 1.0; fz = guideTarget.z - (guideTarget.z - p.z) / d * 1.0; }
-          // Chi dem khi cung 1 diem feed lap lai MA khong lai gan dich tu lan
-          // feed truoc (truot vong / ping-pong deu doi vi tri nhung khong tien
-          // toi dich, nen dem theo vi tri nhu cu se reset mai khong bao gio du).
-          const dFeed = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
+          // A waypoint can lead away from the destination while still making
+          // progress along the route; only count repeated feeds without progress.
+          const dFeed = guideRemaining(p);
           if (Math.hypot(fx - guideFeedX, fz - guideFeedZ) < 0.3 && dFeed > guideFeedPD - 0.3) guideFeedN++;
           else { guideFeedX = fx; guideFeedZ = fz; guideFeedPD = dFeed; guideFeedN = 1; }
           if (guideFeedN >= 3) guideGiveUp();
