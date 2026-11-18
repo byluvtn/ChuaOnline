@@ -60,11 +60,11 @@ export function openFestivals(ctx: Pick<MenuCtx, 'socket' | 'profile' | 'toast'>
       return b;
     };
     const launch = (kind: 'small' | 'large' | 'dragon') => {
+      audio.unlock();
       ctx.socket.emit('firework:launch', kind, (a: Ack) => {
         if (!a.ok) { ctx.toast(a.error ?? 'Không bắn được pháo hoa'); return; }
-        audio.play('firework');
         syncCoins(a);
-        ctx.toast('Pháo hoa đã nổ trên sân chùa');
+        ctx.toast('Đã đặt hộp pháo hoa ngoài sân');
         closePanel();
       });
     };

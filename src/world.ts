@@ -1,13 +1,12 @@
 import * as THREE from 'three';
-import { createBurst, DRAGON_SHOW_TYPES, isShapeType, type BurstType, type ShaderBurst } from './fireworks';
 import { MAP_HALF } from '../shared/types';
 import type { FireworkSize } from '../shared/types';
-import { FIREWORKS } from '../shared/game';
+import { createFireworks, type FireworkCue } from './fireworks';
 import { fitModel, loadModel } from './models';
 import { paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
 import { glowTexture, grassTexture, petalTexture, signTexture, signTexture2Lines, stoneTexture } from './textures';
 import { geo, outlined, toon } from './toon';
-import { blocked, nearWalkway, LAKE, HALL, LOTUS, RIVER, DUOC_SU } from './layout';
+import { blocked, nearWalkway, clampToCompound, LAKE, HALL, LOTUS, RIVER, DUOC_SU } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
 import { buildSeatedBuddhaStatue } from './statue-scan';
 import { buildGarden } from './garden';
@@ -36,10 +35,9 @@ export interface World {
   spawnBurst(x: number, z: number, color?: number): void;
   /** Đèn trời: bay thẳng lên từ (x,z), sống ~45s, mờ dần 5s cuối. */
   spawnSkyLantern(x: number, z: number): void;
-  /** Pháo hoa: rocket bay lên rồi nổ thành vệt sáng shader; size quyết định số quả + nhịp. */
+  /** Hiệu ứng pháo hoa phía client. */
   spawnFirework(x: number, z: number, size: FireworkSize): void;
-  /** Lưu camera để quả pháo hình (rồng/phượng) dựng mặt phẳng vuông góc hướng nhìn. */
-  setCamera(cam: THREE.Camera): void;
+  clearFireworks(): void;
   setMood(room: string): void;
   altar: THREE.Vector3;
   sun: THREE.DirectionalLight;
@@ -78,7 +76,7 @@ function roofGeometry(w: number, d: number, h: number, lift = 0.55) {
   return g;
 }
 
-export function createWorld(renderer: THREE.WebGLRenderer): World {
+export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: FireworkCue): World {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(SERENE_SKY.day.fog);
   scene.fog = new THREE.FogExp2(SERENE_SKY.day.fog, SERENE_SKY.day.fogDensity);
@@ -461,15 +459,21 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   };
 
   // ---- Đèn trời + pháo hoa ----
-  // Màu quả pháo, luân phiên theo thứ tự quả trong màn.
-  const FW_COLORS = [0xffd36b, 0xff5a4a, 0x7ddc6a, 0x6ab8d8, 0xc58cff];
-  // Màn có nhịp nổ >= 3s được coi là show lớn (rồng phượng) và có thêm màn kết.
-  const FINALE_MIN_GAP_MS = 3000;
-  const FINALE_SHELLS = 3;
-  // Kiểu nổ cho các quả giữa màn (cỡ nhỏ/to), xoay vòng. Quả đầu, quả cuối và màn kết luôn là 'sphere' (đời 2,0s)
-  // để tổng thời lượng show khớp công thức ghi trong shared/game.ts. Show rồng dùng bảng DRAGON_SHOW_TYPES
-  // riêng (quả 9 rồng, quả 10 phượng; phượng đời 3,1s, tàn ~58,1s vẫn trong lock 65s).
-  const MID_BURSTS: readonly BurstType[] = ['ring', 'willow', 'crackle'];
+  const fireworks = createFireworks(scene, renderer, groundY, onFireworkCue);
+  const spawnFirework = (x: number, z: number, size: FireworkSize) => {
+    const floor = groundY(x, z);
+    // Keep the prop beside the player, rather than inside their avatar or in water.
+    for (const [dx, dz] of [[1.55, 0], [-1.55, 0], [0, -1.55], [0, 1.55]]) {
+      const px = x + dx, pz = z + dz, p = { x: px, z: pz };
+      clampToCompound(p);
+      resolveWater(p);
+      if (p.x !== px || p.z !== pz || Math.abs(groundY(px, pz) - floor) > .15) continue;
+      if (colliders.some(c => Math.hypot(c.x - px, c.z - pz) < c.r + .55)) continue;
+      fireworks.spawn(px, pz, size);
+      return;
+    }
+    fireworks.spawn(x, z, size);
+  };
 
   /** Đèn trời: bay chậm (vy ~0,4), nhóm phóng 1,5x, sống 45s, mờ dần 5s cuối. Tái dùng model + glow của đèn hồ. */
   const spawnSkyLantern = (x: number, z: number) => {
@@ -488,63 +492,6 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
     floaters.push({ m: grp, vy: 0.35 + Math.random() * 0.05, life: 45, max: 45, fade: 5, light: spr });
   };
 
-  // Rocket materials are shared per color (rockets never mutate opacity).
-  const rocketMatCache = new Map<number, THREE.SpriteMaterial>();
-  const rocketMat = (color: number) => {
-    let m = rocketMatCache.get(color);
-    if (!m) {
-      m = new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending });
-      rocketMatCache.set(color, m);
-    }
-    return m;
-  };
-
-  // Quả pháo đang nổ (shader, mỗi quả 1-2 THREE.Points) + rocket đang chờ/bay lên.
-  const bursts: ShaderBurst[] = [];
-  // Camera lúc nổ, để quả hình (rồng/phượng) dựng mặt phẳng vuông góc hướng nhìn. Chưa set thì dùng mặt phẳng XY.
-  let fireworkCamera: THREE.Camera | null = null;
-  const rockets: { m: THREE.Sprite; x: number; z: number; top: number; vy: number; delay: number; color: number; burst: BurstType }[] = [];
-
-  /** Một quả nổ tại (x, y, z). Chuyển động, vệt sáng và nhấp nháy do shader trong fireworks.ts lo. */
-  const explodeShell = (x: number, y: number, z: number, color: number, type: BurstType) => {
-    bursts.push(createBurst(scene, { x, y, z, color, type, pixelRatio: renderer.getPixelRatio(), camera: fireworkCamera }));
-  };
-
-  /** Bắn 1 màn pháo hoa tại (x, z). Không phát âm thanh - main.ts lo phần âm khi nhận broadcast. */
-  const spawnFirework = (x: number, z: number, size: FireworkSize) => {
-    const cfg = FIREWORKS[size];
-    const shells = Math.max(1, Math.round(cfg.shells));
-    const gapMs = cfg.intervalMs;
-    const finale = cfg.intervalMs >= FINALE_MIN_GAP_MS ? FINALE_SHELLS : 0;
-    const lastAt = ((shells - 1) * gapMs) / 1000;
-    for (let i = 0; i < shells + finale; i++) {
-      const isFinale = i >= shells;
-      const delay = isFinale ? lastAt + 1 : (i * gapMs) / 1000;
-      const color = FW_COLORS[i % FW_COLORS.length];
-      // Show rồng: 8 quả đầu xoay vòng, quả 9 = rồng, quả 10 = phượng; màn kết (i >= 10) = sphere.
-      // Cỡ nhỏ/to: quả đầu + quả cuối = sphere (đời 2,0s) để tổng thời lượng khớp công thức trong shared/game.ts.
-      const burst: BurstType = size === 'dragon'
-        ? (i < DRAGON_SHOW_TYPES.length ? DRAGON_SHOW_TYPES[i] : 'sphere')
-        : (i === 0 || i >= shells - 1 ? 'sphere' : MID_BURSTS[(i - 1) % MID_BURSTS.length]);
-      const spread = isFinale ? 12 : 6;
-      const px = x + (Math.random() - 0.5) * spread;
-      const pz = z + (Math.random() - 0.5) * spread;
-      const base = groundY(px, pz), y0 = base + 1.4;
-      // Quả hình (rồng/phượng) nổ thấp hơn (tâm ~3,9 thay vì ~5,1): với follow cam mặc định
-      // (cao ~5,4, nhìn xuống ~26°) tâm y=5 đã nằm ở mép trên khung hình (NDC y≈1,0) nên nửa
-      // trên con rồng bị cắt; tâm ~3,9 cho cả hình 2,3m vào khung (NDC y≈0,5–1,0 ở 10m).
-      // Quả thường giữ nguyên độ cao cũ.
-      const top = isShapeType(burst)
-        ? base + 3.7 + Math.random() * 0.4
-        : base + 4.8 + Math.random() * 0.6;
-      const spr = new THREE.Sprite(rocketMat(color));
-      spr.scale.setScalar(0.7);
-      spr.position.set(px, y0, pz);
-      spr.visible = delay <= 0;
-      scene.add(spr);
-      rockets.push({ m: spr, x: px, z: pz, top, vy: (top - y0) / (0.9 + Math.random() * 0.25), delay, color, burst });
-    }
-  };
   // always-on smoke from the urn
   let urnT = 0;
 
@@ -636,7 +583,8 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
 
   let last = 0;
   const update = (t: number, focus: THREE.Vector3) => {
-    const dt = Math.min(0.1, t - last); last = t;
+    const elapsed = t - last;
+    const dt = Math.min(0.1, elapsed); last = t;
     // Driver chu kỳ: đọc giờ thật mỗi frame (không cache); An Lạc dùng palette đêm cố định.
     const goal = cycleEnabled ? clockLook(new Date()) : fixedLook;
     nightTarget = goal.night;
@@ -709,29 +657,12 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
       (b.m.material as THREE.SpriteMaterial).opacity = Math.max(0, b.life);
       if (b.life <= 0) { scene.remove(b.m); (b.m.material as THREE.Material).dispose(); burst.splice(i, 1); }
     }
-    for (let i = bursts.length - 1; i >= 0; i--) {
-      const b = bursts[i];
-      if (!b.update(dt)) { b.dispose(); bursts.splice(i, 1); }
-    }
-    for (let i = rockets.length - 1; i >= 0; i--) {
-      const r = rockets[i];
-      if (r.delay > 0) {
-        r.delay -= dt;
-        if (r.delay <= 0) r.m.visible = true;
-        continue;
-      }
-      r.m.position.y += r.vy * dt;
-      if (r.m.position.y >= r.top) {
-        explodeShell(r.x, r.top, r.z, r.color, r.burst);
-        scene.remove(r.m);
-        rockets.splice(i, 1);
-      }
-    }
+    fireworks.update(elapsed);
     // keep the shadow frustum centered on the player; hướng mặt trời theo phase hiện tại
     sun.target.position.set(focus.x, 0, focus.z);
     sun.position.set(focus.x + cur.sunOff.x, cur.sunOff.y, focus.z + cur.sunOff.z);
     skyU.sunDir.value.copy(cur.sunOff).normalize();
   };
 
-  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, spawnSkyLantern, spawnFirework, setCamera(cam: THREE.Camera) { fireworkCamera = cam; }, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard, setStele: temple.setStele, noticeBoard: temple.noticeBoard };
+  return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, spawnSkyLantern, spawnFirework, clearFireworks: fireworks.clear, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard, setStele: temple.setStele, noticeBoard: temple.noticeBoard };
 }

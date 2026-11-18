@@ -6,6 +6,12 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
+## Làm rõ pháo hoa rồng phượng (2026-11-18)
+
+- `src/fireworks.ts` dùng một `THREE.Points` cho mỗi quả, dựng vệt sáng bằng shader. Các nét rồng và phượng từ `src/data/firework-shapes.ts` hướng về camera và có viền tương phản.
+- Hộp pháo là đạo cụ tạm đặt cạnh người bắn. Tiếng phóng và nổ bám theo từng quả, giảm theo khoảng cách và theo cài đặt âm thanh. Đổi phòng dọn hiệu ứng cũ.
+- Giữ nguyên giá và số quả chính. Ba quả cuối bắn sau pha phượng. Tin mới `LATEST_NEWS_ID` 133 → 134.
+
 ## Lát đường và nới lối lên Chùa Ngọc (2026-11-18)
 
 - Sân chính, lối nhánh và mặt cầu khu mở rộng dùng chung mẫu đá. Vùng tránh trồng cây lấy theo mặt đường lát trong `src/layout.ts`.

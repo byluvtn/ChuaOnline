@@ -186,8 +186,12 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
-const world = createWorld(renderer);
-world.setCamera(camera);
+const world = createWorld(renderer, (phase, x, z, strength, crackle) => {
+  const p = me?.char.root.position;
+  if (!p) return;
+  const distance = Math.hypot(p.x - x, p.z - z);
+  audio.firework(phase, strength * Math.max(0, 1 - distance / 65), crackle);
+});
 initAnimals(world.scene, () => settings.showNames);
 
 /** Vòng collider viền hồ — CHỈ dành cho pathfinder (không vào world.colliders). */
@@ -696,7 +700,7 @@ function connect() {
     world.spawnSkyLantern(l.x, l.z);
     addLanternFeed({ id: l.id, pid: l.pid, name: l.name + ' · đèn trời', wish: l.wish, t: l.t }, true, true);
   });
-  s.on('firework:show', (f: FireworkShow) => { world.spawnFirework(f.x, f.z, f.size); audio.play('firework'); });
+  s.on('firework:show', (f: FireworkShow) => world.spawnFirework(f.x, f.z, f.size));
   s.on('donation', (d: { name: string; amount: number; text: string }) => {
     enqueueDonate(d.text || `🙏 Cảm ơn phật tử ${d.name} đã đóng góp ${d.amount.toLocaleString('vi-VN')} xu giúp xây dựng chùa`);
     loadHonorThrottled();
@@ -742,6 +746,7 @@ $('enter').onclick = async () => {
 
 function switchRoom(id: string) {
   if (id === roomId || !socket) return;
+  world.clearFireworks();
   roomId = id;
   sendJoin();
 }

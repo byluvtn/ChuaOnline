@@ -1,725 +1,322 @@
 import * as THREE from 'three';
-import { DRAGON_SHAPE, PHOENIX_SHAPE, type FireworkShape } from './data/firework-shapes';
+import { FIREWORKS } from '../shared/game';
+import type { FireworkSize } from '../shared/types';
+import { fireworkShape, type FireworkShape } from './data/firework-shapes';
+import { signTexture } from './textures';
 
-/**
- * Pháo hoa shader (kiểu Bruno Simon - Three.js Journey bài 34) + vệt sáng kiểu Pablo Mesquida.
- *
- * - Mỗi quả pháo = 1 THREE.Points = 1 draw call. Riêng crackle dùng 2 Points (vụ nổ chính + vụ nổ con trễ).
- * - Mỗi hạt gồm `trail` vertex: vertex aTrail = 0 là đầu hạt, aTrail → 1 là đuôi vệt. Vertex shader tính
- *   vị trí của điểm vệt tại thời điểm (t − aTrail × trailTime), nên vệt bám đúng quỹ đạo hạt.
- * - Toàn bộ chuyển động nằm trong vertex shader theo uniform tiến trình uProgress 0→1. Mỗi frame chỉ
- *   tăng uniform, không cấp phát gì.
- *
- * Hai nhóm kiểu nổ:
- *   - Thường (RegularBurstType): sphere, ring, willow, crackle. Hạt bay theo hướng + ma sát + trọng lực.
- *     Thêm kiểu mới: thêm tên vào RegularBurstType, 1 hàm vào DIRECTIONS, 1 entry vào BURST_STYLE.
- *   - Hình (ShapeBurstType): dragon, phoenix. Mỗi hạt bay tới 1 điểm trên silhouette, giữ hình rồi cả đàn
- *     chìm xuống và mờ dần. Shader riêng, tham số ở SHAPE_STYLE. Mặt phẳng hình vuông góc hướng nhìn camera.
- */
-
-export type RegularBurstType = 'sphere' | 'ring' | 'willow' | 'crackle';
-export type ShapeBurstType = 'dragon' | 'phoenix';
-export type BurstType = RegularBurstType | ShapeBurstType;
-
-export const isShapeType = (type: BurstType): type is ShapeBurstType =>
-  type === 'dragon' || type === 'phoenix';
-
-/**
- * Kiểu nổ của 10 quả đầu trong show rồng: 8 quả thường xoay vòng, quả 9 = rồng, quả 10 = phượng.
- * Finale (các quả thêm sau) không nằm trong bảng này, vẫn là sphere.
- */
-export const DRAGON_SHOW_TYPES: readonly BurstType[] = [
-  'sphere', 'ring', 'willow', 'crackle', 'ring', 'willow', 'crackle', 'ring',
-  'dragon', 'phoenix',
+type Regular = 'sphere' | 'ring' | 'willow' | 'crackle';
+export type BurstType = Regular | FireworkShape;
+const ROCKET_TIME = 1;
+const SHAPE_LIFE = 3.1;
+const TAU = Math.PI * 2;
+const SHOW_ORDER: readonly BurstType[] = [
+  'sphere', 'ring', 'willow', 'crackle', 'ring', 'willow', 'crackle', 'ring', 'dragon', 'phoenix',
 ];
+const PALETTES = [
+  [0xff401e, 0xffd987, 0xfff0bd], [0x7955ff, 0x9ceaff, 0xe7f7ff],
+  [0xe34a23, 0xffc651, 0xffedaa], [0xc62367, 0xff8198, 0xffedd5],
+  [0x157db5, 0x5be0c8, 0xe2ffec],
+] as const;
 
-export interface BurstOptions {
-  x: number;
-  y: number;
-  z: number;
-  /** Màu quả thường. Quả hình (dragon/phoenix) bỏ qua, dùng gradient đỏ → vàng cố định. */
-  color: number;
-  type: BurstType;
-  /** renderer.getPixelRatio() lúc tạo burst. */
-  pixelRatio: number;
-  /** Camera lúc nổ, dùng cho quả hình để dựng mặt phẳng vuông góc hướng nhìn. Thiếu thì dùng mặt phẳng XY. */
-  camera?: THREE.Camera | null;
-}
-
-export interface ShaderBurst {
-  /** Tiến thời gian. Trả false khi quả pháo đã tàn hẳn (lúc đó gọi dispose()). */
-  update(dt: number): boolean;
-  /** Gỡ khỏi scene và giải phóng geometry/material. Gọi nhiều lần vẫn an toàn. */
-  dispose(): void;
-}
-
-/** Tham số của 1 lớp hạt (1 THREE.Points). */
-export interface LayerStyle {
-  /** Số hạt. */
-  count: number;
-  /** Số vertex mỗi hạt: 1 đầu hạt + (trail − 1) điểm vệt. Phải >= 2. */
-  trail: number;
-  /** Đời lớp (s): hạt sống lâu nhất tàn đúng lúc này. */
-  life: number;
-  /** Đời từng hạt = life × [lifeMin, 1], để các hạt không tắt cùng lúc. */
-  lifeMin: number;
-  /** Tốc độ ban đầu [min, max]. */
-  speed: readonly [number, number];
-  /** Trọng lực: y -= 0.5 × g × t². */
-  gravity: number;
-  /** Hệ số ma sát k (> 0). Quãng bay tối đa theo hướng nổ = speed / k. */
-  drag: number;
-  /** Độ dài vệt tính theo thời gian (s). */
-  trailTime: number;
-  /** Kích cỡ điểm [min, max]. Đây là hệ số trong công thức gl_PointSize, không phải đơn vị thế giới. */
-  size: readonly [number, number];
-  /** Độ mạnh nhấp nháy 0..1, đạt tối đa ở cuối đời hạt. */
-  twinkle: number;
-  /** Tần số nhấp nháy (rad/s). */
-  twinkleSpeed: number;
-  /** Tuổi hạt (0..1) bắt đầu nhấp nháy. */
-  twinkleFrom: number;
-}
-
-export interface BurstStyle extends LayerStyle {
-  /**
-   * Vụ nổ con (crackle). Tia con thứ i bung ra từ vị trí của hạt chính (i % count) tại thời điểm `delay` (s).
-   * `count` ở đây là tổng số tia con.
-   */
-  sub?: LayerStyle & { delay: number };
-}
-
-/** Tham số quả hình. Mỗi hạt = 2 vertex (đầu + 1 điểm vệt ngắn). */
-export interface ShapeStyle {
-  shape: FireworkShape;
-  /** Hết pha bay ra (s). */
-  flyEnd: number;
-  /** Hết pha giữ hình (s). */
-  holdEnd: number;
-  /** Tổng đời quả (s). Pha tan chạy từ holdEnd tới life. */
-  life: number;
-  /** Độ chìm tổng của cả đàn trong pha tan (m). */
-  sink: number;
-  /** Nhiễu vị trí đích mỗi trục, ±jitter (m). */
-  jitter: number;
-  /** Độ lệch sâu dọc hướng nhìn, ±depth (m). */
-  depth: number;
-  /** Độ dài điểm vệt theo thời gian (s). */
-  trailTime: number;
-  /** Kích cỡ điểm [min, max], cùng hệ số với LayerStyle.size nhưng nhỏ hơn nhiều vì hạt dày đặc. */
-  size: readonly [number, number];
-  /** Hệ số phóng to điểm mắt. */
-  eyeScale: number;
-  /** Độ mạnh nhấp nháy ở pha bay và pha tan. */
-  twinkle: number;
-  /** Độ mạnh nhấp nháy ở pha giữ hình (nhẹ hơn). */
-  twinkleHold: number;
-  twinkleSpeed: number;
-  /** Nhân vào alpha, giảm bão hòa khi hơn 1000 hạt cộng dồn (additive). */
-  intensity: number;
-}
-
-type Rand = () => number;
-type DirectionFn = (count: number, rand: Rand) => Float32Array;
-
-// ---------------------------------------------------------------------------
-// Phân phối hướng theo kiểu nổ thường. Mỗi hàm trả về Float32Array dài count×3 gồm các vector đơn vị.
-// ---------------------------------------------------------------------------
-
-/** Đều trên mặt cầu. */
-const sphereDirections: DirectionFn = (count, rand) => {
-  const out = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const up = rand() * 2 - 1;
-    const a = rand() * Math.PI * 2;
-    const r = Math.sqrt(1 - up * up);
-    out[i * 3] = r * Math.cos(a);
-    out[i * 3 + 1] = up;
-    out[i * 3 + 2] = r * Math.sin(a);
-  }
-  return out;
-};
-
-/** Vòng tròn trong mặt phẳng ngang, cả vòng nghiêng ngẫu nhiên tối đa ~17° quanh trục X và Z. */
-const ringDirections: DirectionFn = (count, rand) => {
-  const out = new Float32Array(count * 3);
-  const tx = (rand() - 0.5) * 0.6, tz = (rand() - 0.5) * 0.6;
-  const cx = Math.cos(tx), sx = Math.sin(tx), cz = Math.cos(tz), sz = Math.sin(tz);
-  for (let i = 0; i < count; i++) {
-    const a = ((i + rand() * 0.3) / count) * Math.PI * 2;
-    const x = Math.cos(a), y = (rand() - 0.5) * 0.04, z = Math.sin(a);
-    // Xoay quanh trục X rồi quanh trục Z.
-    const y1 = y * cx - z * sx, z1 = y * sx + z * cx;
-    out[i * 3] = x * cz - y1 * sz;
-    out[i * 3 + 1] = x * sz + y1 * cz;
-    out[i * 3 + 2] = z1;
-  }
-  return out;
-};
-
-/** Liễu rủ: nghiêng về nửa trên để tia vồng lên trước rồi mới rủ xuống. */
-const willowDirections: DirectionFn = (count, rand) => {
-  const out = new Float32Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    const up = rand() * 1.4 - 0.4;
-    const a = rand() * Math.PI * 2;
-    const r = Math.sqrt(1 - up * up);
-    out[i * 3] = r * Math.cos(a);
-    out[i * 3 + 1] = up;
-    out[i * 3 + 2] = r * Math.sin(a);
-  }
-  return out;
-};
-
-const DIRECTIONS: Record<RegularBurstType, DirectionFn> = {
-  sphere: sphereDirections,
-  ring: ringDirections,
-  willow: willowDirections,
-  crackle: sphereDirections,
-};
-
-/** Hướng bay của `count` hạt theo kiểu nổ thường. Quả hình không dùng hướng (xem SHAPE_STYLE). */
-export const burstDirections = (type: RegularBurstType, count: number, rand: Rand = Math.random): Float32Array =>
-  DIRECTIONS[type](count, rand);
-
-// ---------------------------------------------------------------------------
-// Bảng tham số theo kiểu nổ.
-// Ngân sách mobile: count × trail (cộng cả lớp con nếu có) <= ~1600 vertex mỗi quả thường.
-//   sphere 140×9 = 1260 | ring 120×9 = 1080 | willow 100×14 = 1400 | crackle 60×7 + 240×4 = 1380
-// Quả hình: dragon 1300×2 = 2600 | phoenix 1056×2 = 2112 (vẫn 1 draw call).
-// ---------------------------------------------------------------------------
-export const BURST_STYLE: Record<RegularBurstType, BurstStyle> = {
-  sphere: {
-    count: 140, trail: 9, life: 2.0, lifeMin: 0.8,
-    speed: [4.5, 6.5], gravity: 1.4, drag: 1.5, trailTime: 0.22,
-    size: [1.4, 2.0], twinkle: 0.8, twinkleSpeed: 28, twinkleFrom: 0.35,
-  },
-  ring: {
-    count: 120, trail: 9, life: 2.0, lifeMin: 0.85,
-    speed: [5.2, 5.8], gravity: 1.1, drag: 1.6, trailTime: 0.2,
-    size: [1.4, 1.9], twinkle: 0.6, twinkleSpeed: 24, twinkleFrom: 0.4,
-  },
-  // Tốc độ thấp, trọng lực trội so với tốc độ, vệt dài: hạt vồng nhẹ rồi rủ xuống chậm như cành liễu.
-  willow: {
-    count: 100, trail: 14, life: 3.0, lifeMin: 0.8,
-    speed: [2.6, 4.0], gravity: 1.1, drag: 1.3, trailTime: 0.6,
-    size: [1.2, 1.7], twinkle: 0.35, twinkleSpeed: 18, twinkleFrom: 0.5,
-  },
-  // Vụ nổ chính nhỏ. Ở giây 0,6 (50% đời chính) mỗi hạt bung ra 4 tia con nhỏ, nhanh, nhấp nháy dày.
-  // Tổng thời lượng = 0,6 + 1,8 = 2,4s.
-  crackle: {
-    count: 60, trail: 7, life: 1.2, lifeMin: 0.85,
-    speed: [3.5, 5.5], gravity: 1.2, drag: 1.8, trailTime: 0.15,
-    size: [1.2, 1.6], twinkle: 0.5, twinkleSpeed: 30, twinkleFrom: 0.3,
-    sub: {
-      delay: 0.6,
-      count: 240, trail: 4, life: 1.8, lifeMin: 0.6,
-      speed: [1.5, 3.5], gravity: 1.5, drag: 3.5, trailTime: 0.06,
-      size: [0.6, 1.0], twinkle: 1.0, twinkleSpeed: 55, twinkleFrom: 0.0,
-    },
-  },
-};
-
-// Pha thời gian chung của quả hình: bay 0–0.9s, giữ 0.9–2.1s, tan 2.1–3.1s.
-// Kích cỡ điểm + intensity đã chỉnh sau ảnh chụp headless 2026-11-18: size [0.35, 0.5]
-// cháy trắng (điểm ~13px ở 10m, cách nhau chỉ ~2px) làm nhòe silhouette; [0.15, 0.22]
-// cho điểm ~5px, khe hở trong hình mới đọc được.
-const SHAPE_COMMON = {
-  flyEnd: 0.9, holdEnd: 2.1, life: 3.1,
-  sink: 0.9, jitter: 0.05, depth: 0.15,
-  trailTime: 0.07, size: [0.15, 0.22] as const, eyeScale: 2.2,
-  twinkle: 0.5, twinkleHold: 0.15, twinkleSpeed: 26, intensity: 0.7,
-};
-
-export const SHAPE_STYLE: Record<ShapeBurstType, ShapeStyle> = {
-  dragon: { ...SHAPE_COMMON, shape: DRAGON_SHAPE },
-  phoenix: { ...SHAPE_COMMON, shape: PHOENIX_SHAPE },
-};
-
-// Màu quả hình: đuôi (tint 0) đỏ → đầu (tint 1) vàng; mắt trắng-xanh.
-const SHAPE_COLOR_TAIL = 0xff4a2a;
-const SHAPE_COLOR_HEAD = 0xffd36b;
-const SHAPE_COLOR_EYE = 0x9fe8ff;
-
-// ---------------------------------------------------------------------------
-// GLSL dùng chung: điểm tròn mềm, nhấp nháy, lõi nóng sáng.
-// ---------------------------------------------------------------------------
-
-const POINT_GLSL = /* glsl */ `
-// Vẽ điểm tròn mềm: bỏ pixel ngoài vòng tròn, trả độ sáng 0..1 (đậm ở tâm).
-float softPoint() {
-  float d = length(gl_PointCoord - 0.5);
-  if (d > 0.5) discard;
-  float g = 1.0 - smoothstep(0.0, 0.5, d);
-  return g * g;
-}
-// Nhấp nháy bằng sin. amount = 0 thì không nhấp nháy, 1 thì tắt hẳn ở đáy sóng.
-float twinkleFactor(float time, float speed, float phase, float amount) {
-  float s = 0.5 + 0.5 * sin(time * speed + phase);
-  return mix(1.0, s, amount);
-}
-// Lõi ngả trắng cho cảm giác nóng sáng.
-vec3 hotCore(vec3 col, float glow, float amount) {
-  return mix(col, vec3(1.0), smoothstep(0.55, 1.0, glow) * amount);
-}
-`;
-
-// ---------------------------------------------------------------------------
-// Shader quả thường
-// ---------------------------------------------------------------------------
-
-const VERTEX_SHADER = /* glsl */ `
-uniform float uProgress;
-uniform float uLife;
-uniform float uGravity;
-uniform float uDrag;
-uniform float uTrailTime;
-uniform float uPixelRatio;
-
-attribute vec3 aDir;
-attribute float aSpeed;
-attribute float aSize;
-attribute float aPhase;
-attribute float aLife;
-attribute float aTrail;
-
+// One point batch per shell. Each trail sample evaluates the same path at an earlier age.
+const vertexShader = /* glsl */ `
+uniform float uTime;
+uniform float uDpr;
+uniform float uMode;
+attribute vec3 aVector;
+attribute vec4 aSpark; // size, lifetime, delay, trail fraction
+attribute vec4 aStyle; // tone, phase, drag/motion, gravity or trail time
 varying float vAlpha;
-varying float vAge;
-varying float vPhase;
+varying float vTone;
+varying float vCore;
 
 void main() {
-  float t = uProgress * uLife;
-  float age = t / (uLife * aLife);
-  // Thời điểm của điểm vệt này: trễ hơn đầu hạt aTrail × trailTime.
-  float te = t - aTrail * uTrailTime;
-  vAge = age;
-  vPhase = aPhase;
+  float t = uTime - aSpark.z;
+  float age = t / aSpark.y;
+  float trail = aSpark.w;
+  float trailTime = uMode < .5 ? (aStyle.w < .85 ? .57 : .27) : aStyle.w;
+  float te = t - trail * trailTime;
   vAlpha = 0.0;
+  vTone = aStyle.x;
+  vCore = 1.0 - trail;
   if (te < 0.0 || age >= 1.0) {
     gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-    gl_PointSize = 0.0;
+    gl_PointSize = 1.0;
     return;
   }
-  // position = điểm gốc (0 với vụ nổ chính, vị trí hạt cha với vụ nổ con).
-  // Ma sát kéo theo hàm mũ + trọng lực. PHẢI khớp parentPositionsAt() phía CPU.
-  vec3 p = position + aDir * aSpeed * (1.0 - exp(-uDrag * te)) / uDrag;
-  p.y -= 0.5 * uGravity * te * te;
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  vec4 mv;
+  float size = aSpark.x * mix(1.0, 0.48, trail);
+  if (uMode > 1.5) {
+    // A world-anchored drawing, always facing the viewer. The shape opens in sections.
+    float k = smoothstep(0.0, 0.47, te);
+    float fall = smoothstep(2.04, 3.1, uTime);
+    vec2 p = aVector.xy * k;
+    float motion = aStyle.z;
+    if (uMode < 2.5) {
+      p.y += sin(aVector.x * 2.8 - uTime * 3.6) * .115 * motion * k;
+      p.x += cos(aVector.y * 3.8 - uTime * 2.8) * .047 * motion * k;
+    } else {
+      float wings = smoothstep(.18, 1.8, abs(aVector.x)) * smoothstep(-.65, -.23, aVector.y);
+      p.y += sin(uTime * 5.0) * .24 * wings * motion * k;
+      p.x *= 1.0 - .075 * wings * (1.0 - cos(uTime * 5.0)) * k;
+      p.x += sin(uTime * 4.2 + aVector.y * 5.0) * smoothstep(.25, 1.6, -aVector.y) * .11 * motion * k;
+    }
+    p += vec2(cos(aStyle.y), sin(aStyle.y)) * fall * (.24 + .24 * motion);
+    p.y -= fall * (.44 + .2 * motion);
+    mv = modelViewMatrix * vec4(position, 1.0);
+    // Keep close-range silhouettes from overflowing short or portrait views.
+    float span = min(1.0 / projectionMatrix[0][0], 1.0 / projectionMatrix[1][1]);
+    float fit = clamp((-mv.z * span) / 3.0, .28, 1.0);
+    mv.xy += p * fit;
+    mv.z += aVector.z * k * fit;
+    size *= fit;
+    vAlpha = smoothstep(.10, .37, te) * (1.0 - fall) * mix(1.0, .28, trail)
+      * (.95 + .05 * sin(uTime * 9.0 + aStyle.y));
+  } else if (uMode > .5) {
+    float q = clamp(te / aSpark.y, 0.0, 1.0);
+    float lift = 1.0 - (1.0 - q) * (1.0 - q * .32);
+    vec3 p = aVector * lift;
+    p.xz *= q * q; // All trajectories start at the box; the fan opens late in the ascent.
+    p.x += sin(q * 4.0 + aStyle.y) * trail * .18;
+    p.z += cos(q * 4.0 + aStyle.y) * trail * .18;
+    mv = modelViewMatrix * vec4(p + position, 1.0);
+    vAlpha = (1.0 - trail) * (1.0 - trail) * smoothstep(0.0, .09, q);
+  } else {
+    float gravity = aStyle.w;
+    vec3 p = position + aVector * ((1.0 - exp(-aStyle.z * te)) / aStyle.z);
+    p.y -= .5 * gravity * te * te;
+    mv = modelViewMatrix * vec4(p, 1.0);
+    float twinkle = mix(1.0, .7 + .3 * sin(t * 27.0 + aStyle.y), smoothstep(.28, .9, age));
+    vTone *= 1.0 - .39 * smoothstep(.31, 1.0, age);
+    float head = 1.0 - smoothstep(.0, .11, trail);
+    vAlpha = smoothstep(0.0, .06, te) * (1.0 - smoothstep(.52, 1.0, age)) * (1.0 - trail) * twinkle;
+    size *= 1.0 + .34 * head * (1.0 - smoothstep(0.0, .16, age));
+  }
   gl_Position = projectionMatrix * mv;
-
-  float flash = 1.0 + 0.8 * (1.0 - smoothstep(0.0, 0.08, age)); // chớp sáng lúc vừa nổ
-  float trailFade = 1.0 - aTrail;
-  gl_PointSize = max(0.0, aSize * mix(1.0, 0.3, aTrail) * flash * uPixelRatio * (300.0 / -mv.z));
-  vAlpha = (1.0 - smoothstep(0.65, 1.0, age)) * trailFade * trailFade;
+  gl_PointSize = clamp(size * uDpr * 62.0 / max(0.5, -mv.z), 1.0, 15.0 * uDpr);
 }
 `;
 
-const FRAGMENT_SHADER = /* glsl */ `
-uniform vec3 uColor;
-uniform float uProgress;
-uniform float uLife;
-uniform float uTwinkle;
-uniform float uTwinkleSpeed;
-uniform float uTwinkleFrom;
-
+const fragmentShader = /* glsl */ `
+uniform float uMode;
+uniform vec3 uCool;
+uniform vec3 uHot;
+uniform vec3 uAccent;
 varying float vAlpha;
-varying float vAge;
-varying float vPhase;
-
-${POINT_GLSL}
-
+varying float vTone;
+varying float vCore;
 void main() {
-  float glow = softPoint();
-  // Nhấp nháy mạnh dần về cuối đời hạt.
-  float tw = twinkleFactor(
-    uProgress * uLife, uTwinkleSpeed, vPhase,
-    smoothstep(uTwinkleFrom, 1.0, vAge) * uTwinkle
-  );
-  vec3 col = hotCore(uColor, glow, 0.7);
-  gl_FragColor = vec4(col, glow * vAlpha * tw);
+  float d = length(gl_PointCoord - .5) * 2.0;
+  if (d >= 1.0 || vAlpha < .003) discard;
+  float halo = pow(1.0 - d, 1.18);
+  float kernel = 1.0 - smoothstep(.14, .58, d);
+  vec3 col = mix(uCool, uHot, clamp(vTone, 0.0, 1.0));
+  col = mix(col, uAccent, clamp((vTone - 1.0) * 1.66, 0.0, 1.0));
+  col = mix(col, vec3(1.0, .97, .9), kernel * .31 * vCore);
+  if (uMode > 1.5) {
+    // A warm, darker rim keeps the bright core readable even against daylight.
+    float core = 1.0 - smoothstep(.38, .78, d);
+    vec3 rim = mix(uCool * .24, uCool * .66, vCore);
+    gl_FragColor = vec4(mix(rim, col, core), (1.0 - smoothstep(.60, 1.0, d)) * vAlpha);
+  } else {
+    gl_FragColor = vec4(col, min(1.0, halo * .76 + kernel * .40) * vAlpha);
+  }
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }
 `;
 
-// ---------------------------------------------------------------------------
-// Shader quả hình (rồng, phượng)
-// ---------------------------------------------------------------------------
+type Palette = readonly [number, number, number];
+type Batch = { points: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>; life: number; age: number };
 
-const SHAPE_VERTEX_SHADER = /* glsl */ `
-uniform float uProgress;
-uniform float uLife;
-uniform float uFlyEnd;
-uniform float uHoldEnd;
-uniform float uSink;
-uniform float uTrailTime;
-uniform float uPixelRatio;
-uniform float uTwinkle;
-uniform float uTwinkleHold;
-uniform vec3 uRight;
-uniform vec3 uUp;
-
-attribute vec2 aTarget;
-attribute float aDepth;
-attribute float aTint;
-attribute float aEye;
-attribute float aSize;
-attribute float aPhase;
-attribute float aTrail;
-
-varying float vAlpha;
-varying float vTint;
-varying float vEye;
-varying float vPhase;
-varying float vTwAmp;
-
-void main() {
-  float t = uProgress * uLife;
-  // Điểm vệt trễ hơn đầu hạt aTrail × trailTime.
-  float te = t - aTrail * uTrailTime;
-  vTint = aTint;
-  vEye = aEye;
-  vPhase = aPhase;
-  vAlpha = 0.0;
-  vTwAmp = 0.0;
-  if (te < 0.0 || t >= uLife) {
-    gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-    gl_PointSize = 0.0;
-    return;
-  }
-
-  // Pha bay: ease-out bậc 3, không trọng lực. Sau flyEnd k = 1 nên hạt đứng yên ở đích.
-  float q = 1.0 - clamp(te / uFlyEnd, 0.0, 1.0);
-  float k = 1.0 - q * q * q;
-  // Mặt phẳng hình = (right, up) của camera; độ sâu dọc pháp tuyến (hướng nhìn).
-  vec3 normal = cross(uRight, uUp);
-  vec3 p = position + (uRight * aTarget.x + uUp * aTarget.y + normal * aDepth) * k;
-
-  // Pha tan: cả đàn chìm cùng một độ rơi theo thời gian (không phụ thuộc hạt) nên hình không méo.
-  float s = clamp((te - uHoldEnd) / (uLife - uHoldEnd), 0.0, 1.0);
-  p.y -= uSink * s * s;
-
-  vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  gl_Position = projectionMatrix * mv;
-
-  // Pha giữ hình nhấp nháy nhẹ hơn; chuyển mượt ở hai đầu.
-  float holdMask = smoothstep(uFlyEnd - 0.1, uFlyEnd, t) * (1.0 - smoothstep(uHoldEnd, uHoldEnd + 0.2, t));
-  vTwAmp = mix(uTwinkle, uTwinkleHold, holdMask);
-
-  gl_PointSize = max(0.0, aSize * mix(1.0, 0.6, aTrail) * uPixelRatio * (300.0 / -mv.z));
-
-  // Fade-in ngắn để hàng nghìn hạt chồng nhau ở tâm không chớp trắng; mờ dần suốt pha tan.
-  float fadeIn = smoothstep(0.0, 0.1, t);
-  float fadeOut = 1.0 - smoothstep(uHoldEnd, uLife, t);
-  vAlpha = fadeIn * fadeOut * mix(1.0, 0.35, aTrail);
-}
-`;
-
-const SHAPE_FRAGMENT_SHADER = /* glsl */ `
-uniform float uProgress;
-uniform float uLife;
-uniform float uTwinkleSpeed;
-uniform float uIntensity;
-uniform vec3 uColorTail;
-uniform vec3 uColorHead;
-uniform vec3 uColorEye;
-
-varying float vAlpha;
-varying float vTint;
-varying float vEye;
-varying float vPhase;
-varying float vTwAmp;
-
-${POINT_GLSL}
-
-void main() {
-  float glow = softPoint();
-  float tw = twinkleFactor(uProgress * uLife, uTwinkleSpeed, vPhase, vTwAmp);
-  vec3 base = mix(mix(uColorTail, uColorHead, vTint), uColorEye, vEye);
-  // Lõi trắng nhẹ hơn quả thường để gradient đỏ → vàng không bị rửa trắng khi hạt chồng nhau.
-  vec3 col = hotCore(base, glow, 0.35);
-  gl_FragColor = vec4(col, glow * vAlpha * tw * uIntensity);
-  #include <tonemapping_fragment>
-  #include <colorspace_fragment>
-}
-`;
-
-// ---------------------------------------------------------------------------
-// Dựng lớp hạt
-// ---------------------------------------------------------------------------
-
-interface Layer {
-  points: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
-  progress: THREE.IUniform<number>;
-  delay: number;
-  life: number;
+function batch(mode: number, life: number, palette: Palette, dpr: number, fill: (emit: Emit) => void): Batch {
+  const pos: number[] = [], vector: number[] = [], spark: number[] = [], style: number[] = [];
+  fill((x, y, z, vx, vy, vz, size, duration, delay, tone, phase, drag, gravity, trail) => {
+    for (let j = 0; j < trail; j++) {
+      pos.push(x, y, z); vector.push(vx, vy, vz);
+      spark.push(size, duration, delay, j / Math.max(1, trail - 1));
+      style.push(tone, phase, drag, gravity);
+    }
+  });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geometry.setAttribute('aVector', new THREE.Float32BufferAttribute(vector, 3));
+  geometry.setAttribute('aSpark', new THREE.Float32BufferAttribute(spark, 4));
+  geometry.setAttribute('aStyle', new THREE.Float32BufferAttribute(style, 4));
+  // Origins alone are not a valid bound for GPU-driven trajectories.
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), mode === 0 ? 10 : 6);
+  const material = new THREE.ShaderMaterial({
+    vertexShader, fragmentShader,
+    uniforms: { uTime: { value: 0 }, uMode: { value: mode }, uDpr: { value: Math.min(dpr, 2) },
+      uCool: { value: new THREE.Color(palette[0]) }, uHot: { value: new THREE.Color(palette[1]) },
+      uAccent: { value: new THREE.Color(palette[2]) } },
+    transparent: true, depthWrite: false, blending: mode > 1 ? THREE.NormalBlending : THREE.AdditiveBlending,
+  });
+  return { points: new THREE.Points(geometry, material), age: 0, life };
 }
 
-const pick = (r: readonly [number, number], rand: Rand) => r[0] + (r[1] - r[0]) * rand();
+type Emit = (x: number, y: number, z: number, vx: number, vy: number, vz: number, size: number,
+  life: number, delay: number, tone: number, phase: number, drag: number, gravity: number, trail: number) => void;
 
-const makeSpeeds = (style: LayerStyle, rand: Rand): Float32Array => {
-  const out = new Float32Array(style.count);
-  for (let i = 0; i < style.count; i++) out[i] = pick(style.speed, rand);
-  return out;
-};
-
-/** Vị trí đầu hạt tại thời điểm t (s). Bản CPU của công thức trong VERTEX_SHADER, phải giữ khớp. */
-const parentPositionsAt = (style: LayerStyle, dirs: Float32Array, speeds: Float32Array, t: number): Float32Array => {
-  const out = new Float32Array(style.count * 3);
-  const f = (1 - Math.exp(-style.drag * t)) / style.drag;
-  const drop = 0.5 * style.gravity * t * t;
-  for (let i = 0; i < style.count; i++) {
-    const d = speeds[i] * f;
-    out[i * 3] = dirs[i * 3] * d;
-    out[i * 3 + 1] = dirs[i * 3 + 1] * d - drop;
-    out[i * 3 + 2] = dirs[i * 3 + 2] * d;
-  }
-  return out;
-};
-
-const buildLayer = (
-  style: LayerStyle,
-  dirs: Float32Array,
-  speeds: Float32Array,
-  origins: Float32Array | null,
-  delay: number,
-  color: THREE.Color,
-  pixelRatio: number,
-  rand: Rand,
-): Layer => {
-  const n = style.count * style.trail;
-  const position = new Float32Array(n * 3);
-  const aDir = new Float32Array(n * 3);
-  const aSpeed = new Float32Array(n);
-  const aSize = new Float32Array(n);
-  const aPhase = new Float32Array(n);
-  const aLife = new Float32Array(n);
-  const aTrail = new Float32Array(n);
-
-  for (let i = 0; i < style.count; i++) {
-    const size = pick(style.size, rand);
-    const phase = rand() * Math.PI * 2;
-    const life = style.lifeMin + (1 - style.lifeMin) * rand();
-    for (let j = 0; j < style.trail; j++) {
-      const v = i * style.trail + j;
-      for (let c = 0; c < 3; c++) {
-        aDir[v * 3 + c] = dirs[i * 3 + c];
-        position[v * 3 + c] = origins ? origins[i * 3 + c] : 0;
+export function makeFireworkBurst(kind: BurstType, palette: Palette, dpr: number, rand = Math.random): Batch {
+  if (kind === 'dragon' || kind === 'phoenix') {
+    const shapePalette: Palette = kind === 'dragon' ? [0xff5737, 0xffdc6e, 0xbdfff0] : [0xff4b99, 0xffcc69, 0xd2f3ff];
+    return batch(kind === 'dragon' ? 2 : 3, SHAPE_LIFE, shapePalette, dpr, (emit) => {
+      for (const p of fireworkShape(kind)) {
+        emit(0, 0, 0, p.x, p.y, (rand() - .5) * .13, .92 * p.weight, SHAPE_LIFE - p.reveal,
+          p.reveal, p.tone, rand() * TAU, p.motion, .07, p.weight > 1.1 ? 2 : 1);
       }
-      aSpeed[v] = speeds[i];
-      aSize[v] = size;
-      aPhase[v] = phase;
-      aLife[v] = life;
-      aTrail[v] = j / (style.trail - 1);
-    }
+    });
   }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(position, 3));
-  geometry.setAttribute('aDir', new THREE.BufferAttribute(aDir, 3));
-  geometry.setAttribute('aSpeed', new THREE.BufferAttribute(aSpeed, 1));
-  geometry.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
-  geometry.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
-  geometry.setAttribute('aLife', new THREE.BufferAttribute(aLife, 1));
-  geometry.setAttribute('aTrail', new THREE.BufferAttribute(aTrail, 1));
-
-  const progress: THREE.IUniform<number> = { value: 0 };
-  const material = new THREE.ShaderMaterial({
-    vertexShader: VERTEX_SHADER,
-    fragmentShader: FRAGMENT_SHADER,
-    uniforms: {
-      uProgress: progress,
-      uLife: { value: style.life },
-      uGravity: { value: style.gravity },
-      uDrag: { value: style.drag },
-      uTrailTime: { value: style.trailTime },
-      uPixelRatio: { value: pixelRatio },
-      uColor: { value: color },
-      uTwinkle: { value: style.twinkle },
-      uTwinkleSpeed: { value: style.twinkleSpeed },
-      uTwinkleFrom: { value: style.twinkleFrom },
-    },
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
+  const life = kind === 'willow' ? 2.85 : kind === 'crackle' ? 2.15 : 2;
+  return batch(0, life, palette, dpr, (emit) => {
+    const count = kind === 'ring' ? 78 : kind === 'crackle' ? 56 : 110;
+    const angle = rand() * TAU, tilt = .64 + rand() * .32;
+    for (let i = 0; i < count; i++) {
+      const inner = i % 5 === 0;
+      const a = i * 2.399963 + angle + (rand() - .5) * .12;
+      const up = kind === 'willow' ? .16 + rand() * .82 : 2 * (i + .5) / count - 1;
+      const r = Math.sqrt(1 - up * up);
+      const speed = (inner ? .62 : 1) * (kind === 'willow' ? 3.2 + rand() : 5 + 1.65 * rand());
+      const vx = Math.cos(a) * (kind === 'ring' ? 1 : r) * speed;
+      const vy = (kind === 'ring' ? Math.sin(a) * tilt : up) * speed;
+      const vz = Math.sin(a) * (kind === 'ring' ? Math.sqrt(1 - tilt * tilt) : r) * speed;
+      const gravity = kind === 'willow' ? .75 : 1.14;
+      const drag = kind === 'willow' ? 1.28 : 1.65;
+      const lifespan = (kind === 'crackle' ? 1.15 : life) * (.75 + .25 * rand());
+      emit(0, 0, 0, vx, vy, vz, .9 + rand() * .34, lifespan, 0, inner ? 1.26 : .69 + .31 * rand(),
+        rand() * TAU, drag, gravity, kind === 'willow' ? 12 : 8);
+      if (kind !== 'crackle') continue;
+      const delay = .44 + rand() * .26;
+      const reach = (1 - Math.exp(-drag * delay)) / drag;
+      for (let j = 0; j < 4; j++) {
+        const b = a + j * TAU / 4 + rand() * .5, v = 1.3 + rand() * 1.3;
+        emit(vx * reach, vy * reach - .5 * gravity * delay * delay, vz * reach,
+          v * Math.cos(b), v * Math.sin(b), (rand() - .5) * 2, .49 + rand() * .28,
+          .75 + rand() * .58, delay, 1.3, rand() * TAU, 2.9, 1.28, 4);
+      }
+    }
   });
+}
 
-  const points = new THREE.Points(geometry, material);
-  // Bounding sphere tính từ `position` (điểm gốc) quá nhỏ so với vùng hạt bay thật, nên tắt cull.
-  points.frustumCulled = false;
-  return { points, progress, delay, life: style.life };
-};
+interface Shot {
+  delay: number; x: number; y: number; z: number; dx: number; dz: number; rise: number;
+  kind: BurstType; palette: Palette; strength: number;
+}
+export type FireworkCue = (phase: 'launch' | 'burst', x: number, z: number, strength: number, crackle: boolean) => void;
 
-/** Vector phải/lên của camera lúc nổ. Không có camera thì dùng mặt phẳng XY. */
-const cameraPlane = (camera: THREE.Camera | null | undefined): { right: THREE.Vector3; up: THREE.Vector3 } => {
-  const right = new THREE.Vector3(1, 0, 0);
-  const up = new THREE.Vector3(0, 1, 0);
-  if (camera) {
-    const back = new THREE.Vector3();
-    camera.matrixWorld.extractBasis(right, up, back);
-    right.normalize();
-    up.normalize();
+function makeLauncher() {
+  const group = new THREE.Group();
+  group.name = 'firework-launcher';
+  const red = new THREE.MeshStandardMaterial({ color: 0x9f2924, roughness: .84 });
+  const brass = new THREE.MeshStandardMaterial({ color: 0xe6b858, roughness: .56, metalness: .28 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2a1b1f, roughness: .9 });
+  const box = (w: number, h: number, d: number, y: number, mat: THREE.Material) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.position.y = y;
+    group.add(mesh);
+  };
+  box(.90, .39, .76, .215, red);
+  box(.96, .075, .82, .0475, brass);
+  box(.94, .065, .80, .4025, brass);
+  box(.86, .035, .72, .4525, dark);
+  const holes = new THREE.InstancedMesh(new THREE.RingGeometry(.047, .075, 14), brass, 9);
+  const transform = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+  for (let i = 0; i < 9; i++) {
+    transform.setPosition((i % 3 - 1) * .24, .475, (Math.floor(i / 3) - 1) * .19);
+    holes.setMatrixAt(i, transform);
   }
-  return { right, up };
-};
+  group.add(holes);
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(.61, .153),
+    new THREE.MeshBasicMaterial({ map: signTexture('PHÁO HOA') }));
+  label.position.set(0, .23, .383);
+  group.add(label);
+  return group;
+}
 
-/** Dựng lớp hạt cho quả hình: mỗi hạt = 2 vertex (đầu + 1 điểm vệt). */
-const buildShapeLayer = (
-  style: ShapeStyle,
-  camera: THREE.Camera | null | undefined,
-  pixelRatio: number,
-  rand: Rand,
-): Layer => {
-  const shape = style.shape;
-  const count = Math.floor(shape.points.length / 2);
-  const vertsPerParticle = 2;
-  const n = count * vertsPerParticle;
-
-  const eyeSet = new Set<number>(shape.eyes);
-  const position = new Float32Array(n * 3); // luôn 0: tâm nổ nằm ở points.position
-  const aTarget = new Float32Array(n * 2);
-  const aDepth = new Float32Array(n);
-  const aTint = new Float32Array(n);
-  const aEye = new Float32Array(n);
-  const aSize = new Float32Array(n);
-  const aPhase = new Float32Array(n);
-  const aTrail = new Float32Array(n);
-
-  for (let i = 0; i < count; i++) {
-    const sx = shape.points[i * 2];
-    const sy = shape.points[i * 2 + 1];
-    // Đích = điểm trên silhouette + nhiễu nhỏ để không quá đều.
-    const tx = sx + (rand() * 2 - 1) * style.jitter;
-    const ty = sy + (rand() * 2 - 1) * style.jitter;
-    const depth = (rand() * 2 - 1) * style.depth;
-    // Tint theo x đã chuẩn hoá trong khung hình: 0 ở trái (đuôi) → 1 ở phải (đầu).
-    const tint = Math.min(1, Math.max(0, sx / shape.width + 0.5));
-    const eye = eyeSet.has(i) ? 1 : 0;
-    const size = pick(style.size, rand) * (eye ? style.eyeScale : 1);
-    const phase = rand() * Math.PI * 2;
-    for (let j = 0; j < vertsPerParticle; j++) {
-      const v = i * vertsPerParticle + j;
-      aTarget[v * 2] = tx;
-      aTarget[v * 2 + 1] = ty;
-      aDepth[v] = depth;
-      aTint[v] = tint;
-      aEye[v] = eye;
-      aSize[v] = size;
-      aPhase[v] = phase;
-      aTrail[v] = j; // 0 = đầu hạt, 1 = điểm vệt
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(position, 3));
-  geometry.setAttribute('aTarget', new THREE.BufferAttribute(aTarget, 2));
-  geometry.setAttribute('aDepth', new THREE.BufferAttribute(aDepth, 1));
-  geometry.setAttribute('aTint', new THREE.BufferAttribute(aTint, 1));
-  geometry.setAttribute('aEye', new THREE.BufferAttribute(aEye, 1));
-  geometry.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
-  geometry.setAttribute('aPhase', new THREE.BufferAttribute(aPhase, 1));
-  geometry.setAttribute('aTrail', new THREE.BufferAttribute(aTrail, 1));
-
-  const { right, up } = cameraPlane(camera);
-  const progress: THREE.IUniform<number> = { value: 0 };
-  const material = new THREE.ShaderMaterial({
-    vertexShader: SHAPE_VERTEX_SHADER,
-    fragmentShader: SHAPE_FRAGMENT_SHADER,
-    uniforms: {
-      uProgress: progress,
-      uLife: { value: style.life },
-      uFlyEnd: { value: style.flyEnd },
-      uHoldEnd: { value: style.holdEnd },
-      uSink: { value: style.sink },
-      uTrailTime: { value: style.trailTime },
-      uPixelRatio: { value: pixelRatio },
-      uTwinkle: { value: style.twinkle },
-      uTwinkleHold: { value: style.twinkleHold },
-      uTwinkleSpeed: { value: style.twinkleSpeed },
-      uIntensity: { value: style.intensity },
-      uRight: { value: right },
-      uUp: { value: up },
-      uColorTail: { value: new THREE.Color(SHAPE_COLOR_TAIL) },
-      uColorHead: { value: new THREE.Color(SHAPE_COLOR_HEAD) },
-      uColorEye: { value: new THREE.Color(SHAPE_COLOR_EYE) },
-    },
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-
-  const points = new THREE.Points(geometry, material);
-  points.frustumCulled = false;
-  return { points, progress, delay: 0, life: style.life };
-};
-
-// ---------------------------------------------------------------------------
-// API
-// ---------------------------------------------------------------------------
-
-/** Các lớp của quả thường. Crackle có thêm lớp vụ nổ con. */
-const buildRegularLayers = (type: RegularBurstType, opts: BurstOptions, rand: Rand): Layer[] => {
-  const style = BURST_STYLE[type];
-  const color = new THREE.Color(opts.color);
-  const dirs = burstDirections(type, style.count, rand);
-  const speeds = makeSpeeds(style, rand);
-  const layers: Layer[] = [buildLayer(style, dirs, speeds, null, 0, color, opts.pixelRatio, rand)];
-
-  if (style.sub) {
-    const sub = style.sub;
-    const parents = parentPositionsAt(style, dirs, speeds, sub.delay);
-    const origins = new Float32Array(sub.count * 3);
-    for (let i = 0; i < sub.count; i++) {
-      const p = i % style.count;
-      origins[i * 3] = parents[p * 3];
-      origins[i * 3 + 1] = parents[p * 3 + 1];
-      origins[i * 3 + 2] = parents[p * 3 + 2];
-    }
-    layers.push(buildLayer(sub, sphereDirections(sub.count, rand), makeSpeeds(sub, rand), origins, sub.delay, color, opts.pixelRatio, rand));
-  }
-  return layers;
-};
-
-/** Tạo 1 quả pháo nổ tại (x, y, z) và thêm vào scene. Crackle tự quản lý vụ nổ con bên trong. */
-export const createBurst = (scene: THREE.Scene, opts: BurstOptions, rand: Rand = Math.random): ShaderBurst => {
-  const type = opts.type;
-  const layers: Layer[] = isShapeType(type)
-    ? [buildShapeLayer(SHAPE_STYLE[type], opts.camera, opts.pixelRatio, rand)]
-    : buildRegularLayers(type, opts, rand);
-
-  let duration = 0;
-  for (let i = 0; i < layers.length; i++) {
-    const l = layers[i];
-    l.points.position.set(opts.x, opts.y, opts.z);
-    l.points.visible = l.delay <= 0;
-    scene.add(l.points);
-    duration = Math.max(duration, l.delay + l.life);
-  }
-
-  let elapsed = 0;
-  let disposed = false;
-
+export function createFireworks(scene: THREE.Scene, renderer: THREE.WebGLRenderer, groundY: (x: number, z: number) => number,
+  onCue?: FireworkCue) {
+  const pending: Shot[] = [];
+  const active: { batch: Batch; rocket?: Shot }[] = [];
+  const launchers: { group: THREE.Group; life: number }[] = [];
+  let launcherModel: THREE.Group | undefined;
+  const add = (b: Batch, x: number, y: number, z: number, age: number, rocket?: Shot) => {
+    if (age >= b.life) { b.points.geometry.dispose(); b.points.material.dispose(); return; }
+    b.points.name = rocket ? 'firework-rocket' : 'firework-burst';
+    b.points.position.set(x, y, z); b.age = age; b.points.material.uniforms.uTime.value = age;
+    scene.add(b.points); active.push({ batch: b, rocket });
+  };
+  const launch = (s: Shot, age: number) => {
+    const dpr = renderer.getPixelRatio();
+    const b = batch(1, ROCKET_TIME, s.palette, dpr, (emit) => {
+      emit(0, 0, 0, s.dx, s.rise, s.dz, 1.5, ROCKET_TIME, 0, 1.15, 0, 0, .2, 18);
+      for (let i = 0; i < 4; i++) emit(0, 0, 0, s.dx, s.rise, s.dz, .65, ROCKET_TIME, 0, .82, i * TAU / 4, 0, .28, 10);
+    });
+    add(b, s.x, s.y, s.z, age, s);
+    if (age < .18) onCue?.('launch', s.x, s.z, s.strength, false);
+  };
+  const explode = (s: Shot, age: number) => {
+    const x = s.x + s.dx, z = s.z + s.dz;
+    add(makeFireworkBurst(s.kind, s.palette, renderer.getPixelRatio()), x, s.y + s.rise, z, age);
+    if (age < .18) onCue?.('burst', x, z, s.strength, s.kind === 'crackle');
+  };
   return {
-    update(dt: number): boolean {
-      elapsed += dt;
-      for (let i = 0; i < layers.length; i++) {
-        const l = layers[i];
-        const local = elapsed - l.delay;
-        if (local < 0) continue;
-        l.points.visible = true;
-        l.progress.value = Math.min(1, local / l.life);
+    spawn(x: number, z: number, size: FireworkSize) {
+      const cfg = FIREWORKS[size], gap = cfg.intervalMs / 1000;
+      const count = cfg.shells + (size === 'dragon' ? 3 : 0);
+      const ground = groundY(x, z);
+      launcherModel ??= makeLauncher();
+      const group = launcherModel.clone();
+      group.position.set(x, ground, z);
+      scene.add(group);
+      launchers.push({ group, life: cfg.lockMs / 1000 });
+      for (let i = 0; i < count; i++) {
+        const finale = i >= cfg.shells;
+        const kind = size === 'dragon' ? (SHOW_ORDER[i] ?? 'sphere')
+          : i === 0 || i === cfg.shells - 1 ? 'sphere' : (['ring', 'willow', 'crackle'] as const)[(i - 1) % 3];
+        const wide = finale ? 5.2 : 3.6;
+        const isShape = kind === 'dragon' || kind === 'phoenix';
+        const ox = (i % 3 - 1) * .24, oz = (Math.floor(i / 3) % 3 - 1) * .19;
+        const shot: Shot = { x: x + ox, z: z + oz, y: ground + .477,
+          dx: isShape ? -ox : (Math.random() - .5) * wide,
+          dz: isShape ? -oz : (Math.random() - .5) * wide,
+          rise: isShape ? 3.22 : 4.3 + Math.random() * .58,
+          delay: finale ? (cfg.shells - 1) * gap + SHAPE_LIFE + (i - cfg.shells) * .24 : i * gap,
+          kind, palette: PALETTES[i % PALETTES.length], strength: isShape ? 1 : finale ? .72 : size === 'small' ? .62 : .86 };
+        if (i === 0) launch(shot, 0);
+        else pending.push(shot);
       }
-      return elapsed < duration;
     },
-    dispose(): void {
-      if (disposed) return;
-      disposed = true;
-      for (let i = 0; i < layers.length; i++) {
-        const l = layers[i];
-        scene.remove(l.points);
-        l.points.geometry.dispose();
-        l.points.material.dispose();
+    update(dt: number) {
+      for (let i = launchers.length - 1; i >= 0; i--) {
+        const box = launchers[i];
+        box.life -= dt;
+        if (box.life > 0) continue;
+        scene.remove(box.group);
+        launchers.splice(i, 1);
       }
+      for (let i = active.length - 1; i >= 0; i--) {
+        const { batch: b, rocket: s } = active[i];
+        b.age += dt;
+        if (b.age < b.life) { b.points.material.uniforms.uTime.value = b.age; continue; }
+        scene.remove(b.points); b.points.geometry.dispose(); b.points.material.dispose(); active.splice(i, 1);
+        if (s) explode(s, b.age - b.life);
+      }
+      for (let i = pending.length - 1; i >= 0; i--) {
+        const s = pending[i]; s.delay -= dt;
+        if (s.delay > 0) continue;
+        pending.splice(i, 1);
+        const age = -s.delay;
+        if (age < ROCKET_TIME) launch(s, age);
+        else explode(s, age - ROCKET_TIME);
+      }
+    },
+    clear() {
+      for (const { batch: b } of active) {
+        scene.remove(b.points); b.points.geometry.dispose(); b.points.material.dispose();
+      }
+      for (const { group } of launchers) scene.remove(group);
+      active.length = pending.length = launchers.length = 0;
     },
   };
-};
+}

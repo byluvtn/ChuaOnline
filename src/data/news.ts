@@ -5,9 +5,18 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 133;
+export const LATEST_NEWS_ID = 134;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Pháo hoa rồng phượng: vảy sáng và cánh lửa',
+    date: '2026-11-18',
+    items: [
+      'Rồng hiện dần từ đầu tới đuôi, có sừng, râu và vảy sáng. Phượng xòe cánh nhiều lớp, vỗ nhẹ rồi tan thành tro sáng. Nét vẽ đậm hơn để dễ nhìn cả ban ngày.',
+      'Hộp pháo đặt sát mặt sân. Từng quả bay lên từ hộp với tiếng phóng và tiếng nổ khớp hiệu ứng. Kiểu lách tách có thêm tiếng nổ nhỏ nối tiếp.',
+      'Giá và số quả chính không đổi. Loạt pháo kết đợi phượng tan để không che mất cánh và đuôi.',
+    ],
+  },
   {
     title: 'Lối đi thoáng hơn, Chùa Ngọc lùi về phía Bắc',
     date: '2026-11-18',
