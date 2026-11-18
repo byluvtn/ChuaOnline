@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LAKE, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS, BAO_THAP } from './layout';
+import { LAKE, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS, BAO_THAP, MAIN_COURT, nearWalkway } from './layout';
 import { stoneTexture, vietnameseColumnTexture } from './textures';
 import { loadModel } from './models';
 
@@ -215,20 +215,39 @@ export function removeSolidGrassClumps(scene: THREE.Object3D): number {
   return doomed.length;
 }
 
-/**
- * Keep the old courtyard paved; the expansion uses planted ground and local paths.
- */
+const PAVING_REPEAT = 12;
+let sharedPaving: THREE.MeshStandardMaterial | undefined;
+
+/** One stone pattern with world-aligned joints, including at path intersections. */
+export function pavingMaterial(): THREE.MeshStandardMaterial {
+  if (!sharedPaving) sharedPaving = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.82,
+    map: stoneTexture([178, 170, 156], [1, 1], 8),
+  });
+  return sharedPaving;
+}
+
+export function pavingRect(x0: number, z0: number, x1: number, z1: number, y = 0.055): THREE.Mesh {
+  const w = x1 - x0, d = z1 - z0;
+  const geo = new THREE.PlaneGeometry(w, d);
+  const uv = geo.getAttribute('uv');
+  for (let i = 0; i < uv.count; i++) {
+    const vx = geo.getAttribute('position').getX(i), vy = geo.getAttribute('position').getY(i);
+    uv.setXY(i, ((x0 + x1) / 2 + vx) / PAVING_REPEAT, (vy - (z0 + z1) / 2) / PAVING_REPEAT);
+  }
+  const m = new THREE.Mesh(geo, pavingMaterial());
+  m.rotation.x = -Math.PI / 2;
+  m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
+  m.receiveShadow = true;
+  return m;
+}
+
+/** Pave the inner gathering court; leave the garden and outer campus planted. */
 export function paveCompound(scene: THREE.Scene, opts: { y?: number; material?: THREE.Material } = {}) {
   const y = opts.y ?? 0.045;
-  const tileM = opts.material ?? new THREE.MeshStandardMaterial({
-    color: 0xffffff, roughness: 0.72, metalness: 0,
-    map: stoneTexture([178, 170, 156], [26, 26], 8),
-  });
-  const pave = new THREE.Mesh(new THREE.PlaneGeometry(122, 125), tileM);
+  const pave = pavingRect(...MAIN_COURT, y);
+  if (opts.material) pave.material = opts.material;
   pave.name = 'compound-paving';
-  pave.rotation.x = -Math.PI / 2;
-  pave.position.set(0, y, -18.5);
-  pave.receiveShadow = true;
   scene.add(pave);
 
   // thảm cỏ phẳng (không khối) quanh hồ sen và sau chánh điện
@@ -358,6 +377,7 @@ export function buildZenGarden(g: GardenCtx) {
   const boo = g.lamb(0x7fae5a), leaf = g.lamb(0x4e9a3d, { flatShading: true, side: THREE.DoubleSide });
   const leafGeo = new THREE.SphereGeometry(0.55, 7, 5);
   const clump = (x: number, z: number, seed: number) => {
+    if (nearWalkway(x, z, 1.2)) return;
     const c = new THREE.Group();
     for (let i = 0; i < 5; i++) {
       const h = 4 + ((seed * 7 + i * 13) % 20) / 10, a = i * 2.4 + seed;
@@ -384,6 +404,7 @@ export function buildZenGarden(g: GardenCtx) {
   const trunkM = g.lamb(0x5a3d22), crownM = g.lamb(0x3f8a3e, { flatShading: true });
   for (let i = 0; i < 4; i++) {
     const a = i === 3 ? (250 * Math.PI) / 180 : (i / 4) * Math.PI * 2 + Math.PI / 4, x = cx + Math.cos(a) * 5.4, z = cz + Math.sin(a) * 5.4;
+    if (nearWalkway(x, z, 0.95)) continue;
     const b = new THREE.Group();
     const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.8, 12), g.stoneM); ped.position.y = 0.4; ped.castShadow = ped.receiveShadow = true; b.add(ped);
     const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.3, 0.3, 12), g.lamb(0x9a5a3a)); pot.position.y = 0.95; b.add(pot);
@@ -507,6 +528,7 @@ export function buildRestArea(g: GardenCtx) {
   const canopyMs = [g.lamb(0x3f8a3e, { flatShading: true }), g.lamb(0x4e9c45, { flatShading: true }), g.lamb(0x2f7a40, { flatShading: true })];
   for (let i = 0; i < 3; i++) {
     const a = -Math.PI / 2 + (i * Math.PI * 2) / 3, x = cx + Math.cos(a) * 4.2, z = cz + Math.sin(a) * 4.2;
+    if (nearWalkway(x, z, 1.1)) continue;
     const t = new THREE.Group();
     const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.5, 5.8, 10), trunkM); tr.position.y = 2.9; tr.castShadow = true; t.add(tr);
     const parts: [number, number, number, number][] = [[0, 6.6, 0, 2.5], [1.3, 6.4, 0.5, 1.9], [-1.2, 6.5, -0.6, 2.0], [0.2, 7.6, 0.3, 1.7]];

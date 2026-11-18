@@ -15,16 +15,18 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, RIVER, TINH_THAT,
+  BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NORTH_WALK_Z, RIVER, TINH_THAT,
   expansionGroundY, ngocStepProfile,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
 import { fitModel, loadModel } from './models';
 import { grassTexture, glowTexture, signTexture, stoneTexture, woodTexture } from './textures';
+import { pavingMaterial } from './compound';
+import { nearWalkway } from './layout';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const MAT_KEYS = [
-  'stone', 'stoneDark', 'granite', 'graniteDark', 'tile', 'red', 'gold', 'wall', 'wood', 'darkWood',
+  'stone', 'paving', 'stoneDark', 'granite', 'graniteDark', 'tile', 'red', 'gold', 'wall', 'wood', 'darkWood',
   'trunk', 'pine', 'bamboo', 'bambooLeaf', 'leaf', 'veg', 'soil', 'flowerA', 'flowerB', 'flowerC',
   'pad', 'lamp', 'rock', 'dark',
 ] as const;
@@ -104,7 +106,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
   const grassM = c.lamb(0x6d8548, { map: grassTexture([24, 12]) });
 
   const materials: Record<MatKey, THREE.Material> = {
-    stone: stoneM, stoneDark: stoneDarkM, granite: graniteM, graniteDark: graniteDarkM,
+    stone: stoneM, paving: pavingMaterial(), stoneDark: stoneDarkM, granite: graniteM, graniteDark: graniteDarkM,
     tile: c.tileM, red: c.redM, gold: c.goldM, wall: c.wallM, wood: woodM, darkWood: darkWoodM,
     trunk: trunkM, pine: pineM, bamboo: bambooStemM, bambooLeaf: bambooLeafM, leaf: leafM,
     veg: vegM, soil: soilM, flowerA: flowerAM, flowerB: flowerBM, flowerC: flowerCM,
@@ -138,6 +140,14 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
   const ONE = new THREE.Vector3(1, 1, 1);
 
   const put = (key: MatKey, g: THREE.BufferGeometry, x: number, y: number, z: number, ry = 0) => {
+    if (key === 'paving') {
+      const pos = g.getAttribute('position'), normal = g.getAttribute('normal'), uv = g.getAttribute('uv');
+      for (let i = 0; i < pos.count; i++) if (normal.getY(i) > 0.5) {
+        const px = pos.getX(i), pz = pos.getZ(i);
+        uv.setXY(i, (x + Math.cos(ry) * px + Math.sin(ry) * pz) / 12,
+          -(z - Math.sin(ry) * px + Math.cos(ry) * pz) / 12);
+      }
+    }
     me.set(0, ry, 0);
     mq.setFromEuler(me);
     mPos.set(x, y, z);
@@ -322,7 +332,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
   {
     // Cầu đá ngang hồ: x -90..-66 tại z = 2, mặt cầu y = 0.28 (khớp groundYBase)
     const zc = 2, y = 0.28;
-    addBox('stone', 24, 0.24, 2.8, -78, y - 0.12, zc);
+    addBox('paving', 24, 0.24, 2.8, -78, y - 0.12, zc);
     for (const s of [-1, 1]) {
       addBox('stone', 24, 0.42, 0.2, -78, y + 0.21, zc + s * 1.4);
       for (let px = -88; px <= -68; px += 2) addBox('stoneDark', 0.26, 0.62, 0.26, px, y + 0.28, zc + s * 1.4);
@@ -479,12 +489,12 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
     }
     for (const p of ringPts) {
       if (nearRoad(p.x, p.z, 2.1)) continue;
-      addBox('stone', 1.7, 0.12, 1.7, p.x, 0.06, p.z);
+      addBox('paving', 1.7, 0.12, 1.7, p.x, 0.06, p.z);
     }
     // nhánh nối điểm trúc vào cạnh Bắc của vòng
     for (let i = 0; i <= 2; i++) {
       const t = i / 2;
-      addBox('stone', 1.5, 0.12, 1.5, cx, 0.06, cz + (z1 - cz) * t);
+      addBox('paving', 1.5, 0.12, 1.5, cx, 0.06, cz + (z1 - cz) * t);
     }
     // ghế nghỉ bốn phía, quay vào trong vòng
     const seatSpots: [number, number, number][] = [
@@ -500,13 +510,13 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
     let placed = 0;
     for (let i = 0; i < 560 && placed < 78; i++) {
       const x = 70.5 + rand() * 19, z = -19.4 + rand() * 33;
-      if (nearRoad(x, z, 2.9)) continue;
+      if (nearRoad(x, z, 2.9) || nearWalkway(x, z, 1.2)) continue;
       let skip = false;
       for (const p of ringPts) if (Math.hypot(x - p.x, z - p.z) < 2.0) { skip = true; break; }
       if (skip) continue;
       for (const [sx, sz] of seatSpots) if (Math.hypot(x - sx, z - sz) < 1.8) { skip = true; break; }
       if (skip) continue;
-      if (Math.abs(x - cx) < 1.9 && z > z1 - 0.4 && z < cz + 0.6) continue; // nhánh nối
+      if (distToSeg(x, z, cx, cz, cx, z1) < 1.9) continue; // nhánh nối
       placed++;
       for (let k = 0; k < 3; k++) {
         const ox = (rand() - 0.5) * 0.9, oz = (rand() - 0.5) * 0.9;
@@ -624,14 +634,14 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
         addBox('stoneDark', 0.26, 0.14, 0.3, bx + nx, 0.07, bz2 + nz);
       }
     }
-    for (const [tx, tz] of [[72.6, 26.6], [86.6, 26.0], [83, 17.6]] as const) {
+    for (const [tx, tz] of [[72.6, 26.6], [86.6, 26.0], [84, 17.6]] as const) {
       placeTree('oak-natural', tx, tz, 5.9);
       solid(tx, tz, 0.55);
     }
     // lối lát từ bờ sông vào vườn
     for (let i = 0; i < 12; i++) {
       const t = i / 11;
-      addBox('stone', 1.5, 0.1, 1.5, 71.6 + t * 6.4, 0.05, 14.6 + t * 7.2);
+      addBox('paving', 1.5, 0.1, 1.5, 71.6 + t * 6.4, 0.05, 14.6 + t * 7.2);
     }
     addSign('VƯỜN HOA', 2.4, 0.6, 70.6, 1.1, 20.4, -Math.PI / 2);
     zones.push({ x: cx, z: cz, r: 12, id: 'vuonHoa' });
@@ -652,7 +662,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
     }
     for (const bz of bridges) {
       // mặt cầu y = 0.28 khớp groundYBase (x 60.5..69.5)
-      addBox('stone', 10.6, 0.24, 2.8, RIVER.x, 0.16, bz);
+      addBox('paving', 10.6, 0.24, 2.8, RIVER.x, 0.16, bz);
       for (const s of [-1, 1]) {
         addBox('stone', 6, 0.42, 0.2, RIVER.x, 0.28 + 0.21, bz + s * bridgeHalf);
         for (let px = 62.2; px <= 67.8; px += 1.4) addBox('stoneDark', 0.24, 0.6, 0.24, px, 0.28 + 0.28, bz + s * bridgeHalf);
@@ -664,7 +674,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
     // đường thiền hành ven sông (bờ Đông), chừa hai đầu cầu
     for (let pz = -30; pz <= 12; pz += 2.2) {
       if (bridges.some((bz) => Math.abs(pz - bz) < 2.8)) continue;
-      addBox('stone', 1.2, 0.1, 1.2, x1 + 1.6, 0.05, pz);
+      addBox('paving', 1.2, 0.1, 1.2, x1 + 1.6, 0.05, pz);
     }
     for (let i = 0; i < 28; i++) {
       const t = (i / 28) * Math.PI * 2;
@@ -706,14 +716,14 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
   }
 
   // =====================================================================================
-  // 9. Chùa Ngọc: granite 3 tầng, ~7,5 m, trên đỉnh (0,-112); bàn thờ z = -115
+  // 9. Chùa Ngọc: granite 3 tầng trên đỉnh thang
   // =====================================================================================
   {
     const sx = NGOC.x, sz = NGOC.z, sy = NGOC.y;
-    // bệ đá giữ đỉnh đồi (mặt trên = 6), ăn xuống sườn Bắc tới z -117,6
+    // bệ đá giữ đỉnh đồi (mặt trên = 6)
     addBox('granite', 6.6, 5.2, 5.6, sx, sy - 2.62, sz - 2.8);
     addBox('graniteDark', 7.0, 0.22, 6.0, sx, sy - 0.09, sz - 2.8);
-    const bodyZ = -114.9, entryZ = -112.9;
+    const bodyZ = sz - 2.9, entryZ = sz - 0.9, altarZ = sz - 3.05;
     const colH = 2.7;
     for (const ox of [-2.2, 2.2]) for (const oz of [-1.5, 1.5]) {
       addCyl('granite', 0.26, 0.3, colH, 8, sx + ox, sy + colH / 2, bodyZ + oz);
@@ -739,13 +749,12 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
     addCyl('granite', 0.24, 0.3, 0.6, 8, sx, 12.9, bodyZ);
     addSphere('gold', 0.22, sx, 13.25, bodyZ);
     addCone('gold', 0.12, 0.55, 6, sx, 13.6, bodyZ); // đỉnh ~13,9 → cao 7,9 m trên đỉnh đồi
-    // bàn thờ trong chùa tại z = -115 (thang kết thúc ở z = -112)
-    addBox('graniteDark', 3.0, 0.9, 0.9, sx, sy + 0.45, -115.05);
-    addBox('gold', 2.6, 0.08, 0.75, sx, sy + 0.93, -115.05);
-    solid(sx, -115.05, 1.1);
+    addBox('graniteDark', 3.0, 0.9, 0.9, sx, sy + 0.45, altarZ);
+    addBox('gold', 2.6, 0.08, 0.75, sx, sy + 0.93, altarZ);
+    solid(sx, altarZ, 1.1);
     const statue = buildBuddha();
     statue.scale.setScalar(0.34);
-    statue.position.set(sx, sy + 0.98, -115.05);
+    statue.position.set(sx, sy + 0.98, altarZ);
     statue.name = 'expansion-buddha-ngoc';
     for (const s of [-1, 1]) {
       addBox('graniteDark', 0.34, 0.75, 0.34, sx + s * 1.5, sy + 0.38, entryZ + 0.4);
@@ -803,7 +812,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
       for (let i = 0; i <= n; i++) {
         const t = i / n;
         const px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
-        addBox('stone', 1.35, 0.1, 1.35, px, expansionGroundY(px, pz) + 0.05, pz);
+        addBox('paving', 1.35, 0.1, 1.35, px, expansionGroundY(px, pz) + 0.05, pz);
       }
     }
 
@@ -845,11 +854,11 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
       }
       solid(px, pz, 0.42);
     }
-    // cây chắn hậu cảnh phía Bắc (z -118..-121)
+    // Move the screen of trees behind the new summit, off its landing.
     const rand2 = rng(88991);
     for (let i = 0; i < 30; i++) {
       const px = -37 + rand2() * 74;
-      const pz = -118.2 - rand2() * 2.6;
+      const pz = NGOC.stairTop - 6.2 - rand2() * 2.6;
       const h = 6.0 + rand2() * 3.4;
       addCyl('trunk', 0.22, 0.36, h * 0.45, 6, px, h * 0.225, pz);
       for (let k = 0; k < 3; k++) {
@@ -863,13 +872,15 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[] } {
 
   // ---- địa hình đồi: lưới cao độ dựng từ expansionGroundY (dải thang hạ thấp 8 cm) ----
   {
-    const geo = new THREE.PlaneGeometry(80, 36, 54, 24);
+    const hillSouth = NORTH_WALK_Z, hillNorth = NGOC.stairStart - 36;
+    const geo = new THREE.PlaneGeometry(80, hillSouth - hillNorth, 54, 32);
     geo.rotateX(-Math.PI / 2);
-    geo.translate(0, 0, -100);
+    geo.translate(0, 0, (hillSouth + hillNorth) / 2);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i);
-      let y = expansionGroundY(x, z);
+      // Sink the flat edge below the main grass plane to avoid flickering at the foot of the hill.
+      let y = expansionGroundY(x, z) - 0.02;
       // dải thang giữa: hạ 8 cm để bậc đá không bị cỏ xuyên qua, vẫn liền với hai bên sườn
       if (Math.abs(x) <= 2.95 && z <= NGOC.stairStart && z >= NGOC.stairTop) y -= 0.08;
       pos.setY(i, y);

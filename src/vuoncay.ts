@@ -209,7 +209,7 @@ export function buildVuonCay(scene: THREE.Scene, colliders: Collider[]): void {
   };
   tree(-43.1, 14.3);
   tree(-42.5, 12.7);
-  tree(-57, 25);
+  tree(-55.8, 25);
 
   // ---- Bảng đếm ----
   for (const sx of [-0.7, 0.7]) {

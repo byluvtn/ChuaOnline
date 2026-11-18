@@ -1,5 +1,6 @@
 import type { ActionKind } from './types';
 import { ictDayOfYear } from './time.js';
+import { NGOC } from './campus.js';
 
 export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: number; boostItems?: string[] }> = {
   incense: { merit: 1, cooldownMs: 3000, boostItems: ['huong_tram'] },
@@ -332,7 +333,7 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'dq_bell', label: 'Thỉnh chuông', event: 'talk', target: 2, coins: 15, merit: 8, giver: 'npc37', receiver: 'npc4', steps: ['talk', 'deliver'] },
   { id: 'dq_meditate', label: 'Thiền 2 phút', event: 'meditate', target: 12, coins: 30, merit: 15, giver: 'npc37', zone: Z_THIEN_DUONG },
   { id: 'dq_water', label: 'Tưới 1 cây trong vườn', event: 'water', target: 1, coins: 20, merit: 9, giver: 'npc37' },
-  { id: 'nq_ngoc_pilgrimage', label: 'Hành hương lên Chùa Ngọc', event: 'visit', target: 1, coins: 30, merit: 20, giver: 'npc1', zone: { x: 0, z: -112, r: 2 } },
+  { id: 'nq_ngoc_pilgrimage', label: 'Hành hương lên Chùa Ngọc', event: 'visit', target: 1, coins: 30, merit: 20, giver: 'npc1', zone: { x: NGOC.x, z: NGOC.z, r: 2 } },
   { id: 'nq_bamboo_walk', label: 'Thiền hành trong rừng trúc', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 80, z: -8, r: 3 } },
   { id: 'nq_river_walk', label: 'Thiền hành bên sông Đông', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 69, z: -20, r: 2 } },
   { id: 'nq_duocsu_prayer', label: 'Dâng đèn cầu an tại Điện Dược Sư', event: 'lantern', target: 1, coins: 20, merit: 15, giver: 'npc1', zone: { x: 77, z: -38, r: 6 } },

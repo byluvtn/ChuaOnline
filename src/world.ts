@@ -7,7 +7,7 @@ import { fitModel, loadModel } from './models';
 import { paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
 import { glowTexture, grassTexture, petalTexture, signTexture, signTexture2Lines, stoneTexture } from './textures';
 import { geo, outlined, toon } from './toon';
-import { blocked, LAKE, HALL, LOTUS, RIVER, DUOC_SU } from './layout';
+import { blocked, nearWalkway, LAKE, HALL, LOTUS, RIVER, DUOC_SU } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
 import { buildSeatedBuddhaStatue } from './statue-scan';
 import { buildGarden } from './garden';
@@ -179,13 +179,6 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  const pave = stoneTexture([150, 144, 134], [3, 14]);
-  // Lối đi chính: tấm lát paveCompound phủ tới z=44, chỉ còn dải 1m từ mép tấm lát ra tới cổng
-  const pathS = new THREE.Mesh(new THREE.PlaneGeometry(6, 1), lamb(0xffffff, { map: pave }));
-  pathS.rotation.x = -Math.PI / 2;
-  pathS.position.set(0, 0.02, 44.5);
-  pathS.receiveShadow = true; scene.add(pathS);
-
   const stoneM = lamb(0xcfc4ae, { map: stoneTexture([200, 192, 174], [4, 1]) });
   void stoneM;
   const redM = lamb(0xa8281a, { roughness: 0.6 });
@@ -227,15 +220,16 @@ export function createWorld(renderer: THREE.WebGLRenderer): World {
   const treeSpots: { x: number; z: number; s: number; v: number }[] = [];
   for (let i = 0; i < 400 && treeSpots.length < 90; i++) {
     const x = (rngSeed(i) - 0.5) * 2 * (MAP_HALF + 24), z = (rngSeed(i + 100) - 0.5) * 2 * (MAP_HALF + 24);
-    if (blocked(x, z)) continue;
+    const s = 0.85 + rngSeed(i + 7) * 0.9;
+    if (blocked(x, z) || nearWalkway(x, z, 1.25 * s)) continue;
     // Vườn Cây: không scatter cây trong rào (x −55..−41, z 11..23); cây góc dời ra
-    // (−57,25) — giữ trống quanh đó để khỏi trồng đè; cây góc cũ (−53.7,23.4) là
+    // (−55.8,25) — giữ trống quanh đó để khỏi trồng đè; cây góc cũ (−53.7,23.4) là
     // scatter i=138, nằm ngoài rect 0.4 m nên loại riêng bằng bán kính (cây bóng mát
     // trong vườn do vuoncay.ts trồng cố định, không qua scatter).
     if (x >= -55 && x <= -41 && z >= 11 && z <= 23) continue;
-    if (Math.hypot(x + 57, z - 25) < 2) continue;
+    if (Math.hypot(x + 55.8, z - 25) < 2) continue;
     if (Math.hypot(x + 53.7, z - 23.4) < 2) continue;
-    treeSpots.push({ x, z, s: 0.85 + rngSeed(i + 7) * 0.9, v: i % 4 });
+    treeSpots.push({ x, z, s, v: i % 4 });
   }
   treeSpots.forEach(({ x, z, s, v }) => {
     if (v === 3) return;

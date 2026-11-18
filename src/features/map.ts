@@ -2,7 +2,7 @@ import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 import { PLACES, type Place } from '../data/places';
-import { LOTUS, RIVER, DUOC_SU, NGOC, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
+import { LOTUS, RIVER, DUOC_SU, NGOC, NGOC_APPROACH, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
 export function openMap(ctx: MenuCtx) {
   openCustomPanel('Bản đồ chùa', (body) => {
@@ -11,7 +11,7 @@ export function openMap(ctx: MenuCtx) {
     const cv = h('canvas', { class: 'tmap', width: SIZE * dpr, height: SIZE * dpr, 'aria-label': 'Bản đồ chùa, bấm vào địa điểm để đi tới' });
     const g = cv.getContext('2d')!;
     const PAD = 16 * dpr;
-    const MX0 = -100, MX1 = 100, MZ0 = -128, MZ1 = 68;
+    const MX0 = -100, MX1 = 100, MZ0 = WALL.zN - 6, MZ1 = 68;
     const k = (SIZE * dpr - PAD * 2) / Math.max(MX1 - MX0, MZ1 - MZ0);
     const OX = (SIZE * dpr - (MX1 - MX0) * k) / 2, OZ = (SIZE * dpr - (MZ1 - MZ0) * k) / 2;
     const X = (x: number) => (x - MX0) * k + OX;
@@ -52,8 +52,10 @@ export function openMap(ctx: MenuCtx) {
       // Expansion: no circular plaza remains under the enlarged koi pond.
       rect(-92, PATH_Z - 1.1, 92, PATH_Z + 1.1, '#e8d6a4');
       for (const side of [-1, 1]) rect(side * 92 - 1, -0.2, side * 92 + 1, 4.2, '#e8d6a4');
-      ellipse(0, -103, 40, 18, '#a8bf8e', '#7d9b6c');
-      rect(-NGOC.stairHalf, -112, NGOC.stairHalf, -82, '#d4d1bd', '#8b9684');
+      ellipse(NGOC.x, NGOC.stairStart - 18, 40, 18, '#a8bf8e', '#7d9b6c');
+      rect(...NGOC_APPROACH, '#e8d6a4');
+      rect(-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2, '#e8d6a4');
+      rect(NGOC.x - NGOC.stairHalf, NGOC.stairTop, NGOC.x + NGOC.stairHalf, NGOC.stairStart, '#d4d1bd', '#8b9684');
       ellipse(LOTUS.x, LOTUS.z, LOTUS.a, LOTUS.b, '#8ec6e0', '#4f8fb0');
       rect(-90, 0.9, -66, 3.1, '#d9c6a2', '#8a8270');
       rect(RIVER.x0, RIVER.z0, RIVER.x1, RIVER.z1, '#8ec6e0', '#4f8fb0');

@@ -13,11 +13,12 @@ export default async ({ ev, sleep, send, shot }) => {
   const sceneCounts = await ev(`(()=>{let meshes=0,triangles=0;window.__co.world.scene.traverse(o=>{if(o.isMesh){meshes++;triangles+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1)}});return {meshes,triangles}})()`);
   const geometry = await ev(`(()=>{const {world,THREE}=window.__co;const root=world.scene.getObjectByName('expansion');if(!root)throw new Error('No expansion group');return root.children.map(g=>{let meshes=0,triangles=0;g.traverse(o=>{if(o.isMesh){meshes++;triangles+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3*(o.isInstancedMesh?o.count:1)}});return {name:g.name,meshes,triangles}})})()`);
   console.log('EXPANSION_GEOMETRY', JSON.stringify(geometry));
-  const walkResults = await ev(`(()=>{
+  const walkResults = await ev(`(async()=>{
+    const {NGOC,NORTH_WALK_Z}=await import('/shared/campus.ts');
     const {world,THREE,collide,pathfinder}=window.__co;
     const legs=[
       ['lotus bridge',-90,2,-66,2],['east bridge',60,2,72,2],['river north bridge',60,-38,69,-38],
-      ['west gate',-90,2,-96,2],['east gate',90,2,96,2],['ngoc stairs',0,-82,0,-112]
+      ['west gate',-90,2,-96,2],['east gate',90,2,96,2],['ngoc stairs',NGOC.x,NORTH_WALK_Z,NGOC.x,NGOC.stairTop]
     ];
     return legs.map(([name,x0,z0,x1,z1])=>{
       let maxPush=0,minClearance=Infinity,heightJump=0,lastY=world.groundY(x0,z0),samples=0;
@@ -34,7 +35,7 @@ export default async ({ ev, sleep, send, shot }) => {
   console.log('EXPANSION_WALK', JSON.stringify(walkResults));
   const bad = walkResults.filter(r => r.maxPush > 0.06 || r.minClearance < -0.02);
   console.log('EXPANSION_WALK_FAILURES', JSON.stringify(bad));
-  const routes = await ev(`(()=>{const {pathfinder}=window.__co;const targets=[['farm',-76,-42],['lotus',-78,2],['bamboo',80,-8],['duocsu',77,-32],['flowers',79,28],['ngoc',0,-112],['cave',-26,-102],['cemetery',50,-90],['tangxa',-64,-69.5],['riverwalk',69,-20]];return targets.map(([name,x,z])=>{const path=pathfinder.findPath({x:0,z:30},{x,z});let from={x:0,z:30},clear=true;for(const p of path){clear=clear&&pathfinder.segmentClear(from.x,from.z,p.x,p.z);from=p}return {name,points:path.length,fallback:pathfinder.lastFallback,clear,end:path.at(-1)}})})()`);
+  const routes = await ev(`(async()=>{const {NGOC}=await import('/shared/campus.ts');const {pathfinder}=window.__co;const targets=[['farm',-76,-42],['lotus',-78,2],['bamboo',80,-8],['duocsu',77,-32],['flowers',79,28],['ngoc',NGOC.x,NGOC.z],['cave',-26,-102],['cemetery',50,-90],['tangxa',-64,-69.5],['riverwalk',69,-20]];return targets.map(([name,x,z])=>{const path=pathfinder.findPath({x:0,z:30},{x,z});let from={x:0,z:30},clear=true;for(const p of path){clear=clear&&pathfinder.segmentClear(from.x,from.z,p.x,p.z);from=p}return {name,points:path.length,fallback:pathfinder.lastFallback,clear,end:path.at(-1)}})})()`);
   console.log('EXPANSION_ROUTES', JSON.stringify(routes));
    await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
    await ev(`(()=>{const c=window.__co;c.renderer.setSize(1280,800,false);c.camera.aspect=1280/800;c.camera.updateProjectionMatrix()})()`);
@@ -49,7 +50,7 @@ export default async ({ ev, sleep, send, shot }) => {
     ['bamboo',[101,17,19],[80,0,-3]],
     ['duocsu',[94,17,-18],[77,2,-38]],
     ['flowers',[101,17,44],[79,0,28]],
-    ['ngoc',[13,19,-92],[0,8,-112]],
+    ['ngoc',[13,19,-100],[0,8,-120]],
     ['cave',[-43,14,-86],[-26,4,-104]],
     ['pine',[47,20,-80],[25,4,-102]],
     ['cemetery',[68,18,-74],[50,1,-94]],

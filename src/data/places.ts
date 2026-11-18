@@ -1,4 +1,5 @@
 import { BAO_THAP, BELL, DRUM, BRIDGE, BUDDHA_YARD, DECK, HALL, LAKE, PAGODA, PLAZA, QUAN, TAM_THE, THIEN_DUONG, VUON_THAP, WALL, ZEN, PHONG_CD, REST, TANG_XA } from '../layout';
+import { NGOC } from '../../shared/campus';
 
 export interface Place { name: string; x: number; z: number; r: number; ly?: number }
 
@@ -36,7 +37,7 @@ export const PLACES: Place[] = [
   { name: 'Đình ngắm sen', x: -70, z: 5, r: 3 },
   { name: 'Điện Dược Sư', x: 77, z: -32, r: 4 },
   { name: 'Vườn hoa', x: 79, z: 28, r: 6 },
-  { name: 'Chùa Ngọc', x: 0, z: -112, r: 4, ly: 6 },
+  { name: 'Chùa Ngọc', x: NGOC.x, z: NGOC.z, r: 4, ly: NGOC.y },
   { name: 'Động thiền', x: -26, z: -102, r: 4 },
   { name: 'Rừng thông', x: 26, z: -108, r: 5 },
   { name: 'Sông Đông', x: 65, z: 2, r: 3 },

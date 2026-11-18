@@ -1,5 +1,5 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
-import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, TINH_THAT, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, NGOC, NORTH_WALK_Z, TINH_THAT, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
@@ -75,6 +75,48 @@ export const ZEN = { x: -34, z: -26 };
 export const ZEN_GARDEN = { x: ZEN.x, z: ZEN.z, hx: 3.0, hz: 2.0, ry: 0.2, y: 0.68 };
 export const REST = { x: -35, z: 33 };
 export const FLOWER_BEDS = [{ x: 16.5, z: 23, a: 5, b: 3.5 }, { x: -16.5, z: 23, a: 5, b: 3.5 }];
+
+/** Actual stone footprints, shared by the renderer and scenery placement. */
+export const MAIN_COURT = [-20, -42, 20, 2] as const;
+export const NGOC_APPROACH = [NGOC.x - 4.5, NGOC.stairStart, NGOC.x + 4.5, NORTH_WALK_Z - 1.2] as const;
+export const WALKWAY_RECTS = [
+  [-WALL.x - 4, PATH_Z - 1.1, WALL.x + 4, PATH_Z + 1.1],
+  [SIDE_X - 1.2, PATH_Z, SIDE_X + 1.2, QUAN.z],
+  [PAGODA.x - 1.2, PAGODA.z, PAGODA.x + 1.2, PATH_Z],
+  [-SIDE_X - 1.2, PATH_Z, -SIDE_X + 1.2, BUDDHA_YARD.z],
+  [DRUM.x, DRUM.z - 1.2, -SIDE_X, DRUM.z + 1.2],
+  [SIDE_X, BELL.z - 1.2, BELL.x, BELL.z + 1.2],
+  [SIDE_X - 1.2, BELL.z, SIDE_X + 1.2, PATH_Z],
+  [BRIDGE.x - 1.4, BRIDGE.z1 - 0.4, BRIDGE.x + 1.4, WALL.zS],
+  [BRIDGE.x + 1.4, DEN_TRINH.z - 1.2, DEN_TRINH.x - 2.6, DEN_TRINH.z + 1.2],
+  [-SIDE_X - 1.2, ZEN.z, -SIDE_X + 1.2, PATH_Z],
+  [-58, -48, 58, -43], [-1.2, -51, 1.2, -42],
+  [VIEN_KT.gateX - 1.2, -58, VIEN_KT.gateX + 1.2, -43],
+  [VIEN_TO.gateX - 1.2, -58, VIEN_TO.gateX + 1.2, -43],
+  [-60.3, -78, -57.7, 41], [57.7, -78, 60.3, 41], [-58, 39.8, 58, 42.2],
+  [PHONG_CD.x - 1.2, 27, PHONG_CD.x + 1.2, 31.5],
+  [19.8, -31, 22.2, -19], [19.8, -32.2, 25.5, -29.8],
+  [50.3, -31, 52.7, -23], [33, -25.2, 52.7, -22.8],
+  [BAO_THAP.x - 1.2, ZEN.z - 1, BAO_THAP.x + 1.2, BAO_THAP.z - BAO_THAP_PLAT.r - 1],
+  [THIEN_DUONG.x + THIEN_DUONG_PLAT.hx, THIEN_DUONG.z - 1.2, -SIDE_X - 1.2, THIEN_DUONG.z + 1.2],
+  [28, 8.8, 35, 11.2], [-48, -59.2, -27, -56.8], [-42.2, -67, -39.8, -58],
+  [27, -59.2, 50, -56.8], [34.8, -63.75, 37.2, -58],
+  [REST.x + 2, REST.z - 1.2, BRIDGE.x - 1.4, REST.z + 1.2],
+  [-65.2, -69.5, -58.5, -67.1], [-65.2, -70.5, -62.8, -62],
+  [-77.2, -67.1, -74.8, 1], [-76, -43.2, -59, -40.8], [-76, -68.3, -64, -65.9],
+  [59, -39.2, 69, -36.8], [67.8, -38, 70.2, -31.5], [69, -32.7, 77, -30.3],
+  [75.8, -33.5, 78.2, 2], [77.8, 2, 80.2, 28],
+  [-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2],
+  NGOC_APPROACH,
+  [-60.2, NORTH_WALK_Z, -57.8, -77], [57.8, NORTH_WALK_Z, 60.2, -77],
+  [48.8, -89, 51.2, -82], [-WALL.x, WALL.zS, WALL.x, WALL.zS + 13],
+] as const;
+const PLANT_FREE_RECTS = [MAIN_COURT, ...WALKWAY_RECTS];
+
+export function nearWalkway(x: number, z: number, clearance: number) {
+  return PLANT_FREE_RECTS.some(([x0, z0, x1, z1]) =>
+    Math.hypot(Math.max(x0 - x, x - x1, 0), Math.max(z0 - z, z - z1, 0)) <= clearance);
+}
 
 export function bridgeY(x: number, z: number) {
   if (Math.abs(x - BRIDGE.x) > BRIDGE.hw + 0.3) return 0;
@@ -191,6 +233,7 @@ export function inPsPond(x: number, z: number, pad = 0) {
 /** Areas where scenery (trees, flowers) must not spawn. */
 export function blocked(x: number, z: number) {
   const ax = Math.abs(x);
+  if (nearWalkway(x, z, 0.18)) return true;
   // Expansion scenery is authored per landmark; keep random scatter off its paths and water.
   if (ax > 60 || z < -80) return true;
   if (ax < 7 && z >= 25) return true;

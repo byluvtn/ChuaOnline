@@ -6,6 +6,13 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
+## Lát đường và nới lối lên Chùa Ngọc (2026-11-18)
+
+- Sân chính, lối nhánh và mặt cầu khu mở rộng dùng chung mẫu đá. Vùng tránh trồng cây lấy theo mặt đường lát trong `src/layout.ts`.
+- Chùa Ngọc và cầu thang lùi 8 m về Bắc; chân thang ở `z = -90`, đỉnh ở `z = -120`, tường Bắc ở `z = -130`. Giữ đường ngang ở `z = -82`, bổ sung lối lát rộng 9 m vào chân thang.
+- Dùng tọa độ mới cho dẫn đường, bản đồ trong game và nhiệm vụ hành hương. Lưới tìm đường dự phòng lấy kích thước từ giới hạn bản đồ. Bản vẽ quy hoạch SVG độc lập không đổi.
+- Tin mới `LATEST_NEWS_ID` 132 → 133.
+
 ## Remodel tượng và cảnh quan bằng Blender (2026-11-18, local)
 
 - Blender 5.3 tạo 7 GLB từ `tools/build-sacred-assets.py`; file nguồn `tools/blender/sacred-assets.blend`, số liệu `tools/blender/sacred-assets-audit.json`. Tái xuất tại gốc repo: `& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --factory-startup --python tools/build-sacred-assets.py`.

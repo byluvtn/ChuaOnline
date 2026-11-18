@@ -5,14 +5,14 @@ import { buildHall } from './hall';
 import { buildTamThe } from './tamthe';
 import { buildExpansion } from './expansion';
 import {
-  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PATH_Z, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, REST, SIDE_X, WALL, ZEN, bridgeY, groundY, inLake, inPsPond, resolveWater,
+  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, WALL, WALKWAY_RECTS, nearWalkway, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
 import { buildArhat, buildBuddha, buildQuanAm } from './statues';
 import { buildCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
 import { loadModel, fitModel, replaceModel } from './models';
 import { makeGoldMaterial } from './statue-scan';
 import { createKoi, swimKoi, type Koi, type KoiVariety } from './koi';
-import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints } from './compound';
+import { buildFlowerBeds, buildRestArea, buildZenGarden, placeKoiPond, relabelColumns, sealArchitectureJoints, pavingRect } from './compound';
 import { glowTexture, honorBoardTexture, signTexture, steleTexture, stoneTexture, sutraPillarTexture, vietnameseColumnTexture, woodTexture, type HonorRow, type SteleData } from './textures';
 import { buildZafuParts } from './zafu';
 
@@ -1476,45 +1476,7 @@ export function buildTemple(c: TempleCtx) {
   buildVienFence(VIEN_TO, 'VIỆN TỔ');
 
   // ---- paved side paths to towers, yard, pagoda ----
-  const pave = lamb(0xffffff, { map: stoneTexture([150, 144, 134], [10, 1]) });
-  const pathRect = (x0: number, z0: number, x1: number, z1: number) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0) || 2.4, Math.abs(z1 - z0) || 2.4), pave);
-    m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, 0.055, (z0 + z1) / 2); m.receiveShadow = true; scene.add(m);
-  };
-  pathRect(-WALL.x - 4, PATH_Z - 1.1, WALL.x + 4, PATH_Z + 1.1);
-  pathRect(SIDE_X - 1.2, PATH_Z, SIDE_X + 1.2, QUAN.z);
-  pathRect(PAGODA.x - 1.2, PAGODA.z, PAGODA.x + 1.2, PATH_Z);
-  pathRect(-SIDE_X - 1.2, PATH_Z, -SIDE_X + 1.2, BUDDHA_YARD.z);
-  pathRect(DRUM.x, DRUM.z - 1.2, -SIDE_X, DRUM.z + 1.2);
-  pathRect(SIDE_X, BELL.z - 1.2, BELL.x, BELL.z + 1.2);
-  pathRect(SIDE_X - 1.2, BELL.z, SIDE_X + 1.2, PATH_Z);
-  // lối từ quảng trường ra đầu cầu (bắc) và từ đầu cầu (nam) tới tam quan
-  pathRect(-1.4, -21, 1.4, BRIDGE.z0);
-  pathRect(BRIDGE.x - 1.4, BRIDGE.z1 - 0.4, BRIDGE.x + 1.4, WALL.zS - 0.6);
-  pathRect(BRIDGE.x + 1.4, DEN_TRINH.z - 1.2, DEN_TRINH.x - 2.6, DEN_TRINH.z + 1.2);
-
-  pathRect(-SIDE_X - 1.2, ZEN.z, -SIDE_X + 1.2, PATH_Z);
-  pathRect(-58, -48, 58, -43);
-  pathRect(-1.2, -51, 1.2, -41);
-  pathRect(VIEN_KT.gateX - 1.2, VIEN_KT.z1, VIEN_KT.gateX + 1.2, -43);
-  pathRect(VIEN_TO.gateX - 1.2, VIEN_TO.z1, VIEN_TO.gateX + 1.2, -43);
-  pathRect(-60.3, -78, -57.7, 41);
-  pathRect(57.7, -78, 60.3, 41);
-  pathRect(-58, 39.8, 58, 42.2);
-  pathRect(PHONG_CD.x - 1.2, 27, PHONG_CD.x + 1.2, 31.5);
-  pathRect(19.8, -31, 22.2, -19);
-  pathRect(19.8, -32.2, 25.5, -29.8);
-  pathRect(48.8, -31, 50.2, -23.4);
-  pathRect(33, -24.8, 50.2, -23.4);
-  pathRect(BAO_THAP.x - 1.2, BAO_THAP.z - BAO_THAP_PLAT.r - 1, BAO_THAP.x + 1.2, ZEN.z - 1);
-  pathRect(THIEN_DUONG.x + THIEN_DUONG_PLAT.hx, THIEN_DUONG.z - 1.2, -SIDE_X - 1.2, THIEN_DUONG.z + 1.2);
-  pathRect(28, 8.8, 35, 11.2);
-  pathRect(-48, -59.2, -27, -56.8);
-  pathRect(-42.2, -67, -39.8, -58);
-  pathRect(27, -59.2, 50, -56.8);
-  pathRect(34.8, -63.75, 37.2, -58);
-  pathRect(VIEN_KT.gateX - 1.2, -58, VIEN_KT.gateX + 1.2, VIEN_KT.z1);
-  pathRect(VIEN_TO.gateX - 1.2, -58, VIEN_TO.gateX + 1.2, VIEN_TO.z1);
+  for (const [x0, z0, x1, z1] of WALKWAY_RECTS) scene.add(pavingRect(x0, z0, x1, z1));
   const gardenCtx = { scene, colliders, lamb, stoneM, woodM, glowSpr, addZone: (x: number, z: number, r: number, id: string) => { zones.push({ x, z, r, id }); } };
   buildZenGarden(gardenCtx);
   const reclaimed = new THREE.Group(); reclaimed.name = 'zen-former-bao-thap';
@@ -1527,23 +1489,7 @@ export function buildTemple(c: TempleCtx) {
   }
   scene.add(reclaimed); mergeStaticByMaterial(reclaimed);
   buildFlowerBeds(gardenCtx);
-  pathRect(REST.x + 2, REST.z - 1.2, BRIDGE.x - 1.4, REST.z + 1.2);
   buildRestArea(gardenCtx);
-  // New branches pass around the enclosed courts, never through their fences.
-  pathRect(-65.2, -69.5, -58.5, -67.1);
-  pathRect(-65.2, -70.5, -62.8, -62);
-  pathRect(-77.2, -67.1, -74.8, 1);
-  pathRect(-76, -43.2, -59, -40.8);
-  pathRect(-76, -68.3, -64, -65.9);
-  pathRect(59, -39.2, 69, -36.8);
-  pathRect(67.8, -38, 70.2, -31.5);
-  pathRect(69, -32.7, 77, -30.3);
-  pathRect(75.8, -33.5, 78.2, 2);
-  pathRect(77.8, 2, 80.2, 28);
-  pathRect(-59, -83.2, 59, -80.8);
-  pathRect(-60.2, -82, -57.8, -77);
-  pathRect(57.8, -82, 60.2, -77);
-  pathRect(48.8, -89, 51.2, -82);
   const expansion = buildExpansion(c);
   seats.push(...expansion.seats); zones.push(...expansion.zones);
 
@@ -1594,14 +1540,15 @@ export function buildTemple(c: TempleCtx) {
       hedgePts.push({ x: hx1 - 0.4, z });
       if (Math.abs(z - PS.z) > PS_PIER.hw + 1.2) hedgePts.push({ x: hx0 + 0.4, z });
     }
-    const hedgeIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.62, 1), hedgeM, hedgePts.length);
+    const planting = hedgePts.filter(({ x, z }) => !nearWalkway(x, z, 0.75));
+    const hedgeIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.62, 1), hedgeM, planting.length);
     hedgeIM.castShadow = true;
     const hm = new THREE.Matrix4(), hq = new THREE.Quaternion(), hs = new THREE.Vector3(1, 1.15, 1), hp = new THREE.Vector3();
-    hedgePts.forEach((p, i) => { hp.set(p.x, 0.5, p.z); hm.compose(hp, hq, hs); hedgeIM.setMatrixAt(i, hm); });
+    planting.forEach((p, i) => { hp.set(p.x, 0.5, p.z); hm.compose(hp, hq, hs); hedgeIM.setMatrixAt(i, hm); });
     hedgeIM.instanceMatrix.needsUpdate = true;
     psGroup.add(hedgeIM);
     const psTrunkM = lamb(0x6b4a2b), psCanopyM = lamb(0x3f8a3e, { flatShading: true });
-    const psTrees: [number, number, number][] = [[hx0 + 3.5, hz0 + 3, 1.1], [hx1 - 3.5, hz1 - 3, 1.0], [hx0 + 4.5, hz1 - 3, 0.95]];
+    const psTrees: [number, number, number][] = [[hx0 + 3.5, hz0 + 3, 1.1], [hx1 - 2, hz1 - 5, 1.0]];
     psTrees.forEach(([x, z, s]) => {
       const t = new THREE.Group();
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 5.2, 8), psTrunkM); trunk.position.y = 2.6; trunk.castShadow = true; t.add(trunk);
@@ -1644,7 +1591,6 @@ export function buildTemple(c: TempleCtx) {
   const psSeal = sealArchitectureJoints(psGroup, { maxGap: 0.5 });
   if (import.meta.env.DEV) console.warn(`gapdump vuonPhongSinh: filled=${psSeal.filled} remaining=${psSeal.remaining.length}`);
 
-  pathRect(-WALL.x, 45, WALL.x, 58);
 
   // ---- animation ----
   let ring = 0, drumHit = 0;

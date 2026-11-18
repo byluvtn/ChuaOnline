@@ -56,7 +56,7 @@ const spots = [
   { name:'duoc-su-far', camera:[94,12,-14], target:[77,4,-38] },
   { name:'tinh-that-near', camera:[-60,5,-55], target:[-64,2,-65] },
   { name:'tinh-that-far', camera:[-52,9,-47], target:[-64,2,-65] },
-  { name:'ngoc-stairs', camera:[0,13,-87], target:[0,6,-112] },
+  { name:'ngoc-stairs', camera:[0,13,-95], target:[0,6,-120] },
 ];
 if (process.env.QUICK === '1') spots.splice(0, spots.length,
   { name:'duoc-su-near', camera:[84,8,-25], target:[77,3,-38] },

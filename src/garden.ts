@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { loadModel, fitModel } from './models';
 import { toon } from './toon';
-import { groundYBase } from './layout';
+import { groundYBase, nearWalkway } from './layout';
 
 export interface GardenPlacement {
   name: string;
@@ -21,13 +21,12 @@ function p(
 }
 
 export const GARDEN_PLACEMENTS: GardenPlacement[] = [
-  p('oak-natural', -16.5, 1, 0, 9.0, null, 0.4),
-  p('oak-natural', 16.5, 1, Math.PI, 9.0, null, 0.4),
-  p('oak-natural', -7.5, -1, 0, 9.0, null, 0.4),
+  p('oak-natural', -24.8, -4.5, 0, 9.0, null, 0.4),
+  p('oak-natural', 23, 6, Math.PI, 9.0, null, 0.4),
   p('birch_nt', -40, -22, 0.5, 9.7, null, 0.4),
   p('birch_nt', -42, -34, 3.0, 9.7, null, 0.4),
   p('bamboo_cluster', -41, -36.5, 1.1, 4.4, null, 0.4),
-  p('bamboo_cluster', 48, -24, 2.4, 4.4, null, 0.4),
+  p('bamboo_cluster', 54.5, -20, 2.4, 4.4, null, 0.4),
   p('stone_lantern', -37.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', -30.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', 45, -66, 0, 2.15, null, 0.3),
@@ -39,7 +38,7 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('stone_lantern', 28, -30, 0, 2.15, null, 0.3),
   p('pagoda', 53, -66, 0, 5.1, null, 1.3),
   p('zen_sand_garden', -34, -26, 0.2, null, 2.0, null),
-  p('oak-natural', 42, 39, 2.1, 9.1, null, 0.5),
+  p('oak-natural', 42, 36.5, 2.1, 9.1, null, 0.5),
   p('oak_nt', 10, 28, 0.9, 8.9, null, 0.8),
   p('oak-natural', -48, -15, 0, 9.0, null, 0.4),
   p('cenji-ancient-tree', 40, 20, 0.4, null, 1.0, 1.5),
@@ -132,6 +131,7 @@ export function buildGarden(
         }
         for (const g of GARDEN_PLACEMENTS) {
           if (g.name !== name) continue;
+          if (/^(oak|birch|bamboo|willow|cenji)/.test(name) && nearWalkway(g.x, g.z, (g.colliderR ?? 0) + 0.7)) continue;
           scene.add(buildInstance(base, g));
           if (g.colliderR !== null) colliders.push({ x: g.x, z: g.z, r: g.colliderR });
         }

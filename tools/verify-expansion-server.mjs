@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
+import { NGOC } from '../shared/campus.ts';
 
 const base = process.env.API_URL || 'http://127.0.0.1:3001';
 const response = await fetch(`${base}/api/guest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
@@ -31,7 +32,7 @@ try {
     assert((await emitAck('quest:accept', id)).ok, `Could not accept ${id}`);
   }
   const complete = waitEvent('quests', qs => qs.find(q => q.id === 'nq_ngoc_pilgrimage')?.progress === 1);
-  move(0, -112); await complete;
+  move(NGOC.x, NGOC.z); await complete;
   // Existing visit checks are throttled to one per second. Use an event-driven timer,
   // not repeated polling or a server state edit, between the two locations.
   await new Promise(resolve => setTimeout(resolve, 1100));

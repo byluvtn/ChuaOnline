@@ -67,7 +67,7 @@ export interface ProfileSave { bio: string | null; age: number | null }
 export interface ProfileSaveAck { ok: boolean; error?: string }
 
 export const MAP_HALF = 98;
-export const MAP_Z_MIN = -122;
+export { MAP_Z_MIN } from './campus.js';
 export const MAP_Z_MAX = 68;
 export const levelOf = (merit: number) => Math.floor(Math.sqrt(merit / 10)) + 1;
 export const meritForLevel = (lv: number) => (lv - 1) * (lv - 1) * 10;

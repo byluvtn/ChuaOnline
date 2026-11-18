@@ -5,9 +5,17 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 132;
+export const LATEST_NEWS_ID = 133;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Lối đi thoáng hơn, Chùa Ngọc lùi về phía Bắc',
+    date: '2026-11-18',
+    items: [
+      'Các lối đi và mặt cầu ở khu mở rộng dùng chung mẫu đá lát. Cây và bụi chắn lối được dời ra mép hoặc bỏ đi.',
+      'Chùa Ngọc và cầu thang lùi 8 m, chừa thêm chỗ đi phía sau Điện Tam Thế. Bản đồ và nhiệm vụ hành hương theo vị trí mới.',
+    ],
+  },
   {
     title: 'Pháo hoa mới: vệt sáng lấp lánh, 4 kiểu nổ',
     date: '2026-11-18',

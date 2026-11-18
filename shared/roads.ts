@@ -60,6 +60,7 @@
 //     the koi lake.
 
 import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
+import { NGOC, NORTH_WALK_Z } from './campus';
 
 export type Pt = { x: number; z: number }
 
@@ -250,9 +251,10 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'westRearGate', x: -68, z: -82 }, // ring turns west around the r1.14 corner at (-59,-71.5)
   { id: 'bypassW', x: -40, z: -82 },
   { id: 'caveBypass', x: -16, z: -82 },
-  { id: 'ngocBase', x: 0, z: -82 }, // foot of the 299-step stair
-  { id: 'ngocMid', x: 0, z: -97 }, // 99 / 100 / 100 landing zone
-  { id: 'ngocTop', x: 0, z: -112 }, // ChÃ¹a Ngá»c summit
+  { id: 'ngocApproach', x: NGOC.x, z: NORTH_WALK_Z },
+  { id: 'ngocBase', x: NGOC.x, z: NGOC.stairStart },
+  { id: 'ngocMid', x: NGOC.x, z: (NGOC.stairStart + NGOC.stairTop) / 2 },
+  { id: 'ngocTop', x: NGOC.x, z: NGOC.stairTop },
   { id: 'pineBypass', x: 18, z: -82 },
   { id: 'bypassE', x: 40, z: -82 },
   { id: 'cemeteryGate', x: 50, z: -82 },
@@ -365,7 +367,8 @@ export const ROAD_EDGES: [string, string][] = [
   ['riverNorthE', 'duocSuApproach'], ['duocSuApproach', 'duocSuDoor'],
   // â”€â”€ NORTH BRANCH: bypass z = âˆ’82, Ngá»c stairs, cave, cemetery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['westRearGate', 'bypassW'], ['bypassW', 'caveBypass'],
-  ['caveBypass', 'ngocBase'], ['ngocBase', 'pineBypass'], ['pineBypass', 'bypassE'],
+  ['caveBypass', 'ngocApproach'], ['ngocApproach', 'pineBypass'], ['pineBypass', 'bypassE'],
+  ['ngocApproach', 'ngocBase'],
   ['bypassE', 'cemeteryGate'], ['cemeteryGate', 'eastRearGate'], ['eastRearGate', 'rearE'],
   ['ngocBase', 'ngocMid'], ['ngocMid', 'ngocTop'], // 299 steps in 3 flights + 2 landings
   ['cemeteryGate', 'cemetery'],

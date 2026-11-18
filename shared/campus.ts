@@ -1,5 +1,6 @@
 // Shared by scene, movement, server rules and pathfinding. Coordinates are metres.
-export const WALL = { x: 92, zN: -122, zS: 45, gate: 4.4, sideGateZ: 2, sideGateHalf: 2.2 };
+export const WALL = { x: 92, zN: -130, zS: 45, gate: 4.4, sideGateZ: 2, sideGateHalf: 2.2 };
+export const MAP_Z_MIN = WALL.zN;
 export const LAKE = { x: 0, z: 14, a: 14, b: 10 };
 export const BRIDGE = { x: 0, z0: 2, z1: 26, hw: 1.15, peak: 1.4 };
 export const LOTUS = { x: -78, z: -2, a: 10, b: 7 };
@@ -11,7 +12,8 @@ export const BAMBOO = { x: 80, z: -3 };
 export const FLOWER_HILL = { x: 79, z: 28 };
 export const CAVE = { x: -26, z: -104 };
 export const DUOC_SU = { x: 77, z: -38, hx: 6, hz: 4.5, y: 0.45 };
-export const NGOC = { x: 0, z: -112, y: 6, hx: 5, hz: 4, stairStart: -82, stairTop: -112, stairHalf: 2.1, steps: 299, landingDepth: 1 };
+export const NGOC = { x: 0, z: -120, y: 6, hx: 5, hz: 4, stairStart: -90, stairTop: -120, stairHalf: 2.1, steps: 299, landingDepth: 1 };
+export const NORTH_WALK_Z = -82;
 export const TINH_THAT = [{ x: -67, z: -67 }, { x: -61, z: -67 }, { x: -64, z: -63.8 }];
 
 export function ngocStepProfile(): { z0: number; z1: number; y: number }[] {
@@ -36,7 +38,7 @@ export function ngocStepProfile(): { z0: number; z1: number; y: number }[] {
 const steps = ngocStepProfile();
 export function expansionGroundY(x: number, z: number): number {
   // The summit slab lies north of the stair top, not under its final treads.
-  if (Math.abs(x) <= NGOC.hx && z <= NGOC.stairTop && z >= -117.8) return NGOC.y;
+  if (Math.abs(x) <= NGOC.hx && z <= NGOC.stairTop && z >= NGOC.stairTop - 5.8) return NGOC.y;
   if (Math.abs(x) <= NGOC.stairHalf && z <= NGOC.stairStart && z >= NGOC.stairTop) {
     // Binary search keeps stair sampling cheap for every player/NPC each frame.
     let lo = 0, hi = steps.length - 1;
@@ -47,11 +49,17 @@ export function expansionGroundY(x: number, z: number): number {
     }
     return steps[lo].y;
   }
-  if (z > -82 || z < -118 || Math.abs(x) > 40) return 0;
-  const rise = Math.min(1, (-z - 82) / 30);
+  // Shift the central hill without changing the heights of the side trails.
+  const blend = Math.min(1, Math.max(0, (Math.abs(x) - NGOC.hx) / 11));
+  const south = NGOC.stairStart + (NORTH_WALK_Z - NGOC.stairStart) * blend;
+  const north = south - 36;
+  if (z > south || z < north || Math.abs(x) > 40) return 0;
+  const rise = Math.min(1, (south - z) / (NGOC.stairStart - NGOC.stairTop));
   const taper = Math.max(0, Math.min(1, (40 - Math.abs(x)) / 35));
-  const northEdge = Math.min(1, (z + 118) / 2);
-  return 6 * rise * taper * Math.max(0, northEdge);
+  const northEdge = Math.min(1, (z - north) / 2);
+  // Keep the whole transverse walkway clear of the hill mesh (including its interpolated edge).
+  const walkEdge = Math.min(1, Math.max(0, (NORTH_WALK_Z - 2 - z) / 2));
+  return NGOC.y * rise * taper * northEdge * walkEdge;
 }
 
 export function inEllipse(x: number, z: number, p: { x: number; z: number; a: number; b: number }, pad = 0): boolean {

@@ -1,6 +1,7 @@
 import { ROAD_NODES, ROAD_EDGES, HOUSE_DOORS, type Pt } from './roads';
 import { dijkstra, reconstructPath } from './dijkstra';
-import { WALL } from './campus';
+import { MAP_Z_MIN, WALL } from './campus';
+import { MAP_HALF, MAP_Z_MAX } from './types';
 
 export type Collider = { x: number; z: number; r: number; x2?: number; z2?: number };
 export interface Pathfinder {
@@ -435,7 +436,10 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
   // The authored road network is intentionally sparse. A bounded A* fallback
   // handles new courtyards and narrow openings without routing through water.
   function gridRoute(from: Pt, to: Pt): Pt[] | null {
-    const step = 0.75, x0 = -97.5, z0 = -121.5, nx = 261, nz = 241, count = nx * nz;
+    const step = 0.75;
+    const x0 = Math.floor(-MAP_HALF / step) * step, z0 = Math.floor(MAP_Z_MIN / step) * step;
+    const nx = Math.ceil((MAP_HALF - x0) / step) + 1, nz = Math.ceil((MAP_Z_MAX - z0) / step) + 1;
+    const count = nx * nz;
     const at = (id: number): Pt => ({ x: x0 + id % nx * step, z: z0 + Math.floor(id / nx) * step });
     const cache = new Int8Array(count);
     const free = (id: number): boolean => {
