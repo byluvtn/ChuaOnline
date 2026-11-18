@@ -6,6 +6,33 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
+## Bàn giao cho Muse ở nhà — prompt thiền định (2026-11-18 16:45)
+
+- VIỆC CHÍNH (user giao cho Muse ở nhà làm): implement theo file `prompt-thien-dinh-hao-quang-bo-doan.md` ở gốc repo — 1 session Kilo, 1 commit chung. Phần A: hào quang thiền định 2 tầng theo ngày (ngồi liên tục 10 phút → hào quang thường, 20 phút → hào quang lớn; qua 00:00 mất, hôm sau thiền lại; xóa `hao_quang` khỏi shop; NPC role `abbot` có hào quang mặc định). Phần B: bồ đoàn cánh sen (2 vòng cánh hồng) + giãn cách lưới ngồi (Chính Điện 96→60, Tam Thế 48→24, deck 98→72, thiền đường 12→10; 2 bồ đoàn tụng kinh ở (0,2)/(0,4) GIỮ NGUYÊN — vị trí quest CHANT_SEATS). Spec đầy đủ, tin tức (2 entries, LATEST +2) và nghiệm thu đều trong file đó. Hai file spec riêng trước đó đã gộp — chỉ chạy file gộp này.
+- HEAD lúc bàn giao: `a85877b`, `LATEST_NEWS_ID = 137`, live trên Oracle (auto-pull 5 phút).
+- Quy tắc nhớ: mỗi tính năng phải có tin tức; commit message tiếng Việt không dấu như các commit trước; `git add` từng file, không `git add -A`; không force-push.
+
+## Tượng chibi GLB — 8/9 đã live (2026-11-18)
+
+- Commit `a85877b` thêm 8 GLB vào `public/models/`: chibi-a-di-da (3,9 MB), chibi-di-lac (5,7 MB), chibi-dia-tang (4,6 MB), chibi-duoc-su (4,2 MB), chibi-nhien-dang (4,6 MB), chibi-pho-hien (5,5 MB), chibi-thich-ca (2,9 MB), chibi-van-thu (6,5 MB). Tổng ~37 MB.
+- Code nối tượng ở commit `8762007` (đã verify sạch): 5 vị trí Chính Điện (Địa Tạng, Văn Thù, A Di Đà, Phổ Hiền, Dược Sư), 3 vị trí Tam Thế (Nhiên Đăng, Thích Ca, Di Lặc), hành lang luân phiên Quan Âm/Văn Thù/Phổ Hiền/Địa Tạng. Fallback-first qua `replaceModel` — GLB tới là tự thay.
+- User kiểm chứng trong game: 5 tượng Chính Điện + 3 tượng Tam Thế đã là GLB thật; không còn hào quang fallback chồng lên GLB; không còn quả cầu bụng giả của Di Lặc.
+- THIẾU: `chibi-quan-am.glb` chưa có — hành lang vẫn giữ fallback ở các vị trí Quan Âm. Khi nào export xong GLB Quan Âm đứng đúng tên `chibi-quan-am` thì push lên, hành lang tự thay, không cần sửa code. Tin 137 đã viết cho đợt đặt tượng.
+- Quy tắc tai tượng: tai ngắn, "earlobes reaching just below the jawline" — user đã chê tai dài một lần, đừng vẽ tai dài nữa.
+
+## Nút Quản trị đã sửa + acc quantri đã xóa (2026-11-18, đừng làm lại)
+
+- Nút "Quản trị" của acc `byluvtn` bị mất vì `ADMIN_USERNAMES` không có trên Oracle: `syncAdmins()` chạy mỗi lần boot, reset hết `is_admin = 0` rồi chỉ bật lại tên trong danh sách — danh sách rỗng nên cả 114 acc đều 0. Biến này có trên hosting cũ nhưng không mang sang lúc cutover.
+- ĐÃ SỬA: drop-in `/etc/systemd/system/chua247.service.d/admin.conf` với `Environment=ADMIN_USERNAMES=byluvtn` + restart. Đã verify: `byluvtn` (id 108) `is_admin = 1`, đúng 1 admin, nút hiện lại sau reload. Deploy sau đó (8762007) restart vẫn giữ nguyên — fix bền vững.
+- Acc test `quantri` (id 68) ĐÃ XÓA theo lệnh user (1 dòng players + 17 dòng liên quan). Backup DB trước khi xóa: `/home/ubuntu/chua247-data/chuaonline.db.pre-quantri-del-20261118` trên Oracle. Tổng players còn 113. Đừng tạo lại acc này.
+
+## Việc còn tồn (2026-11-18 16:45)
+
+- `d5736ee` ("expand Chua Ngoc and redesign its approach", 10 files, expansion.ts 230 dòng) KHÔNG có tin tức — vi phạm luật tin, cần bổ sung 1 tin sau.
+- Thác Bản Giốc `2f58d35` (3 tầng, tin 136) đã build xong từ prompt nhưng chưa review chi tiết code.
+- User báo "không vào được chua247" lúc 13:31 — server kiểm tra bình thường (site 200, service active, socket.io OK), nghi stale service-worker cache; đã dặn user đóng tab mở lại, đang chờ user trả lời (ảnh chụp + thiết bị). Đừng đụng vào server vì vụ này khi chưa có thêm thông tin.
+- Sau đợt thiền định: Prompt B (animation pass — crossfades ≥0.12s, FPS independence, no foot sliding, no LOD pop-in; kit ở `prompt-audit-fable-chua-online.md`) rồi R4. NPC 25 cạnh đường trung tâm vẫn lỗi (HANDOFF cũ ghi rõ).
+
 ## Cập nhật ba gói pháo hoa (2026-11-18)
 
 - Gói nhỏ 100 xu / 6 quả, gói to 200 xu / 12 quả, gói rồng phượng 1.000 xu / 20 quả tính cả ba quả kết. Menu và máy chủ lấy giá từ `FIREWORKS`.
