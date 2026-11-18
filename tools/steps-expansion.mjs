@@ -18,7 +18,7 @@ export default async ({ ev, sleep, send, shot }) => {
     const {world,THREE,collide,pathfinder}=window.__co;
     const legs=[
       ['lotus bridge',-90,2,-66,2],['east bridge',60,2,72,2],['river north bridge',60,-38,69,-38],
-      ['west gate',-90,2,-96,2],['east gate',90,2,96,2],['ngoc stairs',NGOC.x,NORTH_WALK_Z,NGOC.x,NGOC.stairTop]
+      ['west gate',-90,2,-96,2],['east gate',90,2,96,2],['ngoc stairs and court',NGOC.x,NORTH_WALK_Z,NGOC.x,NGOC.z]
     ];
     return legs.map(([name,x0,z0,x1,z1])=>{
       let maxPush=0,minClearance=Infinity,heightJump=0,lastY=world.groundY(x0,z0),samples=0;

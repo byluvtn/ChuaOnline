@@ -635,7 +635,7 @@ function tourRoute(from: Pt, st: TourStop): Pt[] {
     case 'lotus': return go('lotusPavilion');
     case 'bamboo': return go('bamboo');
     case 'duocSu': return go('duocSuDoor');
-    case 'ngoc': return go('ngocTop');
+    case 'ngoc': return go('ngocCourt');
   }
 }
 function dropSeat(room: NpcRoom, n: Npc, st: TourStop) {

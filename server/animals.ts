@@ -3,7 +3,7 @@ import { routeFrom, nearestNode, ROAD_NODES, HOUSE_DOORS } from '../shared/roads
 import {
   HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
   NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
-  PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, BRIDGE, DUOC_SU, NGOC, expansionWaterBlocked,
+  PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, BRIDGE, DUOC_SU, NGOC_HALL, expansionWaterBlocked,
 } from '../src/layout.js';
 
 type P = { x: number; z: number };
@@ -49,7 +49,7 @@ const route = (from: P, toId: string): P[] =>
 const INDOOR_RECTS = [
   HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
   NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
-  PHONG_CD_PLAT, DUOC_SU, NGOC,
+  PHONG_CD_PLAT, DUOC_SU, NGOC_HALL,
 ];
 
 export function isIndoors(x: number, z: number): boolean {

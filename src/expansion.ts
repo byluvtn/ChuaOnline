@@ -15,8 +15,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NORTH_WALK_Z, RIVER, TINH_THAT,
-  expansionGroundY, ngocStepProfile,
+  BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, TINH_THAT,
+  expansionGroundY, ngocHillGroundY, ngocStepProfile,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
 import { fitModel, loadModel } from './models';
@@ -719,82 +719,160 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   }
 
   // =====================================================================================
-  // 8. 299 bậc Chùa Ngọc — MỘT mesh gộp, lấy đúng ngocStepProfile()
+  // 8. Trục hành hương: sân chân đồi, 299 bậc và hai chiếu nghỉ.
   // =====================================================================================
   {
     const prof = ngocStepProfile();
-    const half = NGOC.stairHalf;
-    for (const s of prof) {
-      const d = Math.max(0.02, s.z1 - s.z0);
-      const top = s.y;
-      addBox('granite', half * 2, top, d + 0.004, 0, top / 2, (s.z0 + s.z1) / 2);
+    const { x, stairHalf: half, stairStart, stairTop, approachHalf } = NGOC;
+    const approachEnd = NORTH_WALK_Z - 1.2;
+    for (const side of [-1, 1]) {
+      for (const offset of [half - 0.18, approachHalf - 0.18]) {
+        addBox('dsTimber', 0.14, 0.016, approachEnd - stairStart, x + side * offset, 0.058, (approachEnd + stairStart) / 2);
+      }
     }
-    // gờ đá hai bên (mỗi đoạn 10 bậc) để che khe giữa bậc và sườn đồi
-    for (let i = 0; i < prof.length; i += 10) {
-      const first = prof[i], last = prof[Math.min(prof.length - 1, i + 9)];
-      const zc = (first.z0 + last.z1) / 2;
-      const len = Math.max(0.4, Math.abs(first.z0 - last.z1));
-      const yTop = Math.max(first.y, last.y);
-      for (const s of [-1, 1]) addBox('graniteDark', 0.5, 0.5, len, s * (half + 0.35), yTop + 0.3, zc);
+    const lantern = (lx: number, ly: number, lz: number) => {
+      addBox('dsStone', 0.72, 0.18, 0.72, lx, ly + 0.09, lz);
+      addCyl('dsStone', 0.17, 0.26, 0.58, 8, lx, ly + 0.45, lz);
+      addBox('dsDarkwood', 0.49, 0.1, 0.49, lx, ly + 0.76, lz);
+      addBox('lamp', 0.31, 0.31, 0.31, lx, ly + 0.94, lz);
+      addCyl('dsTimber', 0.12, 0.38, 0.24, 4, lx, ly + 1.19, lz);
+      glow(lx, ly + 0.95, lz, 1.4, 0xffc070, 0.3);
+      solid(lx, lz, 0.39);
+    };
+    for (const side of [-1, 1]) lantern(x + side * 4.95, 0, stairStart + 4.5);
+
+    let lowerZ = stairStart, lowerY = 0;
+    const rails = (z0: number, y0: number, z1: number, y1: number) => {
+      const run = z1 - z0, rise = y0 - y1;
+      const spans = Math.ceil(run / 1.45);
+      for (const side of [-1, 1]) {
+        const rx = x + side * (half + 0.23);
+        for (const [key, width, h, height] of [['dsStone', 0.44, 0.32, 0.07], ['dsTimber', 0.19, 0.13, 0.87], ['dsDarkwood', 0.12, 0.10, 0.49]] as const) {
+          put(key, new THREE.BoxGeometry(width, h, Math.hypot(run, rise) + 0.025).rotateX(Math.atan2(rise, run)), rx, (y0 + y1) / 2 + height, (z0 + z1) / 2);
+        }
+        for (let i = 0; i < spans; i++) {
+          const t = i / spans;
+          addBox('dsTimber', 0.19, 0.81, 0.19, rx, y0 - t * rise + 0.52, z0 + t * run);
+        }
+      }
+    };
+    for (const [i, s] of prof.entries()) {
+      const d = s.z1 - s.z0, zc = (s.z0 + s.z1) / 2;
+      const tread = new THREE.BoxGeometry(half * 2, s.y, d);
+      const pos = tread.getAttribute('position'), normal = tread.getAttribute('normal'), uv = tread.getAttribute('uv');
+      for (let j = 0; j < uv.count; j++) if (normal.getY(j) > 0.5) {
+        uv.setXY(j, (pos.getX(j) + x) / 8, -(pos.getZ(j) + zc) / 8);
+      }
+      put('granite', tread, x, s.y / 2, zc);
+      for (const side of [-1, 1]) {
+        addBox('graniteDark', 0.21, 0.018, d, x + side * (half - 0.24), s.y + 0.002, zc);
+      }
+      if (d > 1) {
+        rails(s.z1, s.y, lowerZ, lowerY);
+        rails(s.z0, s.y, s.z1, s.y);
+        for (const side of [-1, 1]) lantern(x + side * (half + 0.31), s.y, zc);
+        lowerZ = s.z0;
+        lowerY = s.y;
+        addBox('paving', half * 2 - 0.9, 0.012, d - 0.22, x, s.y + 0.004, zc);
+      } else if (i === prof.length - 1) {
+        rails(stairTop, s.y, lowerZ, lowerY);
+      }
     }
-    // lan can: vòng tròn mảnh r 0.18 cách .4, nằm NGOÀI stairHalf, chừa lối vào/ra
-    for (const s of [-1, 1]) {
-      const rx = s * (half + 0.45);
-      wallLine(rx, NGOC.stairStart - 0.85, rx, NGOC.stairTop, 0.18, 0.4);
+    for (const side of [-1, 1]) wallLine(x + side * (half + 0.23), stairStart, x + side * (half + 0.23), stairTop, 0.22, 0.4);
+    const { group } = flush('ngocStairs', true);
+    const gate = duocSuRoof(9.7, 2.45, 3.95, 0.88);
+    gate.position.set(x, 0, stairStart + 2.9);
+    group.add(gate);
+    const gateZ = stairStart + 2.9;
+    for (const side of [-1, 1]) {
+      const px = x + side * (half + 0.35);
+      addBox('dsStone', 0.85, 0.39, 0.85, px, 0.195, gateZ);
+      addCyl('dsTimber', 0.26, 0.32, 3.65, 12, px, 2.13, gateZ);
+      solid(px, gateZ, 0.46);
     }
-    flush('ngocStairs', true);
+    addBox('dsDarkwood', 9.12, 0.24, 0.62, x, 3.91, gateZ);
+    addSign('LỐI LÊN CHÙA NGỌC', 3.5, 0.56, x, 3.55, gateZ + 0.37);
+    flush('ngocGate');
   }
 
   // =====================================================================================
-  // 9. Chùa Ngọc: granite 3 tầng trên đỉnh thang
+  // 9. Sân thượng và gian thờ Chùa Ngọc theo mẫu Điện Dược Sư.
   // =====================================================================================
   {
-    const sx = NGOC.x, sz = NGOC.z, sy = NGOC.y;
-    // bệ đá giữ đỉnh đồi (mặt trên = 6)
-    addBox('granite', 6.6, 5.2, 5.6, sx, sy - 2.62, sz - 2.8);
-    addBox('graniteDark', 7.0, 0.22, 6.0, sx, sy - 0.09, sz - 2.8);
-    const bodyZ = sz - 2.9, entryZ = sz - 0.9, altarZ = sz - 3.05;
-    const colH = 2.7;
-    for (const ox of [-2.2, 2.2]) for (const oz of [-1.5, 1.5]) {
-      addCyl('granite', 0.26, 0.3, colH, 8, sx + ox, sy + colH / 2, bodyZ + oz);
-      solid(sx + ox, bodyZ + oz, 0.34);
+    const { x: sx, z: bodyZ, hx, hz } = NGOC_HALL;
+    const sy = NGOC.y, { half, north } = NGOC_TERRACE, south = NGOC.stairTop;
+    const depth = south - north, mid = (south + north) / 2;
+    const entryZ = bodyZ + hz, rearZ = bodyZ - hz, altarZ = rearZ + 1.3;
+    addBox('granite', half * 2 - 0.32, sy - 0.18, depth - 0.18, sx, (sy - 0.18) / 2, mid);
+    addBox('paving', half * 2, 0.18, depth, sx, sy - 0.09, mid);
+    for (const side of [-1, 1]) {
+      addBox('dsTimber', 0.15, 0.025, depth - 0.65, sx + side * 3.7, sy + 0.01, mid);
+      addBox('dsPlaster', 0.24, 0.045, depth - 0.8, sx + side * (half - 0.27), sy + 0.01, mid);
     }
-    // tường hậu + hai bên, mặt Nam mở (cửa giữa 3,76 m cho lối vào từ thang)
-    addBox('granite', 4.6, colH, 0.28, sx, sy + colH / 2, bodyZ - 1.5);
-    wallLine(sx - 2.2, bodyZ - 1.5, sx + 2.2, bodyZ - 1.5, 0.32, 0.55);
-    for (const s of [-1, 1]) {
-      addBox('granite', 0.28, colH, 3.0, sx + s * 2.2, sy + colH / 2, bodyZ);
-      wallLine(sx + s * 2.2, bodyZ - 1.5, sx + s * 2.2, bodyZ + 1.5, 0.32, 0.55);
+    const balustrade = (x0: number, z0: number, x1: number, z1: number) => {
+      const len = Math.hypot(x1 - x0, z1 - z0), yaw = Math.atan2(x1 - x0, z1 - z0);
+      for (const h of [0.17, 0.75]) addBox('dsStone', 0.26, 0.15, len, (x0 + x1) / 2, sy + h, (z0 + z1) / 2, yaw);
+      const n = Math.ceil(len / 0.85);
+      for (let i = 0; i <= n; i++) {
+        const t = i / n;
+        addCyl('dsStone', 0.11, 0.14, 0.65, 8, THREE.MathUtils.lerp(x0, x1, t), sy + 0.42, THREE.MathUtils.lerp(z0, z1, t));
+      }
+      wallLine(x0, z0, x1, z1, 0.24, 0.43);
+    };
+    const edge = half - 0.25, gateHalf = NGOC.stairHalf + 0.24;
+    for (const side of [-1, 1]) {
+      balustrade(sx + side * edge, north + 0.24, sx + side * edge, south - 0.14);
+      balustrade(sx + side * gateHalf, south - 0.14, sx + side * edge, south - 0.14);
+      seatPad(sx + side * 8.7, south - 2.45, Math.PI, true, 1.85, 0.95, 'dsStone');
     }
-    const beamY = sy + colH + 0.15; // 8.85
-    addBox('granite', 5.2, 0.3, 3.6, sx, beamY, bodyZ);
-    // tầng 1
-    addRoof(6.6, 4.8, 1.0, 0.4, sx, beamY + 0.2, bodyZ); // đỉnh 10.05
-    // tầng 2
-    addBox('granite', 3.4, 1.1, 2.6, sx, 9.95, bodyZ);
-    addRoof(4.6, 3.4, 0.85, 0.35, sx, 10.5, bodyZ); // 11.35
-    // tầng 3 + nóc
-    addBox('granite', 2.2, 0.9, 1.8, sx, 11.45, bodyZ);
-    addRoof(3.0, 2.4, 0.7, 0.3, sx, 11.9, bodyZ); // 12.6
-    addCyl('granite', 0.24, 0.3, 0.6, 8, sx, 12.9, bodyZ);
-    addSphere('gold', 0.22, sx, 13.25, bodyZ);
-    addCone('gold', 0.12, 0.55, 6, sx, 13.6, bodyZ); // đỉnh ~13,9 → cao 7,9 m trên đỉnh đồi
-    addBox('graniteDark', 3.0, 0.9, 0.9, sx, sy + 0.45, altarZ);
-    addBox('gold', 2.6, 0.08, 0.75, sx, sy + 0.93, altarZ);
-    solid(sx, altarZ, 1.1);
+    balustrade(sx - edge, north + 0.24, sx + edge, north + 0.24);
+
+    const colH = 3.82;
+    for (const ox of [-hx, -2.45, 2.45, hx]) for (const z of [entryZ, rearZ]) {
+      addBox('dsStone', 0.83, 0.34, 0.83, sx + ox, sy + 0.17, z);
+      addCyl('dsTimber', 0.25, 0.32, colH - 0.27, 12, sx + ox, sy + (colH + 0.27) / 2, z);
+      addCyl('dsGold', 0.32, 0.32, 0.075, 12, sx + ox, sy + 0.49, z);
+      addBox('dsDarkwood', 0.73, 0.28, 0.73, sx + ox, sy + colH, z);
+      solid(sx + ox, z, 0.46);
+    }
+    addBox('dsPlaster', hx * 2, colH, 0.27, sx, sy + colH / 2, rearZ);
+    for (const z of [entryZ, rearZ]) {
+      addBox('dsDarkwood', hx * 2 + 0.8, 0.37, 0.69, sx, sy + colH + 0.18, z);
+      addBox('dsGold', hx * 2 + 0.48, 0.07, 0.74, sx, sy + colH + 0.12, z);
+    }
+    wallLine(sx - hx, rearZ, sx + hx, rearZ, 0.28, 0.48);
+    for (const side of [-1, 1]) {
+      const px = sx + side * hx;
+      addBox('dsPlaster', 0.24, 1.05, hz * 2, px, sy + 0.525, bodyZ);
+      addBox('dsTimber', 0.36, 0.14, hz * 2, px, sy + 1.09, bodyZ);
+      addBox('dsDarkwood', 0.56, 0.37, hz * 2, px, sy + colH + 0.18, bodyZ);
+      for (let i = -5; i <= 5; i++) addBox('dsTimber', 0.13, 2.62, 0.12, px, sy + 2.44, bodyZ + i * 0.58);
+      wallLine(px, rearZ, px, entryZ, 0.26, 0.44);
+    }
+
+    addBox('dsDarkwood', 4.35, 0.98, 1.75, sx, sy + 0.49, altarZ);
+    addBox('dsGold', 4.45, 0.09, 1.84, sx, sy + 1.01, altarZ);
+    wallLine(sx - 1.55, altarZ, sx + 1.55, altarZ, 0.87, 0.65);
     const statue = buildBuddha();
-    statue.scale.setScalar(0.34);
-    statue.position.set(sx, sy + 0.98, altarZ);
-    statue.name = 'expansion-buddha-ngoc';
+    statue.scale.setScalar(0.68);
+    statue.position.set(sx, sy + 1.055, altarZ);
     for (const s of [-1, 1]) {
-      addBox('graniteDark', 0.34, 0.75, 0.34, sx + s * 1.5, sy + 0.38, entryZ + 0.4);
-      addSphere('lamp', 0.2, sx + s * 1.5, sy + 0.95, entryZ + 0.4);
-      glow(sx + s * 1.5, sy + 0.95, entryZ + 0.4, 1.7, 0xffc070, 0.4);
+      for (const z of [entryZ + 0.02, altarZ + 0.48]) {
+        const px = sx + s * (z > bodyZ ? 4.15 : 1.58), y = sy + (z > bodyZ ? 3.0 : 1.23);
+        addCyl('dsGold', 0.25, 0.17, 0.08, 8, px, y + 0.17, z);
+        addCyl('dsGold', 0.17, 0.23, 0.07, 8, px, y - 0.17, z);
+        addSphere('lamp', 0.19, px, y, z);
+        glow(px, y, z, 1.8, 0xffc070, 0.4);
+      }
     }
-    addSign('CHÙA NGỌC', 2.6, 0.65, sx, sy + 2.2, entryZ + 0.3);
-    zones.push({ x: sx, z: sz, r: 9, id: 'chuaNgoc' });
+    addSign('CHÙA NGỌC', 3.55, 0.72, sx, sy + 3.46, entryZ + 0.38);
+    zones.push({ x: NGOC.x, z: NGOC.z, r: 10, id: 'chuaNgoc' });
     const { group } = flush('chuaNgoc');
-    group.add(mergeStatue(statue));
+    const roof = duocSuRoof(14.9, 9.3, sy + colH + 0.37, 2.18);
+    roof.position.set(sx, 0, bodyZ);
+    const mergedStatue = mergeStatue(statue);
+    mergedStatue.name = 'expansion-buddha-ngoc';
+    group.add(roof, mergedStatue);
   }
 
   // =====================================================================================
@@ -867,7 +945,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       const side = i % 2 === 0 ? -1 : 1;
       const px = side * (13 + rand() * 26.5);
       const pz = -86 - rand() * 31.5;
-      if (Math.abs(px) < 12.5) continue;
+      if (Math.abs(px - NGOC.x) < NGOC_TERRACE.half + 2.4 && pz < NGOC.stairTop + 4) continue;
       if (nearHillPath(px, pz, 2.6)) continue;
       if (Math.hypot(px - CAVE.x, pz - CAVE.z) < 6.5) continue;
       if (restSpots.some(([rx, rz]) => Math.hypot(px - rx, pz - rz) < 4.8)) continue;
@@ -884,36 +962,34 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       }
       solid(px, pz, 0.42);
     }
-    // Move the screen of trees behind the new summit, off its landing.
+    // Frame the silhouette without growing through the terrace or roof.
     const rand2 = rng(88991);
     for (let i = 0; i < 30; i++) {
       const px = -37 + rand2() * 74;
-      const pz = NGOC.stairTop - 6.2 - rand2() * 2.6;
+      const pz = NGOC_TERRACE.north + 0.6 + rand2() * 3.1;
       const h = 6.0 + rand2() * 3.4;
-      addCyl('trunk', 0.22, 0.36, h * 0.45, 6, px, h * 0.225, pz);
+      if (Math.abs(px - NGOC.x) < NGOC_TERRACE.half + 2.8) continue;
+      const yb = expansionGroundY(px, pz);
+      addCyl('trunk', 0.22, 0.36, h * 0.45, 6, px, yb + h * 0.225, pz);
       for (let k = 0; k < 3; k++) {
         const ch = h * 0.52 * (1 - k * 0.18);
-        addCone('pine', 2.0 - k * 0.45, ch, 7, px, h * 0.3 + k * h * 0.22, pz);
+        addCone('pine', 2.0 - k * 0.45, ch, 7, px, yb + h * 0.3 + k * h * 0.22, pz);
       }
       solid(px, pz, 0.45);
     }
     flush('pineForest');
   }
 
-  // ---- địa hình đồi: lưới cao độ dựng từ expansionGroundY (dải thang hạ thấp 8 cm) ----
+  // ---- địa hình tự nhiên dưới phần bậc và sân lát ----
   {
-    const hillSouth = NORTH_WALK_Z, hillNorth = NGOC.stairStart - 36;
+    const hillSouth = NORTH_WALK_Z, hillNorth = NGOC_TERRACE.north - 0.5;
     const geo = new THREE.PlaneGeometry(80, hillSouth - hillNorth, 54, 32);
     geo.rotateX(-Math.PI / 2);
     geo.translate(0, 0, (hillSouth + hillNorth) / 2);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i);
-      // Sink the flat edge below the main grass plane to avoid flickering at the foot of the hill.
-      let y = expansionGroundY(x, z) - 0.02;
-      // dải thang giữa: hạ 8 cm để bậc đá không bị cỏ xuyên qua, vẫn liền với hai bên sườn
-      if (Math.abs(x) <= 2.95 && z <= NGOC.stairStart && z >= NGOC.stairTop) y -= 0.08;
-      pos.setY(i, y);
+      pos.setY(i, ngocHillGroundY(x, z) - 0.027);
     }
     geo.computeVertexNormals();
     geo.deleteAttribute('uv');

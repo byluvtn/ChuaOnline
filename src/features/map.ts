@@ -1,6 +1,7 @@
 import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
+import { NGOC_HALL, NGOC_TERRACE } from '../../shared/campus';
 import { PLACES, type Place } from '../data/places';
 import { LOTUS, RIVER, DUOC_SU, NGOC, NGOC_APPROACH, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
@@ -56,6 +57,7 @@ export function openMap(ctx: MenuCtx) {
       rect(...NGOC_APPROACH, '#e8d6a4');
       rect(-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2, '#e8d6a4');
       rect(NGOC.x - NGOC.stairHalf, NGOC.stairTop, NGOC.x + NGOC.stairHalf, NGOC.stairStart, '#d4d1bd', '#8b9684');
+      rect(NGOC.x - NGOC_TERRACE.half, NGOC_TERRACE.north, NGOC.x + NGOC_TERRACE.half, NGOC.stairTop, '#d4d1bd', '#8b9684');
       ellipse(LOTUS.x, LOTUS.z, LOTUS.a, LOTUS.b, '#8ec6e0', '#4f8fb0');
       rect(-90, 0.9, -66, 3.1, '#d9c6a2', '#8a8270');
       rect(RIVER.x0, RIVER.z0, RIVER.x1, RIVER.z1, '#8ec6e0', '#4f8fb0');
@@ -83,7 +85,7 @@ export function openMap(ctx: MenuCtx) {
       plat(NHA_TO_PLAT); plat(TANG_XA_PLAT); plat(TRAI_DUONG_PLAT);
       plat({ x: NHA_KHACH.x, z: NHA_KHACH.z, hx: 6.0, hz: 4.25 });
       plat(PHONG_CD_PLAT);
-      plat(DUOC_SU); plat(NGOC, '#a7b5ad');
+      plat(DUOC_SU); plat(NGOC_HALL);
       ellipse(REST.x, REST.z, 6, 4, '#acc895');
       plat({ x: THIEN_DUONG.x, z: THIEN_DUONG.z, hx: 6.5, hz: 4.5 });
       plat(TAM_THE_PLAT, '#b5542f', '#6e2a14');

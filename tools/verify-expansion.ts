@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { WALL, LAKE, BRIDGE, NGOC, NORTH_WALK_Z, RIVER, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
 import { MAP_HALF, MAP_Z_MIN, MAP_Z_MAX } from '../shared/types';
 import { clampToCompound, resolveBridge, resolveWater, groundY, nearWalkway, NGOC_APPROACH, WALKWAY_RECTS, TAM_THE_PLAT, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP } from '../src/layout';
 import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath } from '../shared/roads';
@@ -47,6 +47,17 @@ for (let z = NGOC.stairStart; z >= NGOC.stairTop; z -= 0.025) {
   prior = y;
 }
 assert.equal(expansionGroundY(NGOC.x, NGOC.stairTop), NGOC.y);
+for (const x of [-NGOC_TERRACE.half, NGOC.x, NGOC_TERRACE.half]) {
+  for (const z of [NGOC_TERRACE.north, NGOC_HALL.z, NGOC.z, NGOC.stairTop]) {
+    assert.equal(groundY(x, z), NGOC.y, 'The summit terrace must stay flat across its full footprint');
+    assert(nearWalkway(x, z, 0));
+  }
+}
+for (const step of profile) {
+  const z = (step.z0 + step.z1) / 2;
+  assert.equal(groundY(NGOC.x + NGOC.stairHalf, z), step.y);
+  assert(ngocHillGroundY(NGOC.x, z) < step.y, 'The slope must not cut through the stone treads');
+}
 assert(TAM_THE_PLAT.z - TAM_THE_PLAT.hz - NGOC.stairStart >= 10);
 for (const [x0, z0, x1, z1] of WALKWAY_RECTS) assert(x0 < x1 && z0 < z1, 'Positive paving dimensions');
 const [approachWest, , approachEast] = NGOC_APPROACH;
@@ -56,7 +67,7 @@ for (const x of [approachWest, NGOC.x, approachEast]) {
     assert(nearWalkway(x, z, 0), 'The new approach must stay paved and plant-free');
   }
 }
-assert.equal(NPC_QUESTS.find(q => q.id === 'nq_ngoc_pilgrimage')?.zone?.z, NGOC.stairTop);
+assert.equal(NPC_QUESTS.find(q => q.id === 'nq_ngoc_pilgrimage')?.zone?.z, NGOC.z);
 const transverse = { x: 8, z: 2 }; resolveBridge(transverse, { x: 0, z: 2 }); assert.equal(transverse.x, 8);
 assert.equal(groundY(77, -38), 0.45);
 assert.equal(groundY(-64, -74), 0.25);

@@ -247,6 +247,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'ngocBase', x: NGOC.x, z: NGOC.stairStart },
   { id: 'ngocMid', x: NGOC.x, z: (NGOC.stairStart + NGOC.stairTop) / 2 },
   { id: 'ngocTop', x: NGOC.x, z: NGOC.stairTop },
+  { id: 'ngocCourt', x: NGOC.x, z: NGOC.z },
   { id: 'pineBypass', x: 18, z: -82 },
   { id: 'bypassE', x: 40, z: -82 },
   { id: 'cemeteryGate', x: 50, z: -82 },
@@ -359,6 +360,7 @@ export const ROAD_EDGES: [string, string][] = [
   ['ngocApproach', 'ngocBase'],
   ['bypassE', 'cemeteryGate'], ['cemeteryGate', 'eastRearGate'], ['eastRearGate', 'rearE'],
   ['ngocBase', 'ngocMid'], ['ngocMid', 'ngocTop'], // 299 steps in 3 flights + 2 landings
+  ['ngocTop', 'ngocCourt'],
   ['cemeteryGate', 'cemetery'],
   ['caveBypass', 'caveEntry'], ['caveEntry', 'caveMid'], ['caveMid', 'caveElbow'],
   ['caveElbow', 'cavePath'], ['cavePath', 'cave'],

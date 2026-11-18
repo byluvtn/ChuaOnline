@@ -1,5 +1,5 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
-import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, NGOC, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, NGOC, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
@@ -77,7 +77,7 @@ export const FLOWER_BEDS = [{ x: 16.5, z: 23, a: 5, b: 3.5 }, { x: -16.5, z: 23,
 
 /** Actual stone footprints, shared by the renderer and scenery placement. */
 export const MAIN_COURT = [-20, -42, 20, 2] as const;
-export const NGOC_APPROACH = [NGOC.x - 4.5, NGOC.stairStart, NGOC.x + 4.5, NORTH_WALK_Z - 1.2] as const;
+export const NGOC_APPROACH = [NGOC.x - NGOC.approachHalf, NGOC.stairStart, NGOC.x + NGOC.approachHalf, NORTH_WALK_Z - 1.2] as const;
 const bridgeApproachHalf = BRIDGE.hw + 0.25;
 export const WALKWAY_RECTS = [
   [-WALL.x - 4, PATH_Z - 1.1, WALL.x + 4, PATH_Z + 1.1],
@@ -114,7 +114,10 @@ export const WALKWAY_RECTS = [
   [-60.2, NORTH_WALK_Z, -57.8, -77], [57.8, NORTH_WALK_Z, 60.2, -77],
   [48.8, -89, 51.2, -82], [-WALL.x, WALL.zS, WALL.x, WALL.zS + 13],
 ] as const;
-const PLANT_FREE_RECTS = [MAIN_COURT, ...WALKWAY_RECTS];
+const PLANT_FREE_RECTS = [MAIN_COURT, ...WALKWAY_RECTS,
+  [NGOC.x - NGOC.stairHalf - 1, NGOC.stairTop, NGOC.x + NGOC.stairHalf + 1, NGOC.stairStart],
+  [NGOC.x - NGOC_TERRACE.half, NGOC_TERRACE.north, NGOC.x + NGOC_TERRACE.half, NGOC.stairTop],
+] as const;
 
 export function nearWalkway(x: number, z: number, clearance: number) {
   return PLANT_FREE_RECTS.some(([x0, z0, x1, z1]) =>

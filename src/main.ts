@@ -1,5 +1,6 @@
 import './polyfill';
 import * as THREE from 'three';
+import { NGOC_HALL, NGOC_TERRACE } from '../shared/campus';
 import { io, type Socket } from 'socket.io-client';
 import { api, clearToken, getToken, setToken } from './api';
 import { BOW_MS, animateCharacter, buildCharacter, type Character } from './character';
@@ -1747,7 +1748,7 @@ const MM_BUILDINGS = [
   { ...TANG_XA_PLAT, label: 'Tăng Xá' }, { ...AM_CO_PLAT, label: 'Am Cổ' },
   { ...VUON_THAP_PLAT, label: 'Vườn Tháp' }, { ...PHONG_CD_PLAT, label: 'Ghi Công Đức' },
   { x: DUOC_SU.x, z: DUOC_SU.z, hx: DUOC_SU.hx, hz: DUOC_SU.hz, label: 'Dược Sư' },
-  { x: NGOC.x, z: NGOC.z, hx: NGOC.hx, hz: NGOC.hz, label: 'Chùa Ngọc' },
+  { ...NGOC_HALL, label: 'Chùa Ngọc' },
 ];
 const MM_ROADS = new Map(ROAD_NODES.map((n) => [n.id, n]));
 
@@ -1799,6 +1800,7 @@ function drawMinimap() {
   g.fillStyle = '#d6b994';
   g.fillRect(X(BRIDGE.x - BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
   g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, (NGOC.stairStart - NGOC.stairTop) * k);
+  g.fillRect(X(NGOC.x - NGOC_TERRACE.half), Z(NGOC_TERRACE.north), NGOC_TERRACE.half * 2 * k, (NGOC.stairTop - NGOC_TERRACE.north) * k);
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `600 ${8 * dpr}px sans-serif`;
   for (const b of MM_BUILDINGS) {
