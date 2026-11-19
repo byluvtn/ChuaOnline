@@ -1,7 +1,7 @@
 import { createNpcRoom, tickNpcs } from '../server/npcs.ts';
 import assert from 'node:assert/strict';
 import { inLake } from '../src/layout.ts';
-import { expansionWaterBlocked } from '../shared/campus.ts';
+import { LOTUS_PAVILION, expansionWaterBlocked } from '../shared/campus.ts';
 
 const base = Date.UTC(2026, 10, 9, 3, 0, 0);
 const room = createNpcRoom(base);
@@ -15,6 +15,10 @@ for (let t = base; t < base + 2 * 3600_000; t += 100) {
   for (const n of room.npcs) {
     if (!IDS.includes(n.def.id)) continue;
     const s = n.state, st = stat[n.def.id];
+    if (n.def.id === 'npc42') {
+      assert.ok(Math.hypot(s.x - LOTUS_PAVILION.x, s.z - LOTUS_PAVILION.z) < 2,
+        `npc42 patrol is not at the pavilion: (${s.x}, ${s.z})`);
+    }
     st.anims[s.anim] = (st.anims[s.anim] ?? 0) + 1;
     st.minX = Math.min(st.minX, s.x); st.maxX = Math.max(st.maxX, s.x);
     st.minZ = Math.min(st.minZ, s.z); st.maxZ = Math.max(st.maxZ, s.z);

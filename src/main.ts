@@ -780,6 +780,7 @@ function connect() {
       const r = remotes.get(p.id);
       if (!r || p.id === myId) continue;
       r.data.seat = p.seat ?? null;
+      r.data.anim = p.anim; // Dialogue and quest availability use the server pose, not a local action overlay.
       r.target.set(p.x, p.y ?? world.groundY(p.x, p.z), p.z);
       r.ry = p.ry;
       if (performance.now() > r.actionUntil) r.anim = p.anim;
@@ -1936,7 +1937,7 @@ function updateNoticeBtn() {
 
 function npcPos(id: string | undefined): Pt | null {
   const r = id ? remotes.get(id) : undefined;
-  return r ? { x: r.char.root.position.x, z: r.char.root.position.z } : null;
+  return r && r.data.anim !== 'lie' ? { x: r.char.root.position.x, z: r.char.root.position.z } : null;
 }
 
 // ---- Bản đồ nhỏ hình tròn (góc trên-phải) ----
@@ -2042,7 +2043,7 @@ function drawMinimap() {
   const neededNpcs = new Set(quests.map(mmQuestNpc).filter((id): id is string => !!id));
   for (const id of neededNpcs) {
     const r = remotes.get(id);
-    if (!r?.data.npc) continue;
+    if (!r?.data.npc || r.data.anim === 'lie') continue;
     const x = r.char.root.position.x, z = r.char.root.position.z;
     const dx = X(x) - S / 2, dz = Z(z) - S / 2;
     const scale = Math.min(1, (S / 2 - 11 * dpr) / Math.max(1, Math.hypot(dx, dz)));
@@ -2156,7 +2157,11 @@ function updateGuideTarget(): void {
   const q = quests.find((x) => x.id === guideQuestId);
   if (!q || q.claimed) { stopGuide(); return; }
   const t = questTarget(q);
-  if (!t) { stopGuide(); return; }
+  if (!t) {
+    stopGuide();
+    toast(currentStep(q) === 'feed' ? 'Chưa tìm thấy con vật, hãy thử lại sau.' : 'Điểm đến hiện chưa sẵn sàng, hãy thử lại sau.');
+    return;
+  }
   // Buoc nhiem vu doi (diem quet ke tiep, buoc moi): do lai tien do tu dau.
   // NPC dang di (cung buoc, dich troi dan) thi KHONG reset — nguoi choi van
   // duoi kip duoc, best-distance van cai thien binh thuong.
@@ -2266,9 +2271,8 @@ function updateTracker(): void {
     const fresh = questTarget(q);
     if (fresh && Math.hypot(fresh.x - p.x, fresh.z - p.z) < 1.5) {
       if (mmQuestNpc(q)) { qt.style.display = 'none'; return; }
-      stopGuide(); return;
-    }
-    if (fresh) { guideTarget = fresh; updateGuidePath(); resetGuideProgress(); clickTarget = null; pathTarget = null; pathQueue = []; }
+      if (currentStep(q) !== 'feed') { stopGuide(); return; }
+    } else if (fresh) { guideTarget = fresh; updateGuidePath(); resetGuideProgress(); clickTarget = null; pathTarget = null; pathQueue = []; }
   }
   qt.style.display = 'flex';
   const label = qt.querySelector('.qt-label');
@@ -2784,7 +2788,6 @@ function loop(now: number = performance.now()) {
 
     // guide watchdog: refresh a moving NPC target every 2 s; unstick a clickTarget that makes no progress
     if (guideQuestId && guideTarget && me) {
-      const p = me.char.root.position;
       guideRefreshT += dt;
       if (guideRefreshT >= 2) {
         guideRefreshT = 0;
@@ -2797,6 +2800,9 @@ function loop(now: number = performance.now()) {
           guideFeedN = 0; guideStuckN = 0;
         }
       }
+    }
+    if (guideQuestId && guideTarget && me) {
+      const p = me.char.root.position;
       // Track progress along the actual route: a valid detour around a building
       // can temporarily increase the straight-line distance to the destination.
       const dT = Math.hypot(guideTarget.x - p.x, guideTarget.z - p.z);
@@ -2841,7 +2847,7 @@ function loop(now: number = performance.now()) {
         const fresh = gq ? questTarget(gq) : null;
         if (fresh && Math.hypot(fresh.x - p.x, fresh.z - p.z) >= 1.5) {
           guideTarget = fresh; updateGuidePath(); resetGuideProgress();
-        } else if (gq && (sweepGuideKeepAlive(gq, p.x, p.z) || mmQuestNpc(gq))) {
+        } else if (gq && (currentStep(gq) === 'feed' || sweepGuideKeepAlive(gq, p.x, p.z) || mmQuestNpc(gq))) {
           // diem quet: giu guide song de updateSweep quet; event quests se doi target sang diem ke tiep
           clickTarget = null; pathTarget = null; pathQueue.length = 0;
         } else { stopGuide(); }

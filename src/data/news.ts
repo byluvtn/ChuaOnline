@@ -8,6 +8,16 @@ export interface NewsItem {
 
 export const NEWS: NewsItem[] = [
   {
+    title: 'Rà soát hành động NPC: sửa các lỗi đi lại và làm việc',
+    date: '2026-11-20',
+    items: [
+      'Đã theo dõi toàn bộ 41 NPC trong một ngày game. Có 33 NPC được xác minh hưởng lợi từ các sửa đổi về đi lại, chỗ ngồi, ca làm hoặc tư thế.',
+      'Tiểu Đánh Chuông về tháp đúng giờ. Sư Thầy Trực Ban đi vòng bàn thay vì xuyên tường. Hai sư ni dùng đúng đệm; khách và các tiểu rời đúng giường trước khi nhường chỗ.',
+      'Khách đi lễ, gồm Học sinh nam, đi vòng vật cản và thắp hương khi tới Chùa Ngọc. Tiểu Quét Vườn tránh bãi đá, Sư Cô Trông Điện Dược Sư đi vòng góc điện, Tiểu Trồng Rau đi giữa các luống và Cô Trông Đình Sen quét tại đình đã dời.',
+      'Chỉnh dáng bước, lạy, chắp tay và cầm chổi của NPC. Dẫn đường cho thú ăn không còn tự tắt trước khi bấm Cho ăn.',
+    ],
+  },
+  {
     title: 'Chỉnh lại chùa: cổng, bản đồ, ghế ngồi và tiếng pháo hoa',
     date: '2026-11-19',
     items: [

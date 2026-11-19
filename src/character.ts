@@ -201,6 +201,9 @@ const AL1 = 0.17; // shoulder -> elbow
 const CUFF = 0.203; // elbow -> sleeve mouth
 const AL2 = CUFF + 0.5 * HAND_R; // elbow -> hand centre (ball centre sits HAND_R/2 below the mouth => 1/4 inside)
 const HALF_T = HAND_R * HAND_SX; // half thickness: joined palms touch with zero gap
+const STAFF_TOP = new THREE.Vector3(0.43, 0.60, 0.07);
+const SWEEP_GRIP = new THREE.Vector3(0, 0.86, 0.24);
+const SWEEP_TILT = -0.35;
 const faceCache = new Map<string, THREE.CanvasTexture>();
 
 /** Face decal 512x512 drawn on a front-facing sphere patch: eyes, brows, cheeks, mouth. */
@@ -565,7 +568,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   // gậy Sư Ông: con trực tiếp của body (hold bị tắt/kéo theo animation), chỉ hiện khi c.cane
   const holdStaff = new THREE.Group(); holdStaff.visible = false; body.add(holdStaff);
   {
-    const top = new THREE.Vector3(0.43, 0.60, 0.07), bot = new THREE.Vector3(0.43, 0.022, 0.122);
+    const top = STAFF_TOP, bot = new THREE.Vector3(0.43, 0.022, 0.122);
     const dir = new THREE.Vector3().subVectors(top, bot), len = dir.length();
     const shaft = mesh(geo('staffShaft', () => new THREE.CylinderGeometry(0.035, 0.04, 1, 12)), tmat(0x8a5a2e), holdStaff, 0, 0, 0, false);
     shaft.scale.y = len;
@@ -577,8 +580,8 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const holdInc = new THREE.Group(); holdInc.visible = false; hold.add(holdInc);
   const holdLotus = new THREE.Group(); holdLotus.visible = false; hold.add(holdLotus);
   // chá»•i quÃ©t lÃ¡: cÃ¡n nghiÃªng ra trÆ°á»›c, Ä‘áº§u chá»•i cháº¡m Ä‘áº¥t; chá»‰ hiá»‡n khi anim = sweep
-  const holdBroom = new THREE.Group(); holdBroom.visible = false; holdBroom.rotation.x = -0.5; hold.add(holdBroom);
-  mesh(geo('broomHandle', () => new THREE.CylinderGeometry(0.024, 0.024, 0.95, 6)), tmat(0x6b4423), holdBroom, 0, -0.325, 0, false);
+  const holdBroom = new THREE.Group(); holdBroom.visible = false; holdBroom.rotation.x = opts?.role ? SWEEP_TILT : -0.5; hold.add(holdBroom);
+  mesh(geo('broomHandle', () => new THREE.CylinderGeometry(0.024, 0.024, 0.95, 6)), tmat(0x6b4423), holdBroom, 0, opts?.role ? -0.35 : -0.325, 0, false);
   mesh(geo('broomHead', () => new THREE.ConeGeometry(0.195, 0.52, 8)), tmat(0x9a6b35), holdBroom, 0, -0.61, 0, false);
   const holdBucket = new THREE.Group(); holdBucket.visible = false; hold.add(holdBucket);
   mesh(geo('bucketBody', () => new THREE.CylinderGeometry(0.15, 0.115, 0.2, 14, 1, true)), tmat(0x8a5a32, { side: THREE.DoubleSide }), holdBucket, 0, 0, 0, false);
@@ -797,6 +800,7 @@ const BOW_T = BOW_MS / 1000;
 // Joined-palms target in body space (hand centre) at the chest; in a deep bow the target slides
 // down with the torso instead of being pinned to a fixed world point on the floor.
 const CHEST = new THREE.Vector3(0, 0.4 * H, 0.39);
+const NPC_CHEST_Z = 0.29;
 const HIP_Y = 0.45; // hip pivot in body space: the body group rotates about this height
 // Deep-bow target, in BODY space: the joined palms stay attached to the torso and only drop a
 // little below the chest, so when the body folds forward the hands travel with it instead of
@@ -921,6 +925,14 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   c.lap.visible = false;
   c.body.position.set(0, walk ? Math.abs(cycle) * 0.09 : Math.sin(TAU * phaseOf(CLIPS.idle, t)) * 0.014, 0);
   c.body.rotation.set(0, 0, walk ? cycle * 0.04 : 0);
+  if (walk && c.role) {
+    // Low body bounce and alternating swing feet; one foot remains at ground height.
+    const swing = Math.cos(TAU * gaitPh) * amp * 0.13;
+    const bob = Math.abs(cycle) * 0.025;
+    c.body.position.y = bob;
+    c.legL.position.y += Math.max(0, swing) - bob;
+    c.legR.position.y += Math.max(0, -swing) - bob;
+  }
   let lift = 0; // 0 = palms at chest, 1 = palms in the lowered bow pose
 
   if (anim === 'sit' || aboard) {
@@ -976,7 +988,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     const br = cycle * 0.012;
     const BENCH_BODY_Y = 0.449;
     const KNEE_Z = 0.40;
-    c.body.position.set(0, BENCH_BODY_Y + br, 0);
+    c.body.position.set(0, BENCH_BODY_Y + (c.role ? 0.619 * (1 / c.root.scale.y - 1) : 0) + br, 0);
     c.body.rotation.set(0, 0, 0);
     c.lap.visible = false;
     for (const [thigh, shin, x] of [
@@ -1008,7 +1020,9 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     // Legs in body space: shift back in body-local z so they tuck behind when bowing; counter-
     // rotate by th so in world space the shins point straight down to the floor.
     const legZ = lerp(0, -0.22, kneel);
-    const legY = lerp(0.18, 0.06, kneel);
+    // Keep the shoes above the floor as the hip drops; shins counter-rotate in world space.
+    const tuckedY = lerp(0.18, 0.06, kneel);
+    const legY = c.role ? Math.max(tuckedY, (0.18 - bodyY + legZ * Math.sin(th)) / Math.cos(th)) : tuckedY;
     c.legL.position.set(-0.16, legY, legZ);
     c.legR.position.set(0.16, legY, legZ);
     c.legL.rotation.x = c.legR.rotation.x = -th;
@@ -1051,8 +1065,12 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
       _tg.set(0.15, lowY, fwd); solveArm(c.armR, c.foreR, 1, _tg, pw);
       _tg.set(-0.15, lowY, fwd); solveArm(c.armL, c.foreL, -1, _tg, pw);
     } else if (c.poseKind === 'sweep') {
-      _tg.set(0.07, 0.86, 0.4); solveArm(c.armR, c.foreR, 1, _tg, pw);
-      _tg.set(-0.07, 0.71, 0.48); solveArm(c.armL, c.foreL, -1, _tg, pw);
+      if (c.role) { _tg.copy(SWEEP_GRIP); _tg.x = 0.08; }
+      else _tg.set(0.07, 0.86, 0.4);
+      solveArm(c.armR, c.foreR, 1, _tg, pw);
+      if (c.role) _tg.set(-0.09, SWEEP_GRIP.y - 0.09, SWEEP_GRIP.z + 0.09 * Math.tan(-SWEEP_TILT));
+      else _tg.set(-0.07, 0.71, 0.48);
+      solveArm(c.armL, c.foreL, -1, _tg, pw);
     } else if (c.poseKind === 'ring') {
       const pull = Math.sin((t * Math.PI * 2) / 1.0) * 0.5 + 0.5;
       _tg.set(0.1, 1.22 - pull * 0.34, 0.46); solveArm(c.armR, c.foreR, 1, _tg, pw);
@@ -1073,7 +1091,10 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     }
   }
   const sweeping = anim === 'sweep' && c.poseW > 0.6;
-  if (sweeping) c.hold.position.set(0, 0.86, 0.4);
+  if (sweeping) {
+    if (c.role) c.hold.position.copy(SWEEP_GRIP);
+    else c.hold.position.set(0, 0.86, 0.4);
+  }
   c.holdBroom.visible = sweeping;
   const bucketing = (anim === 'scoop' || anim === 'water' || anim === 'carry') && c.poseW > 0.6;
   c.holdBucket.visible = bucketing;
@@ -1086,6 +1107,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   // ritual hands: round palms pressed together (gap 0), fingertips up, blended in by the prayer weight
   if (w > 0) {
     _tg.copy(CHEST);
+    if (c.role) _tg.z = NPC_CHEST_Z;
     // Both targets live in body space, so the deep-bow palms simply glide from the chest to the
     // lowered bow pose and follow the torso as it folds — no world-to-body conversion needed.
     if (lift > 0) _tg.lerp(BOW_HAND, lift);
@@ -1135,11 +1157,9 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   if (c.beard) {
     c.beard.rotation.x = BEARD_WORLD_TILT - c.body.rotation.x - c.head.rotation.x;
   }
-  if (c.cane && (anim === 'idle' || anim === 'walk' || anim === 'run') && w === 0) {
-    c.armR.rotation.set(-0.1, 0, 0.22);
-    c.foreR.rotation.set(-0.1, 0, 0);
-  }
-  c.holdStaff.visible = c.cane && anim !== 'sit' && anim !== 'lie' && anim !== 'bow';
+  const usesStaff = c.cane && (anim === 'idle' || anim === 'walk' || anim === 'run') && w === 0;
+  if (usesStaff) solveArm(c.armR, c.foreR, 1, STAFF_TOP, 1);
+  c.holdStaff.visible = usesStaff;
   const gm = c.garment.current;
   if (gm) {
     // Gắn tay/chân áo theo đúng pivot thật (đã copy xong mọi pose, IK, fade ở trên).
