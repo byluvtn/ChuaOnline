@@ -1,4 +1,4 @@
-import { BRIDGE, HALL, PLAZA, clampToCompound, inLake } from '../src/layout.js';
+import { BRIDGE, CORR, HALL, PLAZA, clampToCompound, inLake } from '../src/layout.js';
 import { BAMBOO, DUOC_SU_DOOR, FLOWER_HILL, PHONG_CD_YAW, phongCdWorld, expansionWaterBlocked } from '../shared/campus.js';
 import { ROAD_NODES, roadRoute, routeFrom, nearestNode as nearestVisitorRoadNode } from '../shared/roads.js';
 import type { ActionKind, Anim, NpcAct, Outfit, PlayerState } from '../shared/types.js';
@@ -164,9 +164,9 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.z - b.z);
 interface Npc {
   def: NpcDef; state: PlayerState; phase: Phase; until: number; speed: number;
   route: Pt[]; roam: number; side: number;
-  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave' | 'toIdleSeat' | 'idleSeat' | 'toIdleIncense' | 'idleIncense' | 'toIdleRest' | 'idleRest' | 'toDesk'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
-  stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant' | 'toStroll' | 'stroll';
-  shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; homeSlot: Behavior;
+  mode: 'normal' | 'toAltar' | 'sitting' | 'leaving' | 'toRest' | 'resting' | 'toWork' | 'toChant' | 'chanting' | 'toSeatChant' | 'seatChant' | 'toLeave' | 'toIdleSeat' | 'idleSeat' | 'toIdleIncense' | 'idleIncense' | 'toIdleRest' | 'idleRest' | 'toDesk' | 'toBenchRest' | 'benchRest'; nextChat: number; chatIdx: number; rungKey: string; chantKey: string;
+  stage: 'gate' | 'toAltar' | 'bow' | 'chant' | 'toPlaza' | 'plaza' | 'toGate' | 'toBranch' | 'branch' | 'toSeat' | 'seatChant' | 'toStroll' | 'stroll' | 'toBench' | 'benchRest';
+  shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; benchSeat: BenchSeat | null; homeSlot: Behavior;
   tourStops: TourStop[]; tourIdx: number; tourPhase: number;
   gone: boolean; goneUntil: number;
 }
@@ -217,6 +217,58 @@ function freeSeat(room: NpcRoom, hall: ChantSeat['hall']): ChantSeat | undefined
   return CHANT_SEATS.find((s) => s.hall === hall && !room.seats.has(seatKey(s)));
 }
 
+/** Ghế gỗ hành lang (6 ghế trong benchSpots, src/temple.ts:106-145, mỗi ghế 2 chỗ).
+ * Ghế đông x=+18.8 ngồi quay Tây (ry=-PI/2); ghế tây x=-18.8 quay Đông (ry=+PI/2). */
+export interface BenchSeat { x: number; z: number; ry: number }
+export const CORRIDOR_BENCH_SEATS: BenchSeat[] = [
+  { x:  18.8, z: -17.0, ry: -Math.PI / 2 },
+  { x:  18.8, z: -16.2, ry: -Math.PI / 2 },
+  { x:  18.8, z:  -9.8, ry: -Math.PI / 2 },
+  { x:  18.8, z:  -9.0, ry: -Math.PI / 2 },
+  { x:  18.8, z:  -2.6, ry: -Math.PI / 2 },
+  { x:  18.8, z:  -1.8, ry: -Math.PI / 2 },
+  { x: -18.8, z: -17.0, ry:  Math.PI / 2 },
+  { x: -18.8, z: -16.2, ry:  Math.PI / 2 },
+  { x: -18.8, z:  -9.8, ry:  Math.PI / 2 },
+  { x: -18.8, z:  -9.0, ry:  Math.PI / 2 },
+  { x: -18.8, z:  -2.6, ry:  Math.PI / 2 },
+  { x: -18.8, z:  -1.8, ry:  Math.PI / 2 },
+];
+const benchKey = (s: BenchSeat) => `bench:${s.x},${s.z}`;
+function takeBenchSeat(room: NpcRoom, seat: BenchSeat, npcId: string): boolean {
+  const k = benchKey(seat);
+  const holder = room.seats.get(k);
+  if (holder && holder !== npcId) return false;
+  room.seats.set(k, npcId);
+  return true;
+}
+/** Phía hành lang của 1 điểm: +1 đông, -1 tây, 0 ngoài hành lang. */
+function corridorSide(p: Pt): 1 | -1 | 0 {
+  if (p.z <= CORR.z0 || p.z >= CORR.z1) return 0;
+  if (Math.abs(p.x - CORR.x) < CORR.half) return 1;
+  if (Math.abs(p.x + CORR.x) < CORR.half) return -1;
+  return 0;
+}
+/** Ghế hành lang gần `from` nhất trong các ghế còn trống.
+ * NPC đang đứng TRONG 1 hành lang chỉ được chọn ghế cùng phía: chuyến
+ * sang hành lang bên kia bắt routeFrom kéo ra node hallEastWp, mà đoạn
+ * thẳng tới node đó xuyên qua bệ tượng La Hán (22.35,-9.4) — cạnh
+ * hallFront<->hallEastWp của road graph vốn đã cắt qua bệ tượng
+ * (22.35,-13). Hạn chế này giữ chuyến đi ghế luôn cùng phía; hết ghế
+ * cùng phía thì caller fallback (idleRest / ghế tụng), không đi xuyên. */
+function nearestFreeBenchSeat(room: NpcRoom, from: Pt): BenchSeat | undefined {
+  const side = corridorSide(from);
+  let best: BenchSeat | undefined;
+  let bestD = Infinity;
+  for (const s of CORRIDOR_BENCH_SEATS) {
+    if (side !== 0 && Math.sign(s.x) !== side) continue;
+    if (room.seats.has(benchKey(s))) continue;
+    const d = dist(from, s);
+    if (d < bestD) { best = s; bestD = d; }
+  }
+  return best;
+}
+
 /** Road node coordinates by id (no bare coordinates for graph nodes in NPC code). */
 function nodePt(id: string): Pt {
   const n = ROAD_NODES.find((r) => r.id === id);
@@ -261,7 +313,7 @@ export function createNpcRoom(now = Date.now()): NpcRoom {
     return {
       def, phase: 'idle', until: def.behavior === 'chant' ? now : now + R(1000, 3000) + i * 700, speed: 1.2, route: [], roam: 0, side: 0,
       mode: 'normal', nextChat: 0, chatIdx: 0, rungKey: '', chantKey: '', stage: 'gate',
-      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, tourStops: [], tourIdx: 0, tourPhase: 0, homeSlot: def.behavior, gone: false, goneUntil: 0,
+      shiftEnd: inPool ? now + SHIFT_MS + i * 5 * MIN : 0, restEnd: 0, bedId: null, chantSeat: null, benchSeat: null, tourStops: [], tourIdx: 0, tourPhase: 0, homeSlot: def.behavior, gone: false, goneUntil: 0,
       state: { id: def.id, name: def.name, outfit: def.outfit, color: def.color, accessory: def.accessory ?? null, x: start.x, z: start.z, ry: def.behavior === 'desk' ? PHONG_CD_YAW : def.behavior === 'chant' ? (def.id === 'npc27' ? Math.PI / 2 : Math.PI) : def.behavior === 'post' ? (def.post && def.post.z >= 47 ? Math.PI : def.post?.x === -11 ? Math.PI / 2 : def.post?.x === 11 ? -Math.PI / 2 : def.post?.x === 0 ? Math.PI : 0) : Math.PI, anim: def.behavior === 'desk' || def.behavior === 'chant' ? 'sit' : 'idle', merit: 0, npc: true, role: def.role },
     };
   });
@@ -614,6 +666,29 @@ function seatRoute(n: Npc, seat: ChantSeat): Pt[] {
   if (seat.hall === 'chinhDien' && inChinhDien(n.state)) return [p];
   return [...routeFrom(n.state, seat.hall === 'chinhDien' ? 'hallIn' : 'tamThe'), p];
 }
+/** Route tới ghế gỗ hành lang. Đoạn thẳng kết thúc ở tâm ghế bị segmentClear từ chối
+ * (CLEARANCE 0.55 trong shared/pathfind.ts, ghế collider r=0.5) nên chân cuối ép
+ * thẳng tới seat như seatRoute.
+ * - Tây: corrW (-20.5,-6) đã nằm trong hành lang, graph có sẵn. Gói này
+ * (tin 149) thêm cạnh corrW→corrWMid→westMid trên trục giữa hành lang,
+ * song song đường vòng corrW→corrW2→westMid có sẵn trên main; cạnh
+ * bellTower→corrW đã không còn trên main (bản đồ sửa trước gói này).
+ * - Đông: KHÔNG đi qua hallEastWp — cạnh hallFront→hallEastWp cũ cắt xuyên bệ
+ * tượng La Hán ở (22.35,-13) nên gói này bỏ cạnh đó (tin 149).
+ * Đi vòng qua eastMid (22,-26) rồi vào hành lang bằng khe z=-13 (khe giữa các cột
+ * z=-14.8 và -11.2, cũng là khe giữa các bệ tượng), rồi dọc trục giữa tới seat.
+ * - Đã ở trong hành lang (cùng bên với ghế): KHÔNG gọi routeFrom — chân đầu tiên
+ * tới node gần nhất sẽ cắt xuyên bệ tượng. Đi thẳng tới khe z=-13 trên trục giữa
+ * rồi dọc trục tới ghế. */
+function benchRoute(n: Npc, seat: BenchSeat): Pt[] {
+  const p = { x: seat.x, z: seat.z };
+  const side = seat.x < 0 ? -1 : 1;
+  const cx = side * CORR.x;
+  if (Math.abs(n.state.x - cx) < CORR.half && n.state.z > CORR.z0 && n.state.z < CORR.z1)
+    return [{ x: cx, z: -13 }, { x: cx, z: seat.z }, p];
+  if (seat.x < 0) return [...routeFrom(n.state, 'corrW'), { x: -CORR.x, z: seat.z }, p];
+  return [...routeFrom(n.state, 'eastMid'), { x: CORR.x, z: -13 }, { x: CORR.x, z: seat.z }, p];
+}
 /** Leave through the Tam Quan gate; despawn happens on arrival (visitorArrive). */
 function leaveToGate(n: Npc) {
   n.mode = 'toLeave'; n.stage = 'toGate';
@@ -634,6 +709,12 @@ function visitorArrive(room: NpcRoom, n: Npc, now: number) {
     n.stage = 'seatChant'; n.mode = 'seatChant'; n.phase = 'act'; s.anim = 'chant';
     s.ry = n.chantSeat ? n.chantSeat.ry : Math.PI;
     n.until = now + 30_000;
+  }
+  else if (n.stage === 'toBench') {
+    n.stage = 'benchRest'; n.mode = 'benchRest'; n.phase = 'act'; s.anim = 'bench';
+    if (n.benchSeat) { s.x = n.benchSeat.x; s.z = n.benchSeat.z; }
+    s.ry = n.benchSeat ? n.benchSeat.ry : Math.PI;
+    n.until = now + R(30_000, 60_000);
   }
   else if (n.stage === 'toStroll') {
     if (room.questGuard.has(n.def.id)) cancelTour(room, n, now);
@@ -782,10 +863,27 @@ function visitorDecide(room: NpcRoom, n: Npc, now: number) {
       leaveToGate(n);
       break;
     }
-    case 'seatChant':
+    case 'seatChant': {
       releaseSeat(room, n.def.id); n.chantSeat = null;
+      const seat = Math.random() < 0.35 ? nearestFreeBenchSeat(room, s) : undefined;
+      if (seat && takeBenchSeat(room, seat, n.def.id)) {
+        n.benchSeat = seat; n.mode = 'toBenchRest'; n.stage = 'toBench';
+        startWalk(n, benchRoute(n, seat), visitorSpeed(n.def));
+        break;
+      }
       startStroll(room, n, now);
       break;
+    }
+    case 'benchRest':
+      releaseSeat(room, n.def.id); n.benchSeat = null;
+      startStroll(room, n, now);
+      break;
+    case 'toBench': {
+      // Walk tới ghế bị kẹt (step() đã dọn route): trả ghế rồi đi tour tiếp, KHÔNG về cổng.
+      releaseSeat(room, n.def.id); n.benchSeat = null;
+      startStroll(room, n, now);
+      break;
+    }
     case 'chant': {
       if (!room.questGuard.has(n.def.id) || Math.random() < 0.6) {
         const t = pickWeighted(VISITOR_BRANCH, VISITOR_BRANCH.map((id) => branchWeight(s, id)));
@@ -1002,6 +1100,13 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
     room.fx.push({ id: n.def.id, kind: 'incense' });
     return;
   }
+  if (n.mode === 'toBenchRest') {
+    const seat = n.benchSeat;
+    if (!seat) { releaseSeat(room, n.def.id); n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); return; }
+    s.x = seat.x; s.z = seat.z;
+    n.mode = 'benchRest'; n.phase = 'act'; s.anim = 'bench'; s.ry = seat.ry; n.until = now + R(30_000, 60_000);
+    return;
+  }
   if (n.def.behavior === 'wander' && n.mode === 'toIdleRest') {
     n.mode = 'idleRest'; n.phase = 'act'; s.anim = 'sit'; n.until = now + R(30_000, 60_000);
     // Ghế bồ đề (35.5, 20): snap đúng tâm ghế, quay mặt ra hồ (hướng Tây),
@@ -1032,11 +1137,20 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
       startWalk(n, incenseRoute(n, spot), 1.2);
     }
     else if (r < 0.85) {
-      const node = (n.def.id === 'npc37' && Math.random() < 0.6)
-        ? 'bodhiTree'
-        : IDLE_REST_NODES[Math.floor(Math.random() * IDLE_REST_NODES.length)];
-      n.mode = 'toIdleRest';
-      startWalk(n, routeFrom(n.state, node), 1.2);
+      if (n.def.id === 'npc37' && Math.random() < 0.6) {
+        n.mode = 'toIdleRest';
+        startWalk(n, routeFrom(n.state, 'bodhiTree'), 1.2);
+      } else {
+        const seat = Math.random() < 0.5 ? nearestFreeBenchSeat(room, n.state) : undefined;
+        if (seat && takeBenchSeat(room, seat, n.def.id)) {
+          n.benchSeat = seat; n.mode = 'toBenchRest';
+          startWalk(n, benchRoute(n, seat), 1.2);
+        } else {
+          const node = IDLE_REST_NODES[Math.floor(Math.random() * IDLE_REST_NODES.length)];
+          n.mode = 'toIdleRest';
+          startWalk(n, routeFrom(n.state, node), 1.2);
+        }
+      }
     }
     else { n.phase = 'idle'; s.anim = 'idle'; s.ry = R(0, Math.PI * 2); n.until = now + R(10_000, 20_000); }
     // Đang đứng/làm hành động tại chỗ trong 3 m quanh Tam Thế thì ở lại thêm 20-60 s.
@@ -1094,8 +1208,8 @@ function decide(room: NpcRoom, n: Npc, now: number) {
     return;
   }
   if (n.def.behavior === 'visitor') return visitorDecide(room, n, now);
-  if (n.def.behavior === 'wander' && (n.mode === 'toIdleSeat' || n.mode === 'idleSeat' || n.mode === 'toIdleIncense' || n.mode === 'idleIncense' || n.mode === 'toIdleRest' || n.mode === 'idleRest')) {
-    if (n.chantSeat) { releaseSeat(room, n.def.id); n.chantSeat = null; }
+  if (n.def.behavior === 'wander' && (n.mode === 'toIdleSeat' || n.mode === 'idleSeat' || n.mode === 'toIdleIncense' || n.mode === 'idleIncense' || n.mode === 'toIdleRest' || n.mode === 'idleRest' || n.mode === 'toBenchRest' || n.mode === 'benchRest')) {
+    if (n.chantSeat || n.benchSeat) { releaseSeat(room, n.def.id); n.chantSeat = null; n.benchSeat = null; }
     n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000);
     s.y = undefined; // rời ghế bồ đề: trả về cao độ mặt đất
     return;
@@ -1318,7 +1432,7 @@ function npcActivity(n: Npc): NpcAct | null {
   if (a === 'chant') return 'chant';
   if (a === 'sweep') return 'sweep';
   if (a === 'ring') return 'ring';
-  if (a === 'lie') return 'rest';
+  if (a === 'lie' || a === 'bench') return 'rest';
   if (a === 'sit') {
     if (n.def.behavior === 'desk') return null;
     if (n.mode === 'idleRest' || n.mode === 'toIdleRest') return 'rest';

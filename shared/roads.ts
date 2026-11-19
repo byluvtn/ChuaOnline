@@ -156,6 +156,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'thienDuong', x: -39.5, z: -27.5 },
   { id: 'zenGarden', x: -35.75, z: -27.25 },
   { id: 'corrW', x: -20.5, z: -6 },
+  { id: 'corrWMid', x: -20.5, z: -16.6 }, // trục giữa hành lang tây, lối vào corrW tránh bệ tượng (-22.35,-16.6)
   { id: 'pillars', x: 0, z: -5.9 },
   { id: 'zenIn', x: -28.3, z: -27 },
   { id: 'zenW', x: -26, z: -26.6 },
@@ -284,8 +285,8 @@ export const ROAD_EDGES: [string, string][] = [
   ['plaza', 'pathE1'], ['pathE1', 'pathE2'], ['pathE2', 'pathE3'], ['pathE3', 'pathE4'], ['pathE4', 'riverBankW'],
   ['sideGateW', 'lotusBridgeW'], ['lotusBridgeW', 'lotusBridgeS'], ['lotusBridgeS', 'lotusBridgeE'],
   // â”€â”€ Hall / corridors / stair â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['corrW', 'corrW2'], ['corrW2', 'westMid'],
-  ['hallFront', 'hallEastWp'], ['hallFront', 'hallSE'], ['hallSE', 'eastMid'],
+  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['corrW', 'corrWMid'], ['corrWMid', 'westMid'], ['corrW', 'corrW2'], ['corrW2', 'westMid'],
+  ['hallFront', 'hallSE'], ['hallSE', 'eastMid'],
   ['pathE1', 'hallEastWp'],
   ['hallIn', 'hallAisleE'], ['hallAisleE', 'hallAisleN'], ['hallAisleN', 'stairApp'], ['stairApp', 'stairTop'], ['stairTop', 'tamThe'],
   // â”€â”€ Towers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

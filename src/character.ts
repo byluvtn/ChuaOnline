@@ -936,6 +936,33 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.armR.rotation.set(0, 0, HANG_Z);
     c.foreL.rotation.set(-0.1, 0, 0);
     c.foreR.rotation.set(-0.1, 0, 0);
+  } else if (anim === 'bench') {
+    // Ngồi trên ghế gỗ hành lang, chân buông thõng trước mép ghế. Mọi số là offset từ root.
+    // Số đo: mặt ghế y 0.506–0.619 so với root, sâu z ±0.25. Gấu áo đáy ở body y 0.17.
+    // Đùi/cẳng: capsule r=0.1. Đùi spans trục từ -0.10 tới +0.16. Cẳng spans -0.16 tới +0.10.
+    // Đáy giày = đầu gối - 0.184. Giày: tâm (0,-0.1,0.06), nửa cao 0.084, nửa dài z 0.189.
+    // body.y: gấu áo (body y 0.17) chạm mặt ghế 0.619 -> body.y = 0.619 - 0.17 = 0.449.
+    // Pivot đùi = đầu gối, ở body (±0.16, 0.18, z). Đầu gối cao 0.449 + 0.18 = 0.629.
+    // Giày dày nhất ở y = 0.629 - 0.1 = 0.529, nằm trong khoảng slab 0.506–0.619.
+    // Mép sau giày z = zKnee + 0.06 - 0.189 = zKnee - 0.129; cần >= 0.25 (mép trước ghế)
+    // -> zKnee >= 0.379. Chọn zKnee = 0.40 (hở 0.021 so với slab).
+    // Chân buông thõng (đáy giày 0.445 trên sàn): chân NPC quá ngắn để chạm sàn khi
+    // mông trên ghế (0.184 << 0.619) — như trẻ con ngồi ghế cao, không phải lỗi.
+    // Đùi xoay +PI/2 (đầu +Y về +z); cẳng xoay -PI/2 (tổng với đùi = 0 -> thẳng đứng xuống).
+    const br = cycle * 0.012;
+    const BENCH_BODY_Y = 0.449;
+    const KNEE_Z = 0.40;
+    c.body.position.set(0, BENCH_BODY_Y + br, 0);
+    c.body.rotation.set(0, 0, 0);
+    c.lap.visible = false;
+    for (const [thigh, shin, x] of [
+      [c.legL, c.shinL, -0.16],
+      [c.legR, c.shinR, 0.16],
+    ] as const) {
+      thigh.position.set(x, 0.18, KNEE_Z);
+      thigh.rotation.set(Math.PI / 2, 0, 0);
+      shin.rotation.set(-Math.PI / 2, 0, 0);
+    }
   } else if (anim === 'bow') {
     // full prostration (láº¡y nÄƒm vÃ³c sÃ¡t Ä‘áº¥t): palms joined at chest, kneel, lean down, palms to forehead, rise
     const e = t - c.t0;

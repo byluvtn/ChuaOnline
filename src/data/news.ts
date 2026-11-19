@@ -5,9 +5,18 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 148;
+export const LATEST_NEWS_ID = 149;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'NPC ngồi nghỉ trên ghế hành lang',
+    date: '2026-11-19',
+    items: [
+      'Sáu ghế gỗ dọc hai hành lang giờ có người ngồi nghỉ: phật tử và chú tiểu sau khi tụng kinh hoặc dạo chơi thỉnh thoảng ghé ghế ngồi nghỉ 30–60 giây rồi đứng dậy đi tiếp.',
+      'NPC ngồi đúng giữa ghế, chân buông thõng trước mép ghế, quay mặt vào sân chùa; mỗi ghế có hai chỗ ngồi, không ngồi chồng lên nhau.',
+      'NPC đang ngồi vẫn nói chuyện và nhận việc được như thường: lại gần vẫn hiện nút nói chuyện, bấm vào mở đúng lời thoại của người đó.',
+    ],
+  },
   {
     title: 'Thời gian thiền được cộng dồn trong ngày',
     date: '2026-11-19',
