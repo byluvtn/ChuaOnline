@@ -60,7 +60,7 @@
 //     the koi lake.
 
 import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
-import { BAMBOO, DUOC_SU_DOOR, duocSuWorld, FLOWER_HILL, NGOC, NORTH_WALK_Z, PHONG_CD_DOOR, RIVER_BRIDGES, RIVER_EAST_WALK_X, TINH_THAT, TINH_THAT_LANE_Z, WALL } from './campus';
+import { BAMBOO, DUOC_SU_DOOR, duocSuWorld, FLOWER_HILL, NGOC, NGOC_EAST_LANE, NORTH_WALK_Z, PHONG_CD_DOOR, RIVER_BRIDGES, RIVER_EAST_WALK_X, TINH_THAT, TINH_THAT_LANE_Z, WALL } from './campus';
 
 export type Pt = { x: number; z: number }
 
@@ -79,6 +79,8 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'bridgeN', x: 0, z: 1.5 }, // was (0, 13.8); lake now starts at z = 4
   { id: 'plaza', x: 0, z: 2 }, // was (0, 6) â€” axis / cross-path crossroads
   { id: 'axisMid', x: 4.2, z: -17 }, // east of the centered courtyard incense urn
+  { id: 'courtEastEntry', x: 5.75, z: 0 },
+  { id: 'courtEastFront', x: 5.75, z: -18.6 },
   { id: 'hallFront', x: 0, z: -20 },
   { id: 'hallIn', x: 0, z: -24 },
   { id: 'hallWestWp', x: -21, z: -12.5 }, // west of the x=-18.1 colonnade
@@ -103,11 +105,14 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'westMid', x: -22, z: -26 },
   { id: 'westNorth', x: -22, z: -46 },
   { id: 'eastMid', x: 22, z: -26 },
-  { id: 'eastNorth', x: 22, z: -46 },
+  { id: 'eastNorth', x: NGOC_EAST_LANE.x, z: NGOC_EAST_LANE.south },
+  { id: 'rearCenter', x: 0, z: NGOC_EAST_LANE.south },
+  { id: 'rearHallEast', x: 14, z: NGOC_EAST_LANE.south },
   // â”€â”€ Stair route (east aisle around the altar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'hallAisleE', x: 14, z: -38 },
   { id: 'hallAisleN', x: 14, z: -41.8 },
   { id: 'stairApp', x: 4, z: -55.8 },
+  { id: 'tamTheStairFoot', x: 0, z: -50 },
   { id: 'stairTop', x: 0, z: -56 },
   { id: 'tamThe', x: 0, z: -58 },
   // â”€â”€ Towers, yards, halls (ids preserved; positions follow the moved landmarks) â”€
@@ -249,6 +254,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'ngocTop', x: NGOC.x, z: NGOC.stairTop },
   { id: 'ngocCourt', x: NGOC.x, z: NGOC.z },
   { id: 'pineBypass', x: 18, z: -82 },
+  { id: 'ngocEastTurn', x: NGOC_EAST_LANE.x, z: NORTH_WALK_Z },
   { id: 'bypassE', x: 40, z: -82 },
   { id: 'cemeteryGate', x: 50, z: -82 },
   { id: 'eastRearGate', x: 59, z: -82 },
@@ -279,6 +285,7 @@ export const ROAD_EDGES: [string, string][] = [
   // â”€â”€ Axis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['gate', 'bridgeS'], ['bridgeS', 'bridgeN'], ['bridgeN', 'plaza'],
   ['plaza', 'axisMid'], ['axisMid', 'hallFront'], ['hallFront', 'hallIn'],
+  ['plaza', 'courtEastEntry'], ['courtEastEntry', 'courtEastFront'], ['courtEastFront', 'hallFront'],
   ['plaza', 'pillars'],
   // â”€â”€ Cross path z = 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['plaza', 'pathW1'], ['pathW1', 'pathW2'], ['pathW2', 'pathW3'], ['pathW3', 'pathW4'], ['pathW4', 'lotusBridgeE'],
@@ -295,6 +302,8 @@ export const ROAD_EDGES: [string, string][] = [
   // â”€â”€ Rear road z = âˆ’46 and bypasses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['westMid', 'westNorth'], ['westNorth', 'rearKT'], ['rearKT', 'rearW'], ['rearW', 'westRingN'],
   ['eastMid', 'eastNorth'], ['eastNorth', 'rearTO'], ['rearTO', 'rearE'], ['rearE', 'riverNorthW'],
+  ['westNorth', 'rearCenter'], ['rearCenter', 'rearHallEast'], ['rearHallEast', 'eastNorth'],
+  ['hallAisleN', 'rearHallEast'], ['stairTop', 'tamTheStairFoot'], ['tamTheStairFoot', 'rearCenter'],
   ['psPier', 'psW'], ['psW', 'eastMid'],
   // â”€â”€ West monastery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['rearKT', 'ktGate'], ['ktGate', 'ktIn'], ['ktIn', 'ktMid'], ['ktMid', 'ktYard'],
@@ -356,7 +365,8 @@ export const ROAD_EDGES: [string, string][] = [
   ['riverNorthE', 'duocSuDoor'],
   // â”€â”€ NORTH BRANCH: bypass z = âˆ’82, Ngá»c stairs, cave, cemetery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['westRearGate', 'bypassW'], ['bypassW', 'caveBypass'],
-  ['caveBypass', 'ngocApproach'], ['ngocApproach', 'pineBypass'], ['pineBypass', 'bypassE'],
+  ['caveBypass', 'ngocApproach'], ['ngocApproach', 'pineBypass'], ['pineBypass', 'ngocEastTurn'], ['ngocEastTurn', 'bypassE'],
+  ['eastNorth', 'ngocEastTurn'],
   ['ngocApproach', 'ngocBase'],
   ['bypassE', 'cemeteryGate'], ['cemeteryGate', 'eastRearGate'], ['eastRearGate', 'rearE'],
   ['ngocBase', 'ngocMid'], ['ngocMid', 'ngocTop'], // 299 steps in 3 flights + 2 landings

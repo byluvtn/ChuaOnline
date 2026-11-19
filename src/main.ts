@@ -8,7 +8,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, RIVER_PATH, NGOC, NGOC_APPROACH, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND } from './layout';
+import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, RIVER_PATH, NGOC, NGOC_EAST_MAP_RECTS, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -1857,9 +1857,8 @@ function drawMinimap() {
     if (a && b) { g.moveTo(X(a.x), Z(a.z)); g.lineTo(X(b.x), Z(b.z)); }
   }
   g.stroke();
-  const [nx0, nz0, nx1, nz1] = NGOC_APPROACH;
-  g.fillStyle = '#d4c5a3';
-  g.fillRect(X(nx0), Z(nz0), (nx1 - nx0) * k, (nz1 - nz0) * k);
+  g.fillStyle = '#c58b46';
+  for (const [x0, z0, x1, z1] of NGOC_EAST_MAP_RECTS) g.fillRect(X(x0), Z(z0), (x1 - x0) * k, (z1 - z0) * k);
   g.fillStyle = '#89bed0'; g.strokeStyle = '#5392a5'; g.lineWidth = dpr;
   for (const p of [LAKE, LOTUS, FARM_POND, PS_POND, RIVER.pond]) {
     g.beginPath(); g.ellipse(X(p.x), Z(p.z), p.a * k, p.b * k, 0, 0, Math.PI * 2); g.fill(); g.stroke();

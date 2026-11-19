@@ -3,7 +3,7 @@ import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 import { NGOC_HALL, NGOC_TERRACE, RIVER_BRIDGES } from '../../shared/campus';
 import { PLACES, type Place } from '../data/places';
-import { LOTUS, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_APPROACH, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
+import { LOTUS, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_EAST_MAP_RECTS, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
 export function openMap(ctx: MenuCtx) {
   openCustomPanel('Bản đồ chùa', (body) => {
@@ -52,8 +52,8 @@ export function openMap(ctx: MenuCtx) {
       rect(WALL.xW, PATH_Z - 1.1, WALL.xE, PATH_Z + 1.1, '#e8d6a4');
       for (const x of [WALL.xW, WALL.xE]) rect(x - 1, PATH_Z - WALL.sideGateHalf, x + 1, PATH_Z + WALL.sideGateHalf, '#e8d6a4');
       ellipse(NGOC.x, NGOC.stairStart - 18, 40, 18, '#a8bf8e', '#7d9b6c');
-      rect(...NGOC_APPROACH, '#e8d6a4');
       rect(-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2, '#e8d6a4');
+      for (const [x0, z0, x1, z1] of NGOC_EAST_MAP_RECTS) rect(x0, z0, x1, z1, '#c58b46');
       rect(NGOC.x - NGOC.stairHalf, NGOC.stairTop, NGOC.x + NGOC.stairHalf, NGOC.stairStart, '#d4d1bd', '#8b9684');
       rect(NGOC.x - NGOC_TERRACE.half, NGOC_TERRACE.north, NGOC.x + NGOC_TERRACE.half, NGOC.stairTop, '#d4d1bd', '#8b9684');
       ellipse(LOTUS.x, LOTUS.z, LOTUS.a, LOTUS.b, '#8ec6e0', '#4f8fb0');
@@ -140,7 +140,7 @@ export function openMap(ctx: MenuCtx) {
     };
     const chips = h('div', { class: 'chips' }, ...PLACES.map((p) => h('button', { class: 'chip', onclick: () => { closePanel(); ctx.goTo(p.x, p.z); ctx.toast(`Đang đi tới ${p.name}`); } }, p.name)));
     body.append(
-      h('p', { class: 'hint', style: 'margin:0 0 8px' }, 'Chấm hồng là bạn, chấm xanh là người khác. Bấm vào địa điểm để đi tới đó.'),
+      h('p', { class: 'hint', style: 'margin:0 0 8px' }, 'Chấm hồng là bạn, chấm xanh là người khác. Đường màu vàng nâu bên phải Điện Tam Thế dẫn lên Chùa Ngọc. Bấm vào địa điểm để đi tới đó.'),
       h('div', { class: 'tmap-wrap' }, cv), chips);
     return () => clearInterval(timer);
   });

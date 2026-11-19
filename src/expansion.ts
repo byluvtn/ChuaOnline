@@ -18,13 +18,13 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import {
   BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_FALLS, RIVER_SOURCE_Z, RIVER_MOUTH_Z, riverAt, TINH_THAT,
   DUOC_SU_YAW, duocSuWorld, EAST_BANK_SHIFT, RIVER_BRIDGES, RIVER_EAST_WALK_X, onRiverBridge, WALL,
-  expansionGroundY, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
+  expansionGroundY, NGOC_EAST_LANE, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
 import { fitModel, loadModel, replaceModel } from './models';
 import { grassTexture, glowTexture, signTexture, stoneTexture, woodTexture } from './textures';
 import { pavingMaterial } from './compound';
-import { nearWalkway } from './layout';
+import { nearWalkway, NGOC_EAST_PAVING } from './layout';
 import { duocSuRoof, duocSuStyle } from './duoc-su-style';
 import { buildRiverWaterfall } from './river-waterfall';
 import { buildPondLotus } from './pond-lotus';
@@ -795,6 +795,31 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       glow(lx, ly + 0.95, lz, 1.4, 0xffc070, 0.3);
       solid(lx, lz, 0.39);
     };
+    const { x: laneX, half: laneHalf, south: laneSouth } = NGOC_EAST_LANE;
+    const entryZ = laneSouth - 5;
+    const entryRoof = duocSuRoof(4.8, 1.75, 3.1, 0.7);
+    entryRoof.position.set(laneX, 0, entryZ);
+    const [west, north, east, south] = NGOC_EAST_PAVING;
+    for (const [side, edge] of [[-1, west], [1, east]]) {
+      const px = laneX + side * (laneHalf + 0.32);
+      addBox('dsStone', 0.55, 0.26, 0.55, px, 0.13, entryZ);
+      addBox('dsTimber', 0.35, 2.84, 0.35, px, 1.68, entryZ);
+      solid(px, entryZ, 0.3);
+      addBox('graniteDark', 0.1, 0.014, south - north, edge - side * 0.16, 0.059, (north + south) / 2);
+    }
+    for (const z of [-61, -72, -79]) lantern(laneX + laneHalf + 0.4, 0, z);
+    addBox('dsDarkwood', 4.25, 0.23, 0.45, laneX, 3.02, entryZ);
+    addSign('LỐI LÊN CHÙA NGỌC', 3.25, 0.68, laneX, 2.7, entryZ + 0.24);
+    // Visible from the rear crossroads before visitors reach the stairs of Tam The.
+    const junctionSignX = 7, junctionSignZ = south - 0.7;
+    addPostedSign('CHÙA NGỌC →', 2.65, 0.62, junctionSignX, 1.65, junctionSignZ);
+    solid(junctionSignX, junctionSignZ - 0.105, 0.18);
+    // South-facing sign: turn left at the north walkway instead of continuing up the hill.
+    const turnSignZ = NORTH_WALK_Z - 1.95;
+    addPostedSign('← CHÙA NGỌC', 2.65, 0.62, laneX, 1.55, turnSignZ);
+    solid(laneX, turnSignZ - 0.105, 0.18);
+    flush('ngocEastEntrance').group.add(entryRoof);
+
     for (const side of [-1, 1]) lantern(x + side * 4.95, 0, stairStart + 4.5);
 
     let lowerZ = stairStart, lowerY = 0;

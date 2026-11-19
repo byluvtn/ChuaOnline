@@ -69,6 +69,7 @@ export const NGOC = { x: 0, z: -120, y: 8.4, stairStart: -90, stairTop: -116, st
 export const NGOC_TERRACE = { half: 11.5, north: -128.5 };
 export const NGOC_HALL = { x: NGOC.x, z: -123.55, hx: 6.2, hz: 3.6 };
 export const NORTH_WALK_Z = -82;
+export const NGOC_EAST_LANE = { x: 22, south: -46, half: 1.6 };
 export const TINH_THAT = [{ x: -84, z: -74 }, { x: -79, z: -74 }, { x: -74, z: -74 }];
 export const TINH_THAT_LANE_Z = TINH_THAT[0].z + 2.6;
 export const PHONG_CD = { x: 35, z: 33 };

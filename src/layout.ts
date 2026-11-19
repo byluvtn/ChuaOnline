@@ -1,5 +1,5 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
-import { WALL, LAKE, BRIDGE, LOTUS, RIVER, RIVER_BRIDGES, RIVER_EAST_WALK_X, onRiverBridge, DUOC_SU, NGOC, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, LOTUS, RIVER, RIVER_BRIDGES, RIVER_EAST_WALK_X, onRiverBridge, DUOC_SU, NGOC, NGOC_EAST_LANE, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
@@ -78,6 +78,8 @@ export const FLOWER_BEDS = [{ x: 16.5, z: 23, a: 5, b: 3.5 }, { x: -16.5, z: 23,
 /** Actual stone footprints, shared by the renderer and scenery placement. */
 export const MAIN_COURT = [-20, -42, 20, 2] as const;
 export const NGOC_APPROACH = [NGOC.x - NGOC.approachHalf, NGOC.stairStart, NGOC.x + NGOC.approachHalf, NORTH_WALK_Z - 1.2] as const;
+export const NGOC_EAST_PAVING = [NGOC_EAST_LANE.x - NGOC_EAST_LANE.half, NORTH_WALK_Z + 1.2, NGOC_EAST_LANE.x + NGOC_EAST_LANE.half, -48] as const;
+export const NGOC_EAST_MAP_RECTS = [NGOC_EAST_PAVING, [NGOC.x, NORTH_WALK_Z - 1.2, NGOC_EAST_PAVING[2], NORTH_WALK_Z + 1.2], NGOC_APPROACH] as const;
 const bridgeApproachHalf = BRIDGE.hw + 0.25;
 export const WALKWAY_RECTS = [
   [WALL.xW - 4, PATH_Z - 1.1, WALL.xE + 4, PATH_Z + 1.1],
@@ -112,6 +114,7 @@ export const WALKWAY_RECTS = [
   [RIVER_EAST_WALK_X - 1.1, PATH_Z + 1.1, RIVER_EAST_WALK_X + 1.1, 28],
   [RIVER_EAST_WALK_X, DUOC_SU.z - 1.1, DUOC_SU.x - DUOC_SU.hx, DUOC_SU.z + 1.1],
   [-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2],
+  NGOC_EAST_PAVING,
   NGOC_APPROACH,
   [-60.2, NORTH_WALK_Z, -57.8, -77], [57.8, NORTH_WALK_Z, 60.2, -77],
   [48.8, -89, 51.2, -82], [WALL.xW, WALL.zS, WALL.xE, WALL.zS + 13],

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_BRIDGES, RIVER_FALLS, RIVER_MOUTH_Z, riverAt, DUOC_SU, DUOC_SU_DOOR, DUOC_SU_YAW, duocSuWorld, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
 import { MAP_HALF, MAP_Z_MIN, MAP_Z_MAX } from '../shared/types';
-import { clampToCompound, resolveBridge, resolveWater, groundY, nearWalkway, NGOC_APPROACH, WALKWAY_RECTS, TAM_THE_PLAT, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP } from '../src/layout';
+import { clampToCompound, resolveBridge, resolveWater, groundY, nearWalkway, NGOC_APPROACH, NGOC_EAST_LANE, NGOC_EAST_PAVING, WALKWAY_RECTS, TAM_THE_PLAT, VIEN_TO, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP } from '../src/layout';
 import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath } from '../shared/roads';
 import { createPathfinder } from '../shared/pathfind';
 import { NPC_QUESTS } from '../shared/game';
@@ -77,6 +77,19 @@ for (const x of [approachWest, NGOC.x, approachEast]) {
   }
 }
 assert.equal(NPC_QUESTS.find(q => q.id === 'nq_ngoc_pilgrimage')?.zone?.z, NGOC.z);
+const [eastLaneWest, , eastLaneEast] = NGOC_EAST_PAVING;
+assert(eastLaneWest > TAM_THE_PLAT.x + TAM_THE_PLAT.hx && eastLaneEast < VIEN_TO.x0);
+for (const x of [eastLaneWest, NGOC_EAST_LANE.x, eastLaneEast]) {
+  for (let z = NGOC_EAST_LANE.south; z >= NORTH_WALK_Z; z -= 0.25) {
+    assert(nearWalkway(x, z, 0) && groundY(x, z) === 0 && !expansionWaterBlocked(x, z), 'The east approach must stay paved, flat and dry');
+  }
+}
+const eastRoute = roadPath('eastNorth', 'ngocCourt');
+assert.deepEqual(eastRoute, ['eastNorth', 'ngocEastTurn', 'pineBypass', 'ngocApproach', 'ngocBase', 'ngocMid', 'ngocTop', 'ngocCourt']);
+assert(roadPath('rearCenter', 'ngocCourt').includes('ngocEastTurn'), 'The rear crossroads must route through the new east approach');
+assert(roadPath('tamThe', 'ngocCourt').includes('tamTheStairFoot'), 'The route out of Tam The must use its front stairs');
+assert(roadPath('gate', 'ngocCourt').includes('ngocEastTurn'), 'The main gate must connect to the new east approach');
+assert(roadPath('westRearGate', 'ngocCourt').includes('caveBypass'), 'The west approach must remain connected');
 const transverse = { x: 8, z: 2 }; resolveBridge(transverse, { x: 0, z: 2 }); assert.equal(transverse.x, 8);
 assert.equal(groundY(DUOC_SU.x, DUOC_SU.z), DUOC_SU.y);
 assert.equal(DUOC_SU_YAW, -Math.PI / 2);
