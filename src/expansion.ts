@@ -909,9 +909,6 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     addBox('dsDarkwood', 4.35, 0.98, 1.75, sx, sy + 0.49, altarZ);
     addBox('dsGold', 4.45, 0.09, 1.84, sx, sy + 1.01, altarZ);
     wallLine(sx - 1.55, altarZ, sx + 1.55, altarZ, 0.87, 0.65);
-    const statue = buildBuddha();
-    statue.scale.setScalar(0.68);
-    statue.position.set(sx, sy + 1.055, altarZ);
     for (const s of [-1, 1]) {
       for (const z of [entryZ + 0.02, altarZ + 0.48]) {
         const px = sx + s * (z > bodyZ ? 4.15 : 1.58), y = sy + (z > bodyZ ? 3.0 : 1.23);
@@ -927,9 +924,12 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     const { group } = flush('chuaNgoc');
     const roof = duocSuRoof(14.9, 9.3, sy + colH + 0.37, 3.0);
     roof.position.set(sx, 0, bodyZ);
-    const mergedStatue = mergeStatue(statue);
-    mergedStatue.name = 'expansion-buddha-ngoc';
-    group.add(roof, mergedStatue);
+    const statueHeight = 2.5;
+    const fallback = fitModel(mergeStatue(buildBuddha()), statueHeight, 'base');
+    fallback.name = 'expansion-buddha-ngoc';
+    fallback.position.set(sx, sy + 1.055, altarZ);
+    group.add(roof, fallback);
+    replaceModel(group, fallback, 'chibi-phat-ngoc', statueHeight, undefined, 'base');
   }
 
   // =====================================================================================

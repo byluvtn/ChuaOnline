@@ -198,6 +198,16 @@ def paint_face(base, blush, ink, mouth, medicine=False, mother=False, jade=False
                    sss=.19 if jade else .09, emission=.035 if jade else 0)
     n = 512
     pixels = bytearray(bytes(round(c*255) for c in rgb(base)) * (n*n))
+    if jade:
+        # Bake faint cloudy jade variation into the same image as the facial lines.
+        for j in range(n):
+            for i in range(n):
+                u,v = i/n,j/n
+                d = round(2.8*math.sin(TAU*(5*u+2*v)+math.sin(TAU*3*v)) +
+                          1.8*math.cos(TAU*(9*u-5*v)) + 1.2*math.sin(TAU*(13*u+4*v)))
+                p = (j*n+i)*3
+                for c in range(3):
+                    pixels[p+c] += d
 
     def uv(x, z):
         ph = math.asin(z)
@@ -246,7 +256,7 @@ def paint_face(base, blush, ink, mouth, medicine=False, mother=False, jade=False
                color(mouth),1.64)
     elif jade:
         for s in [-1,1]:
-            spot(s*.53,-.35,11,9,color(blush),.35)
+            spot(s*.53,-.35,11,9,color(blush),.44)
             stroke([(s*x,z,r) for x,z,r in [(.23,.105,.46),(.33,.133,.79),(.46,.126,.86),
                                              (.57,.086,.60),(.65,.037,.12)]],color('829d6f'),1.75)
             stroke([(s*x,z,r) for x,z,r in [(.224,-.264,.35),(.325,-.302,.84),(.427,-.314,1),
@@ -544,72 +554,163 @@ def medicine_buddha(group, m):
     light.finish()
 
 
-def buddha(group, m, medicine):
-    off = .192 if medicine else 0
-    o = lambda x,y,z: (x,y,z+off)
-    if medicine:
-        octagon(group,m)
-    lotus_pedestal(group,off,m)
-    halo(group,(2.487 if not medicine else 2.981)-(.704 if not medicine else .911),.355,
-         .704 if not medicine else .911,m)
-    make_head(group,(1.799 if not medicine else 1.873)+off,-.007,m['skin'],m['paint'],m['hair'],m['gold'])
-    robe = Part('Robe | closed seated drape and broad folds',group)
+def jade_buddha(group, m):
+    pedestal = Part('Jade plinth | double white lotus with gilded petal rims',group)
+    lathe(pedestal,m['base'],(0,0,0),[(0,.557,.385),(.007,.588,.410),(.023,.605,.424),
+         (.055,.603,.424),(.074,.58,.403),(.095,.527,.365)],80)
+    for h,w,d,r in [(.017,.599,.42,.006),(.066,.591,.416,.008)]:
+        trim_profile(pedestal,m['gold'],(0,0),h,w,d,r)
+    lathe(pedestal,m['petals'][0],(0,0,0),list(sample([
+        (.058,.513,.342),(.096,.523,.358),(.162,.489,.333),(.213,.432,.294),
+        (.267,.455,.320),(.364,.55,.382),(.437,.574,.405),(.483,.546,.390),(.491,.507,.370)],4)),80)
 
-    def folds(a,j):
-        weights = [.004,.013,.025,.045,.051,.047,.022,.013,.006]
-        f = weights[j]*(.72*math.cos(4*a+.65+j*.17)+.28*math.cos(2*a-.5))
-        return 1+f,1+f*1.65,f*.22
+    # Each petal has a convex white face and an edge that follows its entire curved silhouette.
+    for count,phase,profile in [
+        (12,0,[(.360,.230,.007,.012),(.418,.207,.075,.032),(.509,.157,.125,.046),
+               (.561,.109,.096,.034),(.61,.089,.004,.004)]),
+        (13,0,[(.396,.231,.012,.013),(.467,.263,.092,.048),(.534,.329,.131,.063),
+               (.582,.405,.088,.046),(.605,.462,.004,.004)])]:
+        for i in range(count):
+            a = TAU*(i+phase)/count
+            point = lambda d,z,w=0: (d*math.sin(a)+w*math.cos(a),-.70*d*math.cos(a)+w*math.sin(a),z)
+            tube(pedestal,m['petals'][i%len(m['petals'])],[(*point(d,z),w,t) for d,z,w,t in profile],20,6,
+                 (math.cos(a),math.sin(a),0))
+            outline = list(sample(profile,6))
+            edge = [point(d,z,s*w) for s,rows in [(1,outline),(-1,outline[::-1])] for d,z,w,_ in rows]
+            closed_line(pedestal,m['petal_green'],edge,.011)
+            closed_line(pedestal,m['gold'],[(x+.010*math.sin(a),y-.010*math.cos(a),z+.002) for x,y,z in edge],.006)
+    pedestal.finish(asset=True)
 
-    lathe(robe,m['robe'],o(0,0,.409),[(0,.56,.36),(.021,.638,.434),(.066,.697,.506),
-          (.145,.702,.527),(.23,.654,.51),(.301,.566,.456),(.367,.448,.368),(.411,.335,.265),
-          (.433,.192,.173)],72,folds)
-    lathe(robe,m['robe'],o(0,.021,.655),[(0,.265,.224),(.056,.35,.288),(.14,.397,.31),
-          (.29,.416,.308),(.472,.443,.29),(.608,.413,.27),(.679,.318,.222),(.728,.214,.18),
-          (.74,.165,.146)],64)
+    halo = Part('Thin open gold halo',group)
+    orbit = [[((.515+.014*math.cos(b))*math.sin(a),.332-.014*math.sin(b),
+               1.970+(.515+.014*math.cos(b))*math.cos(a))
+              for j in range(12) for b in [TAU*j/12]] for i in range(128) for a in [TAU*i/128]]
+    rings(halo,[*orbit,orbit[0]],m['gold'],cap=False)
+    halo.finish(asset=True,pivot=(0,.332,1.970))
+
+    face = Part('Pale jade head | painted closed eyes and smile',group)
+    rows = []
+    for j in range(57):
+        phi = math.pi*(j/56-.5)*.9995
+        c = math.cos(phi)**(.63 if phi < 0 else .87)
+        row = []
+        cheek = 1+.032*math.exp(-((phi+.43)/.36)**2)
+        for i in range(96):
+            a = TAU*(i/96-.5)
+            row.append((.421*c*cheek*math.sin(a),.013-.353*c*math.cos(a),1.784+.438*math.sin(phi)))
+        rows.append(row)
+    rings(face,rows,m['paint'],uv=True)
+    face.finish()
+
+    anatomy = Part('Jade neck and short sculpted earlobes',group)
+    orb(anatomy,m['skin'],(0,-.003,1.327),(.156,.123,.120),36,22)
     for s in [-1,1]:
-        tube(robe,m['robe'],[(s*.296,.008,1.236+off,.106,.106),(s*.402,-.016,1.193+off,.160,.157),
-            (s*.504,-.07,1.045+off,.158,.154),(s*.511,-.175,.921+off,.153,.155),
-            (s*.430,-.321,.835+off,.132,.126),(s*.299,-.409,.836+off,.096,.097)],22,7)
-        cuff_center=Vector(o(s*.304,-.405,.838))
-        cuff_side=Vector((s*.51,-.86,0))
-        closed_line(robe,m['gold'],[cuff_center+.093*(math.sin(TAU*i/32)*cuff_side
-                    +math.cos(TAU*i/32)*Vector((0,0,1))) for i in range(32)],.012)
+        ear = list(sample([(.398,-.021,1.324,.003,.004),(.411,-.027,1.342,.041,.036),
+                           (.413,-.021,1.384,.053,.049),(.418,-.016,1.464,.043,.056),
+                           (.459,-.023,1.582,.066,.070),(.469,-.016,1.665,.061,.058),
+                           (.450,-.003,1.703,.033,.034),(.436,.009,1.719,.004,.005)],5))
+        rows = []
+        for j,(x,y,z,rx,ry) in enumerate(ear):
+            row = []
+            for i in range(40):
+                a = TAU*i/40
+                hollow = .043*math.exp(-((j/(len(ear)-1)-.72)/.22)**2)*max(0,math.cos(a-.23*s))**7
+                row.append((s*x+rx*math.sin(a),y-ry*math.cos(a)+hollow,z))
+            rows.append(row)
+        rings(anatomy,rows,m['skin'])
+    anatomy.finish()
 
-    def stroke(points, mat):
-        tube(robe,mat,[(x,y,z+off,r) for x,y,z,r in points],12,6)
+    jewel = Part('Small gold ushnisha',group)
+    lathe(jewel,m['gold'],(0,.034,2.207),[(0,.117,.095),(.012,.133,.108),(.024,.133,.108),(.034,.122,.100)],64)
+    orb(jewel,m['gold'],(0,.034,2.258),(.093,.082,.084),40,24)
+    jewel.finish()
 
-    # The diagonal binding is paired with three broad, shallow folds on the lap.
-    stroke([(-.236,-.148,1.365,.016),(-.199,-.24,1.324,.026),(-.117,-.277,1.231,.025),
-            (.008,-.290,1.142,.025),(.147,-.266,1.072,.022),(.326,-.245,1.006,.016)],m['robe_light'])
-    stroke([(-.249,-.153,1.363,.003),(-.211,-.258,1.32,.010),(-.121,-.295,1.228,.011),
-            (.008,-.310,1.135,.011),(.149,-.284,1.063,.010),(.326,-.259,.999,.003)],m['gold'])
-    stroke([(.211,-.148,1.367,.004),(.232,-.212,1.323,.015),(.151,-.276,1.212,.016),
-            (.062,-.302,1.106,.009)],m['gold'])
-    for points in [[(-.573,-.282,.608,.011),(-.494,-.385,.616,.022),(-.352,-.461,.595,.023),(-.207,-.50,.557,.005)],
-                   [(.535,-.316,.654,.009),(.43,-.407,.657,.024),(.331,-.462,.634,.024),(.207,-.491,.599,.005)],
-                   [(-.307,-.459,.503,.003),(-.156,-.515,.493,.017),(.033,-.535,.489,.02),(.233,-.492,.511,.005)]]:
-        stroke(points,m['robe_light'])
-    # Follow the lowest hem without exposing ankles or toes beneath it.
-    trim_profile(robe,m['gold'],(0,0),.442+off,.651,.46,.01)
+    robe = Part('Deep emerald robe | closed lotus pose and gold-bound drape',group)
+    profile = list(sample([(.478,.461,.322,-.016),(.503,.535,.376,-.018),(.556,.558,.402,-.014),
+        (.650,.551,.416,-.011),(.747,.522,.399,-.009),(.829,.445,.334,-.007),(.879,.349,.270,.002),
+        (.963,.331,.241,.009),(1.072,.348,.254,.009),(1.177,.356,.247,.013),
+        (1.268,.293,.209,.006),(1.337,.209,.166,-.005),(1.359,.156,.133,-.011)],6))
+
+    def fabric(a,row):
+        z,rx,ry,y = row
+        sn,cs = math.sin(a),math.cos(a)
+        lap = math.exp(-((z-.674)/.171)**4)*max(0,cs)**.6
+        knee = .69*math.exp(-((abs(sn)-.68)/.29)**2)-.29*math.exp(-(sn/.39)**2)
+        fold = lap*(knee*.10+.013*math.cos(47*(z-.568-.225*sn*sn)+.6*sn))
+        hem = math.exp(-((z-.502)/.035)**2)*(.004+.009*math.cos(9*a+.7)+.005*math.cos(5*a-.8))
+        return (sn*rx,y-cs*ry-fold,z+hem)
+
+    rings(robe,[[fabric(TAU*i/120,row) for i in range(120)] for row in profile],m['robe'])
+    closed_line(robe,m['gold'],[fabric(TAU*i/120,profile[5]) for i in range(120)],.0065)
+
+    def front(x,z):
+        z = max(profile[0][0],min(profile[-1][0],z))
+        for a,b in zip(profile,profile[1:]):
+            if a[0] <= z <= b[0]:
+                t = (z-a[0])/(b[0]-a[0])
+                row = tuple(u+(v-u)*t for u,v in zip(a,b))
+                phi = math.asin(max(-.998,min(.998,x/row[1])))
+                return fabric(phi,row)[1]
+        return -.15
+
+    def binding(path, width):
+        centers = list(sample(path,8))
+        borders = [[],[]]
+        for i,(x,z) in enumerate(centers):
+            ax,az = centers[max(i-1,0)]
+            bx,bz = centers[min(i+1,len(centers)-1)]
+            n = Vector((bz-az,ax-bx)).normalized()*width*.5
+            for s,edge in zip((-1,1),borders):
+                px,pz = x+s*n.x,z+s*n.y
+                edge.append((px,front(px,pz)-.007,pz))
+        n = len(centers)
+        robe.add(borders[0]+borders[1],[(i,i+n,i+n+1,i+1) for i in range(n-1)],m['binding'])
+        for edge in borders:
+            tube(robe,m['gold'],[(*p,.0046) for p in edge],8,1)
+
+    # The jade chest inset and the two bands form the overlapping V-neck.
+    chest = list(sample([(1.106,.015,.003),(1.139,.010,.052),(1.199,.004,.100),
+                         (1.265,0,.130),(1.330,0,.151),(1.360,0,.140)],5))
+    rows = []
+    for z,x,w in chest:
+        rows.append([(px,front(px,z)-.005-.007*(1-u*u),z)
+                     for i in range(17) for u in [2*i/16-1] for px in [x+w*u]])
+    robe.add([p for row in rows for p in row],[(i,i+1,i+18,i+17) for j in range(len(rows)-1)
+             for k in range(16) for i in [17*j+k]],m['skin'])
+    binding([(-.164,1.317),(-.145,1.226),(-.115,1.163),(-.054,1.105),(.008,1.077)],.041)
+    binding([(.172,1.320),(.152,1.222),(.104,1.146),(.025,1.079),(-.095,1.033),(-.246,.991)],.055)
+    binding([(.244,.811),(.207,.691),(.163,.602),(.087,.546),(-.003,.520),(-.097,.511)],.033)
+
+    for s in [-1,1]:
+        cuff = Vector((s*.216,-.349,.875))
+        pts = [(s*.211,.008,1.283,.103,.119),(s*.332,-.007,1.216,.130,.133),
+               (s*.397,-.073,1.107,.147,.139),(s*.423,-.156,.992,.142,.142),
+               (s*.360,-.265,.897,.115,.103),(*cuff,.082,.076)]
+        axis = (cuff-Vector(pts[-2][:3])).normalized()
+        n = (Vector((0,0,1))-axis*axis.z).normalized()
+        b = axis.cross(n)
+        tube(robe,m['robe'],pts,40,9,(0,0,1),
+             lambda t,a: 1+.034*math.sin(math.pi*t)*math.cos(5*a-2*t))
+        closed_line(robe,m['gold'],[cuff+n*(.082*math.cos(a))+b*(.076*math.sin(a))
+                    for i in range(56) for a in [TAU*i/56]],.0065)
     robe.finish()
 
-    hands = Part('Dhyana | rounded palms, curled fingers and joined thumbs',group)
-    skin = m['skin']
-    for s in [1,-1]:
-        h = .816 if s == 1 else .858
-        tube(hands,skin,[(*o(s*.346,-.40,h+.032),.05,.049),(*o(s*.252,-.453,h+.001),.074,.064),
-                         (*o(s*.142,-.499,h-.014),.073,.055),(*o(s*.065,-.506,h-.012),.040,.034)],18,5)
-        for i in range(4):
-            f = i*.023
-            tube(hands,skin,[(*o(s*(.181-f),-.505-i*.008,h-.014),.028),
-                             (*o(s*(.127-f),-.55-i*.008,h-.019),.028-i*.002),
-                             (*o(s*(.065-f),-.553-i*.008,h+.011),.023-i*.001),
-                             (*o(s*(.055-f),-.531-i*.008,h+.017),.010)],12,4)
-        # Thumbs meet at the bowl's lower front, on top of the nested hands.
-        tube(hands,skin,[(*o(s*.198,-.483,h+.021),.035),(*o(s*.128,-.523,.914),.034),
-                         (*o(s*.066,-.560,.936),.029),(*o(-s*.003,-.568,.938),.015)],14,5)
+    hands = Part('Dhyana | right palm over left and touching thumbs',group)
+    # Blender -X is the statue's right as seen from the front. Only palms and thumbs use skin here.
+    for side,h,tip in [(1,.821,-.064),(-1,.854,.075)]:
+        tube(hands,m['skin'],[(side*.244,-.329,.866,.057,.051),(side*.184,-.393,h+.016,.073,.055),
+            (side*.108,-.438,h,.071,.053),(side*.034,-.466,h-.005,.059,.039),
+            (tip,-.474,h+.007,.035,.026),(tip-side*.021,-.463,h+.020,.013,.013)],28,8)
+        tube(hands,m['skin'],[(side*.162,-.418,h+.024,.032),(side*.119,-.464,.885,.035),
+            (side*.075,-.500,.911,.031),(side*.034,-.509,.923,.023),(side*.003,-.508,.924,.011)],20,7)
     hands.finish()
-    bowl(group,o(0,-.404,.886),medicine,m)
+
+    bowl = Part('Small hollow jade alms bowl',group)
+    lathe(bowl,m['bowl'],(0,-.386,.856),list(sample([
+        (0,.078,.078),(.013,.096,.096),(.045,.132,.131),(.081,.147,.146),(.113,.136,.135),
+        (.132,.121,.120),(.146,.123,.122),(.153,.114,.113),(.144,.103,.102),
+        (.118,.110,.109),(.083,.119,.118),(.051,.106,.105),(.035,.065,.064),(.033,.005,.005)],4)),64)
+    bowl.finish()
 
 
 def phoenix(part, place, m, size=1, flip=1):
@@ -849,15 +950,14 @@ def palette(kind):
              stem=material('Botanical stem','456835',.57),leaf=material('Botanical leaf','669748',.5),
              leaf_light=material('Botanical leaf vein','c4c278',.49))
     if kind=='jade':
-        m.update(skin=material('Jade | pale polished skin','82d5a3',.35,transmission=.11,sss=.12),
-                 paint=paint_face('82d5a3','5fb99b','184b3e','376450'),
-                 hair=material('Jade | carved green cap','247e5d',.35,transmission=.085,sss=.07),
-                 robe=material('Jade | deep emerald robe','166e49',.34,transmission=.09,sss=.095),
-                 robe_light=material('Jade | raised robe folds','247c54',.35,transmission=.09,sss=.07),
-                 bowl=material('Jade | glazed green alms bowl','64ba86',.29,transmission=.12,sss=.10),
-                 base=material('Jade | green pedestal moulding','2b7355',.42,transmission=.07),
-                 petals=[material('Ivory jade petals '+h,h,.45,transmission=.045,sss=.095)
-                         for h in ['fff5da','f3f4de','e6edda']])
+        m.update(skin=material('Jade | pale polished celadon','bbd8b7',.29,transmission=.07,sss=.20,emission=.035),
+                 paint=paint_face('bbd8b7','9db88a','48643f','728b57',jade=True),
+                 robe=material('Jade | deep emerald robe','084938',.285,sss=.09),
+                 binding=material('Jade | emerald robe facing','105640',.28,sss=.08),
+                 bowl=material('Jade | polished alms bowl','85bb99',.245,transmission=.085,sss=.16),
+                 base=material('Jade | green pedestal moulding','277050',.32,sss=.07),
+                 petal_green=material('Jade | green petal rim','36714c',.37),
+                 petals=[material('Ivory jade petals '+h,h,.32,sss=.13) for h in ['fff9ea','f4f2e6']])
     elif kind=='lapis':
         m.update(skin=material('Warm peach porcelain','f3b78b',.49,sss=.10),
                  nail=material('Subtle peach nails','f6c49c',.47),
@@ -883,7 +983,7 @@ def palette(kind):
     return m
 
 
-def studio(target, draft, medicine=False, mother=False):
+def studio(target, draft, medicine=False, mother=False, jade=False):
     scene = bpy.context.scene
     scene.unit_settings.system = 'METRIC'
     scene.render.engine = 'CYCLES'
@@ -891,8 +991,8 @@ def studio(target, draft, medicine=False, mother=False):
     scene.cycles.use_denoising = True
     scene.cycles.max_bounces = 5
     scene.cycles.transmission_bounces = 3
-    scene.render.resolution_x = (460 if draft else 1000) if medicine else (590 if draft else 1140)
-    scene.render.resolution_y = (860 if draft else 1860) if medicine else (660 if draft else 1280)
+    scene.render.resolution_x = (460 if draft else 1000) if medicine or jade else (590 if draft else 1140)
+    scene.render.resolution_y = (880 if draft else 1900) if jade else (860 if draft else 1860) if medicine else (660 if draft else 1280)
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = 'PNG'
     scene.render.image_settings.color_mode = 'RGB'
@@ -906,8 +1006,8 @@ def studio(target, draft, medicine=False, mother=False):
     lab = bpy.data.collections.new('Studio | excluded from GLB')
     scene.collection.children.link(lab)
     floor = Part('Ivory cyclorama',lab)
-    if medicine or mother:
-        contour = [(-25,-.003),(1.9,-.003)] + [(1.9+1.7*math.sin(a*math.pi/20),
+    if medicine or mother or jade:
+        contour = [(-200 if jade else -25,-.003),(1.9,-.003)] + [(1.9+1.7*math.sin(a*math.pi/20),
                    1.7*(1-math.cos(a*math.pi/20))) for a in range(1,11)] + [(3.6,30)]
         floor.add([(x,y,z) for y,z in contour for x in [-25,25]],
                   [(2*i,2*i+1,2*i+3,2*i+2) for i in range(len(contour)-1)],
@@ -918,10 +1018,10 @@ def studio(target, draft, medicine=False, mother=False):
     floor.finish()
     camera = bpy.data.objects.new('Camera | centered front',bpy.data.cameras.new('Portrait orthographic'))
     lab.objects.link(camera)
-    camera.location = (0,-8,target*(.73 if medicine else .66 if mother else .795))
+    camera.location = (0,-8,target*(.73 if medicine else .66 if mother else .55 if jade else .795))
     camera.rotation_euler = (Vector((0,0,target*.494))-camera.location).to_track_quat('-Z','Y').to_euler()
     camera.data.type = 'ORTHO'
-    camera.data.ortho_scale = target*(1.12 if medicine else 1.17 if mother else 1.21)
+    camera.data.ortho_scale = target*(1.12 if medicine else 1.17 if mother else 1.18 if jade else 1.21)
     camera.data.clip_end = 500
     scene.camera = camera
     for name, xyz, aim, power, size, color in [
@@ -967,18 +1067,18 @@ def build(slug, draft):
     elif kind=='lapis':
         medicine_buddha(group,m)
     else:
-        buddha(group,m,False)
-    scene = studio(height,draft,medicine=kind=='lapis',mother=kind=='mother')
-    shot_name = slug+('-angle' if '--angle' in sys.argv else '')+('-draft' if draft and kind=='mother' else '')+'.png'
+        jade_buddha(group,m)
+    scene = studio(height,draft,medicine=kind=='lapis',mother=kind=='mother',jade=kind=='jade')
+    shot_name = slug+('-angle' if '--angle' in sys.argv else '')+('-draft' if draft and kind!='lapis' else '')+'.png'
     scene.render.filepath = str(SHOTS / shot_name)
     if not draft:
         modifiers = []
         for obj in group.objects:
             obj.select_set(True)
-            if kind in ('lapis','mother') and len(obj.data.polygons) > 1000 and not (kind=='mother' and obj.data.uv_layers):
+            if len(obj.data.polygons) > 1000 and not (kind!='lapis' and obj.data.uv_layers):
                 # Keep the sculpt for studio renders, reduce only the in-game export.
                 mod = obj.modifiers.new('Game export only', 'DECIMATE')
-                mod.ratio = .36 if obj.name.startswith(('Gilded','Open gold','Phoenix throne')) else .52
+                mod.ratio = .36 if obj.name.startswith(('Gilded','Open gold','Phoenix throne','Jade plinth')) else .52
                 modifiers.append((obj, mod))
         bpy.ops.export_scene.gltf(filepath=str(MODELS / (slug+'.glb')), export_format='GLB',
                                   use_selection=True, export_extras=True, export_yup=True, export_apply=bool(modifiers))
