@@ -2,6 +2,7 @@ import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 import { NGOC_HALL, NGOC_TERRACE, RIVER_BRIDGES } from '../../shared/campus';
+import { RIVER_DOCK } from '../../shared/river-tour';
 import { PLACES, type Place } from '../data/places';
 import { LOTUS, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_EAST_MAP_RECTS, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
@@ -75,6 +76,7 @@ export function openMap(ctx: MenuCtx) {
       ellipse(RIVER.pond.x, RIVER.pond.z, RIVER.pond.a, RIVER.pond.b, '#8ec6e0', '#4f8fb0');
       riverPath('#8ec6e0');
       for (const { x, z, halfSpan } of RIVER_BRIDGES) rect(x - halfSpan, z - RIVER.bridgeHalf, x + halfSpan, z + RIVER.bridgeHalf, '#d9c6a2', '#8a8270');
+      rect(RIVER_DOCK.edge - 1.7, RIVER_DOCK.z - 2.3, RIVER_DOCK.edge + .75, RIVER_DOCK.z + 2.3, '#a9733c', '#6e4a22');
       rect(FARM.x - 12, -55, FARM.x + 12, -30, '#a3bd79', '#7d9b6c');
       rect(BAMBOO.x - 4.5, -20, BAMBOO.x + 5.3, 14, '#91b690');
       ellipse(FLOWER_HILL.x + 0.5, FLOWER_HILL.z - 0.5, 10.6, 11.8, '#c2d59f');

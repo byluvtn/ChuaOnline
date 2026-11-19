@@ -24,6 +24,7 @@ import {
 } from '../shared/game.js';
 import type { BellHeard, FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
 import { clampCampus, expansionWaterBlocked, resolveExpansionWater } from '../shared/campus.js';
+import { RIVER_BOAT_SEAT_Y, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour.js';
 import { bindRitualSocket, ritualOnJoin, startRitualLoops, type RitualEnv, type RtSession } from './rituals.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
@@ -141,6 +142,7 @@ interface Session {
   haloLevel?: 0 | 1 | 2;
   /** trạng thái nghi lễ/khóa thiền nhóm (server/rituals.ts) */
   rt?: RtSession['rt'];
+  boatStart?: number;
 }
 const sessions = new Map<string, Session>();
 const meditationDepartures = new Map<number, Promise<void>>();
@@ -537,7 +539,21 @@ const lastPos = new Map<number, { x: number; z: number; ry: number; room: string
 
 function saveTombstone(s: Session): void {
   if (!s.resume) return;
-  lastPos.set(s.pid, { x: s.state.x, z: s.state.z, ry: s.state.ry, room: s.room, resume: s.resume, at: Date.now() });
+  const p = s.boatStart === undefined ? s.state : RIVER_DOCK;
+  lastPos.set(s.pid, { x: p.x, z: p.z, ry: s.state.ry, room: s.room, resume: s.resume, at: Date.now() });
+}
+
+function updateRiverPassenger(s: Session, now: number): void {
+  if (s.boatStart === undefined) return;
+  const elapsed = now - s.boatStart;
+  if (elapsed >= RIVER_TOUR_MS) {
+    s.boatStart = undefined;
+    const { x, z } = RIVER_DOCK;
+    Object.assign(s.state, { x, z, y: undefined, boatMs: undefined, ry: Math.PI / 2 });
+    s.socket.emit('river:arrive', { x, z });
+    return;
+  }
+  Object.assign(s.state, riverBoatAt(elapsed), { y: RIVER_BOAT_SEAT_Y, boatMs: elapsed });
 }
 
 async function requireAdmin(s: Session | undefined): Promise<boolean> {
@@ -680,9 +696,25 @@ io.on('connection', (socket) => {
   const me = () => sessions.get(socket.id);
   bindRitualSocket(ritualEnv, socket, me);
 
+  socket.on('river:board', (reply?: (r: { ok: boolean; error?: string }) => void) => {
+    if (typeof reply !== 'function') return;
+    const s = me();
+    if (!s || Math.hypot(s.state.x - RIVER_DOCK.x, s.state.z - RIVER_DOCK.z) > RIVER_DOCK.r) {
+      return reply({ ok: false, error: 'Hãy tới gần bến thuyền Sông Đông.' });
+    }
+    if (roomSessions(s.room).some(p => p.boatStart !== undefined)) {
+      return reply({ ok: false, error: 'Thuyền đang du ngoạn. Vui lòng đợi thuyền về bến.' });
+    }
+    const now = Date.now();
+    s.boatStart = now;
+    setSessionAnim(s, 'idle', now);
+    updateRiverPassenger(s, now);
+    reply({ ok: true });
+  });
+
   socket.on('move', async (m: { x: number; z: number; ry: number; anim: Anim }) => {
     const s = me();
-    if (!s || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
+    if (!s || s.boatStart !== undefined || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
     const next = { x: Math.max(-MAP_HALF, Math.min(MAP_HALF, m.x)), z: Math.max(MAP_Z_MIN, Math.min(MAP_Z_MAX, m.z)) };
     clampCampus(next);
     if (expansionWaterBlocked(next.x, next.z)) return;
@@ -720,7 +752,7 @@ io.on('connection', (socket) => {
   socket.on('action', async (kind: ActionKind, wish?: string) => {
     const s = me();
     const rule = Object.hasOwn(ACTION_RULES, kind) ? ACTION_RULES[kind] : undefined;
-    if (!s || !rule) return;
+    if (!s || !rule || (s.boatStart !== undefined && kind !== 'lantern')) return;
     const now = Date.now();
     if (now - (s.last[kind] ?? 0) < rule.cooldownMs) return;
     s.last[kind] = now;
@@ -731,6 +763,7 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const origin = { x: s.state.x, z: s.state.z, afloat: s.boatStart !== undefined };
     let merit = rule.merit;
     // vật phẩm tăng công đức: dùng món boost đang có (ưu tiên món đầu tiên trong danh sách)
     for (const boostId of rule.boostItems ?? []) {
@@ -744,7 +777,7 @@ io.on('connection', (socket) => {
     setSessionAnim(s, kind);
     io.to(s.room).emit('player:action', { id: s.state.id, kind });
     if (kind === 'lantern') {
-      const l: Lantern = { id: seq++, pid: s.pid, name: s.state.name, wish: clean(wish, 120) || 'Cầu bình an', t: now, x: s.state.x, z: s.state.z };
+      const l: Lantern = { id: seq++, pid: s.pid, name: s.state.name, wish: clean(wish, 120) || 'Cầu bình an', t: now, ...origin };
       const arr = roomLanterns.get(s.room) ?? [];
       arr.push(l);
       if (arr.length > 200) arr.shift();
@@ -1630,7 +1663,9 @@ setInterval(() => {
     const nr = npcRoom(r.id);
     if (!list.length) { nr.sleeping = true; continue; }
     resumeNpcs(nr);
-    const npcs = tickNpcs(nr, Date.now(), list.length);
+    const now = Date.now();
+    for (const s of list) updateRiverPassenger(s, now);
+    const npcs = tickNpcs(nr, now, list.length);
     tickAnimals(r.id, 0.1);
     for (const id of nr.left.splice(0)) io.to(r.id).emit('player:leave', id);
     for (const st of nr.joined.splice(0)) io.to(r.id).emit('player:join', st);
@@ -1648,7 +1683,7 @@ setInterval(() => {
     }
     io.to(r.id).volatile.emit('state', {
       online: list.length,
-      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, y: p.y, ry: p.ry, anim: p.anim, act: p.npc ? (p.act ?? null) : (p.anim === 'chant' ? 'chant' : p.anim === 'sit' ? 'meditate' : null) })),
+      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, y: p.y, boatMs: p.boatMs, ry: p.ry, anim: p.anim, act: p.npc ? (p.act ?? null) : (p.anim === 'chant' ? 'chant' : p.anim === 'sit' ? 'meditate' : null) })),
       animals: getAnimalStates(r.id),
     });
   }

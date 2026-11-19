@@ -1091,6 +1091,21 @@ export function buildTemple(c: TempleCtx) {
   wallSeg(WALL.xW, WALL.zS, -WALL.gate - 5.1, WALL.zS); wallSeg(WALL.gate + 5.1, WALL.zS, WALL.xE, WALL.zS);
   wallSeg(-WALL.gate - 1.7, WALL.zS, -WALL.gate - 0.6, WALL.zS); wallSeg(WALL.gate + 0.6, WALL.zS, WALL.gate + 1.7, WALL.zS);
   const gate = new THREE.Group();
+  gate.name = 'tam-quan';
+  const gateRoof = (x: number, y: number, w: number, d: number, h: number) => {
+    const fallback = duocSuRoof(w, d, 0, h * 0.65);
+    fallback.position.set(x, y, 0);
+    gate.add(fallback);
+    replaceModel(gate, fallback, 'chinh-dien-roof', undefined, undefined, undefined, model => {
+      // Normalize the actual Chính Điện roof to each gate bay, without changing the shared model.
+      const bounds = new THREE.Box3().setFromObject(model);
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+      model.scale.set(w / size.x, h / size.y, d / size.z);
+      model.position.sub(new THREE.Vector3(center.x - x, bounds.min.y - y, center.z).multiply(model.scale));
+      fallback.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+    });
+  };
   for (const x of [-WALL.gate, WALL.gate]) {
     const pl = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6.4, 1.2), c.redM); pl.position.set(x, 3.2, 0); pl.castShadow = true; pl.userData.sealable = true; gate.add(pl);
     const b = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 1.7), stoneBase); b.position.set(x, 0.25, 0); b.userData.sealable = true; gate.add(b);
@@ -1102,15 +1117,21 @@ export function buildTemple(c: TempleCtx) {
       colliders.push({ x: px, z: WALL.zS, r: 0.55 });
     }
     const sl = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.5, 1.1), c.redM); sl.position.set(sx, 4.7, 0); sl.castShadow = true; sl.userData.sealable = true; gate.add(sl);
-    const sr = new THREE.Mesh(c.roofGeometry(5.4, 3.6, 1.2, 0.5), c.tileM); sr.position.set(sx, 5.4, 0); sr.castShadow = true; sr.userData.sealable = true; gate.add(sr);
+    gateRoof(sx, 4.91, 5.4, 3.8, 2.1);
+    for (const y of [0.58, 5.85, 6.24]) {
+      const band = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.13, 1.32), duocSuStyle.gold);
+      band.position.set(x, y, 0); gate.add(band);
+    }
   }
   const lintel = new THREE.Mesh(new THREE.BoxGeometry(WALL.gate * 2 + 4.6, 0.8, 1.5), c.redM); lintel.position.y = 6.45; lintel.castShadow = true; lintel.userData.sealable = true; gate.add(lintel);
-  const gRoof = new THREE.Mesh(c.roofGeometry(WALL.gate * 2 + 7.5, 5, 2.0, 0.8), c.tileM); gRoof.position.y = 7.45; gRoof.castShadow = true; gRoof.userData.sealable = true; gate.add(gRoof);
-  const gNeck = new THREE.Mesh(new THREE.BoxGeometry(13.0, 1.45, 4.2), c.redM); gNeck.position.y = 7.375; gNeck.castShadow = true; gNeck.userData.sealable = true; gate.add(gNeck);
-  const gRoof2 = new THREE.Mesh(c.roofGeometry(WALL.gate * 2 + 4.2, 4.2, 1.5, 0.6), c.tileM); gRoof2.position.y = 8.85; gRoof2.castShadow = true; gRoof2.userData.sealable = true; gate.add(gRoof2);
-  const gFin = new THREE.Mesh(new THREE.ConeGeometry(0.2, 1.2, 8), c.goldM); gFin.position.y = 10.1; gFin.userData.sealable = true; gate.add(gFin);
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(11.05, 0.44, 2.14), duocSuStyle.timber);
+  cornice.position.y = 7.02; cornice.castShadow = true; gate.add(cornice);
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(11.1, 0.10, 2.18), duocSuStyle.gold);
+  trim.position.y = 7.19; gate.add(trim);
+  gateRoof(0, 7.20, 13.3, 5.4, 4.4);
   const gSign = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), new THREE.MeshBasicMaterial({ map: signTexture('CHÙA ONLINE') }));
-  gSign.position.set(0, 5.35, 0.85); gate.add(gSign);
+  gSign.position.set(0, 6.07, 0.82); gate.add(gSign);
+  const innerSign = gSign.clone(); innerSign.rotation.y = Math.PI; innerSign.position.z *= -1; gate.add(innerSign);
   for (let i = 0; i < 2; i++) {
     labelBoard(gate, COLUMN_LABELS.tamQuan[i], 0.5, 4.2, (i ? -1 : 1) * (WALL.gate - 0.9), 3.2, 0.64);
   }

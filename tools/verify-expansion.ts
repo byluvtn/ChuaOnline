@@ -8,6 +8,7 @@ import { NPC_QUESTS } from '../shared/game';
 import { createAnimals } from '../server/animals';
 import { createNpcRoom, tickNpcs } from '../server/npcs';
 import { buildPondLotus } from '../src/pond-lotus';
+import { RIVER_BOAT_HEIGHT, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour';
 
 const lotus = buildPondLotus(LAKE.a, LAKE.b, 0.14, 32, 8113, (x, _z, radius) => Math.abs(x) > BRIDGE.hw + radius);
 assert.equal(lotus.children.length, 3);
@@ -137,12 +138,30 @@ assert.equal(RIVER.bridgeHalf * 2, 5.6);
 for (const { x: center, z, halfSpan } of RIVER_BRIDGES) {
   for (const dz of [-2.15, 0, 2.15]) for (let x = center - halfSpan + 0.01; x < center + halfSpan; x += 0.1) {
     assert(!expansionWaterBlocked(x, z + dz), `River bridge blocked at ${x},${z + dz}`);
-    const rise = RIVER.bridgeY * Math.min(1, (halfSpan - Math.abs(x - center)) / RIVER.bridgeRamp);
+    const rise = RIVER.bridgeY * Math.cos(Math.PI / 2 * Math.abs(x - center) / halfSpan) ** 2;
     assert(Math.abs(groundY(x, z + dz) - rise) < 1e-8);
   }
   for (const side of [-1, 1]) {
     assert.equal(groundY(center + side * (halfSpan + 0.01), z), 0);
     assert(expansionWaterBlocked(center, z + side * (RIVER.bridgeHalf + 0.01)));
+  }
+}
+assert(!expansionWaterBlocked(RIVER_DOCK.x, RIVER_DOCK.z), 'The dock landing must remain on dry land');
+assert.equal(groundY(RIVER_DOCK.x, RIVER_DOCK.z), RIVER_DOCK.y, 'The dock landing should match the planks');
+const initialBoat = riverBoatAt(0), finalBoat = riverBoatAt(RIVER_TOUR_MS);
+assert(Math.hypot(initialBoat.x - finalBoat.x, initialBoat.z - finalBoat.z) < 0.01, 'The skiff must return to its berth');
+assert(Math.cos(initialBoat.ry - finalBoat.ry) > 0.99, 'The skiff should dock without snapping its heading');
+for (let ms = 0; ms <= RIVER_TOUR_MS; ms += 25) {
+  const p = riverBoatAt(ms);
+  if (ms > 500 && ms < RIVER_TOUR_MS - 500) assert(expansionWaterBlocked(p.x, p.z) || RIVER_BRIDGES.some(b => Math.abs(p.z - b.z) <= RIVER.bridgeHalf));
+  for (const s of [-2.25, 0, 2.25]) for (const w of [-0.86, 0.86]) {
+    const x = p.x + s * Math.sin(p.ry) + w * Math.cos(p.ry);
+    const z = p.z + s * Math.cos(p.ry) - w * Math.sin(p.ry);
+    const at = riverAt(z);
+    assert(at.hw - Math.abs(x - at.x) > 0.1, `The skiff must stay inside the channel (${ms} ms)`);
+    if (RIVER_BRIDGES.some(b => Math.abs(z - b.z) <= RIVER.bridgeHalf)) {
+      assert(groundY(x, z) - RIVER.bridgeDepth - RIVER_BOAT_HEIGHT - 0.10 > 0.35, `The canopy must fit below the arch (${ms} ms)`);
+    }
   }
 }
 for (const pos of [{ x: -78, z: -2 }, { x: riverAt(-20).x, z: -20 }, { x: RIVER.pond.x, z: RIVER.pond.z + 2 }, { x: -70, z: -35 }]) {
@@ -207,11 +226,13 @@ for (const [from, to, deck] of [
   const start = byId.get(from)!, landing = byId.get(to)!;
   Object.assign(npc.state, { x: start.x, z: start.z + 0.8, anim: 'walk' });
   npc.phase = 'walk'; npc.speed = 1.2; npc.route = routeFrom(npc.state, to);
+  let reached = false;
   for (let t = noonFree + 100; t <= noonFree + 40_000 && npc.phase === 'walk'; t += 100) {
     tickNpcs(crossingRoom, t, 1);
     assert(!expansionWaterBlocked(npc.state.x, npc.state.z));
+    if (Math.hypot(npc.state.x - landing.x, npc.state.z - landing.z) < 0.12) { reached = true; break; }
   }
-  assert(Math.hypot(npc.state.x - landing.x, npc.state.z - landing.z) < 0.25, `NPC did not cross ${deck}`);
+  assert(reached, `NPC did not cross ${deck}`);
 }
 // Room starts right at the 18:00 VN bell window, with the attendant away from the tower.
 const bellTime = Date.UTC(2026, 10, 19, 11), npcRoom = createNpcRoom(bellTime);
@@ -233,4 +254,4 @@ for (let t = bellTime + 200; t < bellTime + 60_000; t += 100) {
 assert(rang, 'The attendant should reach the tower and ring within the scheduled window');
 tickNpcs(npcRoom, bellTime + 60_000, 1);
 assert.notEqual(attendant.state.anim, 'ring');
-console.log(`PASS: 299 steps / 2 landings; bridge widths and ramp heights; bell action at the tower; ${ROAD_NODES.length} connected road nodes; ${ROAD_EDGES.length} edges outside expansion water.`);
+console.log(`PASS: 299 steps / 2 landings; arch profiles and skiff clearance; bell action at the tower; ${ROAD_NODES.length} connected road nodes; ${ROAD_EDGES.length} edges outside expansion water.`);

@@ -1,6 +1,7 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
 import { WALL, LAKE, BRIDGE, LOTUS, RIVER, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverBridgeY, DUOC_SU, NGOC, NGOC_EAST_LANE, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
+import { riverDockY } from '../shared/river-tour';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
 export const CORR = { x: 20.5, z0: -19, z1: -1, half: 2.6, y: 0.12 };
@@ -143,7 +144,7 @@ export function groundYBase(x: number, z: number) {
   if (Math.abs(x - DUOC_SU.x) <= DUOC_SU.hx && Math.abs(z - DUOC_SU.z) <= DUOC_SU.hz) y = Math.max(y, DUOC_SU.y);
   for (const h of TINH_THAT) if (Math.abs(x - h.x) <= 1.6 && Math.abs(z - h.z) <= 1.25) y = Math.max(y, 0.16);
   if (x >= -90 && x <= -66 && Math.abs(z - 2) <= 1.1) y = Math.max(y, 0.28);
-  y = Math.max(y, riverBridgeY(x, z));
+  y = Math.max(y, riverBridgeY(x, z), riverDockY(x, z));
   const dx = Math.max(Math.abs(x - HALL.x) - HALL.hx, 0), dz = Math.max(Math.abs(z - HALL.z) - HALL.hz, 0);
   // Chính Điện: ba bậc nền hình chữ nhật khớp mesh hall.ts (nền 1.35, tầng 2 cao 0.9, tầng 1 cao 0.45).
   const hm = Math.max(dx, dz);

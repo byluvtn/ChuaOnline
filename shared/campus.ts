@@ -14,7 +14,7 @@ export const RIVER_FALLS = { x: 80, z: -82, scale: FALLS_SCALE, hw: 8 * FALLS_SC
 const LOWER_RIVER_X = 61.5 + RIVER_FALLS.hw;
 export const RIVER = {
   pond: { x: LOWER_RIVER_X, z: 14, a: RIVER_FALLS.hw, b: 3.8 * FALLS_SCALE },
-  bridges: [-38, 2], bridgeHalf: 2.8, bridgeY: 0.56, bridgeRamp: 1.35,
+  bridges: [-38, 2], bridgeHalf: 2.8, bridgeY: 3.45, bridgeDepth: 0.48,
 };
 export const RIVER_EAST_WALK_X = LOWER_RIVER_X + RIVER_FALLS.hw + 1.8;
 export const EAST_BANK_SHIFT = RIVER_EAST_WALK_X - 79.3;
@@ -58,11 +58,14 @@ export function onRiverBridge(x: number, z: number, clearance = 0) {
   return RIVER_BRIDGES.some(b => Math.abs(x - b.x) <= b.halfSpan && Math.abs(z - b.z) <= RIVER.bridgeHalf - clearance);
 }
 
-/** Flat over the river, with the two ramps contained on the dry banks. */
+/** The same arch profile is used by deck geometry, characters and boats. */
+export function riverArchY(offset: number, halfSpan: number) {
+  const u = Math.min(1, Math.abs(offset) / halfSpan);
+  return RIVER.bridgeY * Math.cos(u * Math.PI / 2) ** 2;
+}
 export function riverBridgeY(x: number, z: number) {
   for (const b of RIVER_BRIDGES) {
-    const run = b.halfSpan - Math.abs(x - b.x);
-    if (run > 0 && Math.abs(z - b.z) <= RIVER.bridgeHalf) return RIVER.bridgeY * Math.min(1, run / RIVER.bridgeRamp);
+    if (Math.abs(x - b.x) < b.halfSpan && Math.abs(z - b.z) <= RIVER.bridgeHalf) return riverArchY(x - b.x, b.halfSpan);
   }
   return 0;
 }

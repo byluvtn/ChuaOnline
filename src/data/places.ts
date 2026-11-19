@@ -1,5 +1,6 @@
 import { BAO_THAP, BELL, DRUM, BRIDGE, BUDDHA_YARD, DECK, HALL, LAKE, PAGODA, PLAZA, QUAN, TAM_THE, THIEN_DUONG, VUON_THAP, WALL, ZEN, REST, TANG_XA } from '../layout';
 import { BAMBOO, DUOC_SU_DOOR, FLOWER_HILL, NGOC, PHONG_CD_DOOR, RIVER_BRIDGES, TINH_THAT, TINH_THAT_LANE_Z } from '../../shared/campus';
+import { RIVER_DOCK } from '../../shared/river-tour';
 
 export interface Place { name: string; x: number; z: number; r: number; ly?: number }
 
@@ -41,6 +42,7 @@ export const PLACES: Place[] = [
   { name: 'Động thiền', x: -26, z: -102, r: 4 },
   { name: 'Rừng thông', x: 26, z: -108, r: 5 },
   { name: 'Sông Đông', x: RIVER_BRIDGES[1].x, z: RIVER_BRIDGES[1].z, r: 3 },
+  { name: 'Bến thuyền', ...RIVER_DOCK },
   { name: 'Cổng Tây', x: WALL.xW + 2, z: WALL.sideGateZ, r: 3 },
   { name: 'Cổng Đông', x: WALL.xE - 2, z: WALL.sideGateZ, r: 3 },
 ];

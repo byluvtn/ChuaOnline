@@ -14,10 +14,10 @@
  */
 import * as THREE from 'three';
 import { buildZafu, type ZafuPosition } from './zafu';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_FALLS, RIVER_SOURCE_Z, RIVER_MOUTH_Z, riverAt, TINH_THAT,
-  DUOC_SU_YAW, duocSuWorld, EAST_BANK_SHIFT, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverBridgeY, WALL,
+  DUOC_SU_YAW, duocSuWorld, EAST_BANK_SHIFT, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverArchY, riverBridgeY, WALL,
   expansionGroundY, NGOC_EAST_LANE, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
@@ -28,14 +28,16 @@ import { pavingMaterial } from './compound';
 import { nearWalkway, NGOC_EAST_PAVING } from './layout';
 import { duocSuRoof, duocSuStyle } from './duoc-su-style';
 import { buildRiverWaterfall } from './river-waterfall';
+import { RIVER_DOCK } from '../shared/river-tour';
 import { buildPondLotus } from './pond-lotus';
 import { FLOWER_COLORS, PlantBatch } from './landscape';
+import { bladeGeometry, VegetationBatch } from './vegetation';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const MAT_KEYS = [
   'stone', 'paving', 'stoneDark', 'granite', 'graniteDark', 'tile', 'red', 'gold', 'wall', 'wood', 'darkWood',
   'trunk', 'pine', 'bamboo', 'bambooLeaf', 'leaf', 'soil',
-  'lamp', 'rock', 'dark', 'dsStone', 'dsTimber', 'dsPlaster', 'dsGold', 'dsDarkwood',
+  'lamp', 'rock', 'moss', 'dark', 'dsStone', 'dsTimber', 'dsPlaster', 'dsGold', 'dsDarkwood',
 ] as const;
 type MatKey = (typeof MAT_KEYS)[number];
 
@@ -102,8 +104,27 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   const darkWoodM = c.lamb(0x5a3a22);
   const lampM = c.lamb(0xffd27a, { emissive: 0xff9a2a, emissiveIntensity: 0.9, roughness: 0.6 });
   const rockM = c.lamb(0x8d8a80, { flatShading: true });
+  const mossM = c.lamb(0x54703a, { flatShading: true, roughness: 1 });
   const darkM = c.lamb(0x1c1a18, { roughness: 1 });
   const waterM = c.lamb(0x2f6f86, { transparent: true, opacity: 0.86, roughness: 0.28, metalness: 0.05 });
+  const currentTime = { value: 0 };
+  const riverWaterM = waterM.clone();
+  riverWaterM.name = 'east-river-current';
+  riverWaterM.opacity = .76;
+  riverWaterM.onBeforeCompile = shader => {
+    shader.uniforms.currentTime = currentTime;
+    shader.vertexShader = 'varying vec2 riverXZ;\n' + shader.vertexShader.replace('#include <begin_vertex>', `
+      #include <begin_vertex>
+      riverXZ = (modelMatrix * vec4(position, 1.)).xz;
+    `);
+    shader.fragmentShader = 'uniform float currentTime; varying vec2 riverXZ;\n' + shader.fragmentShader.replace('#include <emissivemap_fragment>', `
+      #include <emissivemap_fragment>
+      vec2 q = riverXZ - vec2(0., currentTime * .48);
+      float crest = sin(q.y * 8.1 + 1.7 * sin(q.x * 2.6 + q.y * 1.1));
+      float broken = smoothstep(.0, .85, sin(q.x * 5.2 - q.y * 1.45) * sin(q.x * 1.4 + q.y * .31));
+      totalEmissiveRadiance += vec3(.085, .19, .22) * smoothstep(.84, 1., crest) * broken;
+    `);
+  };
   const grassM = c.lamb(0x6d8548, { map: grassTexture([24, 12]) });
 
   const materials: Record<MatKey, THREE.Material> = {
@@ -111,7 +132,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     tile: c.tileM, red: c.redM, gold: c.goldM, wall: c.wallM, wood: woodM, darkWood: darkWoodM,
     trunk: trunkM, pine: pineM, bamboo: bambooStemM, bambooLeaf: bambooLeafM, leaf: leafM,
     soil: soilM,
-    lamp: lampM, rock: rockM, dark: darkM,
+    lamp: lampM, rock: rockM, moss: mossM, dark: darkM,
     dsStone: duocSuStyle.stone, dsTimber: duocSuStyle.timber, dsPlaster: duocSuStyle.plaster,
     dsGold: duocSuStyle.gold, dsDarkwood: duocSuStyle.darkwood,
   };
@@ -167,6 +188,26 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     put(key, new THREE.ConeGeometry(r, h, seg), x, y, z);
   const addSphere = (key: MatKey, r: number, x: number, y: number, z: number) =>
     put(key, new THREE.SphereGeometry(r, 8, 6), x, y, z);
+  /** Faceted rock with irregular vertices: natural mass without a new material. */
+  const addRock = (key: MatKey, x: number, y: number, z: number, rx: number, ry: number, rz: number, seed: number) => {
+    const g = new THREE.IcosahedronGeometry(1, 1);
+    const pos = g.getAttribute('position');
+    // Icosahedron faces share no vertices, so displacement must come from the vertex position
+    // itself; a random per-vertex offset would tear the surface into visible cracks.
+    const hash = (a: number, b: number, c: number) => {
+      const s = Math.sin(a * 12.9898 + b * 78.233 + c * 37.719 + seed * 4.117) * 43758.5453;
+      return s - Math.floor(s);
+    };
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i);
+      const k = 0.82 + hash(Math.round(px * 64), Math.round(py * 64), Math.round(pz * 64)) * 0.34;
+      pos.setXYZ(i, px * rx * k, py * ry * k, pz * rz * k);
+    }
+    pos.needsUpdate = true;
+    g.computeVertexNormals();
+    put(key, mergeVertices(g), x, y, z);
+    g.dispose();
+  };
   const addRoof = (w: number, d: number, h: number, lift: number, x: number, yBase: number, z: number) =>
     put('tile', c.roofGeometry(w, d, h, lift), x, yBase + h / 2, z);
 
@@ -244,7 +285,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setIndex(idx);
     g.computeVertexNormals();
-    const m = new THREE.Mesh(g, waterM);
+    const m = new THREE.Mesh(g, riverWaterM);
     m.name = 'expansion-water';
     m.receiveShadow = true;
     return m;
@@ -565,29 +606,75 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     }
 
     const rand = rng(55123);
-    let placed = 0;
-    for (let i = 0; i < 560 && placed < 78; i++) {
-      const x = 80.5 + EAST_BANK_SHIFT + rand() * 9.8, z = -19.4 + rand() * 33;
-      if (nearRoad(x, z, 1.35) || nearWalkway(x, z, 0.9)) continue;
+    const stems = new THREE.CylinderGeometry(0.8, 1, 1, 6, 1);
+    const node = new THREE.CylinderGeometry(1, 1, 1, 6);
+    const leaf = bladeGeometry(1, 1, 4);
+    const mossGeo = new THREE.IcosahedronGeometry(1, 1);
+    const bambooBatch = new VegetationBatch();
+    const stemM = c.lamb(0xffffff, { flatShading: true });
+    const leafM = c.lamb(0xffffff, { flatShading: true, side: THREE.DoubleSide });
+    const bambooMossM = c.lamb(0xffffff, { flatShading: true, roughness: 1 });
+    const stem = { geo: stems, mat: stemM };
+    const fan = { geo: leaf, mat: leafM };
+    const joint = { geo: node, mat: stemM };
+    const STEM_COLORS = [0x9bbf58, 0xb5c95d, 0x7fa845, 0xc3b96a, 0x87a94e] as const;
+    const LEAF_COLORS = [0x4f8f3b, 0x6fa84a, 0x83b651, 0x3d7a36, 0x9dc260] as const;
+    const MOSS_COLORS = [0x527c3b, 0x68934a, 0x3f6c35, 0x83a34f] as const;
+    let planted = 0, tufts = 0;
+    for (let i = 0; i < 720 && planted < 124; i++) {
+      const x = 79.5 + EAST_BANK_SHIFT + rand() * 11.6, z = -20.5 + rand() * 34.6;
+      if (nearRoad(x, z, 1.45) || nearWalkway(x, z, 1.0)) continue;
       let skip = false;
-      for (const p of ringPts) if (Math.hypot(x - p.x, z - p.z) < 2.0) { skip = true; break; }
+      for (const p of ringPts) if (Math.hypot(x - p.x, z - p.z) < 2.5) { skip = true; break; }
       if (skip) continue;
-      for (const [sx, sz] of seatSpots) if (Math.hypot(x - sx, z - sz) < 1.8) { skip = true; break; }
+      for (const [sx, sz] of seatSpots) if (Math.hypot(x - sx, z - sz) < 2.1) { skip = true; break; }
       if (skip) continue;
-      if (distToSeg(x, z, cx, cz, cx, z1) < 1.9) continue; // nhánh nối
-      placed++;
-      for (let k = 0; k < 3; k++) {
-        const ox = (rand() - 0.5) * 0.9, oz = (rand() - 0.5) * 0.9;
-        const h = 5.2 + rand() * 3.4;
-        addCyl('bamboo', 0.06, 0.09, h, 5, x + ox, h / 2, z + oz);
-        addCone('bambooLeaf', 0.62, 1.5, 5, x + ox, h - 0.5, z + oz);
-        addCone('bambooLeaf', 0.46, 1.1, 5, x + ox, h - 1.5, z + oz);
+      if (distToSeg(x, z, cx, cz, cx, z1) < 2.4) continue; // nhánh nối
+      planted++;
+      const culms = 2 + Math.floor(rand() * 3);
+      for (let k = 0; k < culms; k++) {
+        const ox = (rand() - 0.5) * 1.65, oz = (rand() - 0.5) * 1.65;
+        const h = 5.4 + rand() * 4.6;
+        const dir = rand() * Math.PI * 2, bend = 0.28 + rand() * 0.62;
+        bambooBatch.bambooCulm(x + ox, 0, z + oz, h, 0.075 + rand() * 0.045,
+          Math.cos(dir) * bend, Math.sin(dir) * bend,
+          stem, fan, joint, STEM_COLORS, LEAF_COLORS, i + k);
       }
-      solid(x, z, 0.45);
+      solid(x, z, 0.52);
+      // Leaf litter and low fern groundcover; no collider, no walking obstruction.
+      for (let k = 0; k < 3; k++) {
+        const mx = x + (rand() - 0.5) * 2.3, mz = z + (rand() - 0.5) * 2.3;
+        if (nearRoad(mx, mz, 0.9) || nearWalkway(mx, mz, 0.6)) continue;
+        bambooBatch.mossClump(mx, 0, mz, 0.24 + rand() * 0.25, mossGeo, bambooMossM, MOSS_COLORS, tufts++);
+        if (tufts % 3 === 0) bambooBatch.undergrowth(mx, 0.05, mz, 0.26 + rand() * 0.26, leaf, leafM, LEAF_COLORS, tufts, 4);
+      }
     }
+    // Old bamboo: a visibly thicker, taller clump at the shady north edge of the grove.
+    const oldBambooX = 80.8 + EAST_BANK_SHIFT, oldBambooZ = -18.6;
+    if (!nearRoad(oldBambooX, oldBambooZ, 2.4) && !nearWalkway(oldBambooX, oldBambooZ, 1.2)) {
+      for (let k = 0; k < 7; k++) {
+        const a = (k / 7) * Math.PI * 2;
+        bambooBatch.bambooCulm(oldBambooX + Math.cos(a) * 0.55, 0, oldBambooZ + Math.sin(a) * 0.55,
+          9.4 + (k % 3) * 0.9, 0.14, Math.cos(a) * 0.8, Math.sin(a) * 0.8,
+          stem, fan, joint, STEM_COLORS, LEAF_COLORS, 311 + k);
+      }
+      bambooBatch.mossClump(oldBambooX, 0, oldBambooZ, 1.3, mossGeo, bambooMossM, MOSS_COLORS, 71);
+      solid(oldBambooX, oldBambooZ, 1.0);
+    }
+    const { group } = flush('bamboo');
+    group.add(bambooBatch.build('bamboo-grove', { castShadow: key => key === 'bamboo-stem' }));
+    // Dense glade model in a few clearly marked gaps; instanced geometry supplies the canopy.
+    void loadModel('bamboo_cluster').then(model => {
+      if (!model) return;
+      for (const [gx, gz] of [[x1 + 1.5, -14.5], [x0 - 1.5, -7.5], [cx + 3.4, 0.8]]) {
+        if (nearRoad(gx, gz, 2.2) || nearWalkway(gx, gz, 1.0)) continue;
+        const clump = fitModel(model.clone(true), 6.4);
+        clump.position.set(gx, 0, gz);
+        group.add(clump);
+      }
+    }).catch(() => {});
     addPostedSign('RỪNG TRÚC', 2.2, 0.55, 81.1 + EAST_BANK_SHIFT, 1.1, -3.0, -Math.PI / 2);
     zones.push({ x: cx, z: cz, r: 13, id: 'rungTruc' });
-    flush('bamboo');
   }
 
   // =====================================================================================
@@ -734,12 +821,13 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   // =====================================================================================
   const waterfall = buildRiverWaterfall();
   {
-    const { bridges, bridgeHalf, bridgeRamp, bridgeY: top } = RIVER;
+    const { bridges, bridgeHalf, bridgeDepth: depth } = RIVER;
     // Kè đá dọc hai mép cong: thanh đá nối các mốc 2 m + trụ đá mỗi ~4 m.
     for (const side of [-1, 1]) {
       for (let pz = RIVER_SOURCE_Z; pz < RIVER_MOUTH_Z; pz += 2) {
         const a = riverAt(pz), b = riverAt(Math.min(pz + 2, RIVER_MOUTH_Z));
         const zc = (pz + Math.min(pz + 2, RIVER_MOUTH_Z)) / 2;
+        if (side < 0 && Math.abs(zc - RIVER_DOCK.z) < 2.8) continue;
         if (bridges.some(bz => Math.abs(zc - bz) < bridgeHalf + 1)) continue;
         const xc = (a.x + side * a.hw + b.x + side * b.hw) / 2 + side * 0.3;
         const dx = (b.x + side * b.hw) - (a.x + side * a.hw);
@@ -751,34 +839,64 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       }
     }
     for (const { x: bx, z: bz, halfSpan } of RIVER_BRIDGES) {
-      const rail = halfSpan - bridgeRamp, depth = 0.48;
       const width = 2 * bridgeHalf;
-      addBox('paving', 2 * rail, depth, width, bx, top - depth / 2, bz);
-      for (const s of [-1, 1]) {
-        const ramp = new THREE.BoxGeometry(bridgeRamp, depth, width);
-        const pos = ramp.getAttribute('position');
-        for (let i = 0; i < pos.count; i++) {
-          pos.setY(i, pos.getY(i) - s * pos.getX(i) * top / bridgeRamp);
-        }
-        ramp.computeVertexNormals();
-        put('paving', ramp, bx + s * (rail + bridgeRamp / 2), (top - depth) / 2, bz);
-      }
+      const steps = 48;
+      const samples = Array.from({ length: steps + 1 }, (_, i) => {
+        const x = halfSpan * (2 * i / steps - 1);
+        return new THREE.Vector2(x, riverArchY(x, halfSpan));
+      });
+      const strip = (key: MatKey, bottom: number, top: number, width: number, z: number, profile = samples) => {
+        const shape = new THREE.Shape([
+          ...profile.map(p => new THREE.Vector2(p.x, p.y + top)),
+          ...[...profile].reverse().map(p => new THREE.Vector2(p.x, p.y + bottom)),
+        ]);
+        const g = new THREE.ExtrudeGeometry(shape, { depth: width, bevelEnabled: false });
+        put(key, mergeVertices(g), bx, 0, z - width / 2);
+        g.dispose();
+      };
+      strip('graniteDark', -depth, -0.13, width, bz);
+      strip('paving', -0.13, 0, width - 0.38, bz);
+      // Leave the dry ends open to the paths running along either bank.
+      const railSpan = halfSpan - 1.0;
+      const railProfile = samples.map(p => {
+        const x = p.x * railSpan / halfSpan;
+        return new THREE.Vector2(x, riverArchY(x, halfSpan));
+      });
       for (const s of [-1, 1]) {
         const z = bz + s * (bridgeHalf - 0.10);
-        addBox('granite', 2 * rail, 0.36, 0.32, bx, top + 0.18, z);
-        addBox('stone', 2 * rail, 0.16, 0.36, bx, top + 0.99, z);
+        strip('granite', -0.14, 0.20, 0.34, z, railProfile);
+        strip('stone', 0.90, 1.06, 0.36, z, railProfile);
         for (let i = -8; i <= 8; i++) {
-          const x = bx + rail * i / 8, end = Math.abs(i) === 8;
+          const x = bx + railSpan * i / 8, end = Math.abs(i) === 8;
+          const top = riverArchY(x - bx, halfSpan);
           addBox('stoneDark', end ? 0.48 : 0.31, end ? 1.24 : 1.05, end ? 0.48 : 0.34, x, top + (end ? 0.6 : 0.52), z);
           if (end) addBox('granite', 0.59, 0.14, 0.59, x, top + 1.26, z);
         }
-        colliders.push({ x: bx - rail, z, x2: bx + rail, z2: z, r: 0.19 });
+        colliders.push({ x: bx - railSpan, z, x2: bx + railSpan, z2: z, r: 0.19 });
+        // Stone voussoirs follow the arch on the two visible faces.
+        for (let i = 1; i < steps; i += 2) {
+          const p = samples[i];
+          addBox('stoneDark', 0.035, depth * 0.76, 0.018, bx + p.x, p.y - depth * 0.59, bz + s * (bridgeHalf + 0.008));
+        }
       }
-      for (const px of [bx - rail * 0.64, bx, bx + rail * 0.64]) {
-        addBox('stoneDark', 1.6, 1.36, width - 0.56, px, -0.48, bz);
-        addBox('granite', 1.94, 0.28, width - 0.2, px, 0.04, bz);
+      for (const side of [-1, 1]) {
+        addBox('stoneDark', 2.25, 0.8, width - 0.16, bx + side * (halfSpan - 1.05), -0.42, bz);
       }
     }
+    const dockZ = RIVER_DOCK.z, edge = RIVER_DOCK.edge;
+    for (let i = -10; i <= 10; i++) {
+      addBox('wood', 2.45, 0.14, 0.21, edge - 0.48, RIVER_DOCK.y - 0.07, dockZ + i * 0.22);
+    }
+    for (const dz of [-2.15, 2.15]) {
+      // Recess the rails from the west-bank path so walkers need not step onto the pier.
+      addBox('darkWood', 1.6, 0.16, 0.16, edge - 0.055, 0.79, dockZ + dz);
+      for (const px of [edge - 0.78, edge + 0.67]) {
+        addBox('dsTimber', 0.23, 1.36, 0.23, px, 0.40, dockZ + dz);
+        addBox('granite', 0.28, 0.12, 0.28, px, 1.12, dockZ + dz);
+        if (px < edge) solid(px, dockZ + dz, 0.22);
+      }
+    }
+    addPostedSign('BẾN THUYỀN SÔNG ĐÔNG', 3.3, 0.54, edge - 1.28, 1.28, dockZ + 2.42, -Math.PI / 2);
     const { x: px, z: pz, a, b } = RIVER.pond;
     const segments = Math.ceil(Math.PI * Math.max(a, b) / 0.7);
     for (let i = 0; i < segments; i++) {
@@ -795,6 +913,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     const { group } = flush('river');
     group.add(waterRibbon());
     const pond = waterEllipse(px, pz, a, b, true);
+    pond.material = riverWaterM;
     pond.name = 'east-river-fish-pond';
     group.add(pond);
     group.add(waterfall.group);
@@ -1004,20 +1123,40 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
 
   {
     const cx = CAVE.x, cz = CAVE.z, yb = expansionGroundY(cx, cz);
-    // khối đá: hậu + hai bên + trần, cửa quay Nam
-    addBox('rock', 9.6, 5.4, 5.0, cx, yb + 2.3, cz - 3.2);
-    addBox('rock', 3.4, 4.6, 4.2, cx - 5.2, yb + 1.9, cz - 1.0);
-    addBox('rock', 3.4, 4.2, 4.2, cx + 5.2, yb + 1.7, cz - 0.6);
-    addBox('rock', 7.6, 1.7, 4.8, cx, yb + 4.0, cz - 1.0);
-    addBox('rock', 2.4, 2.6, 1.6, cx - 3.2, yb + 4.6, cz + 0.6);
-    addBox('rock', 2.0, 2.2, 1.5, cx + 3.4, yb + 4.4, cz + 0.4);
-    // lòng hang
-    addBox('graniteDark', 4.6, 0.08, 4.6, cx, yb + 0.04, cz - 0.8);
-    addBox('dark', 4.4, 3.0, 0.24, cx, yb + 1.5, cz - 2.9);
-    addBox('dark', 4.4, 0.24, 4.2, cx, yb + 2.95, cz - 1.0);
-    for (const s of [-1, 1]) addBox('dark', 0.24, 3.0, 4.2, cx + s * 2.2, yb + 1.5, cz - 1.0);
-    // bàn thờ đá + đèn
+    // Limestone wraps the back and sides without intruding into the meditation chamber.
+    for (const [ox, oz, rx, rh, rz, seed] of [
+      [0, -5.55, 5.4, 3.1, 2.35, 211], [-5.0, -1.4, 2.6, 2.7, 2.8, 212],
+      [5.1, -1.6, 2.5, 2.5, 2.7, 213], [-2.9, 0.9, 1.8, 1.9, 1.7, 214],
+      [3.1, 0.8, 1.7, 1.7, 1.6, 215],
+    ] as const) addRock('rock', cx + ox, yb + rh * 0.78, cz + oz, rx, rh, rz, seed);
+    addRock('rock', cx, yb + 4.25, cz - 1.7, 4.8, 1.4, 3.55, 216);
+    // Overhanging brow + side fins shade the entrance without sealing it.
+    addRock('rock', cx, yb + 3.45, cz + 0.3, 4.0, 0.9, 1.5, 217);
+    addRock('rock', cx - 4.0, yb + 1.8, cz + 1.2, 1.6, 2.2, 1.5, 218);
+    addRock('rock', cx + 4.0, yb + 1.7, cz + 1.0, 1.5, 2.1, 1.4, 219);
+    // lòng hang: polished stone floor and alcove wall; the dark shell stays only as recess shadow
+    const floor = new THREE.BoxGeometry(4.6, 0.08, 4.6, 8, 1, 8);
+    const floorVertices = floor.getAttribute('position');
+    for (let i = 0; i < floorVertices.count; i++) {
+      const x = cx + floorVertices.getX(i), z = cz - 0.8 + floorVertices.getZ(i);
+      floorVertices.setY(i, floorVertices.getY(i) + expansionGroundY(x, z) + .02);
+    }
+    floor.computeVertexNormals();
+    put('graniteDark', floor, cx, 0, cz - 0.8);
+    addBox('dark', 4.4, 2.6, 0.2, cx, yb + 1.3, cz - 2.95);
+    for (const s of [-1, 1]) addBox('dark', 0.2, 2.7, 3.8, cx + s * 2.2, yb + 1.35, cz - 1.0);
+    // Organic ribs and moss on the outer rock; no collider changes inside the usable floor.
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      if (Math.sin(a) > -0.15) continue; // keep the south entrance clear
+      const px = cx + Math.cos(a) * (4.6 + (i % 3) * 0.3);
+      const pz = cz - 1.8 + Math.sin(a) * (3.4 + (i % 2) * 0.25);
+      addRock('rock', px, yb + 0.7 + (i % 4) * 0.7, pz, 0.55 + (i % 3) * 0.15, 0.5 + (i % 3) * 0.25, 0.6, 250 + i);
+      addRock('moss', px, yb + 0.24 + (i % 4) * 0.5, pz + 0.28, 0.46, 0.16, 0.44, 280 + i);
+    }
+    // Stone altar + lamp with a rougher limestone cap.
     addBox('granite', 1.5, 0.8, 1.0, cx, yb + 0.44, cz - 2.4);
+    addRock('granite', cx, yb + 0.86, cz - 2.4, 0.95, 0.16, 0.68, 290);
     addSphere('lamp', 0.16, cx, yb + 0.98, cz - 2.4);
     glow(cx, yb + 0.98, cz - 2.4, 1.5, 0xffb060, 0.45);
     // vách chắn hai bên + hậu (cửa Nam để trống)
@@ -1025,17 +1164,34 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     wallLine(cx + 2.4, cz - 3.1, cx + 2.4, cz + 0.6, 0.4, 0.6);
     wallLine(cx - 2.4, cz - 3.1, cx + 2.4, cz - 3.1, 0.4, 0.6);
     solid(cx, cz - 2.9, 0.9);
-    for (const dx of [-1.2, 1.2]) meditationPad(cx + dx, cz - 1, 0, 0.9, 0.8, yb + 0.08);
-    addSign('ĐỘNG THIỀN', 2.2, 0.55, cx, yb + 3.5, cz + 0.8);
+    for (const dx of [-1.2, 1.2]) {
+      meditationPad(cx + dx, cz - 1, 0, 0.9, 0.8, expansionGroundY(cx + dx, cz - 1) + .065);
+    }
+    // Chùa Ngọc trim: timber lintel, jade-toned stone jambs and a tiled eyebrow over the mouth.
+    for (const s of [-1, 1]) {
+      addBox('dsStone', 0.38, 2.5, 0.38, cx + s * 2.35, yb + 1.25, cz + 0.55);
+      addBox('dsTimber', 0.5, 0.18, 0.5, cx + s * 2.35, yb + 2.56, cz + 0.55);
+      addBox('dsGold', 0.52, 0.07, 0.52, cx + s * 2.35, yb + 2.68, cz + 0.55);
+    }
+    addBox('dsTimber', 5.3, 0.32, 0.46, cx, yb + 2.75, cz + 0.55);
+    addBox('dsGold', 5.1, 0.07, 0.5, cx, yb + 2.94, cz + 0.55);
+    addBox('tile', 5.8, 0.22, 1.2, cx, yb + 3.12, cz + 0.5);
+    // Mossy flagstones lead from the path to the open mouth without blocking it.
+    for (let i = 0; i < 5; i++) {
+      const pz = cz + 1.4 + i * 0.62;
+      const px = cx + (i % 2 ? 0.3 : -0.3);
+      addRock('moss', px, expansionGroundY(px, pz) + .025, pz, 0.72, 0.06, 0.4, 300 + i);
+    }
+    addSign('ĐỘNG THIỀN', 2.2, 0.55, cx, yb + 3.5, cz + 1.12);
     zones.push({ x: cx, z: cz, r: 7, id: 'dongThien' });
 
-    // đường mòn trên đồi, lát theo cao độ thật
+    // đường mòn trên đồi: lát đá nhỏ bám cao độ từng điểm, tránh bản phẳng đứng trên dốc
     for (const [ax, az, bx, bz] of hillPaths) {
-      const n = Math.max(2, Math.round(Math.hypot(bx - ax, bz - az) / 1.6));
+      const n = Math.max(2, Math.round(Math.hypot(bx - ax, bz - az) / 0.95));
       for (let i = 0; i <= n; i++) {
         const t = i / n;
         const px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
-        addBox('paving', 1.35, 0.1, 1.35, px, expansionGroundY(px, pz) + 0.05, pz);
+        addRock('paving', px, expansionGroundY(px, pz) - 0.05, pz, 0.62, 0.075, 0.62, 410 + i + Math.round(ax * 3 + az));
       }
     }
 
@@ -1049,50 +1205,108 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       seatPad(rx + 0.9, rz, 0, true, 0.9, 0.8, 'darkWood');
       zones.push({ x: rx, z: rz, r: 4, id: 'nhaNghiChan' });
     }
-    flush('dongThien');
+    const { group } = flush('dongThien');
+    const altarLight = new THREE.PointLight(0xffc080, 7.5, 5.4, 2);
+    altarLight.position.set(cx, yb + 1.32, cz - 2.24);
+    group.add(altarLight);
   }
 
-  // ---- rừng thông hai bên trục thang (gộp cùng mesh pineForest) ----
+  // ---- rừng thông hai bên trục thang + cây cổ thụ làm điểm mốc ----
   {
     const rand = rng(31117);
+    const trunkGeo = new THREE.CylinderGeometry(0.72, 1, 1, 7);
+    const needleGeo = new THREE.ConeGeometry(1, 1, 7, 1);
+    const crownGeo = new THREE.IcosahedronGeometry(1, 1);
+    const mossGeo = new THREE.IcosahedronGeometry(1, 1);
+    const underGeo = bladeGeometry(1, 1, 3);
+    const barkM = c.lamb(0xffffff, { flatShading: true });
+    const needleM = c.lamb(0xffffff, { flatShading: true });
+    const crownM = c.lamb(0xffffff, { flatShading: true });
+    const forestMossM = c.lamb(0xffffff, { flatShading: true, roughness: 1 });
+    const underM = c.lamb(0xffffff, { flatShading: true, side: THREE.DoubleSide });
+    const BARK = [0x6a4a30, 0x7a5537, 0x5a3d29, 0x8a6743] as const;
+    const NEEDLE = [0x2f5f42, 0x3a7050, 0x27513a, 0x467a52] as const;
+    const CROWN = [0x3f6f3c, 0x527f44, 0x355f34, 0x638c4c] as const;
+    const FOREST_MOSS = [0x4e7639, 0x628a46, 0x3c6130] as const;
+    const pines = new VegetationBatch();
     let placed = 0;
-    for (let i = 0; i < 640 && placed < 120; i++) {
+    for (let i = 0; i < 900 && placed < 210; i++) {
       const side = i % 2 === 0 ? -1 : 1;
       const px = side * (13 + rand() * 26.5);
       const pz = -86 - rand() * 31.5;
       if (Math.abs(px - NGOC.x) < NGOC_TERRACE.half + 2.4 && pz < NGOC.stairTop + 4) continue;
-      if (nearHillPath(px, pz, 2.6)) continue;
-      if (Math.hypot(px - CAVE.x, pz - CAVE.z) < 6.5) continue;
-      if (restSpots.some(([rx, rz]) => Math.hypot(px - rx, pz - rz) < 4.8)) continue;
+      if (nearHillPath(px, pz, 2.4)) continue;
+      if (Math.hypot(px - CAVE.x, pz - CAVE.z) < 7.4) continue;
+      if (restSpots.some(([rx, rz]) => Math.hypot(px - rx, pz - rz) < 5.0)) continue;
       placed++;
-      const h = 5.4 + rand() * 4.2;
+      const h = 5.4 + rand() * 4.6;
       const yb = expansionGroundY(px, pz);
-      if (placed <= 8) placeTree('pine-natural', px, pz, h);
-      else {
-        addCyl('trunk', 0.2, 0.34, h * 0.45, 6, px, yb + h * 0.225, pz);
-        for (let k = 0; k < 3; k++) {
-          const ch = h * 0.52 * (1 - k * 0.18);
-          addCone('pine', 1.85 - k * 0.42, ch, 7, px, yb + h * 0.3 + k * h * 0.22, pz);
+      pines.pine(px, yb, pz, h, 0.26 + rand() * 0.1,
+        { geo: trunkGeo, mat: barkM }, { geo: needleGeo, mat: needleM }, BARK, NEEDLE, i);
+      // Ground layer: shaded moss cushions and sparse ferns under the canopy.
+      if (placed % 2 === 0) {
+        const mx = px + (rand() - 0.5) * 3.2, mz = pz + (rand() - 0.5) * 3.2;
+        if (!nearHillPath(mx, mz, 1.4)) {
+          pines.mossClump(mx, expansionGroundY(mx, mz), mz, 0.34 + rand() * 0.4,
+            mossGeo, forestMossM, FOREST_MOSS, placed);
+          if (placed % 6 === 0) {
+            pines.undergrowth(mx + 0.5, expansionGroundY(mx + 0.5, mz), mz, 0.4 + rand() * 0.3,
+              underGeo, underM, CROWN, placed, 4);
+          }
         }
       }
       solid(px, pz, 0.42);
     }
     // Frame the silhouette without growing through the terrace or roof.
     const rand2 = rng(88991);
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 34; i++) {
       const px = -37 + rand2() * 74;
       const pz = NGOC_TERRACE.north + 0.6 + rand2() * 3.1;
       const h = 6.0 + rand2() * 3.4;
       if (Math.abs(px - NGOC.x) < NGOC_TERRACE.half + 2.8) continue;
       const yb = expansionGroundY(px, pz);
-      addCyl('trunk', 0.22, 0.36, h * 0.45, 6, px, yb + h * 0.225, pz);
-      for (let k = 0; k < 3; k++) {
-        const ch = h * 0.52 * (1 - k * 0.18);
-        addCone('pine', 2.0 - k * 0.45, ch, 7, px, yb + h * 0.3 + k * h * 0.22, pz);
-      }
+      pines.pine(px, yb, pz, h, 0.26 + rand2() * 0.08,
+        { geo: trunkGeo, mat: barkM }, { geo: needleGeo, mat: needleM }, BARK, NEEDLE, 500 + i, 2);
       solid(px, pz, 0.45);
     }
-    flush('pineForest');
+
+    // Old-growth pines: three landmarks at the cave mouth and along the western path.
+    for (const [lx, lz, lh, lr] of [[-34.5, -99.5, 15.4, 0.62], [-13.5, -96.5, 14.2, 0.56], [33.5, -96.5, 13.8, 0.54]] as const) {
+      if (nearHillPath(lx, lz, 2.6) || restSpots.some(([rx, rz]) => Math.hypot(lx - rx, lz - rz) < 5.2)) continue;
+      pines.pine(lx, expansionGroundY(lx, lz), lz, lh, lr,
+        { geo: trunkGeo, mat: barkM }, { geo: needleGeo, mat: needleM }, BARK, NEEDLE, 777);
+      // Visible roots and a mossy apron anchor the old trunk to the slope.
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        pines.mossClump(lx + Math.cos(a) * lr * 1.5, expansionGroundY(lx + Math.cos(a) * lr * 1.5, lz + Math.sin(a) * lr * 1.5),
+          lz + Math.sin(a) * lr * 1.5, 0.5 + (k % 2) * 0.2, mossGeo, forestMossM, FOREST_MOSS, 900 + k);
+      }
+      solid(lx, lz, lr * 1.15);
+    }
+    // Broad old-growth crowns beside the cave and the rest houses, kept off every path.
+    for (const [lx, lz, lh, lr, seed] of [
+      [-33.1, -109.4, 13.3, 0.62, 41], [-18.6, -110.2, 12.4, 0.58, 42],
+      [18.8, -109.4, 12.8, 0.6, 43], [33.3, -108.6, 12.2, 0.56, 44],
+    ] as const) {
+      if (nearHillPath(lx, lz, 3.0)) continue;
+      pines.ancientTree(lx, expansionGroundY(lx, lz), lz, lh, lr,
+        { geo: trunkGeo, mat: barkM }, { geo: crownGeo, mat: crownM }, BARK, CROWN, seed);
+      pines.mossClump(lx, expansionGroundY(lx, lz), lz, lr * 1.9, mossGeo, forestMossM, FOREST_MOSS, seed);
+      solid(lx, lz, lr * 1.3);
+    }
+    const { group } = flush('pineForest');
+    group.add(pines.build('pine-forest', { castShadow: key => key !== 'undergrowth' && key !== 'moss' }));
+    // Replace a few silhouettes with the detailed natural-pine asset, on the marked spots only.
+    void loadModel('pine-natural').then(model => {
+      if (!model) return;
+      for (const [px, pz, h] of [[-16.5, -88.5, 8.6], [22.5, -89.5, 8.2], [-9.5, -104, 9.0]]) {
+        if (nearHillPath(px, pz, 2.2) || Math.hypot(px - CAVE.x, pz - CAVE.z) < 7.0) continue;
+        const tree = fitModel(model.clone(true), h);
+        tree.position.set(px, expansionGroundY(px, pz), pz);
+        tree.rotation.y = px * 0.7;
+        group.add(tree);
+      }
+    }).catch(() => {});
   }
 
   // ---- địa hình tự nhiên dưới phần bậc và sân lát ----
@@ -1159,9 +1373,19 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   c.scene.add(root);
   if (import.meta.env.DEV) {
     const meshes: string[] = [];
-    root.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o.name); });
+    let plantInstances = 0, plantDraws = 0;
+    root.traverse((o) => {
+      if (!(o as THREE.Mesh).isMesh) return;
+      meshes.push(o.name);
+      const instanced = o as THREE.InstancedMesh;
+      if (!instanced.isInstancedMesh) return;
+      if (!/^(bamboo-grove|pine-forest)-/.test(o.name)) return;
+      plantDraws++;
+      plantInstances += instanced.count;
+    });
     console.warn(`expansion: colliders +${colliders.length - collidersBefore}, seats ${seats.length}, `
-      + `zones ${zones.length}, meshes ${meshes.length}, stairs ${meshes.includes('ngoc-stairs') ? 'ngoc-stairs ok' : 'MISSING'}`);
+      + `zones ${zones.length}, meshes ${meshes.length}, stairs ${meshes.includes('ngoc-stairs') ? 'ngoc-stairs ok' : 'MISSING'}, `
+      + `vegetation ${plantInstances} instances / ${plantDraws} draws`);
   }
-  return { seats, zones, update: waterfall.update };
+  return { seats, zones, update: (t: number) => { currentTime.value = t; waterfall.update(t); } };
 }

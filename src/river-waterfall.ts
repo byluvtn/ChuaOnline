@@ -137,9 +137,9 @@ export function buildRiverWaterfall() {
         float flecks=.5+.5*sin(50.*p.x+2.*sin(23.*p.y+time*4.));
         float alpha=(.20+.38*rip+.20*flecks)*(1.-smoothstep(.18,1.,r));
         gl_FragColor=vec4(.77,.95,.97,alpha);` : `float x=vUv.x, y=vUv.y;
-        float streak=.5+.5*sin(83.*x+sin(26.*x+y*16.+time*2.)+1.25*sin(38.*x));
+        float streak=.5+.5*sin(83.*x+.24*sin(26.*x+y*16.+time*2.)+1.25*sin(38.*x));
         float bands=.5+.5*sin(53.*y-time*12.+sin(x*50.)*2.7);
-        float ribbons=.5+.5*sin(21.*x+sin(7.*y-time*1.8));
+        float ribbons=.5+.5*sin(21.*x+.15*sin(7.*y-time*1.8));
         float spray=smoothstep(.72,1.,y);
         vec3 water=mix(vec3(.11,.54,.56),vec3(.94,1.,1.),.18+.25*streak+.17*bands+.21*ribbons+.17*spray);
         float edge=smoothstep(0.,.12,x)*smoothstep(0.,.12,1.-x);
@@ -149,36 +149,35 @@ export function buildRiverWaterfall() {
         #include <fog_fragment>
       }`,
   });
-  const curtain = (cx: number, w: number, crest: number, base: number, rear: number, impact: number, shift = 0, endWidth = w * 1.08) => {
+  const curtain = (cx: number, w: number, crest: number, base: number, rear: number, impact: number) => {
     const g = new THREE.PlaneGeometry(1, 1, 17, 18);
     const p = g.getAttribute('position'), uv = g.getAttribute('uv');
     for (let i = 0; i < p.count; i++) {
       const u = uv.getX(i), v = 1 - uv.getY(i);
-      const x = cx + shift * v ** 1.6 + (u - 0.5) * THREE.MathUtils.lerp(w, endWidth, v);
+      const x = cx + (u - 0.5) * w;
       const y = THREE.MathUtils.lerp(crest, base, v ** 1.82) + (1 - v) * Math.sin(u * 11) * 0.035;
-      const z = THREE.MathUtils.lerp(rear, impact, v ** 0.84) + Math.sin(u * 14 + v * 3) * 0.057;
+      const z = THREE.MathUtils.lerp(rear, impact, v ** 0.84) + Math.sin(u * 14) * 0.025;
       p.setXYZ(i, x, y, z);
       uv.setY(i, v);
     }
     return g;
   };
-  // Three tiers: 3 / 4 / 6 sheets, with the lower outlets spreading into the river.
+  // The sheets stay in parallel channels from crest to impact, without converging sideways.
   const w = WIDE;
   const curtains = new THREE.Mesh(batch([
-    curtain(-2.35 * w, 2.40 * w, 8.55, 5.06, -8.62, -7.22, -.36),
-    curtain(.02 * w, 1.90 * w, 8.54, 5.06, -8.67, -7.15, .10),
-    curtain(2.37 * w, 2.40 * w, 8.55, 5.06, -8.60, -7.20, .34),
-    curtain(-4.05 * w, 2.30 * w, 5.06, 2.24, -5.39, -3.79, -.28),
-    curtain(-1.35 * w, 2.10 * w, 5.07, 2.24, -5.36, -3.53, -.08),
-    curtain(1.36 * w, 2.10 * w, 5.05, 2.24, -5.34, -3.60, .08),
-    curtain(4.06 * w, 2.30 * w, 5.05, 2.24, -5.25, -3.75, .26),
-    // Six outlets; only the two outermost lean inwards, and gently, into the wide basin.
-    curtain(-5.55 * w, 2.00 * w, 2.25, 0.003, -2.73, .46, 1.40 * w, .90 * w),
-    curtain(-3.35 * w, 1.95 * w, 2.23, 0.003, -2.73, .64, .70 * w, .92 * w),
-    curtain(-1.12 * w, 1.90 * w, 2.23, 0.003, -2.89, .60, .22 * w, .90 * w),
-    curtain(1.12 * w, 1.90 * w, 2.24, 0.003, -2.86, .58, -.22 * w, .90 * w),
-    curtain(3.36 * w, 1.95 * w, 2.24, 0.003, -2.74, .55, -.70 * w, .92 * w),
-    curtain(5.55 * w, 2.00 * w, 2.24, 0.003, -2.74, .43, -1.40 * w, .90 * w),
+    curtain(-2.35 * w, 2.40 * w, 8.55, 5.06, -8.62, -7.20),
+    curtain(.02 * w, 1.90 * w, 8.54, 5.06, -8.67, -7.20),
+    curtain(2.37 * w, 2.40 * w, 8.55, 5.06, -8.60, -7.20),
+    curtain(-4.05 * w, 2.30 * w, 5.06, 2.24, -5.39, -3.70),
+    curtain(-1.35 * w, 2.10 * w, 5.07, 2.24, -5.36, -3.70),
+    curtain(1.36 * w, 2.10 * w, 5.05, 2.24, -5.34, -3.70),
+    curtain(4.06 * w, 2.30 * w, 5.05, 2.24, -5.25, -3.70),
+    curtain(-5.25 * w, 1.88 * w, 2.25, 0.003, -2.73, .55),
+    curtain(-3.23 * w, 1.90 * w, 2.23, 0.003, -2.73, .55),
+    curtain(-1.12 * w, 1.90 * w, 2.23, 0.003, -2.89, .55),
+    curtain(1.12 * w, 1.90 * w, 2.24, 0.003, -2.86, .55),
+    curtain(3.23 * w, 1.90 * w, 2.24, 0.003, -2.74, .55),
+    curtain(5.25 * w, 1.88 * w, 2.24, 0.003, -2.74, .55),
   ]), flow(false));
   curtains.name = 'ban-gioc-thirteen-curtains';
   curtains.renderOrder = 2;
@@ -213,22 +212,38 @@ export function buildRiverWaterfall() {
   falls.scale.setScalar(RIVER_FALLS.scale);
   group.add(falls);
 
-  // Fish stay just under the water surface and follow the S-curve centre line each frame, so
-  // they never drift onto the banks where the river now swings east.
+  // Small schools follow separate elliptical courses; both banks keep a body-length clearance.
   const fin = new THREE.BufferGeometry();
   fin.setAttribute('position', new THREE.Float32BufferAttribute([
-    0,0,-.14, -.093,0,-.31, .093,0,-.31,
+    0,0,-.14, -.09,0,-.32, 0,0,-.27,
+    0,0,-.14, 0,0,-.27, .09,0,-.32,
     -.069,0,-.065, -.134,0,-.12, -.061,0,.061,
     .069,0,-.065, .061,0,.061, .134,0,-.12,
   ], 3));
   fin.computeVertexNormals();
-  fin.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(18), 2));
-  const fishBody = new THREE.SphereGeometry(1, 8, 5).scale(.084,.021,.19);
+  fin.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(fin.getAttribute('position').count * 2), 2));
+  const fishBody = new THREE.SphereGeometry(1, 12, 8).scale(.084,.025,.19);
   const fishGeo = batch([fishBody.toNonIndexed(), fin]);
   fishBody.dispose();
-  const riverLanes = [8.7, 10.65, 12.45, 26, 48, 72, 79];
-  const pondFish = 5;
-  const school = new THREE.InstancedMesh(fishGeo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), riverLanes.length + pondFish);
+  const riverLanes = [8, 13, 22, 34, 52, 60, 69, 77, 88];
+  const perSchool = 9, riverCount = riverLanes.length * perSchool, pondFish = 21;
+  const fishMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  fishMat.onBeforeCompile = shader => {
+    shader.uniforms.fishTime = time;
+    shader.vertexShader = 'uniform float fishTime; varying vec3 fishLocal;\n' + shader.vertexShader.replace('#include <begin_vertex>', `
+      #include <begin_vertex>
+      fishLocal = position;
+      float tail = max(0., .1 - position.z);
+      transformed.x += tail * tail * sin(fishTime * 11. + instanceMatrix[3].z * 1.5 + position.z * 13.) * .67;
+    `);
+    shader.fragmentShader = 'varying vec3 fishLocal;\n' + shader.fragmentShader.replace('#include <color_fragment>', `
+      #include <color_fragment>
+      float mottling = sin(fishLocal.z * 58. + sin(fishLocal.x * 47.) * 2.);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.96, .83, .62), smoothstep(.25, .83, mottling) * .66);
+      diffuseColor.rgb *= .76 + .24 * smoothstep(-.02, .02, fishLocal.y);
+    `);
+  };
+  const school = new THREE.InstancedMesh(fishGeo, fishMat, riverCount + pondFish);
   school.name = 'east-river-fish';
   school.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 50), 54);
   group.add(school);
@@ -237,29 +252,32 @@ export function buildRiverWaterfall() {
   const dummy = new THREE.Object3D();
   const update = (t: number) => {
     time.value = t;
-    for (let i = 0; i < riverLanes.length; i++) {
-      const a = t * (.51 + i * .037) + i * 2.492;
-      const localZ = riverLanes[i] + (2.7 + i * .17) * Math.cos(a);
+    for (let i = 0; i < riverCount; i++) {
+      const lane = Math.floor(i / perSchool), j = i % perSchool;
+      const a = t * (.34 + lane * .018) + lane * 2.492 + j * .19;
+      const longitudinal = 2.6 + (j % 3) * .45;
+      const lateral = 2.05 + (j % 3) * .4;
+      const localZ = riverLanes[lane] + longitudinal * Math.cos(a) + (j % 3 - 1) * .46;
       const worldZ = RIVER_FALLS.z + localZ;
       const center = riverAt(worldZ);
-      // Stay a body-length inside the bank so the school never beaches on the S-curve.
-      const sway = Math.max(-1, Math.min(1, 1.22 / Math.max(0.6, center.hw - 0.5))) * 1.22 * Math.sin(a);
-      const dx = 1.22 * Math.cos(a), dz = -(2.7 + i * .17) * Math.sin(a);
-      dummy.position.set(center.x - RIVER_FALLS.x + sway, -.032 + .004 * Math.sin(a * 2), localZ);
-      dummy.rotation.y = Math.atan2(dx, dz) + .145 * Math.sin(t * 12 + i);
-      dummy.scale.setScalar(.90 + (i % 3) * .12);
+      const sway = lateral * Math.sin(a) + 6.0 * Math.sin(lane * 2.3) + (j % 3 - 1) * .28;
+      const dz = -longitudinal * Math.sin(a);
+      const dx = lateral * Math.cos(a) + (riverAt(worldZ + .1).x - center.x) * dz * 10;
+      dummy.position.set(center.x - RIVER_FALLS.x + sway, -.027 + .004 * Math.sin(a * 2), localZ);
+      dummy.rotation.y = Math.atan2(dx, dz) + .07 * Math.sin(t * 9 + i);
+      dummy.scale.set(1.30 + (i % 4) * .14, .58, 1.30 + (i % 4) * .14);
       dummy.updateMatrix();
       school.setMatrixAt(i, dummy.matrix);
     }
     for (let i = 0; i < pondFish; i++) {
       const phase = t * (0.34 + i * 0.07) + i * 2.4;
       const { x, z, a, b } = RIVER.pond;
-      const rx = a * (0.42 + i * 0.09), rz = b * (0.42 + i * 0.05);
+      const rx = a * (0.39 + (i % 5) * 0.11), rz = b * (0.39 + (i % 5) * 0.10);
       dummy.position.set(x - RIVER_FALLS.x + rx * Math.cos(phase), -.032, z - RIVER_FALLS.z + rz * Math.sin(phase));
       dummy.rotation.y = Math.atan2(-rx * Math.sin(phase), rz * Math.cos(phase));
-      dummy.scale.setScalar(1 + (i % 3) * 0.2);
+      dummy.scale.set(1.3 + (i % 3) * .2, .58, 1.3 + (i % 3) * .2);
       dummy.updateMatrix();
-      school.setMatrixAt(riverLanes.length + i, dummy.matrix);
+      school.setMatrixAt(riverCount + i, dummy.matrix);
     }
     school.instanceMatrix.needsUpdate = true;
   };

@@ -20,6 +20,8 @@ export interface PlayerState {
   /** cao độ render tuyệt đối; chỉ đặt khi NPC ngồi trên ghế/bục có cao độ thật
    *  (ví dụ ghế bồ đề seatY = 0.619). Bỏ trống thì client dùng world.groundY. */
   y?: number;
+  /** Elapsed milliseconds of the server-controlled East River tour, when aboard. */
+  boatMs?: number;
   ry: number;
   anim: Anim;
   merit: number;
@@ -37,7 +39,7 @@ export interface PlayerState {
 }
 
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }
-export interface Lantern { id: number; pid: number; name: string; wish: string; t: number; x?: number; z?: number }
+export interface Lantern { id: number; pid: number; name: string; wish: string; t: number; x?: number; z?: number; afloat?: boolean }
 
 /** Đèn trời: khác Lantern ở chỗ có toạ độ người thả để client tự dựng quả đèn bay lên. */
 export interface SkyLantern { id: number; pid: number; name: string; wish: string; x: number; z: number; t: number }

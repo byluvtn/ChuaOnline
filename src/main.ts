@@ -1,6 +1,8 @@
 import './polyfill';
 import * as THREE from 'three';
 import { NGOC_HALL, NGOC_TERRACE } from '../shared/campus';
+import { RIVER_BOAT_SEAT_Y, RIVER_DOCK } from '../shared/river-tour';
+import { buildRiverBoat } from './river-boat';
 import { io, type Socket } from 'socket.io-client';
 import { api, clearToken, getToken, setToken } from './api';
 import { BOW_MS, animateCharacter, buildCharacter, type Character } from './character';
@@ -200,6 +202,9 @@ const world = createWorld(renderer, (phase, x, z, strength, crackle) => {
 initAnimals(world.scene, () => settings.showNames);
 const weather = createWeather(world.scene, () => roomId !== 'an-lac' && settings.quality !== 'low');
 const bodhiGrove = createBodhiGrove(world.scene);
+const riverBoat = buildRiverBoat(world.scene);
+let boatRider: string | undefined;
+let boatEpoch = 0;
 
 /** Vòng collider viền hồ — CHỈ dành cho pathfinder (không vào world.colliders). */
 function lakeRingColliders() {
@@ -389,6 +394,7 @@ function clearPlayers() {
   remotes.forEach((r) => { world.scene.remove(r.char.root); r.char.dispose(); });
   remotes.clear();
   me = null;
+  boatRider = undefined;
 }
 
 // ---------- HUD ----------
@@ -537,7 +543,7 @@ function addLanternFeed(l: Lantern, fresh: boolean, sky = false) {
   if (fresh) {
     if (!sky) {
       const r = [...remotes.values()].find((x) => x.data.pid === l.pid);
-      world.spawnLantern(l.x ?? r?.char.root.position.x ?? 0, l.z ?? r?.char.root.position.z ?? 28);
+      world.spawnLantern(l.x ?? r?.char.root.position.x ?? 0, l.z ?? r?.char.root.position.z ?? 28, l.afloat, l.id);
     }
     audio.play('lantern');
   }
@@ -648,6 +654,8 @@ function connect() {
     $('roomName').textContent = room.name;
     clearPlayers();
     w.players.forEach(addPlayer);
+    const rider = w.players.find(p => p.boatMs !== undefined);
+    if (rider) { boatRider = rider.id; boatEpoch = performance.now() - rider.boatMs!; }
     startMenu();
     me = remotes.get(myId) ?? null;
     sitting = false;
@@ -734,9 +742,22 @@ function connect() {
     { stall: 'stall_trada2', npc: 'npc36', x: 52, z: 57 },
   ];
   const stallAway = new Map<string, boolean>();
-  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'y' | 'ry' | 'anim' | 'act'>[]; animals?: AnimalState[] }) => {
+  s.on('river:arrive', (p: { x: number; z: number }) => {
+    boatRider = undefined;
+    teleportTo(p.x, p.z);
+    prevPos.x = p.x; prevPos.z = p.z;
+    if (me) me.ry = Math.PI / 2;
+    toast('Thuyền đã về bến Sông Đông');
+  });
+  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'y' | 'boatMs' | 'ry' | 'anim' | 'act'>[]; animals?: AnimalState[] }) => {
     $('onlineN').textContent = String(st.online);
     latestAnimals = st.animals ?? [];
+    const rider = st.players.find(p => p.boatMs !== undefined);
+    if (rider) {
+      const epoch = performance.now() - rider.boatMs!;
+      boatEpoch = boatRider === rider.id ? THREE.MathUtils.lerp(boatEpoch, epoch, .14) : epoch;
+    }
+    boatRider = rider?.id;
     for (const p of st.players) {
       const r = remotes.get(p.id);
       if (!r || p.id === myId) continue;
@@ -1267,6 +1288,7 @@ function nearestFreeSeat(limit = Infinity): { x: number; z: number; ry: number }
 }
 
 function setSitting(v: boolean) {
+  if (v && boatRider === myId) return;
   if (v && !sitting && me) {
     const root = me.char.root;
     const best = nearestFreeSeat(3.2);
@@ -1277,7 +1299,7 @@ function setSitting(v: boolean) {
 }
 
 function teleportTo(x: number, z: number) {
-  if (!me) return;
+  if (!me || boatRider === myId) return;
   const y = world.groundY(x, z);
   me.char.root.position.set(x, y, z);
   me.target.set(x, y, z);
@@ -1299,6 +1321,7 @@ function startCooldown(kind: ActionKind) {
 }
 function doAction(kind: ActionKind, wish?: string, keepSeat = false): boolean {
   if (!me || !socket) return false;
+  if (boatRider === myId && kind !== 'lantern') return false;
   if (kind !== 'bow') bowSeat = null;
   if (performance.now() < (cooling[kind] ?? 0)) return false;
   audio.unlock();
@@ -1319,7 +1342,7 @@ function doAction(kind: ActionKind, wish?: string, keepSeat = false): boolean {
  * xuống rồi lạy. Không còn chỗ trống → lạy tại chỗ như cũ.
  */
 function startBow() {
-  if (!me || !socket) return;
+  if (!me || !socket || boatRider === myId) return;
   if (sitting) { doAction('bow'); return; }             // đang ngồi sẵn: lạy luôn
   const seat = nearestFreeSeat();
   if (!seat) { doAction('bow'); return; }
@@ -1346,7 +1369,7 @@ $('lanternBtn').onclick = () => { $('wishModal').hidden = false; $<HTMLTextAreaE
 $('wishCancel').onclick = () => ($('wishModal').hidden = true);
 $('wishOk').onclick = () => {
   const t = $<HTMLTextAreaElement>('wishText');
-  doAction('lantern', t.value);
+  if (!doAction('lantern', t.value)) { toast('Chờ một chút trước khi thả đèn tiếp'); return; }
   t.value = '';
   $('wishModal').hidden = true;
   toast('Đèn nguyện đã được thả');
@@ -1832,6 +1855,7 @@ const MM_BUILDINGS = [
   { ...VUON_THAP_PLAT, label: 'Vườn Tháp' }, { ...PHONG_CD_PLAT, label: 'Ghi Công Đức' },
   { x: DUOC_SU.x, z: DUOC_SU.z, hx: DUOC_SU.hx, hz: DUOC_SU.hz, label: 'Dược Sư' },
   { ...NGOC_HALL, label: 'Chùa Ngọc' },
+  { ...RIVER_DOCK, hx: 1.35, hz: 2.35, label: 'Bến thuyền' },
 ];
 const MM_ROADS = new Map(ROAD_NODES.map((n) => [n.id, n]));
 
@@ -2286,6 +2310,34 @@ function releasePhongSinh(): void {
 }
 
 const zoneBtn = $('zoneBtn');
+function openRiverDock() {
+  openCustomPanel('Bến thuyền Sông Đông', body => {
+    body.append(h('p', {}, 'Thuyền tự chạy dọc sông, qua hai cầu đá, ngang chân thác Bản Giốc rồi trở về bến. Chuyến đi khoảng 1 phút.'),
+      h('div', { class: 'qrow' }, h('span', {}, 'Du ngoạn Sông Đông'),
+        h('button', { onclick: (e: MouseEvent) => {
+          if (!socket?.connected || !me) { toast('Mất kết nối máy chủ'); return; }
+          const button = e.currentTarget as HTMLButtonElement;
+          const riderId = myId, boardingRoom = roomId;
+          button.disabled = true;
+          socket.timeout(3000).emit('river:board', (err: Error | null, result?: { ok: boolean; error?: string }) => {
+            button.disabled = false;
+            if (boardingRoom !== roomId || riderId !== myId) return;
+            if (err || !result?.ok) { toast(result?.error ?? 'Không kết nối được với bến thuyền'); return; }
+            closePanel(); stopGuide(); setSitting(false);
+            clickTarget = pathTarget = null;
+            pathQueue.length = 0;
+            bowSeat = null;
+            sweepState = null;
+            myActionUntil = 0;
+            boatEpoch = performance.now();
+            boatRider = riderId;
+            toast('Đã lên thuyền. Có thể thả hoa đăng trong lúc du ngoạn.');
+          });
+        } }, 'Lên thuyền')));
+    body.append(h('div', { class: 'qrow' }, h('span', {}, 'Gửi lời nguyện theo dòng nước'),
+      h('button', { onclick: () => { closePanel(); $('lanternBtn').click(); } }, 'Thả hoa đăng')));
+  });
+}
 function strikeTower(kind: 'bell' | 'drum', direct = false) {
   const bell = kind === 'bell';
   if (bell) world.ringBell(); else world.ringDrum();
@@ -2299,7 +2351,8 @@ const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
   trong: { label: 'Đánh trống', run: () => strikeTower('drum', true) },
   thuyDinh: { label: 'Thả đèn', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
   lotus: { label: 'Thả đèn hồ sen', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
-  river: { label: 'Thả đèn sông Đông', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
+  river: { label: 'Thả hoa đăng', run: () => $('lanternBtn').click() },
+  riverDock: { label: 'Bến thuyền', run: openRiverDock },
   duocSu: { label: 'Dâng đèn cầu an', run: () => doAction('lantern', 'Cầu an Dược Sư') },
   chuaNgoc: { label: 'Dâng hương Chùa Ngọc', run: () => doAction('incense') },
   phongSinh: { label: 'Phóng sinh', run: () => releasePhongSinh() },
@@ -2439,7 +2492,9 @@ function nearestGardenPlot(): { def: (typeof GARDEN_PLOTS)[number]; st: GardenPl
 
 zoneBtn.onclick = () => { if (zoneBtnId === 'vuoncay' && gardenZoneRun) gardenZoneRun(); else ZONE_ACTIONS[zoneBtnId]?.run(); };
 function updateZoneBtn() {
-  const id = me ? world.zoneAt(me.char.root.position.x, me.char.root.position.z) : null;
+  const p = me?.char.root.position;
+  const id = !p ? null : boatRider === myId ? 'river'
+    : Math.hypot(p.x - RIVER_DOCK.x, p.z - RIVER_DOCK.z) <= RIVER_DOCK.r ? 'riverDock' : world.zoneAt(p.x, p.z);
   // Vườn Cây: nút động theo luống gần nhất (≤ 4 m); không gần luống nào → mở panel vườn.
   if (id === 'vuoncay') {
     if (!inGardenZone) { inGardenZone = true; refreshGarden(); }
@@ -2586,6 +2641,8 @@ function loop(now: number = performance.now()) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.05, clock.getDelta());
   const t = clock.elapsedTime;
+  const boatElapsed = boatRider ? Math.max(0, now - boatEpoch) : 0;
+  const boatPose = riverBoat.update(boatElapsed, t);
 
   if (!me) {
     // login / connecting backdrop: slow cinematic orbit around the plaza
@@ -2595,6 +2652,14 @@ function loop(now: number = performance.now()) {
   }
   if (me && socket) {
     const root = me.char.root;
+    if (boatRider === myId) {
+      root.position.set(boatPose.x, boatPose.y + RIVER_BOAT_SEAT_Y - .619, boatPose.z);
+      me.ry = boatPose.ry;
+      me.anim = 'bench';
+      me.char.gait = -1;
+      curSpeed = 0;
+      if (me.act) { me.act = null; refreshLabel(me); }
+    } else {
     let ix = freeCam ? 0 : joy.x, iz = freeCam ? 0 : joy.y;
     if (!freeCam) {
       if (keys.has('KeyW') || keys.has('ArrowUp')) iz -= 1;
@@ -2780,6 +2845,7 @@ function loop(now: number = performance.now()) {
       lastSentMove = { x: root.position.x, z: root.position.z, ry: me.ry, anim: me.anim };
       socket.volatile.emit('move', { x: root.position.x, z: root.position.z, ry: me.ry, anim: me.anim });
     }
+    }
 
     const camZone = world.zoneAt(root.position.x, root.position.z);
     const inPavilion = camZone !== null && PAVILION_ZONES.indexOf(camZone) >= 0;
@@ -2846,6 +2912,11 @@ function loop(now: number = performance.now()) {
         if (r.anim === 'ring' && (r.prevAnim !== 'ring' || now - (r.lastRingAt ?? 0) > 4000)) { r.lastRingAt = now; strikeTower('bell'); }
         r.prevAnim = r.anim;
       }
+    }
+    if (id === boatRider && id !== myId) {
+      r.char.root.position.set(boatPose.x, boatPose.y + RIVER_BOAT_SEAT_Y - .619, boatPose.z);
+      r.ry = boatPose.ry;
+      r.anim = 'bench';
     }
     let d = r.ry - r.char.root.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));

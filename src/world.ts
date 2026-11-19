@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FireworkSize } from '../shared/types';
+import { RIVER_DOCK } from '../shared/river-tour';
 import { ROAD_EDGES, ROAD_NODES } from '../shared/roads';
 import type { Collider } from '../shared/pathfind';
 import { createFireworks, type FireworkCue } from './fireworks';
@@ -33,7 +35,7 @@ export interface World {
   ground: THREE.Mesh;
   colliders: Collider[];
   update(t: number, focus: THREE.Vector3): void;
-  spawnLantern(x: number, z: number): void;
+  spawnLantern(x: number, z: number, afloat?: boolean, id?: number): void;
   spawnIncense(x: number, z: number): void;
   spawnBurst(x: number, z: number, color?: number): void;
   /** Đèn trời: bay thẳng lên từ (x,z), sống ~45s, mờ dần 5s cuối. */
@@ -343,7 +345,7 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
   })();
 
   // ---- Effects: floating lanterns, incense smoke, bursts ----
-  const floaters: { m: THREE.Object3D; vy: number; life: number; max: number; light?: THREE.Sprite; fade?: number; river?: boolean; lotus?: boolean; offering?: boolean }[] = [];
+  const floaters: { m: THREE.Object3D; vy: number; life: number; max: number; light?: THREE.Sprite; fade?: number; river?: { lane: number; phase: number }; lotus?: boolean; offering?: boolean }[] = [];
   const smoke: { m: THREE.Sprite; life: number; vx: number }[] = [];
   const burst: { m: THREE.Sprite; v: THREE.Vector3; life: number }[] = [];
   const smokeMat = new THREE.SpriteMaterial({ map: glowTexture(), color: 0xdddddd, transparent: true, opacity: 0.5, depthWrite: false });
@@ -351,30 +353,60 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
   let lanternModel: THREE.Object3D | null = null;
   loadModel('lantern').then((m) => { if (m) lanternModel = fitModel(m, 0.8); });
   const floatGeo = new THREE.CylinderGeometry(0.3, 0.38, 0.6, 10);
-  const spawnLantern = (x: number, z: number) => {
+  const flower = new THREE.Group();
+  const leaf = new THREE.Mesh(new THREE.CylinderGeometry(.31, .27, .043, 14), lamb(0x507649));
+  const petalMaterials = [0xe87b8f, 0xffb5a6].map(color => lamb(color, { emissive: 0xf28a4c, emissiveIntensity: .28, roughness: .78 }));
+  const petalGeo = new THREE.SphereGeometry(1, 8, 6).scale(.082, .183, .052);
+  flower.add(leaf);
+  for (let ring = 0; ring < 2; ring++) {
+    const petals = Array.from({ length: 8 }, (_, i) => {
+      const a = (i + ring * .5) * Math.PI / 4, r = .21 - ring * .076;
+      const rotation = new THREE.Euler(.85 - ring * .29, a, 0, 'YXZ');
+      return petalGeo.clone().applyMatrix4(new THREE.Matrix4().makeRotationFromEuler(rotation))
+        .translate(Math.sin(a) * r, .115 + ring * .024, Math.cos(a) * r);
+    });
+    const geometry = mergeGeometries(petals);
+    petals.forEach(p => p.dispose());
+    flower.add(new THREE.Mesh(geometry, petalMaterials[ring]));
+  }
+  petalGeo.dispose();
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(.066, 10, 7).scale(.69, 1.5, .69), new THREE.MeshBasicMaterial({ color: 0xffd362 }));
+  flame.position.y = .224; flower.add(flame);
+  const spawnLantern = (x: number, z: number, afloat = false, id = 0) => {
     const grp = new THREE.Group();
-    if (lanternModel) grp.add(lanternModel.clone(true));
+    const rz = Math.max(RIVER_SOURCE_Z + 2, Math.min(RIVER_MOUTH_Z + 1, z + 0.46));
+    const at = riverAt(rz);
+    const dock = Math.hypot(x - RIVER_DOCK.x, z - RIVER_DOCK.z) <= RIVER_DOCK.r + 0.1;
+    const offering = !afloat && Math.hypot(x - DUOC_SU.x, z - DUOC_SU.z) < 8;
+    const river = !offering && (afloat || dock || (z >= RIVER_SOURCE_Z && z <= RIVER_MOUTH_Z && Math.abs(x - at.x) <= at.hw + 2));
+    if (river) {
+      grp.name = 'east-river-flower-lantern';
+      const onWater = floaters.filter(f => f.river);
+      if (onWater.length >= 32) onWater[0].life = Math.min(onWater[0].life, .12);
+    }
+    const lotus = Math.hypot((x - LOTUS.x) / 14, (z - LOTUS.z) / 12) < 1;
+    const lane = THREE.MathUtils.clamp((x - at.x + (afloat ? 1.22 : 0)) / at.hw, -.83, .83);
+    if (river) grp.add(flower.clone(true));
+    else if (lanternModel) grp.add(lanternModel.clone(true));
     else {
       const mat = new THREE.MeshStandardMaterial({ color: 0xffa938, emissive: 0xff8c1a, emissiveIntensity: 1.8 });
       grp.add(new THREE.Mesh(floatGeo, mat));
       const top = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.2, 10), lamb(0xb85a18)); top.position.y = 0.4; grp.add(top);
     }
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffa030, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
-    spr.scale.setScalar(2.4); grp.add(spr);
-    const rz = Math.max(RIVER_SOURCE_Z, Math.min(RIVER_MOUTH_Z, z + 1.8));
-    const inRiver = z >= RIVER_SOURCE_Z - 2 && z <= RIVER.pond.z + RIVER.pond.b + 2;
-    const river = inRiver && Math.abs(x - riverAt(rz).x) < riverAt(rz).hw + 2;
-    const riverX = riverAt(rz).x;
-    const lotus = Math.hypot((x - LOTUS.x) / 14, (z - LOTUS.z) / 12) < 1;
-    const offering = Math.hypot(x - DUOC_SU.x, z - DUOC_SU.z) < 8;
-    grp.scale.setScalar(river || lotus || offering ? 0.45 : 1);
-    grp.position.set(river ? riverX : lotus ? LOTUS.x - 2 : x + (Math.random() - 0.5) * 0.6, river || lotus ? 0.18 : groundY(x, z) + 1.6, river ? rz : lotus ? LOTUS.z : z + (Math.random() - 0.5) * 0.6);
+    spr.scale.setScalar(river ? 1.05 : 2.4); grp.add(spr);
+    if (river) spr.position.y = .22;
+    grp.scale.setScalar(lotus || offering ? 0.45 : 1);
+    grp.position.set(river ? at.x + at.hw * lane : lotus ? LOTUS.x - 2 : x + (Math.random() - 0.5) * 0.6,
+      river ? .069 : lotus ? 0.18 : groundY(x, z) + 1.6, river ? rz : lotus ? LOTUS.z : z + (Math.random() - 0.5) * 0.6);
     if (offering) {
       const p = duocSuWorld((Math.random() - 0.5) * 2.5, -1.4);
       grp.position.set(p.x, DUOC_SU.y + 1.2, p.z);
     }
     scene.add(grp);
-    floaters.push({ m: grp, vy: river || lotus || offering ? 0 : 0.9 + Math.random() * 0.5, life: 16, max: 16, light: spr, river, lotus, offering });
+    const life = river ? 65 : 16;
+    floaters.push({ m: grp, vy: river || lotus || offering ? 0 : 0.9 + Math.random() * 0.5,
+      life, max: life, light: spr, river: river ? { lane, phase: id * 2.39996 } : undefined, lotus, offering });
   };
   const spawnIncense = (x: number, z: number) => {
     for (let i = 0; i < 8; i++) {
@@ -560,14 +592,20 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
       f.m.position.y += f.vy * dt;
       if (!f.offering) f.m.position.x += Math.sin(t + i) * (f.river || f.lotus ? 0.035 : 0.25) * dt;
       if (f.river) {
-        f.m.position.z = Math.min(RIVER.pond.z + RIVER.pond.b * 0.75, f.m.position.z + dt * 0.3);
-        const at = riverAt(f.m.position.z);
-        f.m.position.x = at.x + Math.sin(f.m.position.z * 0.4) * at.hw * 0.35;
+        const age = f.max - f.life;
+        const phase = age * .8 + f.river.phase;
+        const z = f.m.position.z = Math.min(RIVER.pond.z + RIVER.pond.b * .82, f.m.position.z + dt * (.5 + .075 * Math.sin(phase)));
+        const at = riverAt(z);
+        const pondWidth = Math.sqrt(1 - ((Math.max(0, z - RIVER.pond.z)) / RIVER.pond.b) ** 2);
+        f.m.position.x = at.x + at.hw * pondWidth * (f.river.lane * Math.exp(-age * .055) + .078 * Math.sin(phase * .42));
+        f.m.position.y = .073 + .012 * Math.sin(phase);
+        f.m.rotation.z = .062 * Math.sin(phase);
+        f.m.scale.setScalar(Math.min(1, f.life / 3));
       }
       f.m.rotation.y += dt * 0.5;
       f.life -= dt;
       if (f.light) (f.light.material as THREE.SpriteMaterial).opacity = Math.min(0.9, f.life / (f.fade ?? 3)) * (0.8 + Math.sin(t * 6 + i) * 0.2);
-      if (f.life <= 0) { scene.remove(f.m); floaters.splice(i, 1); }
+      if (f.life <= 0) { scene.remove(f.m); f.light?.material.dispose(); floaters.splice(i, 1); }
     }
     for (let i = smoke.length - 1; i >= 0; i--) {
       const s = smoke[i];
