@@ -5,9 +5,25 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 140;
+export const LATEST_NEWS_ID = 142;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chuông, trống chùa có tiếng thật',
+    date: '2026-11-18',
+    items: [
+      'Đánh chuông, đánh trống giờ nghe tiếng thật: chuông ngân nhiều âm sắc, trống trầm vang — thay cho tiếng chung cũ.',
+      'Tiếng nhỏ dần theo khoảng cách: đứng gần tháp nghe rõ, đứng xa nghe vọng lại. Chuông do Sư Thầy trực ban đánh và trống tự điểm cũng vang tiếng thật.',
+    ],
+  },
+  {
+    title: 'Lối lên Chùa Ngọc rộng hơn, có cổng và sân thượng mới',
+    date: '2026-11-18',
+    items: [
+      'Cầu thang 299 bậc lên Chùa Ngọc rộng gần gấp đôi, có lan can gỗ và đèn đá dọc hai chiếu nghỉ, lối vào có cổng mái với biển "LỐI LÊN CHÙA NGỌC".',
+      'Trên đỉnh có sân thượng rộng và gian thờ mới theo mẫu Điện Dược Sư; nhiệm vụ hành hương đưa thẳng lên sân chùa.',
+    ],
+  },
   {
     title: 'Bốn người phụ trách khu mới: Điện Dược Sư, vườn rau, thang Ngọc, đình sen',
     date: '2026-11-18',
