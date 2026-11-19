@@ -695,40 +695,17 @@ export function buildTemple(c: TempleCtx) {
       seats.push({ x: wx, z: wz, ry: Math.PI, sitY: y0 + 0.12 + ZAFU_HEIGHT * ZAFU_SCALE });
     }
     placeZafu(dm.g, y0 + 0.12, dmZafuPos);
-    // Giữ tượng scan Quan Âm ngồi phủ vàng ở Điện Mẫu, độc lập với tượng chibi hành lang.
     const gmZ = 8.65;
     const gmLz = gmZ - DIEN_MAU.z;
+    const gmHeight = 1.8;
     const gmPed = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.5), arhatPedM);
+    gmPed.name = 'dien-mau-statue-pedestal';
     gmPed.position.set(0, y0 + 0.275, gmLz); gmPed.castShadow = gmPed.receiveShadow = true; dm.g.add(gmPed);
-    const gmFallback = buildQuanAm();
+    const gmFallback = fitModel(buildQuanAm(), gmHeight, 'base');
     gmFallback.position.set(0, y0 + 0.55, gmLz);
     dm.g.add(gmFallback);
     colliders.push({ x: DIEN_MAU.x, z: gmZ, r: 0.85 });
-    const loadGm = async (retry: boolean) => {
-      const model = await loadModel('guanyin-ngoi');
-      if (!model) {
-        if (retry) setTimeout(() => { void loadGmSafely(false); }, 20000);
-        return;
-      }
-      const inst = model.clone(true);
-      const gold = makeGoldMaterial(c.renderer);
-      inst.traverse((o) => { if (o instanceof THREE.Mesh) o.material = gold; });
-      const box = new THREE.Box3().setFromObject(inst, true);
-      const h = box.max.y - box.min.y;
-      inst.scale.multiplyScalar(h > 0 && Number.isFinite(h) ? 1.6 / h : 1);
-      box.setFromObject(inst, true);
-      const center = box.getCenter(new THREE.Vector3());
-      inst.position.x -= center.x;
-      inst.position.z -= center.z;
-      if (!box.isEmpty()) inst.position.y -= box.min.y;
-      const wrap = new THREE.Group();
-      wrap.add(inst);
-      wrap.position.copy(gmFallback.position);
-      dm.g.add(wrap);
-      dm.g.remove(gmFallback);
-    };
-    const loadGmSafely = (retry: boolean) => loadGm(retry).catch((e) => console.warn('dien-mau: lỗi dựng tượng, giữ tượng chibi', e));
-    void loadGmSafely(true);
+    replaceModel(dm.g, gmFallback, 'chibi-mau-lieu-hanh', gmHeight, undefined, 'base');
   }
   const nk = extraHouse('nha-khach', NHA_KHACH, NHA_KHACH_PLAT, 'NHÀ KHÁCH', 'nhaKhach', 4.6, 3.25, true);
   for (let i = 0; i < 2; i++) labelBoard(nk.g, COUPLETS.nhaKhach.am[i].split(',')[0], 0.42, 2.2, i ? nk.hx : -nk.hx, NHA_KHACH_PLAT.y + 1.7, nk.hz + 0.22);

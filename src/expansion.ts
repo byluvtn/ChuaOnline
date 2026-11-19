@@ -21,7 +21,7 @@ import {
   expansionGroundY, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
-import { fitModel, loadModel } from './models';
+import { fitModel, loadModel, replaceModel } from './models';
 import { grassTexture, glowTexture, signTexture, stoneTexture, woodTexture } from './textures';
 import { pavingMaterial } from './compound';
 import { nearWalkway } from './layout';
@@ -660,6 +660,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     fallback.position.set(0, y + 1.04, altarZ);
     fallback.name = 'expansion-buddha';
     group.add(fallback);
+    replaceModel(group, fallback, 'chibi-duoc-su-tuong-chinh', 2.98, undefined, 'base');
   }
 
   // =====================================================================================

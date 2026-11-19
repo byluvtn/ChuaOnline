@@ -476,6 +476,8 @@ function myMedSecNow(): number {
   return myMedSec + extra;
 }
 const medMinutes = (sec: number) => Math.floor(sec / 60);
+/** "12 giây" khi chưa đủ 1 phút, sau đó "5 phút" — để người chơi thấy tiến độ ngay từ đầu. */
+const medAmount = (sec: number) => (sec < 60 ? `${Math.floor(sec)} giây` : `${medMinutes(sec)} phút`);
 /** Đổi ngày VN thì đặt lại số phút đã thiền để chờ số liệu mới từ máy chủ. */
 function syncMedDay(): void {
   const today = dayKeyICT();
@@ -494,7 +496,7 @@ function updateMeditationHud() {
   if (myHalo === 2) haloText = ' · Hào quang lớn đã hiện';
   else if (myHalo === 1) haloText = ` · Hào quang lớn: ${Math.min(done, tier2)}/${tier2} phút`;
   else haloText = ` · Hào quang của bạn: ${Math.min(done, tier1)}/${tier1} phút`;
-  b.textContent = `Tĩnh lặng cả chùa: ${meditation.sitting} người đang thiền · ${meditation.minutes}/${meditation.goal} phút` + (meditation.bonus ? ' · Thiền tập thể x2' : ' · cần 3 người để x2') + haloText + ` · Hôm nay đã thiền ${done} phút`;
+  b.textContent = `Tĩnh lặng cả chùa: ${meditation.sitting} người đang thiền · ${meditation.minutes}/${meditation.goal} phút` + (meditation.bonus ? ' · Thiền tập thể x2' : ' · cần 3 người để x2') + haloText + ` · Hôm nay đã thiền ${medAmount(total)}`;
 }
 const chatLog: ChatMessage[] = [];
 function addChat(m: ChatMessage) {
