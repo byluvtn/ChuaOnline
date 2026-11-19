@@ -1,5 +1,5 @@
 import { BRIDGE, HALL, PLAZA, clampToCompound, inLake } from '../src/layout.js';
-import { LOTUS, RIVER, PHONG_CD_YAW, phongCdWorld, expansionWaterBlocked } from '../shared/campus.js';
+import { BAMBOO, DUOC_SU_DOOR, FLOWER_HILL, PHONG_CD_YAW, phongCdWorld, expansionWaterBlocked } from '../shared/campus.js';
 import { ROAD_NODES, roadRoute, routeFrom, nearestNode as nearestVisitorRoadNode } from '../shared/roads.js';
 import type { ActionKind, Anim, NpcAct, Outfit, PlayerState } from '../shared/types.js';
 import type { Pt } from '../shared/roads.js';
@@ -52,7 +52,7 @@ export const NPC_DEFS: NpcDef[] = [
   { id: 'npc37', name: 'Sư Ông', outfit: 'monk', color: '#7a2a20', scale: 1.15, role: 'abbot', behavior: 'wander', accessory: 'cane' },
   { id: 'npc38', name: 'Tiểu Trồng Cây', outfit: 'monk', color: '#5a7a5a', scale: 0.9, role: 'novice', behavior: 'post', post: { x: -48, z: 22 } },
   // vòng 3: Bốn người phụ trách thường trú ở các khu mới.
-  { id: 'npc39', name: 'Sư Cô Trông Điện Dược Sư', outfit: 'nun', color: '#8a6a9a', scale: 1.0, role: 'novice', behavior: 'post', post: { x: 77, z: -32 } },
+  { id: 'npc39', name: 'Sư Cô Trông Điện Dược Sư', outfit: 'nun', color: '#8a6a9a', scale: 1.0, role: 'novice', behavior: 'post', post: DUOC_SU_DOOR },
   { id: 'npc40', name: 'Tiểu Trồng Rau', outfit: 'monk', color: '#4a7a4a', scale: 0.9, role: 'novice', behavior: 'post', post: { x: -76, z: -44.2 } },
   { id: 'npc41', name: 'Tiểu Quét Thang Ngọc', outfit: 'monk', color: '#6a5a8a', scale: 0.9, role: 'novice', behavior: 'post', post: { x: 0, z: -88 } },
   { id: 'npc42', name: 'Cô Trông Đình Sen', outfit: 'female', color: '#c98a6a', scale: 1.0, role: 'lay', behavior: 'post', post: { x: -70, z: 5.5 } },
@@ -127,9 +127,9 @@ const BRANCH_SPOTS: Pt[] = [
   { x: -22, z: -26 },  // westMid — lối giữa (Tây)
   { x: -35.75, z: -27.25 },  // zenGarden — vườn Thiền (Tây)
   { x: -70, z: 5.5 },  // pavilion — đình ngắm sen
-  { x: 80, z: -3 },    // bamboo — rừng trúc
-  { x: 79, z: 28 },    // flowers — vườn hoa
-  { x: 77, z: -32 },   // vòng 3: duocSuDoor — cửa Điện Dược Sư
+  BAMBOO,             // rừng trúc
+  FLOWER_HILL,        // vườn hoa
+  DUOC_SU_DOOR,       // vòng 3: cửa Điện Dược Sư
   { x: 0, z: -90 },    // vòng 3: ngocBase — chân thang Ngọc
 ];
 
@@ -242,12 +242,6 @@ const REST_POOL = new Set<Behavior>(['sweepPlaza', 'sweepBridge', 'sweepZen', 's
 const BED_X = [-67, -61];
 const BED_STAND_Z = -75.0;
 const BED_Z = -76.05;
-/** Deck corridors of the 24/7 water: lotus boardwalk on z = 2 (LOTUS) and the two
- *  east-river bridges (RIVER.bridges). Đi trên mặt cầu không bị coi là lội nước. */
-const expansionRiverBridges: readonly number[] = RIVER.bridges;
-const LOTUS_DECK_Z = 2;
-const LOTUS_DECK_X0 = LOTUS.x - LOTUS.a - 2;
-const LOTUS_DECK_X1 = LOTUS.x + LOTUS.a + 2;
 /** Nut do thi de quay ve slot quet sau khi nghi. */
 const HOME_NODE: Partial<Record<Behavior, string>> = { sweepPlaza: 'plaza', sweepBridge: 'bridgeS', sweepZen: 'zenGarden', sweepRoad: 'rearKT', bell: 'bellTower' };
 
@@ -441,9 +435,9 @@ function spreadVisitors(npcs: Npc[], now: number) {
 }
 
 /**
- * Vị trí hợp lệ: ngoài hồ sen / ao / sông, trong tường (có cổng bên ±92,z2),
+ * Vị trí hợp lệ: ngoài hồ sen / ao / sông, trong tường (có cổng bên),
  * và tránh vệt lát đèn ở sân trước điện. clampToCompound() đã xử lý tường mới
- * (WALL.x = 92, sideGateHalf = 2.2 ở shared/campus.ts) nên không hardcode ở đây.
+ * (shared/campus.ts) nên không hardcode ở đây.
  */
 function walkable(p: Pt): boolean {
   if (inLake(p.x, p.z) || expansionWaterBlocked(p.x, p.z)) return false;
@@ -1305,12 +1299,9 @@ function step(room: NpcRoom, n: Npc, dt: number, now: number) {
   const k = Math.min(1, (n.speed * dt) / d);
   const q = { x: s.x + (to.x - s.x) * k, z: s.z + (to.z - s.z) * k };
   const onDeck = Math.abs(q.x - BRIDGE.x) <= BRIDGE.hw && q.z >= BRIDGE.z0 && q.z <= BRIDGE.z1;
-  // 24/7 water: koi lake deck, lotus boardwalk (z=2) and the two east-river bridges.
-  const onLotusDeck = Math.abs(q.z - LOTUS_DECK_Z) <= 0.9 && q.x >= LOTUS_DECK_X0 && q.x <= LOTUS_DECK_X1;
-  const onRiverDeck = q.x >= 63 && q.x <= 67 && expansionRiverBridges.some((bz) => Math.abs(q.z - bz) <= 1.0);
   const before = { x: q.x, z: q.z };
   clampToCompound(q);
-  if ((inLake(q.x, q.z) && !onDeck) || (expansionWaterBlocked(q.x, q.z) && !onLotusDeck && !onRiverDeck)
+  if ((inLake(q.x, q.z) && !onDeck) || expansionWaterBlocked(q.x, q.z)
     || q.x !== before.x || q.z !== before.z) {
     n.route = []; n.phase = 'idle'; s.anim = 'idle'; n.until = now + 1500; return;
   }

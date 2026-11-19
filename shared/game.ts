@@ -1,6 +1,6 @@
 import type { ActionKind } from './types';
 import { ictDayOfYear } from './time.js';
-import { NGOC } from './campus.js';
+import { BAMBOO, DUOC_SU, duocSuWorld, NGOC, RIVER_EAST_WALK_X } from './campus.js';
 
 export const ACTION_RULES: Record<ActionKind, { merit: number; cooldownMs: number; boostItems?: string[] }> = {
   incense: { merit: 1, cooldownMs: 3000, boostItems: ['huong_tram'] },
@@ -331,11 +331,11 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'dq_meditate', label: 'Thiền 2 phút', event: 'meditate', target: 12, coins: 30, merit: 15, giver: 'npc37', zone: Z_THIEN_DUONG },
   { id: 'dq_water', label: 'Tưới 1 cây trong vườn', event: 'water', target: 1, coins: 20, merit: 9, giver: 'npc37' },
   { id: 'nq_ngoc_pilgrimage', label: 'Hành hương lên Chùa Ngọc', event: 'visit', target: 1, coins: 30, merit: 20, giver: 'npc1', zone: { x: NGOC.x, z: NGOC.z, r: 2 } },
-  { id: 'nq_bamboo_walk', label: 'Thiền hành trong rừng trúc', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 80, z: -8, r: 3 } },
-  { id: 'nq_river_walk', label: 'Thiền hành bên sông Đông', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 69, z: -20, r: 2 } },
-  { id: 'nq_duocsu_prayer', label: 'Dâng đèn cầu an tại Điện Dược Sư', event: 'lantern', target: 1, coins: 20, merit: 15, giver: 'npc39', zone: { x: 77, z: -38, r: 6 } },
+  { id: 'nq_bamboo_walk', label: 'Thiền hành trong rừng trúc', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: BAMBOO.x, z: -8, r: 3 } },
+  { id: 'nq_river_walk', label: 'Thiền hành bên sông Đông', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: RIVER_EAST_WALK_X, z: -20, r: 2 } },
+  { id: 'nq_duocsu_prayer', label: 'Dâng đèn cầu an tại Điện Dược Sư', event: 'lantern', target: 1, coins: 20, merit: 15, giver: 'npc39', zone: { x: DUOC_SU.x, z: DUOC_SU.z, r: 6 } },
   { id: 'nq_duocsu_sweep', label: 'Quét điện Dược Sư', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc39',
-    points: [{ x: 75, z: -35.5 }, { x: 77, z: -36.5 }, { x: 79, z: -35.5 }] },
+    points: [duocSuWorld(-2, 2.5), duocSuWorld(0, 1.5), duocSuWorld(2, 2.5)] },
   { id: 'nq_farm_water', label: 'Tưới rau vườn chùa', event: 'water', target: 3, coins: 15, merit: 8, giver: 'npc40' },
   { id: 'nq_farm_harvest', label: 'Thu hoạch rau vườn chùa', event: 'harvest', target: 1, coins: 25, merit: 12, giver: 'npc40' },
   { id: 'nq_ngoc_sweep', label: 'Quét thang lên Chùa Ngọc', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc41',

@@ -11,6 +11,7 @@ import { buildArhat, buildQuanAm } from './statues';
 import { buildCorridorStatues } from './statue-corridor';
 import { buildCourtyardBuddha, buildCourtyardGuanyin } from './statue-courtyard';
 import { duocSuRoof, duocSuStyle } from './duoc-su-style';
+import { buildPondLotus } from './pond-lotus';
 import { PHONG_CD_YAW, phongCdWorld, ZAFU_HEIGHT, ZAFU_RADIUS, ZAFU_SCALE } from '../shared/campus';
 import { loadModel, fitModel, replaceModel } from './models';
 import { makeGoldMaterial } from './statue-scan';
@@ -954,18 +955,9 @@ export function buildTemple(c: TempleCtx) {
     const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0), rocks);
     r.position.set(rx, rr * 0.3, rz); r.scale.y = 0.65; r.rotation.set(i, i * 2, 0); r.castShadow = true; pond.add(r);
   }
-  const padM = lamb(0x2f8f45), flM = lamb(0xff93b8, { emissive: 0x401324 });
-  for (let i = 0; i < 22; i++) {
-    const a = ((i * 2.399) % (Math.PI * 2)), rr = Math.sqrt(((i * 0.618) % 1)) * 0.82;
-    const x = Math.cos(a) * rr * LAKE.a, z = Math.sin(a) * rr * LAKE.b;
-    if (Math.abs(LAKE.x + x - BRIDGE.x) < BRIDGE.hw + 0.65) continue;
-    const pad = new THREE.Mesh(new THREE.CircleGeometry(0.55, 14, 0.4, 5.6), padM);
-    pad.rotation.x = -Math.PI / 2; pad.position.set(x, 0.16, z); pond.add(pad);
-    if (i % 2 === 0) for (let q = 0; q < 6; q++) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), flM); p.scale.set(0.5, 1.3, 0.5);
-      const ka = (q / 6) * Math.PI * 2; p.position.set(x + Math.cos(ka) * 0.1, 0.34, z + Math.sin(ka) * 0.1); p.rotation.set(Math.sin(ka) * 0.6, 0, -Math.cos(ka) * 0.6); pond.add(p);
-    }
-  }
+  pond.add(buildPondLotus(LAKE.a, LAKE.b, water.position.y, 32, 8113, (x, z, radius) =>
+    Math.abs(LAKE.x + x - BRIDGE.x) > BRIDGE.hw + radius + 0.15 &&
+    !(LAKE.x + x < PIER.x1 + radius && Math.abs(LAKE.z + z - PIER.z) < PIER.hw + radius)));
   // ---- cá koi: 4 mẫu thật (Kohaku, Yamabuki, Shiro Utsuri, Hi), đuôi vẫy ----
   const koi: Koi[] = [];
   const KOI_VARIETIES: KoiVariety[] = ['kohaku', 'yamabuki', 'shiroUtsuri', 'hi'];
@@ -1119,9 +1111,9 @@ export function buildTemple(c: TempleCtx) {
     t.position.set(w.position.x, 1.7, w.position.z); t.rotation.y = -ang; scene.add(t);
     // Không đẩy collider tường: clampToCompound đã chặn kín chu vi (K1); collider thưa 3 m vừa hở vừa thừa.
   };
-  wallSeg(-WALL.x, WALL.zN, WALL.x, WALL.zN);
+  wallSeg(WALL.xW, WALL.zN, WALL.xE, WALL.zN);
   for (const side of [-1, 1]) {
-    const x = side * WALL.x;
+    const x = side < 0 ? WALL.xW : WALL.xE;
     wallSeg(x, WALL.zN, x, WALL.sideGateZ - WALL.sideGateHalf);
     wallSeg(x, WALL.sideGateZ + WALL.sideGateHalf, x, WALL.zS);
     const g = new THREE.Group(); g.name = side < 0 ? 'gate-west' : 'gate-east';
@@ -1137,7 +1129,7 @@ export function buildTemple(c: TempleCtx) {
     scene.add(g);
     mergeStaticByMaterial(g);
   }
-  wallSeg(-WALL.x, WALL.zS, -WALL.gate - 5.1, WALL.zS); wallSeg(WALL.gate + 5.1, WALL.zS, WALL.x, WALL.zS);
+  wallSeg(WALL.xW, WALL.zS, -WALL.gate - 5.1, WALL.zS); wallSeg(WALL.gate + 5.1, WALL.zS, WALL.xE, WALL.zS);
   wallSeg(-WALL.gate - 1.7, WALL.zS, -WALL.gate - 0.6, WALL.zS); wallSeg(WALL.gate + 0.6, WALL.zS, WALL.gate + 1.7, WALL.zS);
   const gate = new THREE.Group();
   for (const x of [-WALL.gate, WALL.gate]) {

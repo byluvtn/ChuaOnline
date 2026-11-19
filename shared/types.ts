@@ -1,3 +1,5 @@
+import { WALL } from './campus.js';
+
 export type Outfit = 'monk' | 'nun' | 'male' | 'female';
 /** Default robe colour per character (hex, lowercase). */
 export const OUTFIT_COLOR: Record<Outfit, string> = { monk: '#d9a62b', nun: '#778c96', male: '#72818e', female: '#bc7672' };
@@ -69,7 +71,7 @@ export interface Profile {
 export interface ProfileSave { bio: string | null; age: number | null }
 export interface ProfileSaveAck { ok: boolean; error?: string }
 
-export const MAP_HALF = 98;
+export const MAP_HALF = Math.max(-WALL.xW, WALL.xE) + 6;
 export { MAP_Z_MIN } from './campus.js';
 export const MAP_Z_MAX = 68;
 export const levelOf = (merit: number) => Math.floor(Math.sqrt(merit / 10)) + 1;

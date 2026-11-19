@@ -60,7 +60,7 @@
 //     the koi lake.
 
 import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
-import { NGOC, NORTH_WALK_Z, PHONG_CD_DOOR, TINH_THAT, TINH_THAT_LANE_Z } from './campus';
+import { BAMBOO, DUOC_SU_DOOR, duocSuWorld, FLOWER_HILL, NGOC, NORTH_WALK_Z, PHONG_CD_DOOR, RIVER_BRIDGES, RIVER_EAST_WALK_X, TINH_THAT, TINH_THAT_LANE_Z, WALL } from './campus';
 
 export type Pt = { x: number; z: number }
 
@@ -69,6 +69,8 @@ export interface RoadNode {
   x: number
   z: number
 }
+
+const [northRiverBridge, southRiverBridge] = RIVER_BRIDGES;
 
 export const ROAD_NODES: RoadNode[] = [
   // â”€â”€ Axis (koi bridge deck z 2â€¦26 is the only crossing on the axis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -92,7 +94,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'pathE2', x: 28, z: 2 },
   { id: 'pathE3', x: 40, z: 2 },
   { id: 'pathE4', x: 52, z: 2 },
-  { id: 'sideGateW', x: -92, z: 2 },
+  { id: 'sideGateW', x: WALL.xW, z: WALL.sideGateZ },
   // â”€â”€ Rear road z = âˆ’46 (garden ring x = Â±59) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'rearW', x: -59, z: -46 },
   { id: 'rearKT', x: -30, z: -46 },
@@ -221,24 +223,21 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'tangXaApproach', x: -64, z: -68.4 },
   ...TINH_THAT.map(({ x }, i) => ({ id: `tinhThat${i + 1}`, x, z: TINH_THAT_LANE_Z })),
   // â”€â”€ EAST BRANCH: river, rá»«ng trÃºc, Äiá»‡n DÆ°á»£c SÆ°, vÆ°á»n hoa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  { id: 'riverBankW', x: 61, z: 2 },
-  { id: 'riverBridgeS', x: 65, z: 2 }, // bridge over the east river on the cross path
-  { id: 'riverBankE', x: 69, z: 2 },
-  { id: 'bamboo', x: 80, z: -3 },
-  { id: 'bambooS2', x: 80, z: 2 }, // south edge of the bamboo grove, on the cross path â€” clear of the culm field
-  { id: 'bambooN', x: 80, z: -20 },
-  { id: 'bambooS', x: 79, z: 10 },
-  { id: 'duocSuLane', x: 77, z: 2 }, // east lane x â‰ˆ 77 from the cross path to the door
-  { id: 'riverPathN', x: 70, z: -20 }, // east-bank riverside walk (paved z = âˆ’20)
-  { id: 'riverPathN2', x: 70, z: -38 },
-  { id: 'riverBridgeN', x: 65, z: -38 }, // north bridge (x 63â€¦67)
-  { id: 'riverNorthW', x: 59, z: -38 },
-  { id: 'riverNorthE', x: 69, z: -38 },
-  { id: 'duocSuApproach', x: 69, z: -31.5 },
-  { id: 'duocSuDoor', x: 77, z: -32 },
-  { id: 'duocSu', x: 77, z: -35.5 }, // inside the hall, north of the offering table
-  { id: 'flowerHill', x: 79, z: 28 },
-  { id: 'sideGateE', x: 92, z: 2 },
+  { id: 'riverBankW', x: southRiverBridge.x - southRiverBridge.halfSpan, z: southRiverBridge.z },
+  { id: 'riverBridgeS', x: southRiverBridge.x, z: southRiverBridge.z },
+  { id: 'riverBankE', x: RIVER_EAST_WALK_X, z: southRiverBridge.z },
+  { id: 'bamboo', ...BAMBOO },
+  { id: 'bambooS2', x: BAMBOO.x, z: southRiverBridge.z },
+  { id: 'bambooN', x: BAMBOO.x, z: -20 },
+  { id: 'bambooS', x: FLOWER_HILL.x, z: 10 },
+  { id: 'riverPathN', x: RIVER_EAST_WALK_X, z: -20 },
+  { id: 'riverBridgeN', x: northRiverBridge.x, z: northRiverBridge.z },
+  { id: 'riverNorthW', x: 59, z: northRiverBridge.z },
+  { id: 'riverNorthE', x: RIVER_EAST_WALK_X, z: northRiverBridge.z },
+  { id: 'duocSuDoor', ...DUOC_SU_DOOR },
+  { id: 'duocSu', ...duocSuWorld(0, 2.5) },
+  { id: 'flowerHill', ...FLOWER_HILL },
+  { id: 'sideGateE', x: WALL.xE, z: WALL.sideGateZ },
   // â”€â”€ NORTH BRANCH: bypass behind Tam Tháº¿, Ngá»c stairs, cave, cemetery â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'westRearGate', x: -68, z: -82 }, // ring turns west around the r1.14 corner at (-59,-71.5)
   { id: 'bypassW', x: -40, z: -82 },
@@ -272,7 +271,7 @@ export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
   { id: 'thienDuong', x: -40.5, z: -27 },
   { id: 'phongCongDuc', ...PHONG_CD_DOOR },
   { id: 'nhaTo', x: 36, z: -64.75 },
-  { id: 'duocSu', x: 77, z: -32 },
+  { id: 'duocSu', ...DUOC_SU_DOOR },
 ]
 
 export const ROAD_EDGES: [string, string][] = [
@@ -349,11 +348,11 @@ export const ROAD_EDGES: [string, string][] = [
   // East gate line runs along the cross path at z = 2 (bambooS2), below the culm field,
   // instead of cutting diagonally through the dense bamboo at (83â€¦85, âˆ’1).
   ['riverBankE', 'bamboo'], ['riverBankE', 'bambooS2'], ['bambooS2', 'sideGateE'],
-  ['riverBankE', 'duocSuLane'], ['duocSuLane', 'duocSuDoor'], ['duocSuDoor', 'duocSu'],
-  ['bamboo', 'bambooN'], ['bamboo', 'bambooS'], ['bambooS', 'flowerHill'],
-  ['bambooN', 'riverPathN'], ['riverPathN', 'riverPathN2'], ['riverPathN2', 'riverBridgeN'],
+  ['riverBankE', 'riverPathN'], ['duocSuDoor', 'duocSu'],
+  ['bamboo', 'bambooN'], ['bamboo', 'bambooS2'], ['bambooS2', 'bambooS'], ['bambooS', 'flowerHill'],
+  ['bambooN', 'riverPathN'], ['riverPathN', 'riverNorthE'],
   ['riverBridgeN', 'riverNorthW'], ['riverBridgeN', 'riverNorthE'], // river bridge at z = âˆ’38
-  ['riverNorthE', 'duocSuApproach'], ['duocSuApproach', 'duocSuDoor'],
+  ['riverNorthE', 'duocSuDoor'],
   // â”€â”€ NORTH BRANCH: bypass z = âˆ’82, Ngá»c stairs, cave, cemetery â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['westRearGate', 'bypassW'], ['bypassW', 'caveBypass'],
   ['caveBypass', 'ngocApproach'], ['ngocApproach', 'pineBypass'], ['pineBypass', 'bypassE'],

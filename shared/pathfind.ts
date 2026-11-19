@@ -66,7 +66,7 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
       if (opts?.avoid?.({ x, z })) return false;
       if (z < WALL.zN + 0.4) return false;
       if (Math.abs(z - WALL.zS) < 0.5 && Math.abs(x) > WALL.gate - 0.5) return false;
-      if (Math.abs(Math.abs(x) - WALL.x) < 0.5 && Math.abs(z - WALL.sideGateZ) > WALL.sideGateHalf - 0.5) return false;
+      if ((Math.abs(x - WALL.xW) < 0.5 || Math.abs(x - WALL.xE) < 0.5) && Math.abs(z - WALL.sideGateZ) > WALL.sideGateHalf - 0.5) return false;
     }
     return true;
   }
@@ -152,13 +152,14 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
   let lastFallback = false;
 
   // Use the same perimeter as the scene; crossings are allowed only at actual gates.
-  const WALL_ZS = WALL.zS, WALL_ZN = WALL.zN, WALL_X = WALL.x;
+  const WALL_ZS = WALL.zS, WALL_ZN = WALL.zN;
 
   // true neu a va b cung o trong (hoac cung o ngoai) moi tuong cua compound.
   function sameSide(a: Pt, b: Pt): boolean {
     return (a.z <= WALL_ZS) === (b.z <= WALL_ZS)
         && (a.z >= WALL_ZN) === (b.z >= WALL_ZN)
-        && (Math.abs(a.x) <= WALL_X) === (Math.abs(b.x) <= WALL_X);
+        && (a.x >= WALL.xW) === (b.x >= WALL.xW)
+        && (a.x <= WALL.xE) === (b.x <= WALL.xE);
   }
 
   // Nearest road node; prefers nodes with a clear straight segment to p.

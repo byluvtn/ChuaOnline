@@ -1,12 +1,11 @@
 import * as THREE from 'three';
-import { MAP_HALF } from '../shared/types';
 import type { FireworkSize } from '../shared/types';
 import { createFireworks, type FireworkCue } from './fireworks';
 import { fitModel, loadModel } from './models';
 import { paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
 import { glowTexture, grassTexture, petalTexture, signTexture, signTexture2Lines, stoneTexture } from './textures';
 import { geo, outlined, toon } from './toon';
-import { blocked, nearWalkway, clampToCompound, LAKE, HALL, LOTUS, RIVER, RIVER_MOUTH_Z, RIVER_SOURCE_Z, riverAt, DUOC_SU } from './layout';
+import { blocked, nearWalkway, clampToCompound, LAKE, HALL, LOTUS, RIVER, RIVER_MOUTH_Z, RIVER_SOURCE_Z, riverAt, DUOC_SU, duocSuWorld, WALL } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
 import { buildSeatedBuddhaStatue } from './statue-scan';
 import { buildGarden } from './garden';
@@ -217,8 +216,9 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
   const canopyG = new THREE.IcosahedronGeometry(1, 1);
   const canopyMs = [lamb(0x3f8a3e, { flatShading: true }), lamb(0x4e9c45, { flatShading: true }), lamb(0x2f7a40, { flatShading: true })];
   const treeSpots: { x: number; z: number; s: number; v: number }[] = [];
+  const scatterHalf = -WALL.xW + 6; // Keep the seeded mainland foliage stable when the authored east bank grows.
   for (let i = 0; i < 400 && treeSpots.length < 90; i++) {
-    const x = (rngSeed(i) - 0.5) * 2 * (MAP_HALF + 24), z = (rngSeed(i + 100) - 0.5) * 2 * (MAP_HALF + 24);
+    const x = (rngSeed(i) - 0.5) * 2 * (scatterHalf + 24), z = (rngSeed(i + 100) - 0.5) * 2 * (scatterHalf + 24);
     const s = 0.85 + rngSeed(i + 7) * 0.9;
     if (blocked(x, z) || nearWalkway(x, z, 1.25 * s)) continue;
     // Vườn Cây: không scatter cây trong rào (x −55..−41, z 11..23); cây góc dời ra
@@ -253,7 +253,7 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
   const palette = [0xff8fb6, 0xffffff, 0xffd35a, 0xff7a6a, 0xc79bff].map((c) => new THREE.Color(c));
   for (let i = 0; i < flowerCount; i++) {
     let x: number, z: number, tries = 0;
-    do { x = (rngSeed(i + 500 + tries * 1000) - 0.5) * 2 * MAP_HALF * 0.95; z = (rngSeed(i + 900 + tries * 1000) - 0.5) * 2 * MAP_HALF * 0.95; tries++; }
+    do { x = (rngSeed(i + 500 + tries * 1000) - 0.5) * 2 * scatterHalf * 0.95; z = (rngSeed(i + 900 + tries * 1000) - 0.5) * 2 * scatterHalf * 0.95; tries++; }
     while (blocked(x, z) && tries < 10);
     dummy.position.set(x, 0.1, z); dummy.scale.setScalar(blocked(x, z) ? 0 : 0.7 + rngSeed(i) * 0.9); dummy.updateMatrix();
     flowers.setMatrixAt(i, dummy.matrix); flowers.setColorAt(i, palette[i % palette.length]);
@@ -434,14 +434,17 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffa030, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
     spr.scale.setScalar(2.4); grp.add(spr);
     const rz = Math.max(RIVER_SOURCE_Z, Math.min(RIVER_MOUTH_Z, z + 1.8));
-    const inRiver = z >= RIVER_SOURCE_Z - 2 && z <= 20;
+    const inRiver = z >= RIVER_SOURCE_Z - 2 && z <= RIVER.pond.z + RIVER.pond.b + 2;
     const river = inRiver && Math.abs(x - riverAt(rz).x) < riverAt(rz).hw + 2;
     const riverX = riverAt(rz).x;
     const lotus = Math.hypot((x - LOTUS.x) / 14, (z - LOTUS.z) / 12) < 1;
     const offering = Math.hypot(x - DUOC_SU.x, z - DUOC_SU.z) < 8;
     grp.scale.setScalar(river || lotus || offering ? 0.45 : 1);
     grp.position.set(river ? riverX : lotus ? LOTUS.x - 2 : x + (Math.random() - 0.5) * 0.6, river || lotus ? 0.18 : groundY(x, z) + 1.6, river ? rz : lotus ? LOTUS.z : z + (Math.random() - 0.5) * 0.6);
-    if (offering) grp.position.set(DUOC_SU.x + (Math.random() - 0.5) * 2.5, DUOC_SU.y + 1.2, DUOC_SU.z - 1.4);
+    if (offering) {
+      const p = duocSuWorld((Math.random() - 0.5) * 2.5, -1.4);
+      grp.position.set(p.x, DUOC_SU.y + 1.2, p.z);
+    }
     scene.add(grp);
     floaters.push({ m: grp, vy: river || lotus || offering ? 0 : 0.9 + Math.random() * 0.5, life: 16, max: 16, light: spr, river, lotus, offering });
   };
@@ -640,7 +643,7 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
       f.m.position.y += f.vy * dt;
       if (!f.offering) f.m.position.x += Math.sin(t + i) * (f.river || f.lotus ? 0.035 : 0.25) * dt;
       if (f.river) {
-        f.m.position.z = Math.min(17, f.m.position.z + dt * 0.3);
+        f.m.position.z = Math.min(RIVER.pond.z + RIVER.pond.b * 0.75, f.m.position.z + dt * 0.3);
         const at = riverAt(f.m.position.z);
         f.m.position.x = at.x + Math.sin(f.m.position.z * 0.4) * at.hw * 0.35;
       }

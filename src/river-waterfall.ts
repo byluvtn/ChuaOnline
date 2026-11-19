@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RIVER_FALLS, riverAt } from '../shared/campus';
+import { RIVER, RIVER_FALLS, riverAt } from '../shared/campus';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 type Rock = [x: number, y: number, z: number, rx: number, ry: number, rz: number];
@@ -43,9 +43,8 @@ export function buildRiverWaterfall() {
     g.rotateX(-Math.PI / 2).translate(0, bottom, 0);
     return colored(g, stone[0], moss, y - 0.38);
   };
-  // Local geometry keeps the original crest profile; the group translates it to the new
-  // head-water position (80, -82), widening every element by WIDE about its own centre.
-  const WIDE = RIVER_FALLS.hw / 6.2;
+  // Build the original crest profile before scaling the entire waterfall uniformly.
+  const WIDE = RIVER_FALLS.hw / (6.2 * RIVER_FALLS.scale);
   const rocks: Rock[] = [
     [-5.95, 0.75, -1.85, 1.10, 1.76, 1.46], [-4.75, 0.85, -1.86, 1.26, 1.48, 1.23],
     [-3.24, 0.76, -1.72, 1.09, 1.42, 1.15], [-1.88, 0.60, -1.42, 1.02, 1.41, 1.15],
@@ -163,8 +162,7 @@ export function buildRiverWaterfall() {
     }
     return g;
   };
-  // Three tiers widen with the new 16 m crest: 3 / 4 / 6 sheets, outer inlets barely arcing
-  // inwards because the source basin is now 11 m wide instead of the old four-metre channel.
+  // Three tiers: 3 / 4 / 6 sheets, with the lower outlets spreading into the river.
   const w = WIDE;
   const curtains = new THREE.Mesh(batch([
     curtain(-2.35 * w, 2.40 * w, 8.55, 5.06, -8.62, -7.22, -.36),
@@ -204,11 +202,16 @@ export function buildRiverWaterfall() {
   group.add(pools);
 
   const foam = new THREE.Mesh(batch(([
-    [6.8, 1.09, 5.068, -7.03], [13.2, 1.25, 2.245, -3.69], [6.2, 2.24, 0.015, 1.16],
+    [6.8, 1.09, 5.068, -7.03], [13.2, 1.25, 2.245, -3.69], [14.8, 2.24, 0.015, 1.16],
   ]).map(([w2, d, y, z]) => new THREE.PlaneGeometry(w2, d).rotateX(-Math.PI / 2).translate(0, y, z))), flow(true));
   foam.name = 'ban-gioc-three-foam-sheets';
   foam.renderOrder = 3;
   group.add(foam);
+  const falls = new THREE.Group();
+  falls.name = 'ban-gioc-scaled-waterfall';
+  for (const child of [...group.children]) falls.add(child);
+  falls.scale.setScalar(RIVER_FALLS.scale);
+  group.add(falls);
 
   // Fish stay just under the water surface and follow the S-curve centre line each frame, so
   // they never drift onto the banks where the river now swings east.
@@ -223,19 +226,20 @@ export function buildRiverWaterfall() {
   const fishBody = new THREE.SphereGeometry(1, 8, 5).scale(.084,.021,.19);
   const fishGeo = batch([fishBody.toNonIndexed(), fin]);
   fishBody.dispose();
-  const school = new THREE.InstancedMesh(fishGeo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), 7);
+  const riverLanes = [8.7, 10.65, 12.45, 26, 48, 72, 79];
+  const pondFish = 5;
+  const school = new THREE.InstancedMesh(fishGeo, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), riverLanes.length + pondFish);
   school.name = 'east-river-fish';
-  school.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 42), 45);
+  school.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 50), 54);
   group.add(school);
   const tones = [0xffaa4d, 0xffcf83, 0xf2edbe, 0xe48243, 0xffbe62, 0xf7e1a2, 0xec9953];
-  tones.forEach((hex, i) => school.setColorAt(i, new THREE.Color(hex)));
+  for (let i = 0; i < school.count; i++) school.setColorAt(i, new THREE.Color(tones[i % tones.length]));
   const dummy = new THREE.Object3D();
-  const lanes = [5.8, 7.1, 8.3, 26, 48, 72, 79];
   const update = (t: number) => {
     time.value = t;
-    for (let i = 0; i < lanes.length; i++) {
+    for (let i = 0; i < riverLanes.length; i++) {
       const a = t * (.51 + i * .037) + i * 2.492;
-      const localZ = lanes[i] + (2.7 + i * .17) * Math.cos(a);
+      const localZ = riverLanes[i] + (2.7 + i * .17) * Math.cos(a);
       const worldZ = RIVER_FALLS.z + localZ;
       const center = riverAt(worldZ);
       // Stay a body-length inside the bank so the school never beaches on the S-curve.
@@ -246,6 +250,16 @@ export function buildRiverWaterfall() {
       dummy.scale.setScalar(.90 + (i % 3) * .12);
       dummy.updateMatrix();
       school.setMatrixAt(i, dummy.matrix);
+    }
+    for (let i = 0; i < pondFish; i++) {
+      const phase = t * (0.34 + i * 0.07) + i * 2.4;
+      const { x, z, a, b } = RIVER.pond;
+      const rx = a * (0.42 + i * 0.09), rz = b * (0.42 + i * 0.05);
+      dummy.position.set(x - RIVER_FALLS.x + rx * Math.cos(phase), -.032, z - RIVER_FALLS.z + rz * Math.sin(phase));
+      dummy.rotation.y = Math.atan2(-rx * Math.sin(phase), rz * Math.cos(phase));
+      dummy.scale.setScalar(1 + (i % 3) * 0.2);
+      dummy.updateMatrix();
+      school.setMatrixAt(riverLanes.length + i, dummy.matrix);
     }
     school.instanceMatrix.needsUpdate = true;
   };

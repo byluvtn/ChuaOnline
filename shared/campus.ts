@@ -2,33 +2,37 @@
 export const ZAFU_SCALE = 1.5;
 export const ZAFU_RADIUS = 0.38;
 export const ZAFU_HEIGHT = 0.10;
-export const WALL = { x: 92, zN: -130, zS: 45, gate: 4.4, sideGateZ: 2, sideGateHalf: 2.2 };
+export const WALL = { xW: -92, xE: 104, zN: -130, zS: 45, gate: 4.4, sideGateZ: 2, sideGateHalf: 2.2 };
 export const MAP_Z_MIN = WALL.zN;
 export const LAKE = { x: 0, z: 14, a: 14, b: 10 };
 export const BRIDGE = { x: 0, z0: 2, z1: 26, hw: 2.3, peak: 1.4 };
 export const LOTUS = { x: -78, z: -2, a: 10, b: 7 };
 export const LOTUS_PAVILION = { x: -70, z: 5 };
-export const RIVER = { pond: { x: 65, z: 16, a: 3, b: 4 }, bridges: [-38, 2], bridgeHalf: 1.4 };
+const FALLS_SCALE = 1.5;
+export const RIVER_FALLS = { x: 80, z: -82, scale: FALLS_SCALE, hw: 8 * FALLS_SCALE, wallHw: 10 * FALLS_SCALE };
+// Keep the west bank beside the existing garden ring when widening the river.
+const LOWER_RIVER_X = 61.5 + RIVER_FALLS.hw;
+export const RIVER = {
+  pond: { x: LOWER_RIVER_X, z: 14, a: RIVER_FALLS.hw, b: 3.8 * FALLS_SCALE },
+  bridges: [-38, 2], bridgeHalf: 1.4, bridgeY: 0.28,
+};
+export const RIVER_EAST_WALK_X = LOWER_RIVER_X + RIVER_FALLS.hw + 1.8;
+export const EAST_BANK_SHIFT = RIVER_EAST_WALK_X - 79.3;
 /**
  * Đường tim Sông Đông, từ bắc (thác) xuống nam (ao), nội suy tuyến tính theo z.
  * `x` là tim sông và `hw` là nửa chiều rộng mặt nước tại z đó.
- * Đường chữ S: rộng gần tường Đông ở thượng nguồn, thu hẹp ngang Điện Dược Sư rồi mở lại về nam.
+ * Lòng sông rộng bằng chân thác Bản Giốc trên toàn tuyến.
  */
 export const RIVER_PATH = [
-  { z: -82, x: 79, hw: 5.5 },
-  { z: -70, x: 77, hw: 4.5 },
-  { z: -58, x: 72, hw: 4.0 },
-  { z: -48, x: 67, hw: 2.5 },
-  { z: -38, x: 65, hw: 1.5 },
-  { z: -28, x: 65.5, hw: 2.0 },
-  { z: -15, x: 66, hw: 3.0 },
-  { z: 2, x: 66, hw: 3.0 },
-  { z: 14, x: 66, hw: 3.5 },
-] as const;
+  { z: RIVER_FALLS.z, x: RIVER_FALLS.x },
+  { z: -70, x: 78.7 },
+  { z: -58, x: 76 },
+  { z: -48, x: 74.3 },
+  { z: -38, x: LOWER_RIVER_X },
+  { z: RIVER.pond.z, x: RIVER.pond.x },
+].map(p => ({ ...p, hw: RIVER_FALLS.hw }));
 export const RIVER_SOURCE_Z = RIVER_PATH[0].z;
 export const RIVER_MOUTH_Z = RIVER_PATH[RIVER_PATH.length - 1].z;
-/** Thác Bản Giốc đầu nguồn: rộng 16 m (local ±hw) và khung vách đá nửa rộng wallHw quanh tim. */
-export const RIVER_FALLS = { x: 80, z: RIVER_SOURCE_Z, hw: 8, wallHw: 10 };
 
 /** Tim sông + nửa chiều rộng tại z (kẹp về hai mốc đầu/cuối ngoài khoảng nội suy). */
 export function riverAt(z: number): { x: number; hw: number } {
@@ -46,10 +50,21 @@ export function riverAt(z: number): { x: number; hw: number } {
 }
 export const FARM = { x: -76, z: -42 };
 export const FARM_POND = { x: -70, z: -35, a: 3.2, b: 2.2 };
-export const BAMBOO = { x: 80, z: -3 };
-export const FLOWER_HILL = { x: 79, z: 28 };
+export const RIVER_BRIDGES = RIVER.bridges.map(z => {
+  const { x, hw } = riverAt(z);
+  return { x, z, halfSpan: hw + 1.8 }; // includes dry landings on both banks
+});
+export function onRiverBridge(x: number, z: number, clearance = 0) {
+  return RIVER_BRIDGES.some(b => Math.abs(x - b.x) <= b.halfSpan && Math.abs(z - b.z) <= RIVER.bridgeHalf - clearance);
+}
+
+export const BAMBOO = { x: 85 + EAST_BANK_SHIFT, z: -3 };
+export const FLOWER_HILL = { x: 79 + EAST_BANK_SHIFT, z: 28 };
 export const CAVE = { x: -26, z: -104 };
-export const DUOC_SU = { x: 77, z: -38, hx: 6, hz: 4.5, y: 0.45 };
+export const DUOC_SU = { x: 85 + EAST_BANK_SHIFT, z: -38, hx: 4.5, hz: 6, y: 0.45 };
+export const DUOC_SU_YAW = -Math.PI / 2;
+export const duocSuWorld = (x: number, z: number) => ({ x: DUOC_SU.x - z, z: DUOC_SU.z + x });
+export const DUOC_SU_DOOR = duocSuWorld(0, DUOC_SU.hx + 0.7);
 export const NGOC = { x: 0, z: -120, y: 8.4, stairStart: -90, stairTop: -116, stairHalf: 3.8, steps: 299, landingDepth: 2.5, approachHalf: 5.8 };
 export const NGOC_TERRACE = { half: 11.5, north: -128.5 };
 export const NGOC_HALL = { x: NGOC.x, z: -123.55, hx: 6.2, hz: 3.6 };
@@ -122,7 +137,7 @@ export function expansionWaterBlocked(x: number, z: number): boolean {
   if (inEllipse(x, z, FARM_POND, 0.25)) return true;
   if (z >= RIVER_SOURCE_Z - 0.25 && z <= RIVER_MOUTH_Z + 0.25) {
     const { x: cx, hw } = riverAt(z);
-    if (Math.abs(x - cx) < hw + 0.25 && !RIVER.bridges.some(bz => Math.abs(z - bz) <= RIVER.bridgeHalf - 0.4)) return true;
+    if (Math.abs(x - cx) < hw + 0.25 && !onRiverBridge(x, z, 0.4)) return true;
   }
   return inEllipse(x, z, RIVER.pond, 0.25);
 }
@@ -148,8 +163,8 @@ export function resolveExpansionWater(p: { x: number; z: number }, prev?: { x: n
 /** Shared wall limits, including short exterior pockets at the side gates. */
 export function clampCampus(p: { x: number; z: number }) {
   const inSideGate = Math.abs(p.z - WALL.sideGateZ) < WALL.sideGateHalf - 0.4;
-  const limit = inSideGate ? WALL.x + 4 : WALL.x - 0.8;
-  p.x = Math.max(-limit, Math.min(limit, p.x));
+  const inset = inSideGate ? -4 : 0.8;
+  p.x = Math.max(WALL.xW + inset, Math.min(WALL.xE - inset, p.x));
   p.z = Math.max(WALL.zN + 0.8, Math.min(WALL.zS + 13, p.z));
   if (Math.abs(p.x) > WALL.gate && p.z > WALL.zS - 0.8 && p.z < WALL.zS + 0.8) p.z = p.z < WALL.zS ? WALL.zS - 0.8 : WALL.zS + 0.8;
 }

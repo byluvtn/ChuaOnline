@@ -1846,9 +1846,9 @@ function drawMinimap() {
   g.beginPath(); g.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); g.clip();
   g.fillStyle = '#b8cba6'; g.fillRect(0, 0, S, S);
   g.fillStyle = '#e5e8cb';
-  g.fillRect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k);
+  g.fillRect(X(WALL.xW), Z(WALL.zN), (WALL.xE - WALL.xW) * k, (WALL.zS - WALL.zN) * k);
   g.strokeStyle = '#765a39'; g.lineWidth = 1.5 * dpr;
-  g.strokeRect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k);
+  g.strokeRect(X(WALL.xW), Z(WALL.zN), (WALL.xE - WALL.xW) * k, (WALL.zS - WALL.zN) * k);
   g.strokeStyle = '#d4c5a3'; g.lineWidth = Math.max(2, 3 * k); g.lineCap = 'round'; g.beginPath();
   for (const [from, to] of ROAD_EDGES) {
     const a = MM_ROADS.get(from), b = MM_ROADS.get(to);

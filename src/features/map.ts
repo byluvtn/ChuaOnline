@@ -1,7 +1,7 @@
 import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
-import { NGOC_HALL, NGOC_TERRACE } from '../../shared/campus';
+import { NGOC_HALL, NGOC_TERRACE, RIVER_BRIDGES } from '../../shared/campus';
 import { PLACES, type Place } from '../data/places';
 import { LOTUS, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_APPROACH, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
@@ -12,7 +12,7 @@ export function openMap(ctx: MenuCtx) {
     const cv = h('canvas', { class: 'tmap', width: SIZE * dpr, height: SIZE * dpr, 'aria-label': 'Bản đồ chùa, bấm vào địa điểm để đi tới' });
     const g = cv.getContext('2d')!;
     const PAD = 16 * dpr;
-    const MX0 = -100, MX1 = 100, MZ0 = WALL.zN - 6, MZ1 = 68;
+    const MX0 = WALL.xW - 8, MX1 = WALL.xE + 8, MZ0 = WALL.zN - 6, MZ1 = 68;
     const k = (SIZE * dpr - PAD * 2) / Math.max(MX1 - MX0, MZ1 - MZ0);
     const OX = (SIZE * dpr - (MX1 - MX0) * k) / 2, OZ = (SIZE * dpr - (MZ1 - MZ0) * k) / 2;
     const X = (x: number) => (x - MX0) * k + OX;
@@ -32,8 +32,8 @@ export function openMap(ctx: MenuCtx) {
     };
     const drawStatic = () => {
       g.fillStyle = '#c9d9a8'; g.fillRect(0, 0, SIZE * dpr, SIZE * dpr);
-      rect(-WALL.x, WALL.zN, WALL.x, WALL.zS, '#e4e8c4', '#8a5a2b');
-      rect(-WALL.x, WALL.zS, WALL.x, 58, '#e8d6a4', '#c9a96a');
+      rect(WALL.xW, WALL.zN, WALL.xE, WALL.zS, '#e4e8c4', '#8a5a2b');
+      rect(WALL.xW, WALL.zS, WALL.xE, 58, '#e8d6a4', '#c9a96a');
       g.fillStyle = '#e4e8c4'; g.fillRect(X(-WALL.gate), Z(WALL.zS) - 2 * dpr, WALL.gate * 2 * k, 4 * dpr);
       rect(-2, TAM_THE_PLAT.zStart, 2, WALL.zS, '#e8d6a4');
       rect(-58, PATH_Z - 1.5, 58, PATH_Z + 1.5, '#e8d6a4');
@@ -49,8 +49,8 @@ export function openMap(ctx: MenuCtx) {
       // corridors
       for (const s of [-1, 1]) rect(s * CORR.x - CORR.half, CORR.z0, s * CORR.x + CORR.half, CORR.z1, '#d9b98c', '#a97c4a');
       // Expansion: no circular plaza remains under the enlarged koi pond.
-      rect(-92, PATH_Z - 1.1, 92, PATH_Z + 1.1, '#e8d6a4');
-      for (const side of [-1, 1]) rect(side * 92 - 1, -0.2, side * 92 + 1, 4.2, '#e8d6a4');
+      rect(WALL.xW, PATH_Z - 1.1, WALL.xE, PATH_Z + 1.1, '#e8d6a4');
+      for (const x of [WALL.xW, WALL.xE]) rect(x - 1, PATH_Z - WALL.sideGateHalf, x + 1, PATH_Z + WALL.sideGateHalf, '#e8d6a4');
       ellipse(NGOC.x, NGOC.stairStart - 18, 40, 18, '#a8bf8e', '#7d9b6c');
       rect(...NGOC_APPROACH, '#e8d6a4');
       rect(-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2, '#e8d6a4');
@@ -72,12 +72,12 @@ export function openMap(ctx: MenuCtx) {
         g.fillStyle = fill; g.fill();
         if (stroke) { g.strokeStyle = stroke; g.lineWidth = dpr; g.stroke(); }
       };
-      riverPath('#8ec6e0', '#4f8fb0');
-      ellipse(65, 16, 3, 4, '#8ec6e0', '#4f8fb0');
-      for (const z of RIVER.bridges) rect(60.5, z - 1.4, 69.5, z + 1.4, '#d9c6a2', '#8a8270');
+      ellipse(RIVER.pond.x, RIVER.pond.z, RIVER.pond.a, RIVER.pond.b, '#8ec6e0', '#4f8fb0');
+      riverPath('#8ec6e0');
+      for (const { x, z, halfSpan } of RIVER_BRIDGES) rect(x - halfSpan, z - RIVER.bridgeHalf, x + halfSpan, z + RIVER.bridgeHalf, '#d9c6a2', '#8a8270');
       rect(FARM.x - 12, -55, FARM.x + 12, -30, '#a3bd79', '#7d9b6c');
-      rect(BAMBOO.x - 10, -20, BAMBOO.x + 10, 14, '#91b690');
-      rect(FLOWER_HILL.x - 11, 15, FLOWER_HILL.x + 11, 40, '#c2d59f');
+      rect(BAMBOO.x - 4.5, -20, BAMBOO.x + 5.3, 14, '#91b690');
+      ellipse(FLOWER_HILL.x + 0.5, FLOWER_HILL.z - 0.5, 10.6, 11.8, '#c2d59f');
       ellipse(CAVE.x, CAVE.z, 5, 3, '#879a85');
       for (const p of TINH_THAT) rect(p.x - 1.6, p.z - 1.25, p.x + 1.6, p.z + 1.25, '#9c6648');
       // decks

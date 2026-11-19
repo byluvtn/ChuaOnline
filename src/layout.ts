@@ -1,5 +1,5 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
-import { WALL, LAKE, BRIDGE, LOTUS, RIVER, DUOC_SU, NGOC, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, LOTUS, RIVER, RIVER_BRIDGES, RIVER_EAST_WALK_X, onRiverBridge, DUOC_SU, NGOC, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
@@ -80,7 +80,7 @@ export const MAIN_COURT = [-20, -42, 20, 2] as const;
 export const NGOC_APPROACH = [NGOC.x - NGOC.approachHalf, NGOC.stairStart, NGOC.x + NGOC.approachHalf, NORTH_WALK_Z - 1.2] as const;
 const bridgeApproachHalf = BRIDGE.hw + 0.25;
 export const WALKWAY_RECTS = [
-  [-WALL.x - 4, PATH_Z - 1.1, WALL.x + 4, PATH_Z + 1.1],
+  [WALL.xW - 4, PATH_Z - 1.1, WALL.xE + 4, PATH_Z + 1.1],
   [SIDE_X - 1.2, PATH_Z, SIDE_X + 1.2, QUAN.z],
   [PAGODA.x - 1.2, PAGODA.z, PAGODA.x + 1.2, PATH_Z],
   [-SIDE_X - 1.2, PATH_Z, -SIDE_X + 1.2, BUDDHA_YARD.z],
@@ -107,12 +107,14 @@ export const WALKWAY_RECTS = [
   [TINH_THAT[0].x - 1, TINH_THAT_LANE_Z - 1, -70.5, TINH_THAT_LANE_Z + 1],
   ...TINH_THAT.map(({ x, z }): [number, number, number, number] => [x - 0.72, z + 1.25, x + 0.72, TINH_THAT_LANE_Z]),
   [-72.5, -79, -70.5, -59.5], [-77.2, -67.1, -74.8, 1], [-76, -43.2, -59, -40.8],
-  [59, -39.2, 69, -36.8], [67.8, -38, 70.2, -31.5], [69, -32.7, 77, -30.3],
-  [75.8, -33.5, 78.2, 2], [77.8, 2, 80.2, 28],
+  [59, RIVER_BRIDGES[0].z - 1.2, RIVER_BRIDGES[0].x - RIVER_BRIDGES[0].halfSpan + 0.1, RIVER_BRIDGES[0].z + 1.2],
+  [RIVER_EAST_WALK_X - 1.1, DUOC_SU.z, RIVER_EAST_WALK_X + 1.1, PATH_Z - 1.1],
+  [RIVER_EAST_WALK_X - 1.1, PATH_Z + 1.1, RIVER_EAST_WALK_X + 1.1, 28],
+  [RIVER_EAST_WALK_X, DUOC_SU.z - 1.1, DUOC_SU.x - DUOC_SU.hx, DUOC_SU.z + 1.1],
   [-59, NORTH_WALK_Z - 1.2, 59, NORTH_WALK_Z + 1.2],
   NGOC_APPROACH,
   [-60.2, NORTH_WALK_Z, -57.8, -77], [57.8, NORTH_WALK_Z, 60.2, -77],
-  [48.8, -89, 51.2, -82], [-WALL.x, WALL.zS, WALL.x, WALL.zS + 13],
+  [48.8, -89, 51.2, -82], [WALL.xW, WALL.zS, WALL.xE, WALL.zS + 13],
 ] as const;
 const PLANT_FREE_RECTS = [MAIN_COURT, ...WALKWAY_RECTS,
   [NGOC.x - NGOC.stairHalf - 1, NGOC.stairTop, NGOC.x + NGOC.stairHalf + 1, NGOC.stairStart],
@@ -138,7 +140,7 @@ export function groundYBase(x: number, z: number) {
   if (Math.abs(x - DUOC_SU.x) <= DUOC_SU.hx && Math.abs(z - DUOC_SU.z) <= DUOC_SU.hz) y = Math.max(y, DUOC_SU.y);
   for (const h of TINH_THAT) if (Math.abs(x - h.x) <= 1.6 && Math.abs(z - h.z) <= 1.25) y = Math.max(y, 0.16);
   if (x >= -90 && x <= -66 && Math.abs(z - 2) <= 1.1) y = Math.max(y, 0.28);
-  if (x >= 60.5 && x <= 69.5 && RIVER.bridges.some(bz => Math.abs(z - bz) <= RIVER.bridgeHalf)) y = Math.max(y, 0.28);
+  if (onRiverBridge(x, z)) y = Math.max(y, RIVER.bridgeY);
   const dx = Math.max(Math.abs(x - HALL.x) - HALL.hx, 0), dz = Math.max(Math.abs(z - HALL.z) - HALL.hz, 0);
   // Chính Điện: ba bậc nền hình chữ nhật khớp mesh hall.ts (nền 1.35, tầng 2 cao 0.9, tầng 1 cao 0.45).
   const hm = Math.max(dx, dz);

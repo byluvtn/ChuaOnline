@@ -1,5 +1,5 @@
 import { BAO_THAP, BELL, DRUM, BRIDGE, BUDDHA_YARD, DECK, HALL, LAKE, PAGODA, PLAZA, QUAN, TAM_THE, THIEN_DUONG, VUON_THAP, WALL, ZEN, REST, TANG_XA } from '../layout';
-import { NGOC, PHONG_CD_DOOR, TINH_THAT, TINH_THAT_LANE_Z } from '../../shared/campus';
+import { BAMBOO, DUOC_SU_DOOR, FLOWER_HILL, NGOC, PHONG_CD_DOOR, RIVER_BRIDGES, TINH_THAT, TINH_THAT_LANE_Z } from '../../shared/campus';
 
 export interface Place { name: string; x: number; z: number; r: number; ly?: number }
 
@@ -30,19 +30,19 @@ export const PLACES: Place[] = [
   { name: 'Hồ cá koi', x: LAKE.x, z: BRIDGE.z1 + 1.5, r: 4 },
   { name: 'Cầu cong', x: BRIDGE.x, z: (BRIDGE.z0 + BRIDGE.z1) / 2, r: 3 },
   { name: 'Tam quan', x: 0, z: WALL.zS - 4, r: 4 },
-  { name: 'Rừng trúc', x: 80, z: 2, r: 5 },
+  { name: 'Rừng trúc', x: BAMBOO.x, z: 2, r: 5 },
   { name: 'Vườn rau chùa', x: -76, z: -42, r: 6 },
   { name: 'Tịnh thất', x: TINH_THAT[1].x, z: TINH_THAT_LANE_Z, r: 3 },
   { name: 'Hồ sen Tây', x: -78, z: 2, r: 5 },
   { name: 'Đình ngắm sen', x: -70, z: 5, r: 3 },
-  { name: 'Điện Dược Sư', x: 77, z: -32, r: 4 },
-  { name: 'Vườn hoa', x: 79, z: 28, r: 6 },
+  { name: 'Điện Dược Sư', ...DUOC_SU_DOOR, r: 4 },
+  { name: 'Vườn hoa', ...FLOWER_HILL, r: 6 },
   { name: 'Chùa Ngọc', x: NGOC.x, z: NGOC.z, r: 4, ly: NGOC.y },
   { name: 'Động thiền', x: -26, z: -102, r: 4 },
   { name: 'Rừng thông', x: 26, z: -108, r: 5 },
-  { name: 'Sông Đông', x: 65, z: 2, r: 3 },
-  { name: 'Cổng Tây', x: -90, z: 2, r: 3 },
-  { name: 'Cổng Đông', x: 90, z: 2, r: 3 },
+  { name: 'Sông Đông', x: RIVER_BRIDGES[1].x, z: RIVER_BRIDGES[1].z, r: 3 },
+  { name: 'Cổng Tây', x: WALL.xW + 2, z: WALL.sideGateZ, r: 3 },
+  { name: 'Cổng Đông', x: WALL.xE - 2, z: WALL.sideGateZ, r: 3 },
 ];
 
 const BY_NAME = new Map(PLACES.map((p) => [p.name, p] as const));
