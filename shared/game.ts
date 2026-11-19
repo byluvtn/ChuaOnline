@@ -248,6 +248,38 @@ export const SUTRAS: Sutra[] = [
       return out;
     })(),
   },
+  {
+    id: 'vang_sanh',
+    name: 'Chú Vãng Sanh',
+    reps: 1,
+    lines: [
+      'Nam Mô A Di Đà Phật (3 lần)',
+      'Nam mô a di đa bà dạ,',
+      'đa tha già đa dạ, đa điệt dạ tha,',
+      'a di rị đô bà tỳ,',
+      'a di rị đa tất đam bà tỳ,',
+      'a di rị đa tỳ ca lan đế,',
+      'a di rị đa tỳ ca lan đa,',
+      'già di nhị, già già na,',
+      'chỉ đa ca lệ, ta bà ha.',
+      'Nguyện sanh về cõi Cực Lạc.',
+    ],
+  },
+  {
+    id: 'hoi_huong',
+    name: 'Kệ Hồi Hướng',
+    reps: 1,
+    lines: [
+      'Nguyện đem công đức này,',
+      'Hướng về khắp tất cả,',
+      'Đệ tử và chúng sanh,',
+      'Đều trọn thành Phật đạo.',
+      'Nguyện sanh Tây Phương Tịnh Độ trung,',
+      'Cửu phẩm liên hoa vi phụ mẫu,',
+      'Hoa khai kiến Phật ngộ vô sanh,',
+      'Bất thối Bồ Tát vi bạn lữ.',
+    ],
+  },
 ];
 
 export const MARKET_STALLS: { id: string; x: number; z: number }[] = [

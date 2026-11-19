@@ -123,7 +123,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin' | 'sky' | 'fw:small' | 'fw:large' | 'fw:dragon' | 'release' | 'bell', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'chant:moh' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin' | 'sky' | 'fw:small' | 'fw:large' | 'fw:dragon' | 'release' | 'bell', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** resume token cua tab (sessionStorage) de khoi phuc vi tri khi vao lai */
@@ -810,6 +810,19 @@ io.on('connection', (socket) => {
     await questEvent(s, 'sutra');
     await countStatSafe(s, 'chants');
     cb?.({ ok: true, merit: finalMerit });
+  });
+
+  socket.on('chant:moh', async (cb?: (r: { ok: boolean; merit?: number; tapped?: number; error?: string }) => void) => {
+    const s = me();
+    if (!s) return cb?.({ ok: false, error: 'Bạn chưa vào chùa' });
+    const now = Date.now();
+    if (now - (s.last['chant:moh'] ?? 0) < 2000) return cb?.({ ok: false, error: 'Hãy chờ 2 giây giữa hai tiếng mõ' });
+    s.last['chant:moh'] = now;
+    if (!(await db.claimMinigame(pid, 'chant_moh', 60))) return cb?.({ ok: false, error: 'Hôm nay bạn đã gõ đủ 60 tiếng mõ có công đức' });
+    const finalMerit = Math.round(1 * meritBoost(new Date()).mult);
+    await grantRewards(s, finalMerit, 0);
+    const tapped = await db.minigameCount(pid, 'chant_moh');
+    cb?.({ ok: true, merit: finalMerit, tapped });
   });
 
   const buyItem = async (itemId: string, qty: number) => {

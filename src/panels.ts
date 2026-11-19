@@ -645,75 +645,157 @@ function renderQuests(body: HTMLElement, ctx: PanelCtx) {
 }
 
 // ------------------------------------------------------------------ tụng kinh
-function renderChant(body: HTMLElement, ctx: PanelCtx) {
-  let sutra: (typeof SUTRAS)[number] | null = null;
-  let rep = 0;
-  let line = 0;
-  let timer: number | null = null;
-  let mohTimer: number | null = null;
-  let bpm = 60;
-  let mohOn = true;
+let chantSutra: (typeof SUTRAS)[number] | null = null;
+let chantRep = 0;
+let chantLine = 0;
+let chantTimer: number | null = null;
+let chantMohTimer: number | null = null;
+let chantBpm = 66;
+let chantMohOn = true;
+let chantStartedAt = 0;
+let chantTapped: number | null = null;
+let chantChip: HTMLElement | null = null;
+let chantChipTimer: number | null = null;
+let chantView: { reader: () => void; state: () => void; taps: () => void } | null = null;
 
-  const stop = () => {
-    if (timer !== null) { clearInterval(timer); timer = null; }
-    if (mohTimer !== null) { clearInterval(mohTimer); mohTimer = null; }
+function hideChantChip() {
+  if (chantChipTimer !== null) clearInterval(chantChipTimer);
+  chantChipTimer = null;
+  chantChip?.remove();
+  chantChip = null;
+}
+
+function stopChant() {
+  if (chantTimer !== null) { clearInterval(chantTimer); chantTimer = null; }
+  if (chantMohTimer !== null) { clearInterval(chantMohTimer); chantMohTimer = null; }
+  chantSutra = null;
+  hideChantChip();
+  chantView?.state();
+}
+
+function showChantChip() {
+  if (!chantSutra || chantChip) return;
+  const hud = document.getElementById('hud');
+  if (!hud) return;
+  const chip = document.createElement('div');
+  chip.className = 'glass';
+  chip.style.cssText = 'position:fixed;right:12px;bottom:76px;z-index:20;display:flex;align-items:center;gap:4px;padding:4px;pointer-events:auto';
+  const reopen = document.createElement('button');
+  reopen.type = 'button';
+  reopen.onclick = () => { if (ctxRef) openPanel('chant', ctxRef); };
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Dừng tụng niệm');
+  close.textContent = '✕';
+  close.onclick = stopChant;
+  const update = () => {
+    const elapsed = Math.max(0, Math.floor((Date.now() - chantStartedAt) / 1000));
+    const minutes = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const seconds = String(elapsed % 60).padStart(2, '0');
+    reopen.textContent = `Tụng niệm · ${minutes}:${seconds}`;
   };
-  cleanup = stop;
+  update();
+  chip.append(reopen, close);
+  hud.append(chip);
+  chantChip = chip;
+  chantChipTimer = window.setInterval(update, 1000);
+}
+
+function restartChantMoh() {
+  if (chantMohTimer !== null) clearInterval(chantMohTimer);
+  chantMohTimer = chantMohOn ? window.setInterval(() => audio.play('moh'), Math.round(60000 / chantBpm)) : null;
+}
+
+function startChant(sutra: (typeof SUTRAS)[number], ctx: PanelCtx) {
+  chantSutra = sutra;
+  chantRep = 0;
+  chantLine = 0;
+  chantStartedAt = Date.now();
+  const finishRep = () => {
+    chantRep++;
+    ctx.toast(`Hoàn thành biến thứ ${chantRep} — được cộng công đức`);
+    ctx.socket.emit('sutra:done', sutra.id, (r: { ok: boolean; merit?: number; error?: string }) => {
+      if (r.ok) ctx.toast(`Công đức +${r.merit}`);
+      else if (r.error) ctx.toast(r.error);
+    });
+    if (chantRep >= sutra.reps) stopChant();
+  };
+  chantTimer = window.setInterval(() => {
+    if (++chantLine >= sutra.lines.length) {
+      finishRep();
+      if (!chantSutra) return;
+      chantLine = 0;
+    }
+    chantView?.reader();
+  }, 4200);
+  audio.unlock();
+  restartChantMoh();
+  chantView?.state();
+}
+
+function renderChant(body: HTMLElement, ctx: PanelCtx) {
+  hideChantChip();
+  cleanup = () => {
+    chantView = null;
+    showChantChip();
+  };
 
   const reader = h('div', { class: 'chant-reader', style: 'max-height:50vh;overflow:auto;padding:8px;border-radius:10px;background:rgba(0,0,0,.25)' });
   const head = h('div', {});
   const controls = h('div', { class: 'row', style: 'gap:8px;margin-top:10px;flex-wrap:wrap' });
   const drawReader = () => {
-    if (!sutra) return;
-    reader.replaceChildren(...sutra.lines.map((ln, i) => h('p', {
-      style: `margin:4px 0;padding:2px 6px;border-radius:6px;${i === line ? 'background:rgba(255,214,90,.28);color:#ffe9a8;font-weight:600' : i < line ? 'opacity:.55' : 'opacity:.85'}`,
+    if (!chantSutra) return;
+    reader.replaceChildren(...chantSutra.lines.map((ln, i) => h('p', {
+      style: `margin:4px 0;padding:2px 6px;border-radius:6px;${i === chantLine ? 'background:rgba(255,214,90,.28);color:#ffe9a8;font-weight:600' : i < chantLine ? 'opacity:.55' : 'opacity:.85'}`,
     }, ln)));
-    const cur = reader.children[line] as HTMLElement | undefined;
+    const cur = reader.children[chantLine] as HTMLElement | undefined;
     cur?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   };
-  const finishRep = () => {
-    rep++;
-    ctx.toast(`Hoàn thành biến thứ ${rep} — được cộng công đức`);
-    ctx.socket.emit('sutra:done', sutra!.id, (r: { ok: boolean; merit?: number; error?: string }) => {
-      if (r.ok) ctx.toast(`Công đức +${r.merit}`);
-      else if (r.error) ctx.toast(r.error);
-    });
-    if (rep >= sutra!.reps) { stop(); drawHome(); }
-  };
-  const start = () => {
-    line = 0;
-    drawReader();
-    timer = window.setInterval(() => {
-      line++;
-      if (line >= sutra!.lines.length) { finishRep(); line = sutra!.lines.length - 1; }
-      drawReader();
-    }, 4200);
-    audio.unlock();
-    restartMoh();
-    drawControls();
-  };
-  const restartMoh = () => {
-    if (mohTimer !== null) clearInterval(mohTimer);
-    mohTimer = mohOn ? window.setInterval(() => audio.play('moh'), Math.round(60000 / bpm)) : null;
-  };
+  const tapped = h('small', { style: 'flex-basis:100%' });
+  const drawTapped = () => { tapped.textContent = chantTapped === null ? '' : `Đã gõ ${chantTapped} tiếng hôm nay`; };
   const drawControls = () => {
-    const lbl = h('span', {}, `${bpm}/phút`);
+    const lbl = h('span', {}, `${chantBpm}/phút`);
+    const tap = h('button', {
+      style: 'font-size:1.15em;padding:10px 16px;transition:transform 120ms ease',
+    }, '🥁 Gõ mõ');
+    let pulse = 0;
+    tap.onclick = () => {
+      audio.play('moh');
+      tap.style.transform = 'scale(1.08)';
+      window.clearTimeout(pulse);
+      pulse = window.setTimeout(() => { tap.style.transform = ''; }, 130);
+      ctx.socket.emit('chant:moh', (r: { ok: boolean; merit?: number; tapped?: number; error?: string }) => {
+        if (!r.ok) { ctx.toast(r.error ?? 'Không thể ghi nhận tiếng mõ'); return; }
+        if (typeof r.tapped === 'number') chantTapped = r.tapped;
+        chantView?.taps();
+      });
+    };
     controls.replaceChildren(
-      h('button', { onclick: () => { mohOn = !mohOn; restartMoh(); drawControls(); } }, mohOn ? '🔇 Tắt mõ' : '🥁 Bật mõ'),
+      h('button', { onclick: () => { chantMohOn = !chantMohOn; restartChantMoh(); drawControls(); } }, chantMohOn ? '🔇 Tắt mõ' : '🥁 Bật mõ'),
+      tap,
       h('label', { style: 'display:flex;align-items:center;gap:6px' }, 'Nhịp',
-        h('input', { type: 'range', min: '40', max: '120', value: String(bpm), oninput: (e: Event) => { bpm = +(e.target as HTMLInputElement).value; restartMoh(); lbl.textContent = `${bpm}/phút`; } }),
+        h('input', { type: 'range', min: '40', max: '120', value: String(chantBpm), oninput: (e: Event) => { chantBpm = +(e.target as HTMLInputElement).value; restartChantMoh(); lbl.textContent = `${chantBpm}/phút`; } }),
         lbl),
-      h('button', { class: 'ghost', onclick: () => { stop(); drawHome(); } }, 'Dừng lại'));
+      h('button', { class: 'ghost', onclick: stopChant }, 'Dừng lại'),
+      tapped);
+    drawTapped();
   };
   const drawHome = () => {
     head.replaceChildren(h('p', { class: 'hint' }, 'Chọn bài kinh, bấm Bắt đầu để đọc theo nhịp. Mỗi biến hoàn thành được cộng công đức.'));
     reader.replaceChildren(...SUTRAS.map((s) => h('div', { class: 'qrow' },
       h('div', { class: 'qi' }, h('b', {}, s.name), h('div', {}, `${s.lines.length} câu · ${s.reps} biến`)),
-      h('button', { onclick: () => { sutra = s; rep = 0; start(); } }, 'Bắt đầu'))));
+      h('button', { onclick: () => startChant(s, ctx) }, 'Bắt đầu'))));
     controls.replaceChildren();
   };
-  drawHome();
+  const drawState = () => {
+    if (!chantSutra) { drawHome(); return; }
+    head.textContent = `${chantSutra.name} · Biến ${chantRep + 1}/${chantSutra.reps}`;
+    drawReader();
+    drawControls();
+  };
+  chantView = { reader: drawReader, state: drawState, taps: drawTapped };
   body.append(head, reader, controls);
+  drawState();
 }
 
 function renderRank(body: HTMLElement, ctx: PanelCtx) {

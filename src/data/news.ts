@@ -5,9 +5,18 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 152;
+export const LATEST_NEWS_ID = 153;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tụng kinh có nút gõ mõ tay và chạy nền',
+    date: '2026-11-19',
+    items: [
+      'Panel tụng kinh có thêm nút Gõ mõ lớn: gõ tay từng tiếng mõ, mỗi tiếng được 1 công đức (tối đa 60 công đức mỗi ngày), mõ tự động vẫn chạy như cũ.',
+      'Đóng panel giữa buổi tụng thì phiên vẫn chạy nền: đồng hồ Tụng niệm mm:ss hiện gọn trên màn hình, bấm vào mở lại đúng chỗ đang đọc; hết bài hoặc bấm dừng thì phiên kết thúc.',
+      'Thêm 2 bài tụng mới: Chú Vãng Sanh và Kệ Hồi Hướng, nâng tổng số bài trong panel lên 5; nhịp mõ mặc định đổi thành 66 nhịp/phút.',
+    ],
+  },
   {
     title: 'Hành trình tu tập: lễ hội, thiền nhóm, bồ đề, thân thiết, tịnh thất',
     date: '2026-11-19',
