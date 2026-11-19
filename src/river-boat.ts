@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { RIVER_BOAT_HEIGHT, RIVER_BOAT_SEAT_Y, RIVER_BOAT_SEAT_Z, riverBoatAt } from '../shared/river-tour';
+import { RIVER_BOATS, RIVER_BOAT_HEIGHT, RIVER_BOAT_SEAT_Y, RIVER_BOAT_SEAT_Z, riverBoatAt, type RiverBoatId } from '../shared/river-tour';
 
-export function buildRiverBoat(scene: THREE.Scene) {
+export function buildRiverBoat(scene: THREE.Scene, id: RiverBoatId) {
   const group = new THREE.Group();
-  group.name = 'east-river-skiff';
+  group.name = `east-river-skiff-${id + 1}`;
   const wood = new THREE.MeshStandardMaterial({ color: 0x623821, roughness: .85, side: THREE.DoubleSide });
   const trim = new THREE.MeshStandardMaterial({ color: 0x9d6b41, roughness: .78 });
   const brass = new THREE.MeshStandardMaterial({ color: 0xaf8747, metalness: .45, roughness: .54 });
-  const cloth = new THREE.MeshStandardMaterial({ color: 0x487269, side: THREE.DoubleSide, roughness: .91 });
+  const cloth = new THREE.MeshStandardMaterial({ color: RIVER_BOATS[id].color, side: THREE.DoubleSide, roughness: .91 });
   const cushion = new THREE.MeshStandardMaterial({ color: 0x9b6943, roughness: 1 });
   const add = (geometry: THREE.BufferGeometry, mat: THREE.Material) => {
     const mesh = new THREE.Mesh(geometry, mat);
@@ -62,13 +62,14 @@ export function buildRiverBoat(scene: THREE.Scene) {
   scene.add(group);
   const seat = new THREE.Vector3();
   return {
+    pose: { seat, rotation: group.rotation },
     update(elapsed: number, t: number) {
-      const p = riverBoatAt(elapsed);
+      const p = riverBoatAt(elapsed, id);
+      t += id * 1.37;
       const y = .067 + .014 * Math.sin(t * 2.4);
       group.position.set(p.x, y, p.z);
       group.rotation.set(.011 * Math.sin(t * 2.1), p.ry, .018 * Math.sin(t * 1.7), 'YXZ');
       seat.set(0, RIVER_BOAT_SEAT_Y, RIVER_BOAT_SEAT_Z).applyQuaternion(group.quaternion).add(group.position);
-      return { seat, rotation: group.rotation };
     },
   };
 }

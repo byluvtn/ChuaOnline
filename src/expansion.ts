@@ -28,7 +28,7 @@ import { pavingMaterial } from './compound';
 import { nearWalkway, NGOC_EAST_PAVING } from './layout';
 import { duocSuRoof, duocSuStyle } from './duoc-su-style';
 import { buildRiverWaterfall } from './river-waterfall';
-import { RIVER_DOCK } from '../shared/river-tour';
+import { RIVER_BOATS, RIVER_DOCK } from '../shared/river-tour';
 import { buildPondLotus } from './pond-lotus';
 import { FLOWER_COLORS, PlantBatch } from './landscape';
 import { bladeGeometry, VegetationBatch } from './vegetation';
@@ -827,7 +827,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       for (let pz = RIVER_SOURCE_Z; pz < RIVER_MOUTH_Z; pz += 2) {
         const a = riverAt(pz), b = riverAt(Math.min(pz + 2, RIVER_MOUTH_Z));
         const zc = (pz + Math.min(pz + 2, RIVER_MOUTH_Z)) / 2;
-        if (side < 0 && Math.abs(zc - RIVER_DOCK.z) < 2.8) continue;
+        if (side < 0 && zc > RIVER_DOCK.north - .5 && zc < RIVER_DOCK.south + .5) continue;
         if (bridges.some(bz => Math.abs(zc - bz) < bridgeHalf + 1)) continue;
         const xc = (a.x + side * a.hw + b.x + side * b.hw) / 2 + side * 0.3;
         const dx = (b.x + side * b.hw) - (a.x + side * a.hw);
@@ -883,20 +883,26 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
         addBox('stoneDark', 2.25, 0.8, width - 0.16, bx + side * (halfSpan - 1.05), -0.42, bz);
       }
     }
-    const dockZ = RIVER_DOCK.z, edge = RIVER_DOCK.edge;
-    for (let i = -10; i <= 10; i++) {
-      addBox('wood', 2.45, 0.14, 0.21, edge - 0.48, RIVER_DOCK.y - 0.07, dockZ + i * 0.22);
+    const { north, south, edge, y } = RIVER_DOCK;
+    const planks = Math.ceil((south - north) / .22), spacing = (south - north) / planks;
+    for (let i = 0; i < planks; i++) {
+      addBox('wood', 2.45, 0.14, spacing - .009, edge - 0.48, y - 0.07, north + (i + .5) * spacing);
     }
-    for (const dz of [-2.15, 2.15]) {
+    for (const z of [north + .16, south - .16]) {
       // Recess the rails from the west-bank path so walkers need not step onto the pier.
-      addBox('darkWood', 1.6, 0.16, 0.16, edge - 0.055, 0.79, dockZ + dz);
+      addBox('darkWood', 1.6, 0.16, 0.16, edge - 0.055, 0.79, z);
       for (const px of [edge - 0.78, edge + 0.67]) {
-        addBox('dsTimber', 0.23, 1.36, 0.23, px, 0.40, dockZ + dz);
-        addBox('granite', 0.28, 0.12, 0.28, px, 1.12, dockZ + dz);
-        if (px < edge) solid(px, dockZ + dz, 0.22);
+        addBox('dsTimber', 0.23, 1.36, 0.23, px, 0.40, z);
+        addBox('granite', 0.28, 0.12, 0.28, px, 1.12, z);
+        if (px < edge) solid(px, z, 0.22);
       }
     }
-    addPostedSign('BẾN THUYỀN SÔNG ĐÔNG', 3.3, 0.54, edge - 1.28, 1.28, dockZ + 2.42, -Math.PI / 2);
+    for (const { id, z } of RIVER_BOATS) {
+      // Let walkers stay on the shore side of the landing; cleats sit on the water-side edge.
+      for (const dz of [-1.66, 1.66]) addBox('darkWood', .16, .32, .16, edge + .57, y + .1, z + dz);
+      addSign(`THUYỀN ${id + 1}`, .81, .26, edge + .48, y + .18, z + 1.66, -Math.PI / 2);
+    }
+    addPostedSign('BẾN THUYỀN SÔNG ĐÔNG', 3.3, 0.54, edge - 1.28, 1.28, south + .12, -Math.PI / 2);
     const { x: px, z: pz, a, b } = RIVER.pond;
     const segments = Math.ceil(Math.PI * Math.max(a, b) / 0.7);
     for (let i = 0; i < segments; i++) {

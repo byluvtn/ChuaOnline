@@ -8,7 +8,7 @@ import { NPC_QUESTS } from '../shared/game';
 import { createAnimals } from '../server/animals';
 import { createNpcRoom, tickNpcs } from '../server/npcs';
 import { buildPondLotus } from '../src/pond-lotus';
-import { RIVER_BOAT_HEIGHT, RIVER_BOAT_SEAT_Z, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour';
+import { RIVER_BOATS, RIVER_BOAT_HEIGHT, RIVER_BOAT_SEAT_Z, RIVER_DOCK, riverBoatAt, riverBoatsOverlap, riverDeparture, riverTourDuration, type RiverBoatTrip } from '../shared/river-tour';
 
 const lotus = buildPondLotus(LAKE.a, LAKE.b, 0.14, 32, 8113, (x, _z, radius) => Math.abs(x) > BRIDGE.hw + radius);
 assert.equal(lotus.children.length, 3);
@@ -148,30 +148,49 @@ for (const { x: center, z, halfSpan } of RIVER_BRIDGES) {
 }
 assert(!expansionWaterBlocked(RIVER_DOCK.x, RIVER_DOCK.z), 'The dock landing must remain on dry land');
 assert.equal(groundY(RIVER_DOCK.x, RIVER_DOCK.z), RIVER_DOCK.y, 'The dock landing should match the planks');
-const initialBoat = riverBoatAt(0), finalBoat = riverBoatAt(RIVER_TOUR_MS);
-assert(Math.hypot(initialBoat.x - finalBoat.x, initialBoat.z - finalBoat.z) < 0.01, 'The skiff must return to its berth');
-assert(Math.cos(initialBoat.ry - finalBoat.ry) > 0.99, 'The skiff should dock without snapping its heading');
-for (let ms = 0; ms <= RIVER_TOUR_MS; ms += 25) {
-  const p = riverBoatAt(ms);
-  const sin = Math.sin(p.ry), cos = Math.cos(p.ry);
-  if (ms > 500 && ms < RIVER_TOUR_MS - 500) assert(expansionWaterBlocked(p.x, p.z) || RIVER_BRIDGES.some(b => Math.abs(p.z - b.z) <= RIVER.bridgeHalf));
-  for (const s of [-2.25, 0, 2.25]) for (const w of [-0.86, 0.86]) {
-    const x = p.x + s * sin + w * cos;
-    const z = p.z + s * cos - w * sin;
-    const at = riverAt(z);
-    assert(at.hw - Math.abs(x - at.x) > 0.1, `The skiff must stay inside the channel (${ms} ms)`);
-    if (RIVER_BRIDGES.some(b => Math.abs(z - b.z) <= RIVER.bridgeHalf)) {
-      assert(groundY(x, z) - RIVER.bridgeDepth - RIVER_BOAT_HEIGHT - 0.10 > 0.35, `The canopy must fit below the arch (${ms} ms)`);
+for (const { id, z } of RIVER_BOATS) {
+  const duration = riverTourDuration(id);
+  assert(!expansionWaterBlocked(RIVER_DOCK.x, z));
+  assert.equal(groundY(RIVER_DOCK.x, z), RIVER_DOCK.y);
+  const initialBoat = riverBoatAt(0, id), finalBoat = riverBoatAt(duration, id);
+  assert(Math.hypot(initialBoat.x - finalBoat.x, initialBoat.z - finalBoat.z) < 0.01, 'The skiff must return to its berth');
+  assert(Math.cos(initialBoat.ry - finalBoat.ry) > 0.99, 'The skiff should dock without snapping its heading');
+  for (let ms = 0; ms <= duration; ms += 25) {
+    const p = riverBoatAt(ms, id);
+    const sin = Math.sin(p.ry), cos = Math.cos(p.ry);
+    if (ms > 500 && ms < duration - 500) assert(expansionWaterBlocked(p.x, p.z) || RIVER_BRIDGES.some(b => Math.abs(p.z - b.z) <= RIVER.bridgeHalf));
+    for (const s of [-2.25, 0, 2.25]) for (const w of [-0.86, 0.86]) {
+      const x = p.x + s * sin + w * cos;
+      const z = p.z + s * cos - w * sin;
+      const at = riverAt(z);
+      assert(at.hw - Math.abs(x - at.x) > 0.1, `Skiff ${id + 1} must stay inside the channel (${ms} ms)`);
+      if (RIVER_BRIDGES.some(b => Math.abs(z - b.z) <= RIVER.bridgeHalf)) {
+        assert(groundY(x, z) - RIVER.bridgeDepth - RIVER_BOAT_HEIGHT - 0.10 > 0.35, `The canopy must fit below the arch (${ms} ms)`);
+      }
+    }
+    // Sweep the seated avatar envelope (including hat and the skiff's bob/tilt) under each arch.
+    if (!RIVER_BRIDGES.some(b => Math.abs(p.z - b.z) <= RIVER.bridgeHalf + 1.5)) continue;
+    for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) {
+      const s = RIVER_BOAT_SEAT_Z + i * .12, w = j * .12;
+      const x = p.x + s * sin + w * cos, z = p.z + s * cos - w * sin;
+      if (RIVER_BRIDGES.some(b => Math.abs(z - b.z) <= RIVER.bridgeHalf)) {
+        assert(groundY(x, z) - RIVER.bridgeDepth > 2.46, `The seated passenger must fit below the arch (${ms} ms)`);
+      }
     }
   }
-  // Sweep the seated avatar envelope (including hat and the skiff's bob/tilt) under each arch.
-  if (!RIVER_BRIDGES.some(b => Math.abs(p.z - b.z) <= RIVER.bridgeHalf + 1.5)) continue;
-  for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) {
-    const s = RIVER_BOAT_SEAT_Z + i * .12, w = j * .12;
-    const x = p.x + s * sin + w * cos, z = p.z + s * cos - w * sin;
-    if (RIVER_BRIDGES.some(b => Math.abs(z - b.z) <= RIVER.bridgeHalf)) {
-      assert(groundY(x, z) - RIVER.bridgeDepth > 2.46, `The seated passenger must fit below the arch (${ms} ms)`);
-    }
+}
+for (const offsets of [[0, 0, 0], [0, 3300, 58_000]]) {
+  const fleet: RiverBoatTrip[] = [];
+  for (const { id } of RIVER_BOATS) {
+    const now = offsets[id];
+    const start = riverDeparture(id, now, fleet);
+    assert(start !== undefined && start - now < 15_000, 'Three riders should be able to board with only a short departure delay');
+    fleet.push({ id, start });
+  }
+  const lastArrival = Math.max(...fleet.map(({ id, start }) => start + riverTourDuration(id)));
+  for (let ms = 0; ms <= lastArrival; ms += 25) {
+    const poses = fleet.map(({ id, start }) => riverBoatAt(ms - start, id));
+    assert(!riverBoatsOverlap(poses[0], poses[1]) && !riverBoatsOverlap(poses[0], poses[2]) && !riverBoatsOverlap(poses[1], poses[2]), `Skiffs should keep clear of one another (${ms} ms)`);
   }
 }
 for (const pos of [{ x: -78, z: -2 }, { x: riverAt(-20).x, z: -20 }, { x: RIVER.pond.x, z: RIVER.pond.z + 2 }, { x: -70, z: -35 }]) {

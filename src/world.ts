@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { FireworkSize } from '../shared/types';
-import { RIVER_DOCK } from '../shared/river-tour';
+import { nearRiverDock } from '../shared/river-tour';
 import { ROAD_EDGES, ROAD_NODES } from '../shared/roads';
 import type { Collider } from '../shared/pathfind';
 import { createFireworks, type FireworkCue } from './fireworks';
@@ -376,7 +376,7 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     const grp = new THREE.Group();
     const rz = Math.max(RIVER_SOURCE_Z + 2, Math.min(RIVER_MOUTH_Z + 1, z + 0.46));
     const at = riverAt(rz);
-    const dock = Math.hypot(x - RIVER_DOCK.x, z - RIVER_DOCK.z) <= RIVER_DOCK.r + 0.1;
+    const dock = nearRiverDock(x, z);
     const offering = !afloat && Math.hypot(x - DUOC_SU.x, z - DUOC_SU.z) < 8;
     const river = !offering && (afloat || dock || (z >= RIVER_SOURCE_Z && z <= RIVER_MOUTH_Z && Math.abs(x - at.x) <= at.hw + 2));
     if (river) {

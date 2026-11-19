@@ -24,7 +24,7 @@ import {
 } from '../shared/game.js';
 import type { BellHeard, FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
 import { clampCampus, expansionWaterBlocked, resolveExpansionWater } from '../shared/campus.js';
-import { RIVER_BOAT_SEAT_Y, RIVER_BOAT_SEAT_Z, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour.js';
+import { RIVER_BOATS, RIVER_BOAT_SEAT_Y, RIVER_BOAT_SEAT_Z, RIVER_DOCK, nearRiverDock, riverBoatAt, riverDeparture, riverTourDuration, type RiverBoatState, type RiverBoatTrip } from '../shared/river-tour.js';
 import { bindRitualSocket, ritualOnJoin, startRitualLoops, type RitualEnv, type RtSession } from './rituals.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
@@ -142,7 +142,7 @@ interface Session {
   haloLevel?: 0 | 1 | 2;
   /** trạng thái nghi lễ/khóa thiền nhóm (server/rituals.ts) */
   rt?: RtSession['rt'];
-  boatStart?: number;
+  boat?: RiverBoatTrip;
 }
 const sessions = new Map<string, Session>();
 const meditationDepartures = new Map<number, Promise<void>>();
@@ -501,6 +501,11 @@ async function rankings(): Promise<{ weekly: RankRow[]; all: RankRow[] }> {
 }
 
 function leaveRoom(s: Session) {
+  if (s.boat) {
+    // An empty skiff finishes its trip, so its reserved path never snaps back into another hull.
+    s.boat.rider = undefined;
+    s.boat = undefined;
+  }
   s.socket.leave(s.room);
   s.socket.to(s.room).emit('player:leave', s.state.id);
 }
@@ -539,23 +544,28 @@ const lastPos = new Map<number, { x: number; z: number; ry: number; room: string
 
 function saveTombstone(s: Session): void {
   if (!s.resume) return;
-  const p = s.boatStart === undefined ? s.state : RIVER_DOCK;
+  const p = s.boat ? { x: RIVER_DOCK.x, z: RIVER_BOATS[s.boat.id].z } : s.state;
   lastPos.set(s.pid, { x: p.x, z: p.z, ry: s.state.ry, room: s.room, resume: s.resume, at: Date.now() });
 }
 
+const roomBoatTrips = new Map<string, RiverBoatTrip[]>();
+const riverFleetState = (room: string, now: number): RiverBoatState[] => (roomBoatTrips.get(room) ?? [])
+  .map(({ id, start, rider }) => ({ id, elapsed: now - start, rider }));
+
 function updateRiverPassenger(s: Session, now: number): void {
-  if (s.boatStart === undefined) return;
-  const elapsed = now - s.boatStart;
-  if (elapsed >= RIVER_TOUR_MS) {
-    s.boatStart = undefined;
-    const { x, z } = RIVER_DOCK;
-    Object.assign(s.state, { x, z, y: undefined, boatMs: undefined, ry: Math.PI / 2 });
+  if (!s.boat) return;
+  const { id, start } = s.boat;
+  const elapsed = now - start;
+  if (elapsed >= riverTourDuration(id)) {
+    s.boat = undefined;
+    const x = RIVER_DOCK.x, z = RIVER_BOATS[id].z;
+    Object.assign(s.state, { x, z, y: undefined, ry: Math.PI / 2 });
     s.socket.emit('river:arrive', { x, z });
     return;
   }
-  const { x, z, ry } = riverBoatAt(elapsed);
+  const { x, z, ry } = riverBoatAt(elapsed, id);
   Object.assign(s.state, { x: x + Math.sin(ry) * RIVER_BOAT_SEAT_Z, z: z + Math.cos(ry) * RIVER_BOAT_SEAT_Z,
-    ry, y: RIVER_BOAT_SEAT_Y, boatMs: elapsed });
+    ry, y: RIVER_BOAT_SEAT_Y });
 }
 
 async function requireAdmin(s: Session | undefined): Promise<boolean> {
@@ -669,6 +679,7 @@ io.on('connection', (socket) => {
     socket.emit('welcome', {
       id: socket.id, room,
       players: [...roomSessions(room).map((x) => x.state), ...npcStates(room)],
+      boats: riverFleetState(room, Date.now()),
       chat: (roomChat.get(room) ?? []).slice(-30),
       lanterns: (roomLanterns.get(room) ?? []).slice(-20),
       meditation: meditationInfo(room),
@@ -698,25 +709,35 @@ io.on('connection', (socket) => {
   const me = () => sessions.get(socket.id);
   bindRitualSocket(ritualEnv, socket, me);
 
-  socket.on('river:board', (reply?: (r: { ok: boolean; error?: string }) => void) => {
+  socket.on('river:board', (reply?: (r: { ok: false; error: string } | { ok: true; boat: RiverBoatState }) => void) => {
     if (typeof reply !== 'function') return;
     const s = me();
-    if (!s || Math.hypot(s.state.x - RIVER_DOCK.x, s.state.z - RIVER_DOCK.z) > RIVER_DOCK.r) {
+    if (!s || !nearRiverDock(s.state.x, s.state.z)) {
       return reply({ ok: false, error: 'Hãy tới gần bến thuyền Sông Đông.' });
     }
-    if (roomSessions(s.room).some(p => p.boatStart !== undefined)) {
-      return reply({ ok: false, error: 'Thuyền đang du ngoạn. Vui lòng đợi thuyền về bến.' });
-    }
+    if (s.boat) return reply({ ok: false, error: 'Bạn đã lên thuyền.' });
     const now = Date.now();
-    s.boatStart = now;
+    const trips = roomBoatTrips.get(s.room) ?? [];
+    const available = RIVER_BOATS.filter(({ id }) => !trips.some(t => t.id === id));
+    if (!available.length) return reply({ ok: false, error: 'Cả 3 thuyền đang bận. Vui lòng đợi một thuyền về bến.' });
+    let next: RiverBoatTrip | undefined;
+    for (const { id } of available) {
+      const start = riverDeparture(id, now, trips);
+      if (start !== undefined && (!next || start < next.start)) next = { id, start, rider: socket.id };
+      if (start === now) break;
+    }
+    if (!next) return reply({ ok: false, error: 'Luồng vào bến chưa thông. Vui lòng thử lại sau.' });
+    trips.push(next);
+    roomBoatTrips.set(s.room, trips);
+    s.boat = next;
     setSessionAnim(s, 'idle', now);
     updateRiverPassenger(s, now);
-    reply({ ok: true });
+    reply({ ok: true, boat: { id: next.id, elapsed: now - next.start, rider: socket.id } });
   });
 
   socket.on('move', async (m: { x: number; z: number; ry: number; anim: Anim }) => {
     const s = me();
-    if (!s || s.boatStart !== undefined || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
+    if (!s || s.boat || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
     const next = { x: Math.max(-MAP_HALF, Math.min(MAP_HALF, m.x)), z: Math.max(MAP_Z_MIN, Math.min(MAP_Z_MAX, m.z)) };
     clampCampus(next);
     if (expansionWaterBlocked(next.x, next.z)) return;
@@ -754,7 +775,7 @@ io.on('connection', (socket) => {
   socket.on('action', async (kind: ActionKind, wish?: string) => {
     const s = me();
     const rule = Object.hasOwn(ACTION_RULES, kind) ? ACTION_RULES[kind] : undefined;
-    if (!s || !rule || (s.boatStart !== undefined && kind !== 'lantern')) return;
+    if (!s || !rule || (s.boat && kind !== 'lantern')) return;
     const now = Date.now();
     if (now - (s.last[kind] ?? 0) < rule.cooldownMs) return;
     s.last[kind] = now;
@@ -765,7 +786,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const origin = { x: s.state.x, z: s.state.z, afloat: s.boatStart !== undefined };
+    const origin = { x: s.state.x, z: s.state.z, afloat: !!s.boat };
     let merit = rule.merit;
     // vật phẩm tăng công đức: dùng món boost đang có (ưu tiên món đầu tiên trong danh sách)
     for (const boostId of rule.boostItems ?? []) {
@@ -1647,6 +1668,7 @@ io.on('connection', (socket) => {
     const s = sessions.get(socket.id);
     if (!s) return;
     saveTombstone(s);
+    if (s.boat) s.boat.rider = undefined;
     sessions.delete(socket.id);
     io.to(s.room).emit('player:leave', socket.id);
     const departure = endMeditationSession(s);
@@ -1663,9 +1685,14 @@ setInterval(() => {
   for (const r of ROOMS) {
     const list = roomSessions(r.id);
     const nr = npcRoom(r.id);
+    const now = Date.now();
+    const trips = roomBoatTrips.get(r.id);
+    if (trips) {
+      const ongoing = trips.filter(t => now < t.start + riverTourDuration(t.id));
+      if (ongoing.length) roomBoatTrips.set(r.id, ongoing); else roomBoatTrips.delete(r.id);
+    }
     if (!list.length) { nr.sleeping = true; continue; }
     resumeNpcs(nr);
-    const now = Date.now();
     for (const s of list) updateRiverPassenger(s, now);
     const npcs = tickNpcs(nr, now, list.length);
     tickAnimals(r.id, 0.1);
@@ -1685,7 +1712,8 @@ setInterval(() => {
     }
     io.to(r.id).volatile.emit('state', {
       online: list.length,
-      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, y: p.y, boatMs: p.boatMs, ry: p.ry, anim: p.anim, act: p.npc ? (p.act ?? null) : (p.anim === 'chant' ? 'chant' : p.anim === 'sit' ? 'meditate' : null) })),
+      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, y: p.y, ry: p.ry, anim: p.anim, act: p.npc ? (p.act ?? null) : (p.anim === 'chant' ? 'chant' : p.anim === 'sit' ? 'meditate' : null) })),
+      boats: riverFleetState(r.id, now),
       animals: getAnimalStates(r.id),
     });
   }
