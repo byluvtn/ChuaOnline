@@ -6,7 +6,7 @@ import { fitModel, loadModel } from './models';
 import { paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
 import { glowTexture, grassTexture, petalTexture, signTexture, signTexture2Lines, stoneTexture } from './textures';
 import { geo, outlined, toon } from './toon';
-import { blocked, nearWalkway, clampToCompound, LAKE, HALL, LOTUS, RIVER, DUOC_SU } from './layout';
+import { blocked, nearWalkway, clampToCompound, LAKE, HALL, LOTUS, RIVER, RIVER_MOUTH_Z, RIVER_SOURCE_Z, riverAt, DUOC_SU } from './layout';
 import { buildTemple, groundY, resolveWater, type Seat } from './temple';
 import { buildSeatedBuddhaStatue } from './statue-scan';
 import { buildGarden } from './garden';
@@ -206,9 +206,10 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     tip.position.y = 0.4; st.add(tip); sticks.add(st);
   }
   altar.add(sticks);
-  altar.position.set(3.4, groundY(3.4, -20.5), -20.5);
+  altar.name = 'main-courtyard-incense-urn';
+  altar.position.set(0, groundY(0, -17), -17);
   scene.add(altar);
-  colliders.push({ x: 3.4, z: -20.5, r: 1.9 });
+  colliders.push({ x: altar.position.x, z: altar.position.z, r: 1.9 });
 
   // ---- Trees (rounded canopies) + bushes + flowers (instanced) ----
   const trunkG = new THREE.CylinderGeometry(0.2, 0.34, 2.2, 8);
@@ -432,11 +433,14 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     }
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: 0xffa030, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
     spr.scale.setScalar(2.4); grp.add(spr);
-    const river = Math.abs(x - RIVER.x) < 7 && z >= RIVER.z0 - 2 && z <= 20;
+    const rz = Math.max(RIVER_SOURCE_Z, Math.min(RIVER_MOUTH_Z, z + 1.8));
+    const inRiver = z >= RIVER_SOURCE_Z - 2 && z <= 20;
+    const river = inRiver && Math.abs(x - riverAt(rz).x) < riverAt(rz).hw + 2;
+    const riverX = riverAt(rz).x;
     const lotus = Math.hypot((x - LOTUS.x) / 14, (z - LOTUS.z) / 12) < 1;
     const offering = Math.hypot(x - DUOC_SU.x, z - DUOC_SU.z) < 8;
     grp.scale.setScalar(river || lotus || offering ? 0.45 : 1);
-    grp.position.set(river ? RIVER.x : lotus ? LOTUS.x - 2 : x + (Math.random() - 0.5) * 0.6, river || lotus ? 0.18 : groundY(x, z) + 1.6, river ? Math.min(12, z + 1.8) : lotus ? LOTUS.z : z + (Math.random() - 0.5) * 0.6);
+    grp.position.set(river ? riverX : lotus ? LOTUS.x - 2 : x + (Math.random() - 0.5) * 0.6, river || lotus ? 0.18 : groundY(x, z) + 1.6, river ? rz : lotus ? LOTUS.z : z + (Math.random() - 0.5) * 0.6);
     if (offering) grp.position.set(DUOC_SU.x + (Math.random() - 0.5) * 2.5, DUOC_SU.y + 1.2, DUOC_SU.z - 1.4);
     scene.add(grp);
     floaters.push({ m: grp, vy: river || lotus || offering ? 0 : 0.9 + Math.random() * 0.5, life: 16, max: 16, light: spr, river, lotus, offering });
@@ -635,7 +639,11 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
       const f = floaters[i];
       f.m.position.y += f.vy * dt;
       if (!f.offering) f.m.position.x += Math.sin(t + i) * (f.river || f.lotus ? 0.035 : 0.25) * dt;
-      if (f.river) f.m.position.z = Math.min(17, f.m.position.z + dt * 0.3);
+      if (f.river) {
+        f.m.position.z = Math.min(17, f.m.position.z + dt * 0.3);
+        const at = riverAt(f.m.position.z);
+        f.m.position.x = at.x + Math.sin(f.m.position.z * 0.4) * at.hw * 0.35;
+      }
       f.m.rotation.y += dt * 0.5;
       f.life -= dt;
       if (f.light) (f.light.material as THREE.SpriteMaterial).opacity = Math.min(0.9, f.life / (f.fade ?? 3)) * (0.8 + Math.sin(t * 6 + i) * 0.2);

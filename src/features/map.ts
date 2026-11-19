@@ -3,7 +3,7 @@ import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
 import { NGOC_HALL, NGOC_TERRACE } from '../../shared/campus';
 import { PLACES, type Place } from '../data/places';
-import { LOTUS, RIVER, DUOC_SU, NGOC, NGOC_APPROACH, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
+import { LOTUS, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_APPROACH, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
 export function openMap(ctx: MenuCtx) {
   openCustomPanel('Bản đồ chùa', (body) => {
@@ -40,8 +40,6 @@ export function openMap(ctx: MenuCtx) {
       rect(-58, -47, 58, -45, '#e8d6a4');
       rect(-60.3, -78, -57.7, 41, '#e8d6a4'); rect(57.7, -78, 60.3, 41, '#e8d6a4'); rect(-58, 39.8, 58, 42.2, '#e8d6a4');
       for (const v of [VIEN_KT, VIEN_TO]) {
-        rect(v.x0, v.z0, v.x1, v.z1, '#ddd9b0', '#8a5a2b');
-        g.fillStyle = '#e8d6a4'; g.fillRect(X(v.gateX - 1.6), Z(v.z1) - 2 * dpr, 3.2 * k, 4 * dpr);
         rect(v.gateX - 1.2, -58, v.gateX + 1.2, v.z1, '#e8d6a4');
       }
       rect(-48, -59.2, -27, -56.8, '#e8d6a4'); rect(27, -59.2, 50, -56.8, '#e8d6a4');
@@ -60,7 +58,21 @@ export function openMap(ctx: MenuCtx) {
       rect(NGOC.x - NGOC_TERRACE.half, NGOC_TERRACE.north, NGOC.x + NGOC_TERRACE.half, NGOC.stairTop, '#d4d1bd', '#8b9684');
       ellipse(LOTUS.x, LOTUS.z, LOTUS.a, LOTUS.b, '#8ec6e0', '#4f8fb0');
       rect(-90, 0.9, -66, 3.1, '#d9c6a2', '#8a8270');
-      rect(RIVER.x0, RIVER.z0, RIVER.x1, RIVER.z1, '#8ec6e0', '#4f8fb0');
+      const riverPath = (fill: string, stroke?: string) => {
+        g.beginPath();
+        for (let i = 0; i < RIVER_PATH.length; i++) {
+          const a = RIVER_PATH[i];
+          if (i) g.lineTo(X(a.x - a.hw), Z(a.z)); else g.moveTo(X(a.x - a.hw), Z(a.z));
+        }
+        for (let i = RIVER_PATH.length - 1; i >= 0; i--) {
+          const a = RIVER_PATH[i];
+          g.lineTo(X(a.x + a.hw), Z(a.z));
+        }
+        g.closePath();
+        g.fillStyle = fill; g.fill();
+        if (stroke) { g.strokeStyle = stroke; g.lineWidth = dpr; g.stroke(); }
+      };
+      riverPath('#8ec6e0', '#4f8fb0');
       ellipse(65, 16, 3, 4, '#8ec6e0', '#4f8fb0');
       for (const z of RIVER.bridges) rect(60.5, z - 1.4, 69.5, z + 1.4, '#d9c6a2', '#8a8270');
       rect(FARM.x - 12, -55, FARM.x + 12, -30, '#a3bd79', '#7d9b6c');

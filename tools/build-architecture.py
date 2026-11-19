@@ -5,6 +5,7 @@ the Blender/glTF axis conversion once; assets are placed at scale 1 in the game.
 """
 import json
 import math
+import sys
 from pathlib import Path
 
 import bpy
@@ -138,7 +139,8 @@ class Building:
             shift = s * (length + window) / 4
             panel(x if side else x + shift, base + height / 2, z + shift if side else z,
                   (length - window) / 2, height, .20)
-        for cy, h in [(base + .45, .9), (base + height - .3, .6)]:
+        head = height - 2.5
+        for cy, h in [(base + .45, .9), (base + 2.5 + head / 2, head)]:
             panel(x, cy, z, window, h, .20)
         for s in [-1, 1]:
             shift = s * window / 2
@@ -152,7 +154,7 @@ class Building:
             self.box('darkwood', x, cy, z, .14 if side else window + .16, .12,
                      window + .16 if side else .14)
 
-    def finish(self, expected):
+    def finish(self, expected, export=True):
         objects = []
         for key, (vertices, faces) in self.parts.items():
             mesh = bpy.data.meshes.new(f'{self.name}-{key}')
@@ -183,9 +185,10 @@ class Building:
         assert len(objects) <= 6
         assert all(abs(a - b) < .25 for a, b in zip(size, expected['size'])), size
         path = MODELS / f'{self.name}.glb'
-        bpy.ops.export_scene.gltf(filepath=str(path), export_format='GLB', use_selection=True,
-                                  export_yup=True, export_texcoords=False, export_normals=True,
-                                  export_animations=False, export_cameras=False, export_lights=False)
+        if export:
+            bpy.ops.export_scene.gltf(filepath=str(path), export_format='GLB', use_selection=True,
+                                      export_yup=True, export_texcoords=False, export_normals=True,
+                                      export_animations=False, export_cameras=False, export_lights=False)
         assert path.stat().st_size < 1500000
         return {'name': self.name, 'sizeMetersXYZ': size, 'triangles': triangles,
                 'materials': list(self.parts), 'meshes': len(objects), 'bytes': path.stat().st_size,
@@ -199,24 +202,24 @@ hall.box('stone', 0, floor / 2, 0, 12, floor, 9)
 for x in [-5, -1.8, 1.8, 5]:
     for z in [-3.9, 3.9]:
         hall.box('stone', x, floor + .13, z, .62, .26, .62)
-        hall.tube('timber', (x, floor + .26, z), (x, floor + 3.96, z), .31, 12, .26)
-        hall.box('gold', x, floor + 4.07, z, 1.05, .22, 1.05)
+        hall.tube('timber', (x, floor + .26, z), (x, floor + 5.31, z), .31, 12, .26)
+        hall.box('gold', x, floor + 5.42, z, 1.05, .22, 1.05)
         for side in [-1, 1]:
-            hall.tube('darkwood', (x, floor + 3.25, z), (x + side * .65, floor + 3.95, z), .10, 6)
+            hall.tube('darkwood', (x, floor + 4.60, z), (x + side * .65, floor + 5.30, z), .10, 6)
 for z in [-3.9, 3.9]:
-    hall.box('timber', 0, 4.63, z, 11.4, .42, .7)
+    hall.box('timber', 0, 5.98, z, 11.4, .42, .7)
 for x in [-5, 5]:
-    hall.box('timber', x, 4.63, 0, .7, .42, 8.4)
-hall.box('plaster', 0, 2.81, -3.9, 10.6, 4.2, .24)
+    hall.box('timber', x, 5.98, 0, .7, .42, 8.4)
+hall.box('plaster', 0, 3.405, -3.9, 10.6, 5.39, .24)
 for x in [-5, 5]:
-    hall.wall_with_window(x, 0, 7.6, .71, 4.2, side=True)
-hall.roof(15, 11.4, 4.93, 2.6, .62)
-hall.box('timber', 0, 7.62, 0, 6.4, 1.15, 4.6)
+    hall.wall_with_window(x, 0, 7.6, .71, 5.39, side=True)
+hall.roof(15, 11.4, 6.28, 4.0, .62)
+hall.box('timber', 0, 10.37, 0, 6.4, 1.15, 4.6)
 for z in [-2.31, 2.31]:
     for x in [-2.4, -1.2, 0, 1.2, 2.4]:
-        hall.box('darkwood', x, 7.78, z, .65, .36, .07)
-hall.roof(7.6, 5.8, 7.53, 1.6, .5)
-hall.tube('gold', (0, 9.1, 0), (0, 10.05, 0), .16, 8, .025)
+        hall.box('darkwood', x, 10.53, z, .65, .36, .07)
+hall.roof(7.6, 5.8, 10.28, 2.4, .5)
+hall.tube('gold', (0, 12.63, 0), (0, 14.07, 0), .16, 8, .025)
 
 hut = Building('tinh-that-blender')
 hut.box('stone', 0, .08, 0, 3.2, .16, 2.5)
@@ -238,8 +241,9 @@ for x in [-1.3, 1.3]:
 hut.roof(4.2, 3.6, 2.54, 1.1, .33)
 hut.tube('gold', (0, 3.65, 0), (0, 3.95, 0), .09, 8, .015)
 
-report = [hall.finish({'triangles': 18000, 'size': [15.12, 10.05, 11.52], 'floor': .45}),
-          hut.finish({'triangles': 6000, 'size': [4.32, 3.95, 3.72], 'floor': .16})]
+hall_only = '--duoc-su-only' in sys.argv
+report = [hall.finish({'triangles': 18000, 'size': [15.12, 14.07, 11.52], 'floor': .45}),
+          hut.finish({'triangles': 6000, 'size': [4.32, 3.95, 3.72], 'floor': .16}, export=not hall_only)]
 # Separate editable source collections for inspection; exported assets stay at the origin.
 for obj in hut.collection.objects:
     obj.location.x = 20

@@ -132,7 +132,7 @@ function flameGeometry() {
 }
 
 /** Hào quang: Torus (R 1.3, ống 0.08, 16×32) + 8 ngọn lửa cách đều trên vành. Emissive nhẹ. */
-function buildHalo(radius: number, y: number, z: number, flames = 8): THREE.Group {
+export function buildHalo(radius: number, y: number, z: number, flames = 8): THREE.Group {
   const halo = new THREE.Group();
   halo.name = 'halo';
   halo.position.set(0, y, z);

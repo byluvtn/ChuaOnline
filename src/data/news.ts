@@ -5,9 +5,45 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 143;
+export const LATEST_NEWS_ID = 148;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Thời gian thiền được cộng dồn trong ngày',
+    date: '2026-11-19',
+    items: [
+      'Có thể thiền qua nhiều phiên: tổng 10 phút mở hào quang thường, tổng 20 phút mở hào quang lớn. Ví dụ, 5 phút buổi sáng và 5 phút buổi chiều vẫn được tính đủ 10 phút.',
+      'Đồng hồ thiền hiển thị tổng thời gian hôm nay. Thời gian và hào quang đặt lại lúc 00:00 giờ Việt Nam.',
+    ],
+  },
+  {
+    title: 'Chùa Ngọc và Điện Dược Sư cao hơn',
+    date: '2026-11-19',
+    items: [
+      'Cầu thang lên Chùa Ngọc đạt cao độ 8,4 m và vẫn có 299 bậc, hai chiếu nghỉ. Gian thờ trên đỉnh và Điện Dược Sư được nâng cao mà không đổi vị trí hay mặt bằng.',
+    ],
+  },
+  {
+    title: 'Sông Đông uốn hình chữ S, thác Bản Giốc mở rộng',
+    date: '2026-11-18',
+    items: [
+      'Dòng sông Đông giờ uốn lượn như chữ S: thác đầu nguồn mở rộng gần tới tường Đông, đoạn qua Điện Dược Sư cong lại và thu hẹp, rồi lại mở rộng về phía nam. Hai cầu đá vẫn bắc qua sông như cũ, đường thiền hành ven sông cũng uốn theo bờ mới.',
+    ],
+  },
+  {
+    title: 'Mở lối lên Chùa Ngọc: dỡ hàng rào hai viện',
+    date: '2026-11-18',
+    items: [
+      'Hàng rào bao quanh Viện Khách Tăng và Viện Tổ đã được dỡ bỏ. Giờ thí chủ có thể đi bộ từ sân chính vòng qua Điện Tam Thế lên chân thang Chùa Ngọc cả hai phía đông và tây. Nhà Tổ và Trai Đường vẫn ở nguyên vị trí.',
+    ],
+  },
+  {
+    title: 'Tám tượng chibi có hào quang',
+    date: '2026-11-18',
+    items: [
+      'Tám pho tượng chibi ở Chính Điện và Điện Tam Thế giờ đều có hào quang vàng phía sau đầu, xoay nhẹ như trước đây. Hào quang gắn theo từng vị trí đặt tượng nên vẫn hiện đúng dù tượng là bản GLB hay bản dự phòng.',
+    ],
+  },
   {
     title: 'Tin hệ thống: vào chùa, thỉnh chuông, lên cấp, thiền đủ giờ đều có tin vàng',
     date: '2026-11-19',

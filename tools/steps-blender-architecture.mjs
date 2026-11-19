@@ -33,7 +33,7 @@ export default async ({ ev, send, sleep, shot }) => {
   if (!result || result.instances.length !== 4 || result.fallbacks.length || result.routes.some(r=>r.fallback)) throw new Error('GLB replacement failed');
   for (const instance of result.instances) {
     const hall = instance.name.startsWith('dien');
-    if (instance.meshes !== 6 || instance.materials !== 6 || Math.abs(instance.size[1] - (hall ? 10.05 : 3.95)) > .02 || Math.abs(instance.minY) > .001) throw new Error('Size/material mismatch');
+    if (instance.meshes !== 6 || instance.materials !== 6 || Math.abs(instance.size[1] - (hall ? 14.07 : 3.95)) > .02 || Math.abs(instance.minY) > .001) throw new Error('Size/material mismatch');
   }
   if (result.floor[0] !== .45 || result.floor[1] !== .16 || result.seats < 7) throw new Error('Floor/seat regression');
   await send('Emulation.setDeviceMetricsOverride', { width: 1100, height: 800, deviceScaleFactor: 1, mobile: false });

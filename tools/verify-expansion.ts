@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, riverAt, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
 import { MAP_HALF, MAP_Z_MIN, MAP_Z_MAX } from '../shared/types';
 import { clampToCompound, resolveBridge, resolveWater, groundY, nearWalkway, NGOC_APPROACH, WALKWAY_RECTS, TAM_THE_PLAT, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP } from '../src/layout';
 import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath } from '../shared/roads';
@@ -26,6 +26,7 @@ for (const side of [-1, 1]) {
   assert(Math.abs(overRail.x - BRIDGE.x) < BRIDGE.hw, 'the new rail still keeps walkers on the deck');
 }
 const profile = ngocStepProfile();
+assert.equal(NGOC.y, 8.4);
 const offDeck = { x: -78, z: 2.91 }, onDeck = { x: -78, z: 2.89 };
 resolveWater(offDeck, false, onDeck);
 assert.deepEqual(offDeck, onDeck, 'a water-entry step must restore the previous point');
@@ -42,8 +43,8 @@ for (const step of profile) assert(Math.abs(groundY(0, (step.z0 + step.z1) / 2) 
 let prior = 0;
 for (let z = NGOC.stairStart; z >= NGOC.stairTop; z -= 0.025) {
   const y = groundY(0, z);
-  assert(y >= prior - 1e-8 && y <= 6);
-  assert(y - prior < 0.021);
+  assert(y >= prior - 1e-8 && y <= NGOC.y);
+  assert(y - prior <= NGOC.y / NGOC.steps + 1e-8);
   prior = y;
 }
 assert.equal(expansionGroundY(NGOC.x, NGOC.stairTop), NGOC.y);
@@ -106,11 +107,17 @@ const southGate = { x: 0, z: 45 }; clampToCompound(southGate); assert.equal(sout
 const southWall = { x: 20, z: 45 }; clampToCompound(southWall); assert(southWall.z > 45.5);
 for (let x = -95; x <= -60; x += 0.1) assert(!expansionWaterBlocked(x, 2), `Lotus bridge blocked at ${x}`);
 for (const z of RIVER.bridges) for (let x = 59; x <= 71; x += 0.1) assert(!expansionWaterBlocked(x, z), `River bridge blocked at ${x},${z}`);
-for (const pos of [{ x: -78, z: -2 }, { x: 65, z: -20 }, { x: 65, z: 16 }, { x: -70, z: -35 }]) {
+for (const pos of [{ x: -78, z: -2 }, { x: riverAt(-20).x, z: -20 }, { x: 65, z: 16 }, { x: -70, z: -35 }]) {
   assert(expansionWaterBlocked(pos.x, pos.z));
   resolveWater(pos, false);
   assert(!expansionWaterBlocked(pos.x, pos.z), `Water escape failed ${JSON.stringify(pos)}`);
 }
+// Sông Đông uốn chữ S: tim sông lệch đông ở thượng nguồn, hẹp nhất ngang Điện Dược Sư.
+assert.equal(expansionWaterBlocked(62, -50), false, 'the bend swings east, so the west side is now dry');
+assert(expansionWaterBlocked(75, -70), 'the widened northern reach must be water');
+assert(expansionWaterBlocked(79, -82), 'the widened head basin must be water');
+assert.equal(riverAt(-38).hw, 1.5);
+assert(riverAt(-82).x > 76 && riverAt(14).x > 64);
 const graph = createPathfinder([], { avoid: p => expansionWaterBlocked(p.x, p.z) });
 assert(!graph.segmentClear(60, -20, 70, -20));
 assert(graph.segmentClear(60, 2, 70, 2));

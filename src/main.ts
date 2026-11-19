@@ -8,7 +8,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, NGOC, NGOC_APPROACH, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND } from './layout';
+import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, RIVER_PATH, NGOC, NGOC_APPROACH, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -22,8 +22,8 @@ import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } fro
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
 import type { QuestErrorCode } from '../shared/game';
-import { ACTION_RULES, CHAIN_QUESTS, GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEEDS, MARKET_STALLS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
-import { weekKey } from '../shared/time';
+import { ACTION_RULES, CHAIN_QUESTS, GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEEDS, HALO_TIER1_SEC, HALO_TIER2_SEC, MARKET_STALLS, MEDITATE_TICK_MS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationDailyInfo, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
+import { dayKeyICT, weekKey } from '../shared/time';
 import { DIALOGUES } from './data/dialogues';
 import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, ROAD_NODES, ROAD_EDGES, type Pt } from '../shared/roads';
@@ -461,18 +461,40 @@ function updateQuestDot() {
   $('questDot').hidden = !quests.some((q) => q.progress >= q.target && !q.claimed);
 }
 let myHalo: 0 | 1 | 2 = 0;
-let mySitSince: number | null = null;
+/**
+ * Số giây thiền đã cộng dồn HÔM NAY do máy chủ gửi (event `meditation:daily`).
+ * Không suy ra từ đồng hồ client để số phút hiển thị khớp đúng với mốc cấp hào quang.
+ */
+let myMedSec = 0;
+let myMedDay = '';
+let myMedAt = 0; // thời điểm nhận số giây gần nhất (chỉ để nội suy hiển thị)
+/** Giây đã thiền hôm nay, nội suy thêm phần đang ngồi kể từ lần server gửi gần nhất. */
+function myMedSecNow(): number {
+  // Chỉ nội suy tối đa 1 tick (10 giây) giữa hai lần máy chủ gửi số liệu, để HUD không
+  // chạy trước khi server chốt giây (đồng hồ client có thể lệch / tab bị treo).
+  const extra = sitting && myMedAt ? Math.min(MEDITATE_TICK_MS, Math.max(0, Date.now() - myMedAt)) / 1000 : 0;
+  return myMedSec + extra;
+}
+const medMinutes = (sec: number) => Math.floor(sec / 60);
+/** Đổi ngày VN thì đặt lại số phút đã thiền để chờ số liệu mới từ máy chủ. */
+function syncMedDay(): void {
+  const today = dayKeyICT();
+  if (!myMedDay || today === myMedDay) return;
+  myMedDay = today; myMedSec = 0; myMedAt = Date.now();
+}
 function updateMeditationHud() {
   const b = $('medBanner');
   if (!meditation.sitting) { b.hidden = true; return; }
   b.hidden = false;
   b.classList.toggle('bonus', meditation.bonus);
+  const total = myMedSecNow();
+  const done = medMinutes(total);
+  const tier1 = medMinutes(HALO_TIER1_SEC), tier2 = medMinutes(HALO_TIER2_SEC);
   let haloText = '';
-  if (mySitSince !== null) {
-    const m = Math.floor((Date.now() - mySitSince) / 60000);
-    haloText = myHalo === 2 ? ' · Hào quang lớn đã hiện' : myHalo === 1 ? ` · Hào quang lớn: ${m}/20 phút` : ` · Hào quang của bạn: ${m}/10 phút`;
-  }
-  b.textContent = `Tĩnh lặng cả chùa: ${meditation.sitting} người đang thiền · ${meditation.minutes}/${meditation.goal} phút` + (meditation.bonus ? ' · Thiền tập thể x2' : ' · cần 3 người để x2') + haloText;
+  if (myHalo === 2) haloText = ' · Hào quang lớn đã hiện';
+  else if (myHalo === 1) haloText = ` · Hào quang lớn: ${Math.min(done, tier2)}/${tier2} phút`;
+  else haloText = ` · Hào quang của bạn: ${Math.min(done, tier1)}/${tier1} phút`;
+  b.textContent = `Tĩnh lặng cả chùa: ${meditation.sitting} người đang thiền · ${meditation.minutes}/${meditation.goal} phút` + (meditation.bonus ? ' · Thiền tập thể x2' : ' · cần 3 người để x2') + haloText + ` · Hôm nay đã thiền ${done} phút`;
 }
 const chatLog: ChatMessage[] = [];
 function addChat(m: ChatMessage) {
@@ -663,6 +685,13 @@ function connect() {
     if (dialogueNpc) { if (panelOpen()) openDialogue(dialogueNpc); else { dialogueNpc = null; dialogueSocialNpc = null; } }
   });
   s.on('meditation', (m: MeditationInfo) => { meditation = m; updateMeditationHud(); });
+  // Số giây thiền cộng dồn trong ngày VN do máy chủ tính và lưu — chỉ để hiển thị.
+  s.on('meditation:daily', (d: MeditationDailyInfo) => {
+    myMedSec = Math.max(0, Number(d?.sec) || 0);
+    myMedDay = String(d?.dayKey ?? '');
+    myMedAt = Date.now();
+    updateMeditationHud();
+  });
   s.on('player:join', addPlayer);
   s.on('player:leave', (id: string) => {
     const r = remotes.get(id);
@@ -680,6 +709,7 @@ function connect() {
       toast('Đã qua ngày mới — hào quang tắt, thiền lại để có hào quang mới.');
     }
     myHalo = level;
+    if (reason === 'reset') { myMedSec = 0; myMedAt = Date.now(); }
     if (me) me.char.setHalo(level);
   });
   const STALL_VENDORS: { stall: string; npc: string; x: number; z: number }[] = [
@@ -1356,6 +1386,8 @@ $('actions').appendChild(adminBtn);
 const clock = new THREE.Clock();
 let lastSentMove = { x: 0, z: 0, ry: 0, anim: '' };
 let lastSend = 0;
+/** mốc cập nhật banner thiền gần nhất (ms, performance.now) — chỉ để giới hạn 1 lần/giây */
+let lastHudTick: number | null = null;
 const tmp = new THREE.Vector3();
 
 let pathQueue: THREE.Vector3[] = [];
@@ -1817,8 +1849,7 @@ function drawMinimap() {
   g.fillRect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k);
   g.strokeStyle = '#765a39'; g.lineWidth = 1.5 * dpr;
   g.strokeRect(X(-WALL.x), Z(WALL.zN), WALL.x * 2 * k, (WALL.zS - WALL.zN) * k);
-  g.strokeStyle = '#d4c5a3'; g.lineWidth = Math.max(2, 3 * k);
-  g.lineCap = 'round'; g.beginPath();
+  g.strokeStyle = '#d4c5a3'; g.lineWidth = Math.max(2, 3 * k); g.lineCap = 'round'; g.beginPath();
   for (const [from, to] of ROAD_EDGES) {
     const a = MM_ROADS.get(from), b = MM_ROADS.get(to);
     if (a && b) { g.moveTo(X(a.x), Z(a.z)); g.lineTo(X(b.x), Z(b.z)); }
@@ -1831,7 +1862,17 @@ function drawMinimap() {
   for (const p of [LAKE, LOTUS, FARM_POND, PS_POND, RIVER.pond]) {
     g.beginPath(); g.ellipse(X(p.x), Z(p.z), p.a * k, p.b * k, 0, 0, Math.PI * 2); g.fill(); g.stroke();
   }
-  g.fillRect(X(RIVER.x0), Z(RIVER.z0), (RIVER.x1 - RIVER.x0) * k, (RIVER.z1 - RIVER.z0) * k);
+  g.beginPath();
+  for (let i = 0; i < RIVER_PATH.length; i++) {
+    const a = RIVER_PATH[i];
+    if (i) g.lineTo(X(a.x - a.hw), Z(a.z)); else g.moveTo(X(a.x - a.hw), Z(a.z));
+  }
+  for (let i = RIVER_PATH.length - 1; i >= 0; i--) {
+    const a = RIVER_PATH[i];
+    g.lineTo(X(a.x + a.hw), Z(a.z));
+  }
+  g.closePath(); g.fill(); g.stroke();
+  g.lineWidth = dpr;
   g.fillStyle = '#d6b994';
   g.fillRect(X(BRIDGE.x - BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
   g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, (NGOC.stairStart - NGOC.stairTop) * k);
@@ -2711,7 +2752,8 @@ function loop(now: number = performance.now()) {
     collide(root.position);
     root.position.y += (world.groundY(root.position.x, root.position.z) - root.position.y) * Math.min(1, dt * 14);
     me.anim = now < myActionUntil ? me.anim : sitting ? 'sit' : moving ? (running ? 'run' : 'walk') : 'idle';
-    if (me.anim === 'sit') { if (mySitSince === null) mySitSince = Date.now(); } else mySitSince = null;
+    // HUD cập nhật mỗi giây khi đang thiền để số phút cộng dồn đi theo thời gian thực.
+    if (sitting && now - (lastHudTick ?? 0) >= 1000) { lastHudTick = now; syncMedDay(); updateMeditationHud(); }
     // Trạng thái của chính mình: tụng kinh → 'chant', ngồi thiền → 'meditate'; chỉ vẽ lại khi đổi.
     const myAct: NpcAct | null = me.anim === 'chant' ? 'chant' : sitting ? 'meditate' : null;
     if (myAct !== me.act) { me.act = myAct; refreshLabel(me); }

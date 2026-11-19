@@ -235,6 +235,7 @@ CREATE TABLE IF NOT EXISTS halo_daily (
   player_id INTEGER NOT NULL,
   day_key TEXT NOT NULL,
   level INTEGER NOT NULL DEFAULT 0,
+  sec INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (player_id, day_key)
 );
 CREATE TABLE IF NOT EXISTS feedback (
@@ -260,6 +261,7 @@ try { await db.execute('ALTER TABLE players ADD COLUMN is_banned INTEGER NOT NUL
 try { await db.execute('ALTER TABLE players ADD COLUMN title TEXT'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN bio TEXT'); } catch { /* cột đã tồn tại */ }
 try { await db.execute('ALTER TABLE players ADD COLUMN age INTEGER'); } catch { /* cột đã tồn tại */ }
+try { await db.execute('ALTER TABLE halo_daily ADD COLUMN sec INTEGER NOT NULL DEFAULT 0'); } catch { /* cột đã tồn tại */ }
 try { await db.execute(`UPDATE garden_plots SET species = 'soi' WHERE species = 'anh_dao'`); } catch { /* migration anh_dao */ }
 try { await db.execute(`UPDATE inventory SET qty = qty + (SELECT qty FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_anh_dao') WHERE item_id = 'hat_soi' AND EXISTS (SELECT 1 FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_anh_dao')`); } catch { /* migration anh_dao */ }
 try { await db.execute(`DELETE FROM inventory WHERE item_id = 'hat_anh_dao' AND EXISTS (SELECT 1 FROM inventory AS o WHERE o.player_id = inventory.player_id AND o.item_id = 'hat_soi')`); } catch { /* migration anh_dao */ }
@@ -1051,12 +1053,36 @@ export const getHaloLevel = async (id: number): Promise<0 | 1 | 2> => {
   const r = (await db.execute({ sql: 'SELECT level FROM halo_daily WHERE player_id = ? AND day_key = ?', args: [id, dayKeyICT()] })).rows[0] as unknown as { level: number } | undefined;
   return r ? (Number(r.level) as 0 | 1 | 2) : 0;
 };
-/** Lưu tầng hào quang của hôm nay (ghi đè khi tăng tầng). */
-export async function setHaloLevel(id: number, level: 0 | 1 | 2): Promise<void> {
+export interface MeditationDailyRow { dayKey: string; sec: number; level: 0 | 1 | 2 }
+/** Đọc tổng số giây thiền đã cộng dồn và tầng hào quang của ngày hiện tại. */
+export async function getMeditationDaily(id: number, day = dayKeyICT()): Promise<MeditationDailyRow> {
+  const r = (await db.execute({ sql: 'SELECT day_key, sec, level FROM halo_daily WHERE player_id = ? AND day_key = ?', args: [id, day] })).rows[0] as unknown as { day_key: string; sec: number; level: number } | undefined;
+  return { dayKey: day, sec: r ? Math.max(0, Number(r.sec) || 0) : 0, level: r ? (Number(r.level) as 0 | 1 | 2) : 0 };
+}
+/**
+ * Cộng dồn số giây thiền của một ngày theo SQL nguyên tử. Mỗi session gửi tổng số giây
+ * đã tích lũy từ đầu phiên, không tin elapsed từ client. Hàm chỉ trả về level đã lưu
+ * (MAX) để máy chủ quyết định có phát event hào quang hay không; mọi retry/ghi trùng
+ * đều vô hại vì giá trị mới luôn >= giá trị cũ.
+ */
+export async function accrueMeditationDaily(id: number, sec: number, day = dayKeyICT()): Promise<MeditationDailyRow> {
+  const total = Math.max(0, Math.floor(sec));
   await db.execute({
-    sql: 'INSERT OR REPLACE INTO halo_daily (player_id, day_key, level) VALUES (?,?,?)',
-    args: [id, dayKeyICT(), level],
+    sql: `INSERT INTO halo_daily (player_id, day_key, level, sec) VALUES (?,?,0,?)
+      ON CONFLICT(player_id, day_key) DO UPDATE SET sec = MAX(halo_daily.sec, excluded.sec)`,
+    args: [id, day, total],
   });
+  return getMeditationDaily(id, day);
+}
+/** Nâng tầng hào quang trong ngày, không bao giờ hạ tầng (dùng cùng mốc cộng dồn). */
+export async function raiseHaloLevel(id: number, level: 0 | 1 | 2, day = dayKeyICT()): Promise<boolean> {
+  const result = await db.execute({
+    sql: `INSERT INTO halo_daily (player_id, day_key, level, sec) VALUES (?,?,?,0)
+      ON CONFLICT(player_id, day_key) DO UPDATE SET level = excluded.level
+      WHERE halo_daily.level < excluded.level RETURNING level`,
+    args: [id, day, level],
+  });
+  return result.rows.length > 0;
 }
 
 // ---- feedback ----

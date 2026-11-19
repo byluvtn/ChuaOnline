@@ -5,7 +5,7 @@ import { buildHall } from './hall';
 import { buildTamThe } from './tamthe';
 import { buildExpansion } from './expansion';
 import {
-  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, WALL, WALKWAY_RECTS, nearWalkway, bridgeY, groundY, inLake, inPsPond, resolveWater,
+  NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, WALL, WALKWAY_RECTS, nearWalkway, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
 import { buildArhat, buildQuanAm } from './statues';
 import { buildCorridorStatues } from './statue-corridor';
@@ -1378,82 +1378,6 @@ export function buildTemple(c: TempleCtx) {
   scene.add(sutra);
   const sutraSeal = sealArchitectureJoints(sutra, { maxGap: 0.3 });
   if (import.meta.env.DEV) console.warn(`gapdump sutraPillars: filled=${sutraSeal.filled} remaining=${sutraSeal.remaining.length} ` + JSON.stringify(sutraSeal.remaining));
-
-  // ---- Hàng rào + cổng hai viện (Viện Khách Tăng, Viện Tổ) ----
-  const buildVienFence = (v: { x0: number; x1: number; z0: number; z1: number; gateX: number }, signText: string) => {
-    const fence = new THREE.Group();
-    fence.name = `rao-vien-${signText}`;
-    const gateHalf = 1.6;
-    const postStep = 1.1;
-    const posts: { x: number; z: number }[] = [];
-    const fenceCols: { x: number; z: number; r: number; x2?: number; z2?: number }[] = [];
-    const rails: { x: number; z: number; len: number; ang: number }[] = [];
-    const addLine = (xa: number, za: number, xb: number, zb: number) => {
-      const len = Math.hypot(xb - xa, zb - za);
-      if (len < 0.01) return;
-      const n = Math.max(1, Math.ceil(len / postStep));
-      const ang = Math.atan2(zb - za, xb - xa);
-      for (let i = 0; i <= n; i++) posts.push({ x: xa + ((xb - xa) * i) / n, z: za + ((zb - za) * i) / n });
-      const wr = Math.max(0.05, len / n / 2 + 0.002 - 0.4);
-      for (let i = 0; i <= n; i++) {
-        const wall: { x: number; z: number; r: number; x2?: number; z2?: number } = {
-          x: xa + ((xb - xa) * i) / n, z: za + ((zb - za) * i) / n, r: wr,
-        };
-        if (i < n) { wall.x2 = xa + ((xb - xa) * (i + 1)) / n; wall.z2 = za + ((zb - za) * (i + 1)) / n; }
-        fenceCols.push(wall);
-      }
-      rails.push({ x: (xa + xb) / 2, z: (za + zb) / 2, len, ang });
-    };
-    addLine(v.x0, v.z0, v.x1, v.z0);
-    addLine(v.x0, v.z0, v.x0, v.z1);
-    addLine(v.x1, v.z0, v.x1, v.z1);
-    addLine(v.x0, v.z1, v.gateX - gateHalf, v.z1);
-    addLine(v.gateX + gateHalf, v.z1, v.x1, v.z1);
-    const postGeo = new THREE.BoxGeometry(0.16, 1.1, 0.16);
-    const postIM = new THREE.InstancedMesh(postGeo, woodM, posts.length);
-    postIM.castShadow = true;
-    const mtx = new THREE.Matrix4();
-    posts.forEach((p, i) => {
-      mtx.makeTranslation(p.x, groundY(p.x, p.z) + 0.55, p.z);
-      postIM.setMatrixAt(i, mtx);
-    });
-    postIM.instanceMatrix.needsUpdate = true;
-    fence.add(postIM);
-    const railGeo = new THREE.BoxGeometry(1, 0.07, 0.07);
-    const railIM = new THREE.InstancedMesh(railGeo, woodM, rails.length * 2);
-    railIM.castShadow = true;
-    const qm = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
-    let ri = 0;
-    for (const r of rails) {
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -r.ang);
-      sc.set(r.len, 1, 1);
-      for (const h of [0.45, 0.9]) {
-        ps.set(r.x, groundY(r.x, r.z) + h, r.z);
-        qm.compose(ps, q, sc);
-        railIM.setMatrixAt(ri++, qm);
-      }
-    }
-    railIM.instanceMatrix.needsUpdate = true;
-    fence.add(railIM);
-    scene.add(fence);
-    for (const w of fenceCols) colliders.push(w);
-    const gp = new THREE.Group();
-    for (const sx of [-gateHalf, gateHalf]) {
-      const gpost = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.2, 0.4), c.redM);
-      gpost.position.set(sx, 1.1, 0); gpost.castShadow = true; gpost.userData.sealable = true; gp.add(gpost);
-      const gbase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.25, 0.6), stoneM);
-      gbase.position.set(sx, 0.125, 0); gbase.userData.sealable = true; gp.add(gbase);
-    }
-    const gbeam = new THREE.Mesh(new THREE.BoxGeometry(gateHalf * 2 + 0.6, 0.28, 0.4), c.redM);
-    gbeam.position.set(0, 2.1, 0); gbeam.castShadow = true; gbeam.userData.sealable = true; gp.add(gbeam);
-    const gsign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.6), new THREE.MeshBasicMaterial({ map: signTexture(signText) }));
-    gsign.position.set(0, 2.55, 0.22); gp.add(gsign);
-    gp.position.set(v.gateX, 0, v.z1); scene.add(gp);
-    sealArchitectureJoints(gp, { maxGap: 0.5 });
-    zones.push({ x: v.gateX, z: v.z1, r: 5, id: signText === 'VIỆN TỔ' ? 'vienToGate' : 'vienKtGate' });
-  };
-  buildVienFence(VIEN_KT, 'VIỆN KHÁCH TĂNG');
-  buildVienFence(VIEN_TO, 'VIỆN TỔ');
 
   // ---- paved side paths to towers, yard, pagoda ----
   for (const [x0, z0, x1, z1] of WALKWAY_RECTS) scene.add(pavingRect(x0, z0, x1, z1));

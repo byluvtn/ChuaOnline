@@ -8,14 +8,49 @@ export const LAKE = { x: 0, z: 14, a: 14, b: 10 };
 export const BRIDGE = { x: 0, z0: 2, z1: 26, hw: 2.3, peak: 1.4 };
 export const LOTUS = { x: -78, z: -2, a: 10, b: 7 };
 export const LOTUS_PAVILION = { x: -70, z: 5 };
-export const RIVER = { x: 65, x0: 63, x1: 67, z0: -82, z1: 14, pond: { x: 65, z: 16, a: 3, b: 4 }, bridges: [-38, 2], bridgeHalf: 1.4 };
+export const RIVER = { pond: { x: 65, z: 16, a: 3, b: 4 }, bridges: [-38, 2], bridgeHalf: 1.4 };
+/**
+ * Đường tim Sông Đông, từ bắc (thác) xuống nam (ao), nội suy tuyến tính theo z.
+ * `x` là tim sông và `hw` là nửa chiều rộng mặt nước tại z đó.
+ * Đường chữ S: rộng gần tường Đông ở thượng nguồn, thu hẹp ngang Điện Dược Sư rồi mở lại về nam.
+ */
+export const RIVER_PATH = [
+  { z: -82, x: 79, hw: 5.5 },
+  { z: -70, x: 77, hw: 4.5 },
+  { z: -58, x: 72, hw: 4.0 },
+  { z: -48, x: 67, hw: 2.5 },
+  { z: -38, x: 65, hw: 1.5 },
+  { z: -28, x: 65.5, hw: 2.0 },
+  { z: -15, x: 66, hw: 3.0 },
+  { z: 2, x: 66, hw: 3.0 },
+  { z: 14, x: 66, hw: 3.5 },
+] as const;
+export const RIVER_SOURCE_Z = RIVER_PATH[0].z;
+export const RIVER_MOUTH_Z = RIVER_PATH[RIVER_PATH.length - 1].z;
+/** Thác Bản Giốc đầu nguồn: rộng 16 m (local ±hw) và khung vách đá nửa rộng wallHw quanh tim. */
+export const RIVER_FALLS = { x: 80, z: RIVER_SOURCE_Z, hw: 8, wallHw: 10 };
+
+/** Tim sông + nửa chiều rộng tại z (kẹp về hai mốc đầu/cuối ngoài khoảng nội suy). */
+export function riverAt(z: number): { x: number; hw: number } {
+  const first = RIVER_PATH[0], last = RIVER_PATH[RIVER_PATH.length - 1];
+  if (z <= first.z) return { x: first.x, hw: first.hw };
+  if (z >= last.z) return { x: last.x, hw: last.hw };
+  for (let i = 1; i < RIVER_PATH.length; i++) {
+    const a = RIVER_PATH[i - 1], b = RIVER_PATH[i];
+    if (z <= b.z) {
+      const t = (z - a.z) / (b.z - a.z);
+      return { x: a.x + (b.x - a.x) * t, hw: a.hw + (b.hw - a.hw) * t };
+    }
+  }
+  return { x: last.x, hw: last.hw };
+}
 export const FARM = { x: -76, z: -42 };
 export const FARM_POND = { x: -70, z: -35, a: 3.2, b: 2.2 };
 export const BAMBOO = { x: 80, z: -3 };
 export const FLOWER_HILL = { x: 79, z: 28 };
 export const CAVE = { x: -26, z: -104 };
 export const DUOC_SU = { x: 77, z: -38, hx: 6, hz: 4.5, y: 0.45 };
-export const NGOC = { x: 0, z: -120, y: 6, stairStart: -90, stairTop: -116, stairHalf: 3.8, steps: 299, landingDepth: 2.5, approachHalf: 5.8 };
+export const NGOC = { x: 0, z: -120, y: 8.4, stairStart: -90, stairTop: -116, stairHalf: 3.8, steps: 299, landingDepth: 2.5, approachHalf: 5.8 };
 export const NGOC_TERRACE = { half: 11.5, north: -128.5 };
 export const NGOC_HALL = { x: NGOC.x, z: -123.55, hx: 6.2, hz: 3.6 };
 export const NORTH_WALK_Z = -82;
@@ -85,8 +120,10 @@ export function inEllipse(x: number, z: number, p: { x: number; z: number; a: nu
 export function expansionWaterBlocked(x: number, z: number): boolean {
   if (inEllipse(x, z, LOTUS, 0.25) && !(Math.abs(z - 2) <= 0.9 && x >= -90 && x <= -66)) return true;
   if (inEllipse(x, z, FARM_POND, 0.25)) return true;
-  const river = x > RIVER.x0 - 0.25 && x < RIVER.x1 + 0.25 && z > RIVER.z0 - 0.25 && z < RIVER.z1 + 0.25;
-  if (river && !RIVER.bridges.some(bz => Math.abs(z - bz) <= RIVER.bridgeHalf - 0.4)) return true;
+  if (z >= RIVER_SOURCE_Z - 0.25 && z <= RIVER_MOUTH_Z + 0.25) {
+    const { x: cx, hw } = riverAt(z);
+    if (Math.abs(x - cx) < hw + 0.25 && !RIVER.bridges.some(bz => Math.abs(z - bz) <= RIVER.bridgeHalf - 0.4)) return true;
+  }
   return inEllipse(x, z, RIVER.pond, 0.25);
 }
 

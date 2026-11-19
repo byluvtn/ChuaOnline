@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { TAM_THE, TAM_THE_PLAT } from './layout';
-import { buildBuddha, measureBuddhaHeight } from './statues';
+import { buildBuddha, buildHalo, measureBuddhaHeight } from './statues';
 import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import { buildZafu } from './zafu';
@@ -257,19 +257,33 @@ export function buildTamThe(c: TempleCtx) {
 
   const lead = buildBuddha();
   const height = measureBuddhaHeight(lead);
+  const halos: THREE.Group[] = [];
   const place = (asset: string, x: number, s: number, ry: number, fallbackName = lead.name) => {
     const b = lead.clone(true);
     b.name = fallbackName;
     b.scale.setScalar(s);
     b.position.set(x, altarY, altarZ);
     b.rotation.y = ry;
+    // hào quang của fallback chỉ ẩn (giữ nguyên cây) — hào quang slot bên dưới thay thế
+    const fallbackHalo = b.getObjectByName('halo');
+    if (fallbackHalo) fallbackHalo.visible = false;
     g.add(b);
     replaceModel(g, b, asset, height * s, undefined, 'base');
+    // hào quang độc lập theo vị trí đặt tượng: hiện đúng với cả GLB lẫn fallback
+    const slotH = height * s;
+    const slot = new THREE.Group();
+    slot.name = 'halo-slot';
+    slot.position.set(x, altarY, altarZ);
+    slot.rotation.y = ry;
+    const halo = buildHalo(0.32 * slotH, 0.6 * slotH, -0.15 * slotH, 8);
+    slot.add(halo);
+    g.add(slot);
+    halos.push(halo);
     return b;
   };
-  const mainB = place('chibi-thich-ca', 0, 1.2, 0);
-  const nhienDangB = place('chibi-nhien-dang', -7.6, 0.92, 0.12, 'nhien-dang');
-  const diLacB = place('chibi-di-lac', 7.6, 0.92, -0.12, 'dilac');
+  place('chibi-thich-ca', 0, 1.2, 0);
+  place('chibi-nhien-dang', -7.6, 0.92, 0.12, 'nhien-dang');
+  place('chibi-di-lac', 7.6, 0.92, -0.12, 'dilac');
 
   const tableZ = -HZ + 6.2;
   box(10, 0.16, 1.6, lamb(0x7a1c12), 0, BASE + 1.1, tableZ);
@@ -328,6 +342,5 @@ export function buildTamThe(c: TempleCtx) {
     if (import.meta.env.DEV) console.warn('gapdump ' + JSON.stringify(seal.remaining));
   }
   replaceRoof(g, roofFallback, 'dien-tam-the-roof');
-  const halos = [mainB, nhienDangB, diLacB].map((b) => b.getObjectByName('halo')).filter((x): x is THREE.Object3D => !!x);
   return { group: g, seats, zones, halos };
 }

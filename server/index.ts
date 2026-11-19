@@ -13,6 +13,7 @@ import {
 } from '../shared/types.js';
 import { dayKeyICT, meritBoost } from '../shared/time.js';
 import * as db from './db.js';
+import { creditSitting, haloForSec, flushAbort, flushBegin, flushCommit, newMeditationDay, pauseSitting, rollMeditationDay, medTotalSec, type MeditationDayState } from './meditation.js';
 import { gardenSeedGiftSent, harvestGardenRow, listGardenRows, plantGardenRow, waterGardenRow } from './garden.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
 import { BELL, PHONG_CD } from '../src/layout.js';
@@ -129,14 +130,17 @@ interface Session {
   /** mốc bắt đầu vòng lần hạt đang dở (chỉ trong bộ nhớ) */
   beadStart?: number;
   questCache?: { rows: Awaited<ReturnType<typeof db.questRows>>; at: number };
-  /** mốc bắt đầu lần ngồi thiền liên tục hiện tại (chỉ trong bộ nhớ) */
-  sitSince?: number;
+  /** số giây thiền cộng dồn trong ngày VN; null/undefined khi chưa join */
+  med?: MeditationDayState;
+  /** hàng đợi flush tuần tự, tránh 2 lần ghi chồng lên nhau */
+  medFlush?: Promise<void>;
   /** khóa ngày của haloLevel đang giữ */
   haloDay?: string;
   /** tầng hào quang thiền trong ngày */
   haloLevel?: 0 | 1 | 2;
 }
 const sessions = new Map<string, Session>();
+const meditationDepartures = new Map<number, Promise<void>>();
 const roomChat = new Map<string, ChatMessage[]>();
 const roomLanterns = new Map<string, Lantern[]>();
 const roomMinutes = new Map<string, number>();
@@ -384,6 +388,108 @@ function meditationInfo(room: string) {
   const sitting = roomSessions(room).filter((s) => s.state.anim === 'sit').length;
   return { sitting, minutes: Math.floor(roomMinutes.get(room) ?? 0), goal: MEDITATE_GOAL_MIN, bonus: sitting >= GROUP_MEDITATE_MIN };
 }
+
+/**
+ * Số giây thiền đã cộng dồn HÔM NAY của phiên: phần đã ghi DB + phần đang giữ trong bộ nhớ.
+ * Toàn bộ do máy chủ tính từ đồng hồ máy chủ; client không gửi elapsed.
+ */
+function meditationSecToday(s: Session, today = dayKeyICT()): number {
+  return s.med ? medTotalSec(s.med, today) : 0;
+}
+
+function meditationDailyInfo(s: Session) {
+  const dayKey = dayKeyICT();
+  return { dayKey, sec: meditationSecToday(s, dayKey), level: (s.haloLevel ?? 0) as 0 | 1 | 2 };
+}
+
+/**
+ * Ghi số giây thiền đang giữ trong bộ nhớ xuống `halo_daily`. Tuần tự theo phiên (không có
+ * 2 lần ghi chồng nhau) và idempotent ở DB (MAX), nên retry hay ghi trùng đều không làm
+ * tăng số giây. Kết quả của ngày cũ bị bỏ nếu đã qua ngày mới trong lúc ghi.
+ */
+function flushMeditation(s: Session, st = s.med): Promise<void> {
+  const run = async () => {
+    if (!st) return;
+    const snap = flushBegin(st);
+    if (!snap) return;
+    try {
+      const row = await db.accrueMeditationDaily(s.pid, snap.total, snap.day);
+      flushCommit(st, snap, row.sec);
+    } catch (e) {
+      flushAbort(st, snap);   // trả số giây về hàng chờ: lần flush sau ghi tiếp, không mất giây
+      throw e;
+    }
+  };
+  const next = (s.medFlush ?? Promise.resolve()).then(run, run);
+  s.medFlush = next.catch(() => { /* lỗi đã được báo cho caller */ });
+  return next;
+}
+
+/**
+ * Kết thúc phiên thiền (đứng dậy / mất kết nối / bị kick / đổi phòng / qua ngày):
+ * ngắt mốc cộng rồi chốt phần giây còn trong bộ nhớ xuống DB để lần sau cộng tiếp.
+ */
+async function persistMeditation(s: Session, st: MeditationDayState, room: string): Promise<void> {
+  try {
+    await flushMeditation(s, st);
+    await syncHaloTier(s, st, room);
+  } catch (e) {
+    console.warn('[meditate] lưu thời gian:', (e as Error).message);
+  }
+}
+
+function updateMeditationClock(s: Session, now: number, sitting: boolean): Promise<void> | undefined {
+  const today = dayKeyICT(new Date(now));
+  let st = s.med ??= newMeditationDay(today);
+  let saveOld: Promise<void> | undefined;
+  if (st.day !== today) {
+    const previous = st;
+    st = s.med = rollMeditationDay(previous, today);
+    saveOld = persistMeditation(s, previous, s.room);
+    const hadHalo = (s.haloLevel ?? 0) > 0;
+    s.haloDay = today; s.haloLevel = 0; s.state.halo = 0;
+    if (hadHalo) {
+      s.socket.emit('halo', { level: 0, reason: 'reset' });
+      s.socket.to(s.room).emit('player:halo', { id: s.state.id, level: 0 });
+    }
+    s.socket.emit('meditation:daily', meditationDailyInfo(s));
+  }
+  if (sitting || st.creditAt !== undefined) creditSitting(st, now);
+  if (!sitting) pauseSitting(st);
+  return saveOld;
+}
+
+async function endMeditationSession(s: Session, now = Date.now()): Promise<void> {
+  const old = updateMeditationClock(s, now, false);
+  await persistMeditation(s, s.med!, s.room);
+  await old;
+  if (sessions.get(s.socket.id) === s) s.socket.emit('meditation:daily', meditationDailyInfo(s));
+}
+
+function setSessionAnim(s: Session, anim: Anim, now = Date.now()): void {
+  const wasSitting = s.state.anim === 'sit';
+  s.state.anim = anim;
+  if (anim === 'sit' && !wasSitting) void updateMeditationClock(s, now, true);
+  else if (wasSitting && anim !== 'sit') void endMeditationSession(s, now);
+}
+
+/**
+ * Cấp hào quang theo TỔNG cộng dồn trong ngày. Chỉ nâng tầng, không hạ; ghi DB bằng
+ * MAX nên nhiều lần gọi (tick, retry, hai thiết bị) vẫn chỉ phát 1 event mỗi mốc.
+ */
+async function syncHaloTier(s: Session, st: MeditationDayState, room: string): Promise<void> {
+  const target = haloForSec(st.baseSec);
+  if (target === 0 || (s.haloDay === st.day && target <= (s.haloLevel ?? 0))) return;
+  const granted = await db.raiseHaloLevel(s.pid, target, st.day);
+  if (s.med !== st || st.day !== dayKeyICT() || target <= (s.haloLevel ?? 0)) return;
+  s.haloLevel = target;
+  s.haloDay = st.day;
+  s.state.halo = target;
+  if (granted) s.socket.emit('halo', { level: target, reason: 'grant' });
+  if (sessions.get(s.socket.id) === s) s.socket.to(room).emit('player:halo', { id: s.state.id, level: target });
+  if (granted && target === 2) pushSys(room, `🧘 Phật tử ${s.state.name} vừa thiền đủ 20 phút, hào quang lớn đã hiện!`);
+}
+
 async function rankings(): Promise<{ weekly: RankRow[]; all: RankRow[] }> {
   const f = (r: { name: string; merit: number }): RankRow => ({ name: r.name, merit: r.merit, level: levelOf(r.merit) });
   return { weekly: (await db.topWeekly()).map(f), all: (await db.topAllTime()).map(f) };
@@ -443,16 +549,25 @@ io.on('connection', (socket) => {
   (socket as any).on = (event: string, listener: (...args: any[]) => unknown) =>
     origOn(event as any, safeHandler(event, listener) as any);
   // one live connection per account
-  for (const [id, other] of sessions) {
-    if (other.pid === pid) { saveTombstone(other); other.socket.emit('kicked'); other.socket.disconnect(true); sessions.delete(id); }
+  for (const other of sessions.values()) {
+    if (other.pid === pid) {
+      saveTombstone(other);
+      other.socket.emit('kicked'); other.socket.disconnect(true);
+    }
   }
 
   socket.on('join', async (p: { name?: string; outfit?: Outfit; color?: string; room?: string; resume?: string }, ack?: (r: { ok: boolean; error?: string }) => void) => {
+    await meditationDepartures.get(pid);
     const prof = await db.getProfile(pid);
     if (!prof) return socket.disconnect(true);
-    const haloLevel = await db.getHaloLevel(pid);
     const old = sessions.get(socket.id);
-    if (old) leaveRoom(old);
+    // Chốt phiên thiền cũ TRƯỚC khi đọc số giây cộng dồn, tránh đọc phải số liệu cũ
+    // (mất vài giây cuối) khi người chơi join lại cùng socket.
+    if (old) {
+      old.state.anim = 'idle';
+      await endMeditationSession(old);
+    }
+    const daily = await db.getMeditationDaily(pid);
 
     let room = roomOk(String(p?.room)) ? String(p.room) : ROOMS[0].id;
     if (roomSessions(room).filter((s) => s.pid !== pid).length >= ROOM_CAPACITY) {
@@ -472,6 +587,10 @@ io.on('connection', (socket) => {
       ack?.({ ok: false, error: 'Không lưu được nhân vật' });
       return;
     }
+    if (!socket.connected) return;
+    if (old) leaveRoom(old);
+    const today = dayKeyICT();
+    const haloLevel = daily.dayKey === today ? daily.level : 0;
     ack?.({ ok: true });
 
     const saved = lastPos.get(pid);
@@ -496,7 +615,12 @@ io.on('connection', (socket) => {
     s.state = state;
     s.room = room;
     s.resume = resume;
-    s.haloDay = dayKeyICT(); s.haloLevel = haloLevel; s.sitSince = undefined;
+    // Số giây thiền đã cộng dồn đọc lại từ DB: mất kết nối/đăng nhập lại không làm mất tiến độ.
+    s.haloDay = today; s.haloLevel = haloLevel;
+    const medStart = newMeditationDay(today);
+    medStart.baseSec = daily.dayKey === today ? daily.sec : 0;
+    s.med = medStart;
+    s.medFlush = undefined;
     sessions.set(socket.id, s);
     socket.join(room);
 
@@ -523,6 +647,7 @@ io.on('connection', (socket) => {
     socket.emit('boost', meritBoost(new Date()));
     socket.emit('stats', await currentStatsState(pid));
     socket.emit('halo', { level: haloLevel, reason: 'join' });
+    socket.emit('meditation:daily', meditationDailyInfo(s));
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
@@ -538,8 +663,8 @@ io.on('connection', (socket) => {
     s.state.x = next.x;
     s.state.z = next.z;
     s.state.ry = Number.isFinite(m.ry) ? m.ry : 0;
-    if (ANIMS.includes(m.anim)) s.state.anim = m.anim;
     const now = Date.now();
+    if (ANIMS.includes(m.anim)) setSessionAnim(s, m.anim, now);
     if (now - (lastVisitCheck.get(s) ?? 0) >= 1000) {
       lastVisitCheck.set(s, now);
       const rows = await cachedQuestRows(s);
@@ -575,7 +700,7 @@ io.on('connection', (socket) => {
     s.last[kind] = now;
 
     if (kind === 'palms' || kind === 'beads') {
-      s.state.anim = kind;
+      setSessionAnim(s, kind);
       io.to(s.room).emit('player:action', { id: s.state.id, kind });
       return;
     }
@@ -590,7 +715,7 @@ io.on('connection', (socket) => {
         break;
       }
     }
-    s.state.anim = kind;
+    setSessionAnim(s, kind);
     io.to(s.room).emit('player:action', { id: s.state.id, kind });
     if (kind === 'lantern') {
       const l: Lantern = { id: seq++, pid: s.pid, name: s.state.name, wish: clean(wish, 120) || 'Cầu bình an', t: now, x: s.state.x, z: s.state.z };
@@ -651,7 +776,7 @@ io.on('connection', (socket) => {
         break;
       }
     }
-    s.state.anim = 'chant';
+    setSessionAnim(s, 'chant');
     io.to(s.room).emit('player:action', { id: s.state.id, kind: 'chant' });
     const finalMerit = Math.round(merit * meritBoost(new Date()).mult);
     await grantRewards(s, finalMerit, 0);
@@ -1444,12 +1569,16 @@ io.on('connection', (socket) => {
     reply({ ok: true, online: sessions.size, totalPlayers: st.totalPlayers, newToday: st.newToday, totalDonated: st.totalDonated });
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     const s = sessions.get(socket.id);
     if (!s) return;
     saveTombstone(s);
     sessions.delete(socket.id);
     io.to(s.room).emit('player:leave', socket.id);
+    const departure = endMeditationSession(s);
+    meditationDepartures.set(pid, departure);
+    try { await departure; }
+    finally { if (meditationDepartures.get(pid) === departure) meditationDepartures.delete(pid); }
   });
 });
 
@@ -1489,45 +1618,36 @@ setInterval(() => {
 }, 10_000);
 
 let meditateTickRunning = false;
-// meditation: every tick, seated players earn merit; group bonus doubles it
+// meditation: every tick, seated players earn merit; group bonus doubles it.
+// Hào quang cấp theo TỔNG số giây thiền cộng dồn trong ngày VN (không phải liên tục).
 setInterval(async () => {
   if (meditateTickRunning) return;
   meditateTickRunning = true;
   try {
     for (const r of ROOMS) {
-      const today = dayKeyICT();
-      for (const s of roomSessions(r.id)) {
-        if (s.state.anim !== 'sit') s.sitSince = undefined;
-        if (s.haloDay !== today) {
-          if ((s.haloLevel ?? 0) > 0) {
-            s.socket.emit('halo', { level: 0, reason: 'reset' });
-            s.socket.to(r.id).emit('player:halo', { id: s.state.id, level: 0 });
-          }
-          s.haloDay = today; s.haloLevel = 0; s.sitSince = undefined;
-        }
+      const players = roomSessions(r.id);
+      const sitting = players.filter((s) => s.state.anim === 'sit');
+      for (const s of players) {
+        void updateMeditationClock(s, Date.now(), s.state.anim === 'sit');
       }
-      const sitting = roomSessions(r.id).filter((s) => s.state.anim === 'sit');
+      for (const s of players) {
+        if (!db.dbBackgroundAllowed()) break;
+        if (s.state.anim !== 'sit' && !s.med!.pendingSec) continue;
+        await persistMeditation(s, s.med!, r.id);
+        s.socket.emit('meditation:daily', meditationDailyInfo(s));
+      }
       if (!sitting.length) { io.to(r.id).emit('meditation', meditationInfo(r.id)); continue; }
       const bonus = sitting.length >= GROUP_MEDITATE_MIN;
       roomMinutes.set(r.id, (roomMinutes.get(r.id) ?? 0) + (sitting.length * MEDITATE_TICK_MS) / 60_000);
       for (const s of sitting) {
         // Breaker: all players share one DB, so if it is down, skip the rest of this room.
         if (!db.dbBackgroundAllowed()) break;
+        if (sessions.get(s.socket.id) !== s || s.room !== r.id || s.state.anim !== 'sit') continue;
         try {
           await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0);
           await questEvent(s, 'meditate');
           await countStatSafe(s, 'meditate_sec', MEDITATE_TICK_MS / 1000);
           db.dbBackgroundResult();
-          if (!s.sitSince) s.sitSince = Date.now();
-          const elapsed = (Date.now() - s.sitSince) / 1000;
-          const target = elapsed >= HALO_TIER2_SEC ? 2 : elapsed >= HALO_TIER1_SEC ? 1 : 0;
-          if (target > (s.haloLevel ?? 0)) {
-            s.haloLevel = target as 0 | 1 | 2;
-            await db.setHaloLevel(s.pid, s.haloLevel);
-            s.socket.emit('halo', { level: target, reason: 'grant' });
-            s.socket.to(r.id).emit('player:halo', { id: s.state.id, level: target });
-            if (target === 2) pushSys(s.room, `🧘 Phật tử ${s.state.name} vừa thiền đủ 20 phút, hào quang lớn đã hiện!`);
-          }
         } catch (e) {
           db.dbBackgroundResult(e);
           console.warn('[meditate]', (e as Error).message);

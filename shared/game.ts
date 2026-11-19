@@ -440,13 +440,15 @@ export const ROOMS = [
 export const ROOM_CAPACITY = 60;
 
 export const MEDITATE_TICK_MS = 10_000;
-export const HALO_TIER1_SEC = 600;  // 10 phút ngồi liên tục
-export const HALO_TIER2_SEC = 1200; // 20 phút ngồi liên tục
+export const HALO_TIER1_SEC = 600;  // 10 phút thiền CỘNG DỒN trong ngày
+export const HALO_TIER2_SEC = 1200; // 20 phút thiền CỘNG DỒN trong ngày
 export const GROUP_MEDITATE_MIN = 3;
 export const MEDITATE_GOAL_MIN = 500;
 
 export interface RankRow { name: string; merit: number; level: number }
 export interface MeditationInfo { sitting: number; minutes: number; goal: number; bonus: boolean }
+/** Số giây thiền đã cộng dồn trong ngày VN hiện tại (do máy chủ lưu, không tin client). */
+export interface MeditationDailyInfo { dayKey: string; sec: number; level: 0 | 1 | 2 }
 
 /** Thưởng điểm danh theo ngày chu kỳ 1..7 (streak vẫn tăng tiếp sau ngày 7). */
 export const CHECKIN_REWARDS: { merit: number; coins: number; item?: string }[] = [

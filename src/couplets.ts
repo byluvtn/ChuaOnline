@@ -2,11 +2,6 @@
 export interface Couplet { id: string; where: string; am: [string, string]; nghia: string }
 
 export const COUPLETS: Record<string, Couplet> = {
-  daiHung: {
-    id: 'daiHung', where: 'Đại Hùng Bảo Điện',
-    am: ['Phật nhật tăng huy, phổ chiếu thập phương thường lãng chiếu', 'Pháp luân thường chuyển, tế độ quần sinh tận quy y'],
-    nghia: 'Ánh sáng Phật rực rỡ, chiếu soi khắp mười phương; bánh xe Pháp luôn chuyển, cứu độ chúng sinh đều nương tựa.',
-  },
   tamQuan: {
     id: 'tamQuan', where: 'Tam quan',
     am: ['Phật quốc trang nghiêm tam hữu lộ', 'Pháp vân phổ nhuận tứ sinh thiên'],

@@ -76,7 +76,7 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'bridgeS', x: 0, z: 26.5 }, // was (0, 30.2); lake now reaches z = 24
   { id: 'bridgeN', x: 0, z: 1.5 }, // was (0, 13.8); lake now starts at z = 4
   { id: 'plaza', x: 0, z: 2 }, // was (0, 6) â€” axis / cross-path crossroads
-  { id: 'axisMid', x: 3, z: -17 },
+  { id: 'axisMid', x: 4.2, z: -17 }, // east of the centered courtyard incense urn
   { id: 'hallFront', x: 0, z: -20 },
   { id: 'hallIn', x: 0, z: -24 },
   { id: 'hallWestWp', x: -21, z: -12.5 }, // west of the x=-18.1 colonnade

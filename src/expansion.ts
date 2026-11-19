@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { buildZafu, type ZafuPosition } from './zafu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
-  BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, TINH_THAT,
+  BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_FALLS, RIVER_SOURCE_Z, RIVER_MOUTH_Z, riverAt, TINH_THAT,
   expansionGroundY, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
@@ -224,10 +224,35 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     m.name = 'expansion-water';
     return m;
   };
-  const waterRect = (x0: number, x1: number, z0: number, z1: number) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.12, z1 - z0), waterM);
-    m.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2);
+  /** Mặt nước dạng dải bám đường tim sông: uv.v chạy dọc dòng (bắc → nam), uv.u ngang sông. */
+  const waterRibbon = () => {
+    const rows: { z: number; cx: number; hw: number }[] = [];
+    const step = 2;
+    for (let z = RIVER_SOURCE_Z; z < RIVER_MOUTH_Z; z += step) {
+      const { x: cx, hw } = riverAt(z);
+      rows.push({ z, cx, hw });
+    }
+    const end = riverAt(RIVER_MOUTH_Z);
+    rows.push({ z: RIVER_MOUTH_Z, cx: end.x, hw: end.hw });
+    const pos: number[] = [], uv: number[] = [], idx: number[] = [];
+    rows.forEach((row, i) => {
+      const v = (row.z - RIVER_SOURCE_Z) / (RIVER_MOUTH_Z - RIVER_SOURCE_Z);
+      pos.push(row.cx - row.hw, 0.06, row.z, row.cx + row.hw, 0.06, row.z);
+      uv.push(0, v, 1, v);
+      if (i) {
+        const a = (i - 1) * 2;
+        // Wound so the face normal points up (+Y) for the single-sided water material.
+        idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+      }
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, waterM);
     m.name = 'expansion-water';
+    m.receiveShadow = true;
     return m;
   };
 
@@ -240,6 +265,12 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     m.name = 'expansion-sign';
     signs.push(m);
     return m;
+  };
+  const addPostedSign = (text: string, w: number, h: number, x: number, y: number, z: number, ry = 0) => {
+    const px = x - Math.sin(ry) * 0.105, pz = z - Math.cos(ry) * 0.105;
+    const base = walkY(px, pz), top = y - h / 2 + 0.12;
+    addBox('darkWood', 0.2, top - base, 0.2, px, (top + base) / 2, pz, ry);
+    addSign(text, w, h, x, y, z, ry);
   };
 
   // ------------------------------------------------------------------ cao độ + collider
@@ -256,9 +287,9 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   /** Tường đặc: chuỗi vòng tròn chồng nhau cùng bán kính, không hở khe. */
   const wallLine = (x0: number, z0: number, x1: number, z1: number, r = 0.35, step = 0.55) => {
     const len = Math.hypot(x1 - x0, z1 - z0);
-    const n = Math.max(1, Math.ceil(len / step));
-    for (let i = 0; i <= n; i++) colliders.push({ x: x0 + (x1 - x0) * (i / n), z: z0 + (z1 - z0) * (i / n), r });
-  };
+      const n = Math.max(1, Math.ceil(len / step));
+      for (let i = 0; i <= n; i++) colliders.push({ x: x0 + (x1 - x0) * (i / n), z: z0 + (z1 - z0) * (i / n), r });
+    };
   /** Ghế ngồi: y do main lấy từ world.groundY, nên đệm/ghế luôn đặt sát đất (như bồ đoàn). */
   const addSeat = (x: number, z: number, ry: number, rest = false) => seats.push({ x, z, ry, rest });
   const meditationPads: ZafuPosition[] = [];
@@ -372,7 +403,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     seatPad(px + 1.1, pz, -Math.PI / 2, true, 0.9, 0.8, 'darkWood');
     zones.push({ x: px, z: pz, r: 5, id: 'dinhSen' });
   }
-  addSign('HỒ SEN', 2.4, 0.6, LOTUS.x, 0.95, LOTUS.z + LOTUS.b + 1.4);
+  addPostedSign('HỒ SEN', 2.4, 0.6, LOTUS.x, 0.95, LOTUS.z + LOTUS.b + 1.4);
   {
     const { group } = flush('lotus');
     group.add(waterEllipse(LOTUS.x, LOTUS.z, LOTUS.a, LOTUS.b));
@@ -440,7 +471,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     wallLine(shedX + 0.75, shedZ + 1.2, shedX + 1.5, shedZ + 1.2, 0.22, 0.45);
     addSign('KHO NÔNG CỤ', 1.8, 0.45, shedX, shedBase + 2.5, shedZ + 1.34);
 
-    addSign('VƯỜN RAU', 2.4, 0.6, fx1 - 0.35, 1.05, -42, Math.PI / 2);
+    addPostedSign('VƯỜN RAU', 2.4, 0.6, fx1 - 0.35, 1.05, -42, Math.PI / 2);
     seatPad(-82.8, -41.9, Math.PI / 2, true);
     zones.push({ x: FARM.x, z: FARM.z, r: 14, id: 'vuonRau' });
     const { group } = flush('farm');
@@ -557,7 +588,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       }
       solid(x, z, 0.45);
     }
-    addSign('RỪNG TRÚC', 2.2, 0.55, 72.2, 1.1, -3.0, -Math.PI / 2);
+    addPostedSign('RỪNG TRÚC', 2.2, 0.55, 72.2, 1.1, -3.0, -Math.PI / 2);
     zones.push({ x: cx, z: cz, r: 13, id: 'rungTruc' });
     flush('bamboo');
   }
@@ -568,7 +599,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   {
     const { x, z, hx, hz, y } = DUOC_SU;
     addBox('stone', hx * 2, y, hz * 2, x, y / 2, z);
-    const colH = 3.7, fz = hz - 0.6, bz2 = -hz + 0.6;
+    const colH = 5.05, fz = hz - 0.6, bz2 = -hz + 0.6;
     for (const sx of [-hx + 1.0, -1.8, 1.8, hx - 1.0]) {
       for (const sz of [fz, bz2]) {
         addBox('stone', 0.62, 0.26, 0.62, x + sx, y + 0.13, z + sz);
@@ -590,10 +621,10 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       wallLine(x + s * (hx - 1.0), z + bz2 + 0.4, x + s * (hx - 1.0), z + fz - 0.4, 0.3, 0.55);
     }
     const roof1 = beamY + 0.3;
-    addRoof(15.0, 11.4, 2.6, 0.62, x, roof1, z);
-    addBox('red', 6.4, 1.15, 4.6, x, roof1 + 2.1, z);
-    addRoof(7.6, 5.8, 1.6, 0.5, x, roof1 + 2.6, z);
-    addCone('gold', 0.2, 1.1, 8, x, roof1 + 4.5, z);
+    addRoof(15.0, 11.4, 4.0, 0.62, x, roof1, z);
+    addBox('red', 6.4, 1.15, 4.6, x, roof1 + 4.09, z);
+    addRoof(7.6, 5.8, 2.4, 0.5, x, roof1 + 4.0, z);
+    addCone('gold', 0.2, 1.37, 8, x, roof1 + 7.10, z);
     const { group: architecture } = flush('duocSu-architecture');
     replaceArchitecture(architecture, 'dien-duoc-su-blender', x, z);
     // bệ Phật, tượng, bàn hương
@@ -615,7 +646,8 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       glow(lx, y + 1.15, lz, 1.9, 0x9fd0ff, 0.42);
       solid(lx, lz, 0.3);
     }
-    addSign('ĐIỆN DƯỢC SƯ', 3.4, 0.65, x, beamY - 0.35, z + fz + 0.4);
+    addBox('darkWood', 3.4, 0.65, 0.08, x, beamY, z + fz + 0.36);
+    addSign('ĐIỆN DƯỢC SƯ', 3.4, 0.65, x, beamY, z + fz + 0.402);
     for (const dx of [-3.2, 3.2]) for (const dz of [0.6, -2.2]) {
       meditationPad(x + dx, z + dz, Math.PI, 1.1, 0.9, y);
     }
@@ -672,7 +704,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       const t = i / 11;
       addBox('paving', 1.5, 0.1, 1.5, 71.6 + t * 6.4, 0.05, 14.6 + t * 7.2);
     }
-    addSign('VƯỜN HOA', 2.4, 0.6, 70.6, 1.1, 20.4, -Math.PI / 2);
+    addPostedSign('VƯỜN HOA', 2.4, 0.6, 70.6, 1.1, 20.4, -Math.PI / 2);
     zones.push({ x: cx, z: cz, r: 12, id: 'vuonHoa' });
     const { group } = flush('flowerHill');
     group.add(lawn);
@@ -683,44 +715,59 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   // =====================================================================================
   const waterfall = buildRiverWaterfall();
   {
-    const { x0, x1, z0, z1, bridges, bridgeHalf } = RIVER;
-    addBox('stone', 0.6, 0.22, z1 - z0, x0 - 0.3, 0.05, (z0 + z1) / 2);
-    addBox('stone', 0.6, 0.22, z1 - z0, x1 + 0.3, 0.05, (z0 + z1) / 2);
-    for (let pz = z0; pz <= z1; pz += 4) {
-      addBox('stoneDark', 0.34, 0.36, 0.34, x0 - 0.55, 0.14, pz);
-      addBox('stoneDark', 0.34, 0.36, 0.34, x1 + 0.55, 0.14, pz);
+    const { bridges, bridgeHalf } = RIVER;
+    // Hai cầu đá giữ nguyên vị trí cũ: mặt cầu 10,6 m quanh x = 65 (59,7..70,3),
+    // khớp ngoại lệ cao độ groundYBase x 60,5..69,5 và phủ trọn mặt sông tại hai vĩ độ cầu.
+    const BRIDGE_X = 65;
+    // Kè đá dọc hai mép cong: thanh đá nối các mốc 2 m + trụ đá mỗi ~4 m.
+    for (const side of [-1, 1]) {
+      for (let pz = RIVER_SOURCE_Z; pz < RIVER_MOUTH_Z; pz += 2) {
+        const a = riverAt(pz), b = riverAt(Math.min(pz + 2, RIVER_MOUTH_Z));
+        const zc = (pz + Math.min(pz + 2, RIVER_MOUTH_Z)) / 2;
+        const xc = (a.x + side * a.hw + b.x + side * b.hw) / 2 + side * 0.3;
+        const dx = (b.x + side * b.hw) - (a.x + side * a.hw);
+        const dz = Math.min(pz + 2, RIVER_MOUTH_Z) - pz;
+        addBox('stone', 0.6, 0.22, Math.hypot(dx, dz) + 0.5, xc, 0.05, zc, Math.atan2(dx, dz));
+        if (Math.round((pz - RIVER_SOURCE_Z) / 2) % 2 === 0 && !bridges.some(bz => Math.abs(pz - bz) < 2.8)) {
+          addBox('stoneDark', 0.34, 0.36, 0.34, a.x + side * (a.hw + 0.55), 0.14, pz);
+        }
+      }
     }
     for (const bz of bridges) {
       // mặt cầu y = 0.28 khớp groundYBase (x 60.5..69.5)
-      addBox('paving', 10.6, 0.24, 2.8, RIVER.x, 0.16, bz);
+      const bx = BRIDGE_X;
+      addBox('paving', 10.6, 0.24, 2.8, bx, 0.16, bz);
       for (const s of [-1, 1]) {
-        addBox('stone', 6, 0.42, 0.2, RIVER.x, 0.28 + 0.21, bz + s * bridgeHalf);
-        for (let px = 62.2; px <= 67.8; px += 1.4) addBox('stoneDark', 0.24, 0.6, 0.24, px, 0.28 + 0.28, bz + s * bridgeHalf);
+        addBox('stone', 6, 0.42, 0.2, bx, 0.28 + 0.21, bz + s * bridgeHalf);
+        for (let px = bx - 2.8; px <= bx + 2.8; px += 1.4) addBox('stoneDark', 0.24, 0.6, 0.24, px, 0.28 + 0.28, bz + s * bridgeHalf);
         // lan can: chạy dọc, chừa hai đầu cầu (mép ngoài 60.2..69.8)
-        wallLine(62, bz + s * bridgeHalf, 68, bz + s * bridgeHalf, 0.2, 0.6);
+        wallLine(bx - 3, bz + s * bridgeHalf, bx + 3, bz + s * bridgeHalf, 0.2, 0.6);
       }
-      for (const px of [61.6, 68.4]) addBox('stoneDark', 0.8, 1.0, 2.2, px, -0.1, bz);
+      for (const px of [bx - 3.4, bx + 3.4]) addBox('stoneDark', 0.8, 1.0, 2.2, px, -0.1, bz);
     }
     // đường thiền hành ven sông (bờ Đông), chừa hai đầu cầu
     for (let pz = -30; pz <= 12; pz += 2.2) {
       if (bridges.some((bz) => Math.abs(pz - bz) < 2.8)) continue;
-      addBox('paving', 1.2, 0.1, 1.2, x1 + 1.6, 0.05, pz);
+      const edge = riverAt(pz);
+      addBox('paving', 1.2, 0.1, 1.2, edge.x + edge.hw + 1.6, 0.05, pz);
     }
     for (let i = 0; i < 28; i++) {
       const t = (i / 28) * Math.PI * 2;
       addBox('stone', 0.62, 0.16, 0.44, RIVER.pond.x + Math.cos(t) * (RIVER.pond.a + 0.3), 0.08,
         RIVER.pond.z + Math.sin(t) * (RIVER.pond.b + 0.3), -t);
     }
-    addSign('SÔNG ĐÔNG', 2.2, 0.55, x1 + 1.7, 1.0, -42.5);
-    for (const z of bridges) zones.push({ x: RIVER.x, z, r: 5, id: 'river' });
+    const signEdge = riverAt(-42.5);
+    addPostedSign('SÔNG ĐÔNG', 2.2, 0.55, signEdge.x + signEdge.hw + 1.7, 1.0, -42.5);
+    for (const z of bridges) zones.push({ x: riverAt(z).x, z, r: 5, id: 'river' });
     const { group } = flush('river');
-    group.add(waterRect(x0, x1, z0, z1));
+    group.add(waterRibbon());
     group.add(waterEllipse(RIVER.pond.x, RIVER.pond.z, RIVER.pond.a, RIVER.pond.b));
     group.add(waterfall.group);
-    // Keep the walkable banks out of the footprint except where they meet the cliff.
-    wallLine(RIVER.x - 5.6, RIVER.z0 - 1.96, RIVER.x + 5.6, RIVER.z0 - 1.96, 1.12, 1.5);
-    for (const dx of [-5.55, 5.65]) wallLine(RIVER.x + dx, RIVER.z0 - 3, RIVER.x + dx, RIVER.z0 - 13.4, 1.55, 1.7);
-    wallLine(RIVER.x - 5.55, RIVER.z0 - 13.4, RIVER.x + 5.65, RIVER.z0 - 13.4, 1.55, 1.7);
+    // Vách đá quanh thác: dời tâm theo thác mới, mở rộng nửa rộng theo bể đầu nguồn.
+    const { x: fx, z: fz, wallHw } = RIVER_FALLS;
+    wallLine(fx - wallHw, fz - 1.96, fx + wallHw, fz - 1.96, 1.12, 1.5);
+    for (const dx of [-wallHw + 0.05, wallHw + 0.05]) wallLine(fx + dx, fz - 3, fx + dx, fz - 13.4, 1.55, 1.7);
+    wallLine(fx - wallHw + 0.05, fz - 13.4, fx + wallHw + 0.05, fz - 13.4, 1.55, 1.7);
   }
 
   // =====================================================================================
@@ -832,7 +879,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     }
     balustrade(sx - edge, north + 0.24, sx + edge, north + 0.24);
 
-    const colH = 3.82;
+    const colH = 5.05;
     for (const ox of [-hx, -2.45, 2.45, hx]) for (const z of [entryZ, rearZ]) {
       addBox('dsStone', 0.83, 0.34, 0.83, sx + ox, sy + 0.17, z);
       addCyl('dsTimber', 0.25, 0.32, colH - 0.27, 12, sx + ox, sy + (colH + 0.27) / 2, z);
@@ -870,10 +917,11 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
         glow(px, y, z, 1.8, 0xffc070, 0.4);
       }
     }
-    addSign('CHÙA NGỌC', 3.55, 0.72, sx, sy + 3.46, entryZ + 0.38);
+    addBox('dsDarkwood', 3.55, 0.72, 0.08, sx, sy + colH + 0.18, entryZ + 0.35);
+    addSign('CHÙA NGỌC', 3.55, 0.72, sx, sy + colH + 0.18, entryZ + 0.392);
     zones.push({ x: NGOC.x, z: NGOC.z, r: 10, id: 'chuaNgoc' });
     const { group } = flush('chuaNgoc');
-    const roof = duocSuRoof(14.9, 9.3, sy + colH + 0.37, 2.18);
+    const roof = duocSuRoof(14.9, 9.3, sy + colH + 0.37, 3.0);
     roof.position.set(sx, 0, bodyZ);
     const mergedStatue = mergeStatue(statue);
     mergedStatue.name = 'expansion-buddha-ngoc';
@@ -1031,7 +1079,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       addBox('granite', 0.7, 0.25, 0.7, tx + s * 4.2, 1.42, tz + 3.0);
       solid(tx + s * 4.2, tz + 3.0, 0.35);
     }
-    addSign('CÂY CỔ THỤ', 2.0, 0.5, tx, 1.35, tz + 4.6);
+    addPostedSign('CÂY CỔ THỤ', 2.0, 0.5, tx, 1.35, tz + 4.6);
     zones.push({ x: tx, z: tz, r: 7, id: 'nghiaTrang' });
     flush('nghiaTrang');
   }
