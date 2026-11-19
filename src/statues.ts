@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { faceTexture, glowTexture } from './textures';
+import { faceTexture } from './textures';
+import { buildHalo } from './statue-halo';
 
 /* =====================================================================
  * TƯỢNG PHẬT TỔ & QUAN THẾ ÂM — phong cách 3D Chibi Toy / Clay
  * ---------------------------------------------------------------------
  *  - Chỉ dùng primitive (Sphere, Cylinder, Cone, Torus, Capsule, Lathe, Tube)
- *  - 100% MeshStandardMaterial, roughness 0.4 – 0.7, tránh phản chiếu kim loại gắt
+ *  - MeshStandardMaterial cho phần tượng, tránh phản chiếu kim loại gắt
  *  - Mọi mesh chính đều castShadow + receiveShadow
  *  - Vật liệu và geometry dùng chung (cache) nên clone nhiều lần rất nhẹ
  *  - Gốc tượng tại y = 0, mặt hướng +z; kích thước ngoài được nhân với hệ số
@@ -25,8 +26,6 @@ const COL = {
   white: 0xedf2f4,       // trắng sứ
   jade: 0x2a9d8f,        // cành liễu xanh ngọc
   leaf: 0x70e000,        // lá xanh mạ
-  haloGold: 0xffe066,
-  haloEmissive: 0xffb703,
   red: 0xd62828,
   eyeDark: 0x2b2b2b,     // mắt / mày Quan Âm
   smileRed: 0x8d3b3b,    // miệng cười Quan Âm
@@ -114,47 +113,6 @@ function buildLotusBase(parent: THREE.Group, k: number, petalCount: number): num
   return 0.46;
 }
 
-// ---------------------------------------------------------------- vòng hào quang dùng chung
-/** Ngọn lửa ConeGeometry vuốt cong (uốn đỉnh về một phía, dẹt theo z). */
-function flameGeometry() {
-  return geo('flame', () => {
-    const g = new THREE.ConeGeometry(0.075, 0.26, 10, 8);
-    g.translate(0, 0.13, 0);
-    const p = g.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const t = p.getY(i) / 0.26;
-      p.setX(i, p.getX(i) + 0.09 * t * t);
-      p.setZ(i, p.getZ(i) * 0.55);
-    }
-    g.computeVertexNormals();
-    return g;
-  });
-}
-
-/** Hào quang: Torus (R 1.3, ống 0.08, 16×32) + 8 ngọn lửa cách đều trên vành. Emissive nhẹ. */
-export function buildHalo(radius: number, y: number, z: number, flames = 8): THREE.Group {
-  const halo = new THREE.Group();
-  halo.name = 'halo';
-  halo.position.set(0, y, z);
-  const hm = std(COL.haloGold, 0.5, { emissive: COL.haloEmissive, emissiveIntensity: 0.5 });
-  add(halo, geo(`halo-torus-${radius}`, () => new THREE.TorusGeometry(radius, 0.08, 16, 32)), hm);
-  for (let i = 0; i < flames; i++) {
-    const a = (i / flames) * Math.PI * 2 + Math.PI / 2;
-    const pivot = new THREE.Group();
-    pivot.position.set(Math.cos(a) * (radius + 0.06), Math.sin(a) * (radius + 0.06), 0);
-    pivot.rotation.z = a - Math.PI / 2;
-    halo.add(pivot);
-    add(pivot, flameGeometry(), hm);
-  }
-  return halo;
-}
-
-function addGlow(g: THREE.Group, x: number, y: number, z: number, size: number, color: number) {
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
-  spr.scale.setScalar(size); spr.position.set(x, y, z); g.add(spr);
-  g.userData.glow = spr;
-}
-
 // ---------------------------------------------------------------- đầu chibi + khuôn mặt CanvasTexture
 const HEAD_R = 0.65;
 
@@ -209,7 +167,7 @@ function buildHead(kind: 'buddha' | 'guanyin'): THREE.Group {
 const BUDDHA_SCALE = 1.62;
 
 /** Tượng Phật Tổ. Gốc y=0, mặt hướng +z. Trả về `buddhaGroup`. */
-export function buildBuddha(): THREE.Group {
+export function buildBuddha(withHalo = true): THREE.Group {
   const buddhaGroup = new THREE.Group();
   buddhaGroup.name = 'buddhaGroup';
   const fig = new THREE.Group();
@@ -264,17 +222,18 @@ export function buildBuddha(): THREE.Group {
   fig.add(head);
 
   // ---- hào quang
-  fig.add(buildHalo(1.3, 2.42, -0.6, 8));
-  addGlow(buddhaGroup, 0, 2.42 * BUDDHA_SCALE, -0.4, 6.4, 0xffd890);
+  if (withHalo) fig.add(buildHalo(1.3, 2.42, -0.6));
   return buddhaGroup;
 }
 
 /** Measure the figure and its sculpted halo, not the billboard glow. */
 export function measureBuddhaHeight(buddha: THREE.Group): number {
   const box = new THREE.Box3();
-  for (const child of buddha.children) {
-    if (!(child instanceof THREE.Sprite)) box.expandByObject(child, true);
-  }
+  const aura = buddha.getObjectByName('halo-glow');
+  const parent = aura?.parent;
+  if (aura && parent) parent.remove(aura);
+  for (const child of buddha.children) if (!(child instanceof THREE.Sprite)) box.expandByObject(child, true);
+  if (aura && parent) parent.add(aura);
   return box.max.y - box.min.y;
 }
 
@@ -401,7 +360,7 @@ function vaseGeometry() {
 }
 
 /** Tượng Quan Thế Âm. Gốc y=0, mặt hướng +z. Trả về `guanyinGroup`. */
-export function buildQuanAm(): THREE.Group {
+export function buildQuanAm(withHalo = true): THREE.Group {
   const guanyinGroup = new THREE.Group();
   guanyinGroup.name = 'guanyinGroup';
   const fig = new THREE.Group();
@@ -494,8 +453,7 @@ export function buildQuanAm(): THREE.Group {
   fig.add(head);
 
   // ---- hào quang
-  fig.add(buildHalo(1.3, headY, -0.62, 8));
-  addGlow(guanyinGroup, 0, headY * GUANYIN_SCALE, -0.4, 6.6, 0xfff2d0);
+  if (withHalo) fig.add(buildHalo(1.3, headY, -0.62));
   return guanyinGroup;
 }
 // =====================================================================

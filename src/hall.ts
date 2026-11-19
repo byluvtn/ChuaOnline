@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { HALL } from './layout';
-import { buildBuddha, buildHalo, measureBuddhaHeight } from './statues';
+import { buildBuddha, measureBuddhaHeight } from './statues';
+import { buildHalo, hideBakedHalo } from './statue-halo';
 import { sealArchitectureJoints } from './compound';
 import { glowTexture, vietnameseColumnTexture, vietnamesePlaqueTexture, stoneTexture, woodTexture } from './textures';
 import { buildZafu } from './zafu';
@@ -195,14 +196,14 @@ export function buildHall(c: TempleCtx) {
     const fallbackHalo = b.getObjectByName('halo');
     if (fallbackHalo) fallbackHalo.visible = false;
     g.add(b);
-    replaceModel(g, b, asset, height * s, undefined, 'base');
+    replaceModel(g, b, asset, height * s, undefined, 'base', model => hideBakedHalo(model, asset));
     // hào quang độc lập theo vị trí đặt tượng: hiện đúng với cả GLB lẫn fallback
     const slotH = height * s;
     const slot = new THREE.Group();
     slot.name = 'halo-slot';
     slot.position.set(x, altarY, altarZ);
     slot.rotation.y = ry;
-    const halo = buildHalo(0.32 * slotH, 0.6 * slotH, -0.15 * slotH, 8);
+    const halo = buildHalo(0.30 * slotH, (asset === 'chibi-dia-tang' || asset === 'chibi-van-thu' || asset === 'chibi-pho-hien' ? 0.77 : 0.73) * slotH, -0.21 * slotH);
     slot.add(halo);
     g.add(slot);
     halos.push(halo);

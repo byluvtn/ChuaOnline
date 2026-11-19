@@ -37,7 +37,7 @@ export function replaceRoof(parent: THREE.Group, fallback: THREE.Group, name: st
 }
 
 /** Replace a complete static model while preserving an immediately visible fallback. */
-export function replaceModel(parent: THREE.Group, fallback: THREE.Object3D, name: string, height?: number, material?: THREE.Material, anchor?: 'base'): void {
+export function replaceModel(parent: THREE.Group, fallback: THREE.Object3D, name: string, height?: number, material?: THREE.Material, anchor?: 'base', prepare?: (instance: THREE.Object3D) => void): void {
   fallback.userData.asset = name;
   fallback.userData.source = 'procedural-fallback';
   void loadModel(name).then(model => {
@@ -48,6 +48,7 @@ export function replaceModel(parent: THREE.Group, fallback: THREE.Object3D, name
     instance.rotation.copy(fallback.rotation);
     if (height === undefined) instance.scale.copy(fallback.scale);
     if (material) instance.traverse(o => { if (o instanceof THREE.Mesh) o.material = material; });
+    prepare?.(instance);
     instance.userData.source = 'blender';
     parent.add(instance);
     parent.remove(fallback);

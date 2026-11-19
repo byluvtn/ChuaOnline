@@ -21,6 +21,7 @@ import {
   expansionGroundY, NGOC_EAST_LANE, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
+import { buildHalo, hideBakedHalo } from './statue-halo';
 import { fitModel, loadModel, replaceModel } from './models';
 import { grassTexture, glowTexture, signTexture, stoneTexture, woodTexture } from './textures';
 import { pavingMaterial } from './compound';
@@ -642,7 +643,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     addBox('darkWood', 5.6, 0.95, 1.5, 0, y + 0.475, altarZ);
     addBox('gold', 5.2, 0.1, 1.3, 0, y + 0.99, altarZ);
     for (const ox of [-1.8, 0, 1.8]) hallSolid(ox, altarZ, 1.0);
-    const buddha = buildBuddha();
+    const buddha = buildBuddha(false);
     buddha.scale.setScalar(0.5);
     addBox('darkWood', 2.6, 0.16, 0.9, 0, y + 1.05, altarZ + 2.0);
     for (const ox of [-1.05, 1.05]) for (const oz of [-0.3, 0.3]) addBox('darkWood', 0.14, 1.05, 0.14, ox, y + 0.52, altarZ + 2.0 + oz);
@@ -668,8 +669,10 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     const fallback = mergeStatue(buddha);
     fallback.position.set(0, y + 1.04, altarZ);
     fallback.name = 'expansion-buddha';
-    group.add(fallback);
-    replaceModel(group, fallback, 'chibi-duoc-su-tuong-chinh', 2.98, undefined, 'base');
+    const halo = buildHalo(0.73, 2.15, -0.48);
+    halo.position.add(fallback.position);
+    group.add(fallback, halo);
+    replaceModel(group, fallback, 'chibi-duoc-su-tuong-chinh', 2.98, undefined, 'base', model => hideBakedHalo(model, 'chibi-duoc-su-tuong-chinh'));
   }
 
   // =====================================================================================
@@ -979,11 +982,13 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     const roof = duocSuRoof(14.9, 9.3, sy + colH + 0.37, 3.0);
     roof.position.set(sx, 0, bodyZ);
     const statueHeight = 2.5;
-    const fallback = fitModel(mergeStatue(buildBuddha()), statueHeight, 'base');
+    const fallback = fitModel(mergeStatue(buildBuddha(false)), statueHeight, 'base');
     fallback.name = 'expansion-buddha-ngoc';
     fallback.position.set(sx, sy + 1.055, altarZ);
-    group.add(roof, fallback);
-    replaceModel(group, fallback, 'chibi-phat-ngoc', statueHeight, undefined, 'base');
+    const halo = buildHalo(0.58, 1.84, -0.44);
+    halo.position.add(fallback.position);
+    group.add(roof, fallback, halo);
+    replaceModel(group, fallback, 'chibi-phat-ngoc', statueHeight, undefined, 'base', model => hideBakedHalo(model, 'chibi-phat-ngoc'));
   }
 
   // =====================================================================================

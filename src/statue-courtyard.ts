@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { buildHalo } from './statue-halo';
 
 type Point = [number, number, number];
 type Section = [number, number];
@@ -13,7 +14,7 @@ const ink = matte(0x35241d), smile = matte(0xac6c4d);
 const ivory = matte(0xf7ead4), veil = matte(0xfff1dd), hair = matte(0xe6ceae);
 const trim = matte(0xe5ba72, 0.57, 0.09), porcelain = matte(0xfff8eb, 0.42);
 const bronze = matte(0xd69540, 0.54, 0.21), foldGold = matte(0xeab057, 0.54, 0.21);
-const haloGold = matte(0xd9a04d, 0.57, 0.18), bowl = matte(0x302823, 0.53);
+const bowl = matte(0x302823, 0.53);
 const lotusPink = matte(0xd9778b), petals = [matte(0xf29eaa), matte(0xec909f), matte(0xf6a8b4)];
 const stem = matte(0x718049), leaves = [matte(0x859751), matte(0x6e8645), matte(0x9aaa64)];
 
@@ -167,9 +168,6 @@ export function buildCourtyardBuddha(radius: number) {
   const s = new Sculpture();
   lotus(s, true);
 
-  s.oval(haloGold, [0, 2.20, -0.46], [0.99, 0.95, 0.10]);
-  const rim = new THREE.TorusGeometry(0.958, 0.014, 12, 72);
-  s.add(rim.scale(1.018, 0.977, 1).translate(0, 2.20, -0.437), trim);
   s.oval(skin, [0, 2.79, 0], [0.28, 0.23, 0.25]);
   face(s, true, 2.08, 0.10);
   for (const side of [-1, 1]) {
@@ -202,7 +200,9 @@ export function buildCourtyardBuddha(radius: number) {
     s.oval(skin, [side * 0.19, 0.91, 0.57], [0.147, 0.078, 0.085], side * 0.28);
     s.oval(skin, [side * 0.135, 0.964, 0.563], [0.081, 0.039, 0.051], -side * 0.38);
   }
-  return s.finish('courtyard-buddha', radius);
+  const statue = s.finish('courtyard-buddha', radius);
+  statue.add(buildHalo(0.99, 2.20, -0.58));
+  return statue;
 }
 
 export function buildCourtyardGuanyin(radius: number) {
@@ -308,5 +308,7 @@ export function buildCourtyardGuanyin(radius: number) {
   s.oval(lightBrows, [0, 3.562, 0.522], [0.056, 0.064, 0.034]);
   s.oval(lightBrows, [0, 3.516, 0.526], [0.092, 0.028, 0.043]);
   s.stroke(trim, [[0.033, 3.599, 0.547], [0.016, 3.572, 0.557], [-0.03, 3.551, 0.552]], 0.008);
-  return s.finish('courtyard-guanyin', radius);
+  const statue = s.finish('courtyard-guanyin', radius);
+  statue.add(buildHalo(1.09, 2.97, -0.84));
+  return statue;
 }

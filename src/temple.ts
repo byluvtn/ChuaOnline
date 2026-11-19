@@ -7,8 +7,8 @@ import { buildExpansion } from './expansion';
 import {
   NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, WALL, WALKWAY_RECTS, nearWalkway, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
-import { buildArhat, buildQuanAm } from './statues';
-import { buildCorridorStatues } from './statue-corridor';
+import { buildQuanAm } from './statues';
+import { createCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
 import { buildCourtyardBuddha, buildCourtyardGuanyin } from './statue-courtyard';
 import { duocSuRoof, duocSuStyle } from './duoc-su-style';
 import { buildPondLotus } from './pond-lotus';
@@ -161,42 +161,24 @@ export function buildTemple(c: TempleCtx) {
   }
   sealArchitectureJoints(corridor, { maxGap: 0.4 });
 
-  // ---- tượng La Hán dọc hai hành lang: 5 tượng mỗi bên, cách nhau 3.6, đặt giữa các cột (bệ không chồng đế cột), quay mặt vào trục ----
+  // ---- 5 tượng chibi mỗi bên, giữa các cột và quay mặt vào lối đi ----
   const arhatGroup = new THREE.Group(); arhatGroup.name = 'arhats'; scene.add(arhatGroup);
-  const arhatModels = ([0, 1, 2] as const).map((v) => buildArhat(v));
+  const createCorridorStatue = createCorridorStatues();
   const arhatPedM = lamb(0x9a8f7a, { map: stoneTexture([170, 160, 140], [1, 1], 2) });
-  const corridorSlots: { x: number; z: number; side: number; idx: number; fallback: THREE.Object3D }[] = [];
+  const corridorHalos: THREE.Group[] = [];
   for (const side of [-1, 1] as const) {
     for (let k = 0; k < 5; k++) {
       const z = -16.6 + 3.6 * k;
       const x = side * CORR.x + side * 1.85;
       const ped = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.5), arhatPedM);
       ped.position.set(x, CORR.y + 0.275, z); ped.castShadow = ped.receiveShadow = true; ped.userData.sealable = true; arhatGroup.add(ped);
-      const a = arhatModels[(k + (side > 0 ? 1 : 0)) % 3].clone(true);
-      a.position.set(x, CORR.y + 0.55, z); a.rotation.y = -side * Math.PI / 2;
-      arhatGroup.add(a);
-      corridorSlots.push({ x, z, side, idx: (k + (side > 0 ? 2 : 0)) % 4, fallback: a });
+      const { slot, halo } = createCorridorStatue((k + (side > 0 ? 2 : 0)) % CORRIDOR_STATUE_NAMES.length);
+      slot.position.set(x, CORR.y + 0.55, z); slot.rotation.y = -side * Math.PI / 2;
+      arhatGroup.add(slot);
+      corridorHalos.push(halo);
       colliders.push({ x, z, r: 0.85 });
     }
   }
-  let corridorLateResolve!: (models: (THREE.Group | null)[]) => void;
-  const corridorLateP = new Promise<(THREE.Group | null)[]>((res) => { corridorLateResolve = res; });
-  const corridorStatuesP = buildCorridorStatues(corridorLateResolve);
-  const corridorDone = new Set<number>();
-  const applyCorridorStatues = (models: (THREE.Group | null)[]) => {
-    corridorSlots.forEach((s, si) => {
-      const m = models[s.idx];
-      if (!m || corridorDone.has(si)) return;
-      corridorDone.add(si);
-      const inst = m.clone(true);
-      inst.position.set(s.x, CORR.y + 0.55, s.z);
-      inst.rotation.y = -s.side * Math.PI / 2;
-      arhatGroup.add(inst);
-      arhatGroup.remove(s.fallback);
-    });
-  };
-  corridorStatuesP.then(applyCorridorStatues).catch((e) => { console.warn('statue-corridor: lỗi dựng, giữ tượng chibi', e); });
-  corridorLateP.then(applyCorridorStatues).catch((e) => { console.warn('statue-corridor: lỗi tải lại, giữ tượng chibi', e); });
   const arhatSeal = sealArchitectureJoints(arhatGroup, { maxGap: 0.3 });
   if (import.meta.env.DEV) console.warn(`gapdump arhats: filled=${arhatSeal.filled} remaining=${arhatSeal.remaining.length} ` + JSON.stringify(arhatSeal.remaining));
 
@@ -1469,7 +1451,7 @@ export function buildTemple(c: TempleCtx) {
   let ring = 0, drumHit = 0;
   const ringBell = () => { ring = 1; };
   const ringDrum = () => { drumHit = 1; };
-  const halos = [...hall.halos, ...tamThe.halos].filter(Boolean);
+  const halos = [...hall.halos, ...tamThe.halos, ...corridorHalos];
   const update = (t: number, dt: number) => {
     expansion.update(t);
     ring = Math.max(0, ring - dt * 0.25);
@@ -1478,7 +1460,7 @@ export function buildTemple(c: TempleCtx) {
     drumPivot.rotation.z = Math.sin(t * 38) * 0.035 * drumHit;
     drumPivot.position.y = drumY + Math.abs(Math.sin(t * 24)) * 0.05 * drumHit;
     drumPivot.scale.setScalar(1 + Math.sin(t * 38) * 0.018 * drumHit);
-    halos.forEach((h, i) => { h.rotation.z = t * (0.12 + i * 0.02); });
+    halos.forEach((h, i) => { h.rotation.z = t * (0.10 + (i % 5) * 0.015); });
     // cá bơi trong hệ toạ độ của nhóm hồ (nhóm đã được đặt về tâm khuôn viên)
     koi.forEach((kk) => {
       kk.a += dt * kk.s;
