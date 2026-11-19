@@ -24,7 +24,7 @@ export const FIREWORKS = {
 
 export type ShopCategory =
   | 'le_vat' | 'cay_phat' | 'ao_trang' | 'trang_hat' | 'bo_doan'
-  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh' | 'do_an' | 'hat_giong';
+  | 'mu' | 'phap_khi' | 'may' | 'linh_thu' | 'dieu' | 'do_linh_thu' | 'phong_sinh' | 'do_an' | 'hat_giong' | 'tinh_that';
 
 export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
   { id: 'le_vat', label: 'Lễ vật' },
@@ -40,6 +40,7 @@ export const SHOP_CATEGORIES: { id: ShopCategory; label: string }[] = [
   { id: 'do_linh_thu', label: 'Đồ linh thú' },
   { id: 'phong_sinh', label: 'Phóng sinh' },
   { id: 'do_an', label: 'Đồ ăn' },
+  { id: 'tinh_that', label: 'Đồ tịnh thất' },
 ];
 
 export interface ShopItem {
@@ -47,7 +48,7 @@ export interface ShopItem {
   name: string;
   desc: string;
   price: number;
-  kind: 'consumable' | 'accessory';
+  kind: 'consumable' | 'accessory' | 'decor';
   icon: string;
   category: ShopCategory;
   /** cấp tối thiểu để mua (≥1); chưa đủ cấp thì khoá */
@@ -114,6 +115,17 @@ export const ITEMS: ShopItem[] = [
   { id: 'hat_soi_tot', name: 'Hạt Sồi tốt', desc: 'Hạt sồi tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
   { id: 'hat_thong_tot', name: 'Hạt Thông tốt', desc: 'Hạt thông tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
   { id: 'hat_bo_de_tot', name: 'Hạt Bồ Đề tốt', desc: 'Hạt bồ đề tốt — cây lớn nhanh hơn (2 lần tưới, 10 phút/lần), thu hoạch có thưởng xu.', price: 0, kind: 'consumable', icon: '🌟', category: 'hat_giong' },
+  // ---- Đồ trang trí Tịnh thất riêng (mua nhiều lần được, tự đặt trong tịnh thất)
+  { id: 'tt_chieu_coi', name: 'Chiếu cói', desc: 'Chiếu cói trải sàn tịnh thất.', price: 30, kind: 'decor', icon: '🟫', category: 'tinh_that' },
+  { id: 'tt_den_long', name: 'Đèn lồng giấy', desc: 'Đèn lồng giấy ấm áp cho tịnh thất.', price: 40, kind: 'decor', icon: '🏮', category: 'tinh_that' },
+  { id: 'tt_chuong_gio', name: 'Chuông gió', desc: 'Chuông gió đồng treo cửa sổ.', price: 45, kind: 'decor', icon: '🔔', category: 'tinh_that' },
+  { id: 'tt_binh_hoa', name: 'Bình hoa sen', desc: 'Bình gốm cắm hoa sen.', price: 50, kind: 'decor', icon: '🪷', category: 'tinh_that' },
+  { id: 'tt_ban_tra', name: 'Bàn trà nhỏ', desc: 'Bàn trà gỗ cùng bộ ấm chén.', price: 60, kind: 'decor', icon: '🍵', category: 'tinh_that' },
+  { id: 'tt_lu_huong', name: 'Lư hương đồng', desc: 'Lư hương đồng nhỏ.', price: 70, kind: 'decor', icon: '🕯', category: 'tinh_that' },
+  { id: 'tt_tranh_truc', name: 'Tranh trúc', desc: 'Bức tranh mực tàu vẽ khóm trúc.', price: 80, kind: 'decor', icon: '🖼', category: 'tinh_that' },
+  { id: 'tt_ke_kinh', name: 'Kệ kinh', desc: 'Kệ gỗ đựng kinh sách.', price: 90, kind: 'decor', icon: '📚', category: 'tinh_that', minLevel: 2 },
+  { id: 'tt_bonsai', name: 'Chậu bonsai', desc: 'Cây bonsai tỉa gọn.', price: 100, kind: 'decor', icon: '🌳', category: 'tinh_that', minLevel: 2 },
+  { id: 'tt_phat_nho', name: 'Tượng Phật nhỏ', desc: 'Tượng Phật nhỏ đặt ở góc thờ.', price: 150, kind: 'decor', icon: '🧘', category: 'tinh_that', minLevel: 3 },
 ];
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
 

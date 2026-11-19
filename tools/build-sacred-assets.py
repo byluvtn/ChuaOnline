@@ -294,7 +294,6 @@ def pavilion():
         m.box('wood',x,.48,z,w,.5,d)
     for x in [-1.9,1.9]:
         for z in [-1.9,1.9]:
-            if (x,z)==(-1.9,1.9):continue
             m.box('stone',x,.26,z,.42,.16,.42)
             m.branch('wood',(x,.32,z),(x,2.94,z),.18,.16,10)
             m.box('gold',x,2.95,z,.55,.15,.55)

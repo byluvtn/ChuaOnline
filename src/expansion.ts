@@ -381,7 +381,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       addBox('red', w, 0.5, d, px + ox, base + 0.35, pz + oz);
       wallLine(px + ox - w / 2, pz + oz - d / 2, px + ox + w / 2, pz + oz + d / 2, 0.2, 0.55);
     }
-    const top = openHall(px, pz, base, 1.9, 1.9, 2.5, 6.4, 6.0, 1.6, 0, 'red', [[-1.9, 1.9]]);
+    const top = openHall(px, pz, base, 1.9, 1.9, 2.5, 6.4, 6.0, 1.6, 0);
     const { group: pavilionShell } = flush('dinhSen-architecture');
     replaceArchitecture(pavilionShell, 'dinh-sen-blender', px, pz);
     addSign('ĐÌNH SEN', 1.7, 0.44, px, top - 1.0, pz + 2.02);

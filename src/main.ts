@@ -16,6 +16,10 @@ import { takePhoto } from './features/photo';
 import { openFestivals } from './features/festivals';
 import { createPost } from './post';
 import { createWorld } from './world';
+import { createWeather } from './weather';
+import { createBodhiGrove } from './bodhi';
+import { BOND_BY_ID } from '../shared/bonds';
+import { hasGroupAura, openJourney } from './features/journey';
 import { setStallClosed } from './market';
 import { renderGardenTrees, setGardenGateBoard } from './vuoncay';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
@@ -182,7 +186,7 @@ $<HTMLFormElement>('authForm').onsubmit = async (e) => {
 
 // ---------- 3D scene ----------
 const canvas = $<HTMLCanvasElement>('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
@@ -194,6 +198,8 @@ const world = createWorld(renderer, (phase, x, z, strength, crackle) => {
   audio.firework(phase, strength * Math.max(0, 1 - distance / 65), crackle);
 });
 initAnimals(world.scene, () => settings.showNames);
+const weather = createWeather(world.scene, () => roomId !== 'an-lac' && settings.quality !== 'low');
+const bodhiGrove = createBodhiGrove(world.scene);
 
 /** Vòng collider viền hồ — CHỈ dành cho pathfinder (không vào world.colliders). */
 function lakeRingColliders() {
@@ -349,6 +355,7 @@ const STATUS_TEXT: Record<NpcAct, string> = {
   sweep: 'Đang quét sân…',
   ring: 'Đang rung chuông…',
   rest: 'Đang nghỉ…',
+  water: 'Đang tưới rau…',
 };
 const statusText = (a?: NpcAct | null) => (a ? STATUS_TEXT[a] : undefined);
 
@@ -861,6 +868,7 @@ function startMenu() {
     act: (kind) => doAction(kind),
     guideTo: (qid: string) => { startGuide(qid); },
     takePhoto: () => takePhoto(canvas, post, () => profile?.name ?? 'Phật tử', toast),
+    onBodhi: (trees) => bodhiGrove.setTrees(trees),
   });
 }
 // ---------- Input ----------
@@ -1657,6 +1665,12 @@ function openDialogue(npcId: string): void {
             });
           },
         }, `Mua ${g.label} · ${g.price} xu`))));
+    }
+
+    if (BOND_BY_ID[npcId]) {
+      body.appendChild(h('div', { class: 'qrow' }, h('button', {
+        onclick: () => { dialogueNpc = null; dialogueSocialNpc = null; openJourney({ ...panelCtx(), myPos, goTo: (x, z) => { clickTarget = new THREE.Vector3(x, 0, z); bowSeat = null; setSitting(false); } }, 'bond'); },
+      }, '💞 Thân thiết và truyện riêng')));
     }
 
     if (npcId === 'npc1') {
@@ -2828,7 +2842,7 @@ function loop(now: number = performance.now()) {
         }
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân
         if (Math.hypot(r.char.root.position.x - px, r.char.root.position.z - pz) > 0.004 || r.lastMoveAt === undefined) r.lastMoveAt = now;
-        if (r.anim === 'walk' && now - r.lastMoveAt > 500) r.anim = 'idle';
+        if ((r.anim === 'walk' || r.anim === 'carry') && now - r.lastMoveAt > 500) r.anim = 'idle';
         if (r.anim === 'ring' && (r.prevAnim !== 'ring' || now - (r.lastRingAt ?? 0) > 4000)) { r.lastRingAt = now; strikeTower('bell'); }
         r.prevAnim = r.anim;
       }
@@ -2846,6 +2860,7 @@ function loop(now: number = performance.now()) {
       if (far && r.anim === r.lodAnim && t - (r.lodAt ?? -9) < 0.5) return;
       r.lodAt = t; r.lodAnim = r.anim;
     }
+    if (!r.data.npc) r.char.setHalo(r.anim === 'sit' && hasGroupAura(id) ? 2 : id === myId ? myHalo : r.data.halo ?? 0);
     animateCharacter(r.char, r.anim, t);
     if (r.anim === 'sit') {
       const { x, z } = r.char.root.position;
@@ -2868,6 +2883,8 @@ function loop(now: number = performance.now()) {
   updateReleaseAnims(dt);
   updateCouplet();
   world.update(t, me ? me.char.root.position : focusIdle);
+  weather.update(t, dt, me ? me.char.root.position : focusIdle);
+  bodhiGrove.update(t);
   if (now - lastRenderAt >= FRAME_MS - FRAME_TOLERANCE_MS) {
     lastRenderAt += FRAME_MS;
     if (now - lastRenderAt > FRAME_MS) lastRenderAt = now; // đã trễ quá 1 frame (tab vừa hiện lại, lag): đặt lại mốc

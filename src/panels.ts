@@ -543,7 +543,7 @@ export function openAdminPanel(ctx: PanelCtx) {
 
 function shopTile(it: ShopItem, ctx: PanelCtx, p: Profile | null) {
   const lvl = levelOf(p?.merit ?? 0);
-  const owned = (p?.inventory[it.id] ?? 0) > 0 && it.kind === 'accessory';
+  const owned = (p?.inventory[it.id] ?? 0) > 0 && (it.kind === 'accessory' || it.kind === 'decor');
   const locked = !!it.minLevel && lvl < it.minLevel;
   const can = !locked && (p?.coins ?? 0) >= it.price && !owned;
   const buy = (n: number) => ctx.socket.emit(n > 1 ? 'shop:buy5' : 'shop:buy', it.id, (r: { ok: boolean; error?: string }) => ctx.toast(r.ok ? `Đã mua ${it.name}${n > 1 ? ` ×${n}` : ''}` : r.error ?? 'Lỗi'));
@@ -592,7 +592,8 @@ function renderBag(body: HTMLElement, ctx: PanelCtx) {
     if (it.kind === 'accessory') {
       const worn = p?.accessory === id;
       tile.append(h('button', { onclick: () => ctx.socket.emit('inv:equip', worn ? null : id) }, worn ? 'Tháo ra' : 'Đeo'));
-    } else tile.append(h('small', {}, (it.id === 'chim_phong_sinh' || it.id === 'ca_phong_sinh') ? 'Mang tới bến thả ở hồ phóng sinh để thả' : 'Tự dùng khi hành lễ'));
+    } else if (it.kind === 'decor') tile.append(h('small', {}, 'Đặt trong Hành trình, mục Tịnh thất'));
+    else tile.append(h('small', {}, (it.id === 'chim_phong_sinh' || it.id === 'ca_phong_sinh') ? 'Mang tới bến thả ở hồ phóng sinh để thả' : 'Tự dùng khi hành lễ'));
     grid.append(tile);
   }
   body.append(grid);

@@ -24,6 +24,7 @@ import {
 } from '../shared/game.js';
 import type { BellHeard, FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
 import { clampCampus, expansionWaterBlocked, resolveExpansionWater } from '../shared/campus.js';
+import { bindRitualSocket, ritualOnJoin, startRitualLoops, type RitualEnv, type RtSession } from './rituals.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
 // unhandledRejection: chỉ log và tiếp tục chạy (game server phải sống vì người chơi).
@@ -138,6 +139,8 @@ interface Session {
   haloDay?: string;
   /** tầng hào quang thiền trong ngày */
   haloLevel?: 0 | 1 | 2;
+  /** trạng thái nghi lễ/khóa thiền nhóm (server/rituals.ts) */
+  rt?: RtSession['rt'];
 }
 const sessions = new Map<string, Session>();
 const meditationDepartures = new Map<number, Promise<void>>();
@@ -500,6 +503,27 @@ function leaveRoom(s: Session) {
   s.socket.to(s.room).emit('player:leave', s.state.id);
 }
 
+const ritualEnv: RitualEnv = {
+  io,
+  sessions,
+  afterReward: (s, merit, coins, beforeMerit) => grantRewards(s as Session, merit, coins, { skipAdd: true, beforeMerit }),
+  syncProfile: (s) => pushProfile(s as Session),
+  pushSys,
+  npcPos: (s, npcId) => npcPos(s as Session, npcId),
+  groupHalo: async (s0) => {
+    const s = s0 as Session;
+    const today = dayKeyICT();
+    if (s.haloDay === today && (s.haloLevel ?? 0) >= 1) return;
+    const granted = await db.raiseHaloLevel(s.pid, 1, today);
+    s.haloLevel = 1;
+    s.haloDay = today;
+    s.state.halo = s.haloLevel;
+    if (granted) s.socket.emit('halo', { level: s.haloLevel, reason: 'grant' });
+    s.socket.to(s.room).emit('player:halo', { id: s.state.id, level: s.haloLevel });
+  },
+  badges: async (s) => { await maybeAwardTitles(s as Session); },
+};
+
 io.use((socket, next) => {
   db.playerIdByToken(socket.handshake.auth?.token).then((pid) => {
     if (!pid) return next(new Error('unauthorized'));
@@ -648,11 +672,13 @@ io.on('connection', (socket) => {
     socket.emit('stats', await currentStatsState(pid));
     socket.emit('halo', { level: haloLevel, reason: 'join' });
     socket.emit('meditation:daily', meditationDailyInfo(s));
+    void ritualOnJoin(ritualEnv, s).catch((e) => console.warn('[ritual] join:', e));
     // nhiệm vụ "viếng 3 chùa": đếm mỗi lần vào một phòng khác phòng gần nhất
     if (s.lastRoom !== room) { s.lastRoom = room; await questEvent(s, 'room'); }
   });
 
   const me = () => sessions.get(socket.id);
+  bindRitualSocket(ritualEnv, socket, me);
 
   socket.on('move', async (m: { x: number; z: number; ry: number; anim: Anim }) => {
     const s = me();
@@ -793,7 +819,7 @@ io.on('connection', (socket) => {
     if (item.category === 'hat_giong' && item.price === 0) return { ok: false as const, error: 'Hạt tốt chỉ có từ thu hoạch' };
     const lvl = levelOf((await db.getWallet(pid))?.merit ?? 0);
     if (item.minLevel && lvl < item.minLevel) return { ok: false as const, error: `Cần cấp ${item.minLevel} để mua` };
-    if (item.kind === 'accessory' && (await db.itemQty(pid, item.id)) > 0) return { ok: false as const, error: 'Bạn đã sở hữu' };
+    if ((item.kind === 'accessory' || item.kind === 'decor') && (await db.itemQty(pid, item.id)) > 0) return { ok: false as const, error: 'Bạn đã sở hữu' };
     const cost = item.price * qty;
     if (!(await db.purchase(pid, item.id, qty, cost))) return { ok: false as const, error: 'Không đủ xu' };
     return { ok: true as const };
@@ -1581,6 +1607,8 @@ io.on('connection', (socket) => {
     finally { if (meditationDepartures.get(pid) === departure) meditationDepartures.delete(pid); }
   });
 });
+
+startRitualLoops(ritualEnv);
 
 // position broadcast per room
 setInterval(() => {

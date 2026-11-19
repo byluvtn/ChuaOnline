@@ -276,6 +276,7 @@ export function blocked(x: number, z: number) {
   if (Math.abs(x - THIEN_DUONG.x) < 7 && Math.abs(z - THIEN_DUONG.z) < 6) return true;
   if (Math.hypot(x - VUON_THAP.x, z - VUON_THAP.z) < 10) return true;
   for (const v of [VIEN_KT, VIEN_TO]) if (x > v.x0 - 1 && x < v.x1 + 1 && z > v.z0 - 1 && z < v.z1 + 1) return true;
+  if (Math.abs(x + 50) < 8.5 && Math.abs(z - 34) < 6) return true;
   if (inPsPond(x, z, 1)) return true;
   if (x >= PS_PIER.x0 - 1 && x <= PS_PIER.x1 + 1 && Math.abs(z - PS_PIER.z) <= PS_PIER.hw + 1) return true;
   if (x > PS.x - PS.w / 2 - 1 && x < PS.x + PS.w / 2 + 1 && z > PS.z - PS.d / 2 - 1 && z < PS.z + PS.d / 2 + 1 && (Math.abs(x - PS.x) > PS.w / 2 - 0.3 || Math.abs(z - PS.z) > PS.d / 2 - 0.3)) return true;

@@ -28,8 +28,15 @@ function lotusCushion() {
   const turn = (profile: [number, number][], hex: number) => {
     tint(new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24), hex);
   };
-  turn([[0,0],[.68,0],[.82,.12],[.88,.34],[.81,.49],[0,.49]], 0xa94d65);
-  turn([[0,.40],[.69,.40],[.79,.58],[.76,.80],[.65,.96],[.46,1],[0,1]], 0xe797a8);
+  turn([[0,0],[.70,0],[.84,.10],[.90,.32],[.83,.49],[0,.49]], 0x8f3d52);
+  turn([[.80,.20],[.91,.22],[.92,.27],[.84,.28]], 0xe3b84f);
+  turn([[0,.40],[.69,.40],[.79,.58],[.76,.80],[.65,.96],[.46,1],[0,1]], 0xe99fb0);
+  turn([[0,.99],[.30,.99],[.33,1.05],[.24,1.10],[0,1.10]], 0xe9c96a);
+  for (let i = 0; i < 7; i++) {
+    const a = i / 7 * 2 * Math.PI, bead = new THREE.SphereGeometry(.045, 6, 4);
+    bead.translate(Math.cos(a) * .17, 1.09, Math.sin(a) * .17);
+    tint(bead, 0x8c6a2a);
+  }
   for (const row of [0, 1]) {
     const count = row === 0 ? 12 : 10;
     for (let i = 0; i < count; i++) {
@@ -47,6 +54,17 @@ function lotusCushion() {
       petal.rotateY(a);
       tint(petal, row === 0 ? (i % 2 ? 0xc86880 : 0xd9778b) : (i % 2 ? 0xf29eaa : 0xf6a8b4));
     }
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = (i + .25) / 8 * 2 * Math.PI, petal = new THREE.SphereGeometry(1, 8, 4), p = petal.getAttribute('position');
+    for (let j = 0; j < p.count; j++) {
+      const u = (p.getZ(j) + 1) / 2;
+      p.setXYZ(j, p.getX(j) * (.15 - .06 * u), p.getY(j) * .1 + .86 + .1 * u, .2 + .26 * u);
+    }
+    p.needsUpdate = true;
+    petal.computeVertexNormals();
+    petal.rotateY(a);
+    tint(petal, i % 2 ? 0xfcc3cc : 0xf8b0bb);
   }
   geometry = mergeGeometries(parts)!;
   parts.forEach(g => g.dispose());

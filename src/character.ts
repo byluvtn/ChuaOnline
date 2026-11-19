@@ -74,6 +74,7 @@ export interface Character {
   holdInc: THREE.Group;
   holdLotus: THREE.Group;
   holdBroom: THREE.Group;
+  holdBucket: THREE.Group;
   head: THREE.Mesh;
   cane: boolean;
   beard?: THREE.Group;
@@ -81,7 +82,7 @@ export interface Character {
   garment: { current: GarmentState | null };
   role?: 'abbot' | 'novice' | 'lay';
   poseW: number;
-  poseKind: 'abbot' | 'sweep' | 'ring';
+  poseKind: 'abbot' | 'sweep' | 'ring' | 'scoop' | 'water' | 'carry';
   prayW: number;
   lastT: number;
   face: THREE.Mesh;
@@ -578,6 +579,12 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   const holdBroom = new THREE.Group(); holdBroom.visible = false; holdBroom.rotation.x = -0.5; hold.add(holdBroom);
   mesh(geo('broomHandle', () => new THREE.CylinderGeometry(0.024, 0.024, 0.95, 6)), tmat(0x6b4423), holdBroom, 0, -0.325, 0, false);
   mesh(geo('broomHead', () => new THREE.ConeGeometry(0.195, 0.52, 8)), tmat(0x9a6b35), holdBroom, 0, -0.61, 0, false);
+  const holdBucket = new THREE.Group(); holdBucket.visible = false; hold.add(holdBucket);
+  mesh(geo('bucketBody', () => new THREE.CylinderGeometry(0.15, 0.115, 0.2, 14, 1, true)), tmat(0x8a5a32, { side: THREE.DoubleSide }), holdBucket, 0, 0, 0, false);
+  mesh(geo('bucketBase', () => new THREE.CylinderGeometry(0.115, 0.115, 0.016, 14)), tmat(0x6b4423), holdBucket, 0, -0.1, 0, false);
+  mesh(geo('bucketWater', () => new THREE.CylinderGeometry(0.138, 0.126, 0.012, 14)), tmat(0x6fb6d8), holdBucket, 0, 0.055, 0, false);
+  mesh(geo('bucketRim', () => new THREE.TorusGeometry(0.15, 0.011, 6, 16)), tmat(0x4a3018), holdBucket, 0, 0.1, 0, false).rotation.x = Math.PI / 2;
+  mesh(geo('bucketHandle', () => new THREE.TorusGeometry(0.15, 0.008, 5, 12, Math.PI)), tmat(0x4a3018), holdBucket, 0, 0.1, 0, false);
   for (let i = -1; i <= 1; i++) { // three incense sticks, red glowing tips
     const st = new THREE.Group(); st.position.set(i * 0.016, 0.02, 0); st.rotation.z = -i * 0.1; holdInc.add(st);
     mesh(geo('stick', () => new THREE.CylinderGeometry(0.0065, 0.0065, 0.212, 5)), tmat(0x8a4b2a), st, 0, 0.106, 0, false);
@@ -676,8 +683,11 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   };
 
   let haloGroup: THREE.Group | null = null;
+  let haloLevel = 0;
   const haloMats: THREE.Material[] = []; // Giải phóng vật liệu khi đổi tầng hoặc hủy nhân vật.
   const setHalo = (level: 0 | 1 | 2) => {
+    if (level === haloLevel) return;
+    haloLevel = level;
     if (haloGroup) { body.remove(haloGroup); haloGroup = null; }
     if (haloMats.length) { haloMats.forEach((m) => m.dispose()); haloMats.length = 0; }
     if (level === 0) return;
@@ -723,7 +733,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, shinL, shinR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, holdBucket, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, shinL, shinR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory, setHalo,
     garment: garmentState,
     say(text: string) {
@@ -878,8 +888,8 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.blinkUntil = t + 0.12 + Math.random() * 0.03;
     if (faceMat.map !== c.faceShut) { faceMat.map = c.faceShut; }
   }
-  const walk = anim === 'walk' || anim === 'run';
-  const clip = CLIPS[anim];
+  const walk = anim === 'walk' || anim === 'run' || anim === 'carry';
+  const clip = CLIPS[anim === 'carry' ? 'walk' : anim];
   const amp = walk ? clip.amp : 0;
   const gaitPh = walk && c.gait >= 0 ? c.gait % 1 : clip ? phaseOf(clip, t - c.t0) : 0;
   const cycle = Math.sin(TAU * gaitPh); // -1..1 over one gait cycle
@@ -998,6 +1008,16 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     const pull = Math.sin((t * Math.PI * 2) / 1.0) * 0.5 + 0.5;
     c.body.rotation.x = pull * 0.12;
     c.body.position.y = -pull * 0.03;
+  } else if (anim === 'scoop') {
+    const dip = Math.sin((t * Math.PI * 2) / 1.5) * 0.5 + 0.5;
+    c.body.rotation.x = 0.28 + dip * 0.2;
+    c.body.position.y = -dip * 0.05;
+  } else if (anim === 'water') {
+    const pour = Math.sin((t * Math.PI * 2) / 2.2) * 0.5 + 0.5;
+    c.body.rotation.x = 0.1 + pour * 0.06;
+    c.body.rotation.y = Math.sin((t * Math.PI * 2) / 4.4) * 0.35;
+  } else if (anim === 'carry') {
+    c.body.rotation.z = Math.sin(TAU * gaitPh) * 0.05;
   } else if (anim === 'lantern') {
     const lf = Math.sin(t * 4) * 0.12;
     c.armL.rotation.set(-2.1 + lf, 0, 0.25); c.armR.rotation.set(-2.1 + lf, 0, -0.25);
@@ -1005,13 +1025,18 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   }
 
   // tay cá»§a NPC: sÆ° tháº§y cháº¯p tay sau lÆ°ng khi Ä‘á»©ng yÃªn, quÃ©t lÃ¡ hai tay cáº§m chá»•i, Ä‘Ã¡nh chuÃ´ng hai tay kÃ©o dÃ¢y
-  const npcPose = anim === 'sweep' || anim === 'ring' || (anim === 'idle' && c.role === 'abbot');
+  const npcPose = anim === 'sweep' || anim === 'ring' || anim === 'scoop' || anim === 'water' || anim === 'carry' || (anim === 'idle' && c.role === 'abbot');
   c.poseW += ((npcPose ? 1 : 0) - c.poseW) * Math.min(1, dt * 9);
   if (!npcPose && c.poseW < 0.002) c.poseW = 0;
-  if (npcPose) c.poseKind = anim === 'idle' ? 'abbot' : (anim as 'sweep' | 'ring');
+  if (npcPose) c.poseKind = anim === 'idle' ? 'abbot' : (anim as 'sweep' | 'ring' | 'scoop' | 'water' | 'carry');
   if (c.poseW > 0 && w === 0) {
     const pw = ease(c.poseW);
-    if (c.poseKind === 'sweep') {
+    if (c.poseKind === 'scoop' || c.poseKind === 'water' || c.poseKind === 'carry') {
+      const lowY = c.poseKind === 'scoop' ? 0.46 : c.poseKind === 'water' ? 0.66 : 0.6;
+      const fwd = c.poseKind === 'scoop' ? 0.55 : 0.42;
+      _tg.set(0.15, lowY, fwd); solveArm(c.armR, c.foreR, 1, _tg, pw);
+      _tg.set(-0.15, lowY, fwd); solveArm(c.armL, c.foreL, -1, _tg, pw);
+    } else if (c.poseKind === 'sweep') {
       _tg.set(0.07, 0.86, 0.4); solveArm(c.armR, c.foreR, 1, _tg, pw);
       _tg.set(-0.07, 0.71, 0.48); solveArm(c.armL, c.foreL, -1, _tg, pw);
     } else if (c.poseKind === 'ring') {
@@ -1036,6 +1061,13 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   const sweeping = anim === 'sweep' && c.poseW > 0.6;
   if (sweeping) c.hold.position.set(0, 0.86, 0.4);
   c.holdBroom.visible = sweeping;
+  const bucketing = (anim === 'scoop' || anim === 'water' || anim === 'carry') && c.poseW > 0.6;
+  c.holdBucket.visible = bucketing;
+  if (bucketing) {
+    const lowY = anim === 'scoop' ? 0.46 : anim === 'water' ? 0.66 : 0.6;
+    c.hold.position.set(0, lowY, anim === 'scoop' ? 0.58 : 0.46);
+    c.holdBucket.rotation.x = anim === 'water' ? 0.25 + (Math.sin((t * Math.PI * 2) / 2.2) * 0.5 + 0.5) * 0.9 : 0;
+  }
 
   // ritual hands: round palms pressed together (gap 0), fingertips up, blended in by the prayer weight
   if (w > 0) {
@@ -1074,7 +1106,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   const held = w > 0.6;
   c.holdInc.visible = held && anim === 'incense';
   c.holdLotus.visible = held && (anim === 'chant' || anim === 'bow');
-  c.hold.visible = held || sweeping;
+  c.hold.visible = held || sweeping || bucketing;
   // Sư Ông cầm gậy: còng lưng + đầu cúi + tay phải đặt trên gậy + gậy hiện/ẩn
   const hunched = c.cane && anim !== 'sit' && anim !== 'lie' && anim !== 'bow';
   if (hunched) {

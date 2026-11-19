@@ -23,6 +23,7 @@ import { openPanel, type PanelKind } from './panels';
 import { onSettings } from './settings';
 import { openGames } from './features/games';
 import { openFestivals } from './features/festivals';
+import { festivalPending, groupOpen, initRituals, openJourney } from './features/journey';
 import { openLevels } from './features/levels';
 import { openMap } from './features/map';
 import { openFortune } from './features/fortune';
@@ -54,6 +55,7 @@ export interface MenuCtx {
   chatLog(): ChatMessage[];
   act(kind: ActionKind): void;
   guideTo(qid: string): void;
+  onBodhi?: (trees: import('../shared/rituals').BodhiTree[], me: number) => void;
 }
 
 const COLLAPSE_KEY = 'co:menuCollapsed';
@@ -70,6 +72,7 @@ export function initMenu(ctx: MenuCtx): void {
   const defs: Def[] = [
     { id: 'games', icon: 'game', label: 'Trò chơi', run: () => openGames(ctx) },
     { id: 'fest', icon: 'festival', label: 'Lễ hội', run: () => openFestivals(ctx) },
+    { id: 'journey', icon: 'lotus', label: 'Hành trình', run: () => openJourney(ctx) },
     { id: 'checkin', icon: 'checkin', label: 'Điểm danh', run: () => openCheckin(ctx) },
     { id: 'beads', icon: 'beads', label: 'Lần hạt', run: () => openBeads(ctx) },
     { id: 'mail', icon: 'mail', label: 'Hòm thư', run: () => openMail(ctx) },
@@ -118,6 +121,7 @@ export function initMenu(ctx: MenuCtx): void {
     if (d.id === 'checkin') { const em = document.createElement('em'); em.className = 'dot checkinDot'; em.hidden = true; b.append(em); }
     if (d.id === 'beads') { const em = document.createElement('em'); em.className = 'dot beadsDot'; em.hidden = true; b.append(em); }
     if (d.id === 'mail') { const em = document.createElement('em'); em.className = 'dot mailDot'; em.hidden = true; b.append(em); }
+    if (d.id === 'journey') { const em = document.createElement('em'); em.className = 'dot journeyDot'; em.hidden = true; b.append(em); }
     if (d.id === 'games') { const em = document.createElement('em'); em.className = 'dot gamesDot'; em.hidden = true; b.append(em); }
     if (d.id === 'news') { const em = document.createElement('em'); em.className = 'dot newsDot'; em.hidden = true; b.append(em); }
     if (d.id === 'logout') b.id = 'logoutBtn';
@@ -137,6 +141,8 @@ export function initMenu(ctx: MenuCtx): void {
     if (m) m.hidden = !mailPending();
     const g = bar.querySelector<HTMLElement>('.gamesDot');
     if (g) g.hidden = !spinPending();
+    const jd = bar.querySelector<HTMLElement>('.journeyDot');
+    if (jd) jd.hidden = !(festivalPending() || groupOpen());
   };
   refreshDots();
   initCheckin(ctx, refreshDots);
@@ -145,6 +151,7 @@ export function initMenu(ctx: MenuCtx): void {
   initBeads(ctx, refreshDots);
   initBoost(ctx);
   initStats(ctx);
+  initRituals(ctx, refreshDots, (t, me) => ctx.onBodhi?.(t, me));
 
   const setCollapsed = (c: boolean) => {
     bar.classList.toggle('collapsed', c);

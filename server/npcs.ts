@@ -126,7 +126,7 @@ const BRANCH_SPOTS: Pt[] = [
   { x: 11, z: 39 },    // denTrinh — Đền Trình (Nam, gần chợ)
   { x: -22, z: -26 },  // westMid — lối giữa (Tây)
   { x: -35.75, z: -27.25 },  // zenGarden — vườn Thiền (Tây)
-  { x: -70, z: 5.5 },  // pavilion — đình ngắm sen
+  { x: -78, z: 2 },    // lotusBridgeS — giữa cầu đá; đình sen dành cho Cô Trông Đình Sen
   BAMBOO,             // rừng trúc
   FLOWER_HILL,        // vườn hoa
   DUOC_SU_DOOR,       // vòng 3: cửa Điện Dược Sư
@@ -169,7 +169,11 @@ interface Npc {
   shiftEnd: number; restEnd: number; bedId: 0 | 1 | null; chantSeat: ChantSeat | null; benchSeat: BenchSeat | null; homeSlot: Behavior;
   tourStops: TourStop[]; tourIdx: number; tourPhase: number;
   gone: boolean; goneUntil: number;
+  script?: { steps: PostStep[]; i: number; last?: Pt };
 }
+type PostStep =
+  | { t: 'walk'; route: Pt[]; carry?: boolean; speed?: number }
+  | { t: 'act'; anim: Anim; ms: number; ry?: number; fx?: ActionKind };
 export interface NpcChat { npcId: string; name: string; text: string }
 export interface NpcRoom {
   npcs: Npc[]; lastTick: number; sleeping: boolean; outbox: NpcChat[]; fx: ({ id: string; kind: ActionKind; type?: 'action' } | { id: string; kind: 'bird' | 'fish'; type: 'release' })[]; lastTourBellAt: number; beds: (string | null)[]; seats: Map<string, string>;
@@ -340,13 +344,13 @@ const SPREAD_ROUTE_POOL = [
   'restArea', 'denTrinh', 'psPier', 'zenGarden', 'thienDuong', 'baoThap', 'tamThe',
   'westMid', 'eastMid', 'quanYard', 'buddhaYard', 'vuonCay',
   // Bổ sung 24/7: vườn rau, tăng xá/hộ tu, hồ sen + đình, sông/đồi hoa, Bắc núi.
-  'farm', 'tinhThat1', 'tinhThat2', 'tinhThat3', 'tangXaDoor', 'lotusPavilion',
+  'farm', 'tinhThat1', 'tinhThat2', 'tinhThat3', 'tangXaDoor',
   'lotusBridgeS', 'bamboo', 'bambooS2', 'riverPathN', 'riverBridgeN', 'riverBridgeS',
   'duocSuDoor', 'flowerHill', 'ngocBase', 'ngocTop', 'cave', 'cemetery',
 ];
 const SPREAD_ROUTE_CENTER = ['bridgeS', 'bridgeN', 'plaza', 'hallFront', 'axisMid', 'pillars'];
 const SPREAD_ROUTE_EXPANSION = [
-  'farm', 'tinhThat1', 'tinhThat2', 'tinhThat3', 'tangXaDoor', 'lotusPavilion',
+  'farm', 'tinhThat1', 'tinhThat2', 'tinhThat3', 'tangXaDoor',
   'lotusBridgeS', 'bamboo', 'bambooS2', 'riverPathN', 'riverBridgeN', 'riverBridgeS',
   'duocSuDoor', 'flowerHill', 'ngocBase', 'ngocTop', 'cave', 'cemetery',
 ];
@@ -355,7 +359,7 @@ const spreadRouteWeight = (id: string): number => {
   if (id === 'plaza') return 0;
   if (id === 'tamThe' || id === 'bamboo' || id === 'bambooS2') return 14;
   if (id === 'tangXaDoor' || id === 'ngocBase' || id === 'ngocTop') return 10;
-  if (id === 'farm' || id === 'duocSuDoor' || id === 'lotusPavilion') return 8;
+  if (id === 'farm' || id === 'duocSuDoor' || id === 'lotusBridgeS') return 8;
   return SPREAD_ROUTE_CENTER.includes(id) ? 1 : SPREAD_ROUTE_EXPANSION.includes(id) ? 5 : 3;
 };
 /** Trọng số song song với SPREAD_ROUTE_POOL. */
@@ -505,7 +509,7 @@ const WANDER_NODES = [
   'baoThap', 'tamThe', 'zenGarden', 'thienDuong', 'psPier', 'rearKT', 'rearTO', 'rearW',
   'rearE', 'westMid', 'westNorth', 'eastMid', 'eastNorth',
   // 24/7 campus: destinations outside the old wall.
-  'farm', 'farmGate', 'tinhThat1', 'tinhThat3', 'tangXaDoor', 'lotusPavilion',
+  'farm', 'farmGate', 'tinhThat1', 'tinhThat3', 'tangXaDoor', 'lotusBridgeS',
   'lotusBridgeS', 'sideGateW', 'sideGateE', 'bamboo', 'riverPathN', 'riverBridgeN',
   'duocSuDoor', 'flowerHill', 'ngocBase', 'ngocTop', 'cave', 'cemetery',
 ];
@@ -518,7 +522,7 @@ function nextBellIn(now: number): number {
   return (BELL_TIMES[0] + 24 * 60) * MIN - dayMs;
 }
 
-const WANDER_WEST = ['drumTower', 'zenGarden', 'thienDuong', 'westMid', 'westNorth', 'rearKT', 'rearW', 'baoThap', 'buddhaYard', 'farm', 'tangXaDoor', 'tinhThat1', 'tinhThat3', 'lotusPavilion', 'sideGateW', 'cave'];
+const WANDER_WEST = ['drumTower', 'zenGarden', 'thienDuong', 'westMid', 'westNorth', 'rearKT', 'rearW', 'baoThap', 'buddhaYard', 'farm', 'tangXaDoor', 'tinhThat1', 'tinhThat3', 'lotusBridgeS', 'sideGateW', 'cave'];
 const WANDER_EAST = ['bellTower', 'denTrinh', 'restArea', 'dienMau', 'psPier', 'eastMid', 'eastNorth', 'rearTO', 'rearE', 'quanYard', 'bamboo', 'riverBridgeS', 'riverBridgeN', 'duocSuDoor', 'flowerHill', 'sideGateE', 'cemetery', 'ngocTop'];
 /** Node phía Bắc (không tính tamThe): wanderer ở giữa bốc các node này ×3. */
 const WANDER_NORTH = ['baoThap', 'zenGarden', 'thienDuong', 'rearKT', 'rearTO', 'westNorth', 'eastNorth', 'ngocBase', 'ngocTop', 'cave', 'cemetery'];
@@ -637,7 +641,7 @@ function abbotDecide(n: Npc, now: number) {
  *  Tất cả là ROAD_NODES, đi lại bằng routeFrom() nên không cắt qua hồ hay tường. */
 const VISITOR_BRANCH = [
   'psPier', 'phongCDDoor', 'tamThe', 'rearKT', 'rearTO', 'quanYard',
-  'restArea', 'lotusPavilion', 'bamboo', 'flowerHill', 'duocSuDoor', 'ngocBase',
+  'restArea', 'lotusBridgeS', 'bamboo', 'flowerHill', 'duocSuDoor', 'ngocBase',
 ] as const;
 /** Ưu tiên Tam Thế và trúc; bù thêm trọng số cho sen, Dược Sư và Ngọc. */
 const VISITOR_BRANCH_WEIGHTS = [1, 1, 9, 2, 2, 2, 1, 3, 8, 1, 2, 3];
@@ -767,7 +771,7 @@ function tourRoute(from: Pt, st: TourStop): Pt[] {
     case 'nhaTo': return go('toYard', { x: 36, z: -67.5 });
     case 'tower': return go('toYard', { x: 43.6, z: -58.6 });
     // 24/7: walk to the new landmarks on the shared road graph (no straight cut).
-    case 'lotus': return go('lotusPavilion');
+    case 'lotus': return go('lotusBridgeS');
     case 'bamboo': return go('bamboo');
     case 'duocSu': return go('duocSuDoor');
     case 'ngoc': return go('ngocCourt');
@@ -982,8 +986,113 @@ function wakeNpc(room: NpcRoom, n: Npc, now: number) {
   startWalk(n, workRoute(n, bedX), 1.2);
 }
 
+const FARM_POST: Pt = { x: -76, z: -44.2 };
+const FARM_POND_BANK: Pt = { x: -70, z: -38.6 };
+const FARM_AISLE_E: Pt = { x: -70, z: -42.2 };
+const FARM_AISLE_W: Pt = { x: -80, z: -42.2 };
+const FARM_WATER_SPOTS: { at: Pt; via: Pt[]; ry: number }[] = [
+  { at: { x: -79.8, z: -43.6 }, via: [FARM_AISLE_E, FARM_AISLE_W], ry: Math.PI },
+  { at: { x: -85.2, z: -39.4 }, via: [FARM_AISLE_E, FARM_AISLE_W, { x: -85.2, z: -42 }], ry: 0 },
+  { at: { x: -70, z: -43.4 }, via: [FARM_AISLE_E], ry: Math.PI },
+  { at: { x: -68, z: -42.8 }, via: [FARM_AISLE_E, { x: -68, z: -42.2 }], ry: Math.PI / 2 },
+];
+const PAV_IN: Pt = { x: -70, z: 5.5 };
+const PAV_PATROL: Pt[] = [
+  { x: -73.2, z: 6.2 }, { x: -72.6, z: 8.8 }, { x: -68, z: 9.4 }, { x: -65.4, z: 7.6 }, { x: -65.4, z: 4.4 },
+];
+const DUOC_SU_IN: Pt = nodePt('duocSu');
+
+function buildPostScript(n: Npc, now: number): PostStep[] | null {
+  void now;
+  const rev = <T,>(a: T[]) => [...a].reverse();
+  switch (n.def.id) {
+    case 'npc42': {
+      const loop: PostStep[] = [];
+      for (let i = 0; i < PAV_PATROL.length; i++) {
+        loop.push({ t: 'walk', route: [PAV_PATROL[i]], speed: 0.55 });
+        if (i % 2 === 1 || i === PAV_PATROL.length - 1) loop.push({ t: 'act', anim: 'sweep', ms: R(5000, 8000), ry: Math.PI / 2 });
+        else loop.push({ t: 'act', anim: 'idle', ms: R(2500, 4000), ry: -Math.PI / 2 });
+      }
+      return [
+        { t: 'act', anim: Math.random() < 0.5 ? 'bow' : 'chant', ms: R(4000, 7000), ry: 0 },
+        { t: 'act', anim: 'sweep', ms: R(7000, 10000), ry: Math.PI },
+        ...loop,
+        { t: 'walk', route: [...rev(PAV_PATROL.slice(0, -1)), PAV_IN], speed: 0.55 },
+        { t: 'act', anim: 'idle', ms: R(12000, 20000), ry: 0 },
+      ];
+    }
+    case 'npc40': {
+      const out: PostStep[] = [{ t: 'act', anim: 'idle', ms: R(3000, 6000), ry: Math.PI }];
+      const trips = 2;
+      let back: Pt[] = [FARM_AISLE_E];
+      for (let k = 0; k < trips; k++) {
+        const spot = FARM_WATER_SPOTS[Math.floor(Math.random() * FARM_WATER_SPOTS.length)];
+        out.push({ t: 'walk', route: [...back, FARM_POND_BANK], speed: 0.7 });
+        out.push({ t: 'act', anim: 'scoop', ms: 4500, ry: 0 });
+        out.push({ t: 'walk', route: [...spot.via, spot.at], carry: true, speed: 0.6 });
+        out.push({ t: 'act', anim: 'water', ms: R(7000, 9000), ry: spot.ry });
+        back = rev(spot.via);
+      }
+      out.push({ t: 'walk', route: [...back, FARM_POST], speed: 0.7 });
+      out.push({ t: 'act', anim: 'sweep', ms: R(6000, 9000), ry: Math.PI });
+      out.push({ t: 'act', anim: 'idle', ms: R(10000, 18000), ry: Math.PI });
+      return out;
+    }
+    case 'npc41': {
+      const base = nodePt('ngocBase'), mid = nodePt('ngocMid'), top = nodePt('ngocTop');
+      return [
+        { t: 'act', anim: 'sweep', ms: R(8000, 12000), ry: Math.PI },
+        { t: 'walk', route: [base, mid], speed: 0.6 },
+        { t: 'act', anim: 'sweep', ms: R(9000, 13000), ry: 0 },
+        { t: 'walk', route: [top], speed: 0.6 },
+        { t: 'act', anim: 'bow', ms: 3000, ry: 0 },
+        { t: 'walk', route: [mid, base, n.def.post ?? base], speed: 0.6 },
+        { t: 'act', anim: 'idle', ms: R(8000, 14000), ry: 0 },
+      ];
+    }
+    case 'npc39': {
+      return [
+        { t: 'act', anim: 'chant', ms: R(6000, 9000) },
+        { t: 'walk', route: [DUOC_SU_IN], speed: 0.6 },
+        { t: 'act', anim: 'incense', ms: 7000, fx: 'incense' },
+        { t: 'act', anim: 'bow', ms: 3200 },
+        { t: 'walk', route: [n.def.post ?? DUOC_SU_IN], speed: 0.6 },
+        { t: 'act', anim: 'sweep', ms: R(6000, 9000) },
+        { t: 'act', anim: 'idle', ms: R(10000, 16000) },
+      ];
+    }
+  }
+  return null;
+}
+
+/** Chạy kịch bản bước đi và tư thế của người phụ trách khu mới. true nếu đã xử lý. */
+function runPostScript(room: NpcRoom, n: Npc, now: number): boolean {
+  if (!(n.def.id === 'npc42' || n.def.id === 'npc40' || n.def.id === 'npc41' || n.def.id === 'npc39')) return false;
+  const s = n.state;
+  let sc = n.script;
+  if (sc && sc.last && dist(s, sc.last) > 1.4) { n.script = undefined; sc = undefined; n.phase = 'idle'; s.anim = 'idle'; s.y = undefined; n.until = now + 2500; return true; }
+  if (!sc || sc.i >= sc.steps.length) {
+    const steps = buildPostScript(n, now);
+    if (!steps) return false;
+    sc = n.script = { steps, i: 0 };
+  }
+  const st = sc.steps[sc.i++];
+  sc.last = undefined;
+  if (st.t === 'walk') {
+    startWalk(n, st.route, st.speed ?? 0.6);
+    if (st.carry) s.anim = 'carry';
+    sc.last = st.route[st.route.length - 1];
+  } else {
+    n.phase = 'act'; s.anim = st.anim; n.until = now + st.ms;
+    if (st.ry !== undefined) s.ry = st.ry;
+    if (st.fx) room.fx.push({ id: n.def.id, kind: st.fx });
+  }
+  return true;
+}
+
 /** In-place random action for a post NPC (vendor / hall keeper). Never walks away. */
-function postIdleAct(n: Npc, now: number) {
+function postIdleAct(room: NpcRoom, n: Npc, now: number) {
+  if (runPostScript(room, n, now)) return;
   const s = n.state;
   const r = Math.random();
   if (r < 0.5) { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 5000; }
@@ -1078,7 +1187,7 @@ function arrive(room: NpcRoom, n: Npc, now: number) {
   if (n.mode === 'toWork') { n.mode = 'normal'; n.phase = 'idle'; s.anim = 'idle'; n.until = now + R(1000, 3000); n.shiftEnd = now + SHIFT_MS; return; }
   if (n.def.behavior === 'visitor') return visitorArrive(room, n, now);
   if (n.def.behavior === 'desk') { npc6Arrive(n, s, now); return; }
-  if (n.def.behavior === 'post' && n.mode !== 'toChant') { postIdleAct(n, now); return; }
+  if (n.def.behavior === 'post' && n.mode !== 'toChant') { postIdleAct(room, n, now); return; }
   if (n.mode === 'toChant') {
     const seat = n.chantSeat;
     n.mode = 'chanting'; n.phase = 'act'; s.anim = 'chant';
@@ -1193,7 +1302,7 @@ function decide(room: NpcRoom, n: Npc, now: number) {
     return;
   }
   if (n.def.behavior === 'desk') { npc6Decide(n, s, now); return; }
-  if (n.def.behavior === 'post') { postIdleAct(n, now); return; }
+  if (n.def.behavior === 'post') { postIdleAct(room, n, now); return; }
   if (n.mode === 'chanting' || n.mode === 'toChant') return; // runSchedule owns chanting
   if (n.def.behavior === 'bell') {
     if (activeBell(now)) return; // runSchedule is handling the bell window
@@ -1441,6 +1550,7 @@ function npcActivity(n: Npc): NpcAct | null {
   if (a === 'chant') return 'chant';
   if (a === 'sweep') return 'sweep';
   if (a === 'ring') return 'ring';
+  if (a === 'water' || a === 'scoop') return 'water';
   if (a === 'lie' || a === 'bench') return 'rest';
   if (a === 'sit') {
     if (n.def.behavior === 'desk') return null;

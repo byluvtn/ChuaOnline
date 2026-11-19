@@ -18,7 +18,7 @@ const petals = new THREE.MeshStandardMaterial({ roughness: 0.75, emissive: 0x140
 const up = new THREE.Vector3(0, 1, 0);
 
 export const FLOWER_COLORS = [0xff9bab, 0xffe2c0, 0xffc954, 0xd77ecb, 0x9b91e8];
-const TREE_COLORS = [[0x315e40, 0x4a8047, 0x66984f], [0x315d48, 0x458267, 0x639571], [0x54703b, 0x78964b, 0xa7b55e]];
+const TREE_COLORS = [[0x2f5d3c, 0x4a8a46, 0x74a652], [0x2d5a46, 0x4a8a6a, 0x7bb08a], [0x4f7a3a, 0x7fa54c, 0xb4c460], [0x335f3e, 0x4c8548, 0x6aa150]];
 const LEAF_COLORS = [0x3f722f, 0x598f3b, 0x74a44c, 0x91b95c];
 
 /** Static vegetation batched by shape and material, rather than one draw call per plant part. */
@@ -52,25 +52,38 @@ export class PlantBatch {
   }
 
   tree(x: number, y: number, z: number, h: number, variant: number, a: number) {
-    const colors = TREE_COLORS[variant % TREE_COLORS.length];
-    const dx = Math.cos(a) * h * 0.085, dz = Math.sin(a) * h * 0.085;
-    const bark = variant === 1 ? 0x79634b : 0x58402d;
-    this.stem(x, y - 0.03, z, dx, h * 0.57, dz, h * 0.052, bark);
-    this.stem(x + dx, y + h * 0.56, z + dz, -dx * 0.45, h * 0.24, -dz * 0.45, h * 0.029, bark);
-    for (let i = 0; i < 5; i++) {
-      const t = a + i * 2.4, spread = h * (0.17 + (i % 3) * 0.026);
-      const bx = Math.cos(t) * spread, bz = Math.sin(t) * spread;
-      const by = h * (0.65 + (i % 3) * 0.055), r = h * (0.16 + (i % 2) * 0.022);
-      this.stem(x + dx * 0.75, y + h * 0.42, z + dz * 0.75, bx, by - h * 0.42, bz, h * 0.022, bark);
-      this.shape(crown, solid, colors[i % 3], x + dx * 0.75 + bx, y + by, z + dz * 0.75 + bz,
-        r * 1.18, r * 0.82, r, 0.22, t, 0.18);
-      this.shape(crown, solid, colors[(i + 1) % 3], x + dx * 0.75 + bx * 1.24, y + by + h * 0.035, z + dz * 0.75 + bz * 1.24,
-        r * 0.67, r * 0.55, r * 0.75, -0.15, t + 0.8);
+    const v = variant % TREE_COLORS.length;
+    const colors = TREE_COLORS[v];
+    const bark = v === 1 ? 0x7a644c : v === 2 ? 0x5e4733 : 0x58402d;
+    const lean = h * 0.07;
+    const dx = Math.cos(a) * lean, dz = Math.sin(a) * lean;
+    const trunkH = h * (v === 1 ? 0.62 : 0.5);
+    for (let i = 0; i < 4; i++) {
+      const t = a + i * 1.7 + 0.4;
+      this.stem(x + Math.cos(t) * h * 0.045, y - 0.02, z + Math.sin(t) * h * 0.045,
+        Math.cos(t) * h * 0.05, h * 0.07, Math.sin(t) * h * 0.05, h * 0.026, bark);
     }
-    this.shape(crown, solid, colors[2], x + dx * 0.45, y + h * 0.83, z + dz * 0.45,
-      h * 0.18, h * 0.17, h * 0.16, 0.12, a);
+    this.stem(x, y - 0.03, z, dx, trunkH, dz, h * 0.05, bark);
+    const fx = x + dx, fy = y + trunkH * 0.96, fz = z + dz;
+    const limbs = v === 1 ? 3 : 4;
+    const reach = h * (v === 1 ? 0.12 : v === 2 ? 0.26 : 0.22);
+    for (let i = 0; i < limbs; i++) {
+      const t = a + i * (tau / limbs) + 0.5, rise = h * (0.2 + (i % 2) * 0.07);
+      const lx = Math.cos(t) * reach, lz = Math.sin(t) * reach;
+      this.stem(fx, fy, fz, lx, rise, lz, h * 0.024, bark);
+      const cx = fx + lx, cy = fy + rise, cz = fz + lz;
+      const r = h * (v === 1 ? 0.14 : 0.17 + (i % 2) * 0.025);
+      this.shape(crown, solid, colors[i % 3], cx, cy + r * 0.2, cz, r * 1.2, r * 0.8, r * 1.1, 0.2, t, 0.15);
+      this.shape(crown, solid, colors[(i + 1) % 3], cx + lx * 0.28, cy + r * 0.62, cz + lz * 0.28, r * 0.78, r * 0.58, r * 0.74, -0.12, t + 0.9);
+      if (v === 2) {
+        this.shape(small, petals, 0xf4b6cb, cx + lx * 0.4, cy + r * 0.92, cz + lz * 0.4, r * 0.34, r * 0.26, r * 0.34);
+        this.shape(small, petals, 0xffd7e3, cx - lx * 0.3, cy + r * 0.78, cz - lz * 0.3, r * 0.28, r * 0.22, r * 0.28);
+      }
+    }
+    const top = h * (v === 1 ? 0.2 : 0.17);
+    this.shape(crown, solid, colors[2], fx, fy + h * (v === 1 ? 0.42 : 0.34), fz, top * 1.15, top * 0.9, top, 0.1, a);
+    this.shape(crown, solid, colors[1], fx - dx * 0.2, fy + h * 0.2, fz - dz * 0.2, top * 1.3, top * 0.72, top * 1.2, 0, a + 1.1);
   }
-
   flower(x: number, y: number, z: number, h: number, color: number, a: number, petalsCount = 5) {
     const dx = Math.cos(a) * h * 0.14, dz = Math.sin(a) * h * 0.14;
     this.stem(x, y, z, dx, h, dz, h * 0.034, 0x477a39);

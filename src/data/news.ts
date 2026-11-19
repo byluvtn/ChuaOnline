@@ -5,10 +5,41 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 149;
+export const LATEST_NEWS_ID = 152;
 
 export const NEWS: NewsItem[] = [
   {
+    title: 'Hành trình tu tập: lễ hội, thiền nhóm, bồ đề, thân thiết, tịnh thất',
+    date: '2026-11-19',
+    items: [
+      'Nút Hành trình ở thanh menu gom sáu mục: Lễ hội, Thiền nhóm, Cây bồ đề, Nhật ký, Thân thiết và Tịnh thất.',
+      'Lễ hội âm lịch theo lịch âm có sẵn: Tết Nguyên Đán (29 tháng Chạp đến mùng 5), Phật Đản (14-16/4), Vu Lan (14-16/7), Trung Thu (14-16/8). Trong dịp lễ, đường vào chùa treo đèn lồng, hoa nở khắp sân và mỗi người nhận một phần quà mỗi dịp.',
+      'Thiền nhóm lúc 06:00, 12:00 và 20:00 giờ Việt Nam, mỗi khóa mở 15 phút. Ngồi thiền đủ 5 phút cùng ít nhất một người khác để nhận công đức, xu và hào quang chung.',
+      'Lễ thỉnh chuông: ai có mặt trong chùa lúc chuông điểm (05:00, 12:00, 18:00, 20:00) tự động nhận công đức, mỗi lần chuông một phần.',
+      'Cây bồ đề riêng: mỗi người gieo một cây trong vườn bồ đề phía Tây và tưới mỗi ngày một lần. Cây lớn qua bảy giai đoạn, ai cũng thấy tên chủ cây. Bỏ quên ba ngày cây héo, hai mươi mốt ngày cây biến mất.',
+      'Nhật ký tu tập vẽ biểu đồ 30 ngày: ngày có vào chùa, phút thiền mỗi ngày, chuỗi ngày liên tiếp và chuỗi dài nhất.',
+      'Thân thiết với sáu người phụ trách (Cô Trông Đình Sen, Tiểu Trồng Rau, Sư Cô Điện Dược Sư, Tiểu Quét Thang Ngọc, Sư Cô Điện Mẫu, Tiểu Trồng Cây): tâm sự mỗi ngày, tặng lễ vật, mở ba chương truyện riêng kèm việc nhờ mang đồ và phần thưởng.',
+      'Tịnh thất riêng: mua đồ trang trí ở mục Đồ tịnh thất trong Cửa hàng, chọn màu tường rồi đặt đồ vào căn phòng của bạn.',
+    ],
+  },
+  {
+    title: 'Thời tiết, bốn mùa và cây cối mới',
+    date: '2026-11-19',
+    items: [
+      'Thời tiết đổi mỗi ba giờ theo giờ Việt Nam và theo mùa âm lịch: sương sớm, mưa phùn, mưa. Hạt mưa rơi quanh nhân vật, bầu trời hơi xám và có sương mờ khi trời sương. Phòng An Lạc và chế độ đồ họa Thấp không có thời tiết.',
+      'Hoa lá rải trên sân đổi màu theo mùa: hồng đào mùa xuân, đỏ cam mùa hạ, vàng mùa thu và trắng ngà mùa đông.',
+      'Cây cối trong chùa được dựng lại với gốc nở chân, cành tỏa và tán lá nhiều tầng. Bồ đoàn đài sen có thêm vòng cánh sen trong, đài hạt vàng và viền thêu.',
+    ],
+  },
+  {
+    title: 'Đình sen đủ bốn cột, người trong chùa có việc để làm',
+    date: '2026-11-19',
+    items: [
+      'Đình sen được dựng lại đủ bốn cột, không còn khuyết góc.',
+      'Cô Trông Đình Sen đi dạo quanh đình, quét lá và đứng ngắm sen. Cô Đồng và khách viếng không còn dồn vào đình sen cùng cô.',
+      'Tiểu Trồng Rau ra ao múc nước, xách xô đi tưới từng luống rồi quét sân vườn. Tiểu Quét Thang Ngọc quét dần từ chân thang lên chiếu nghỉ rồi lên đỉnh. Sư Cô Điện Dược Sư tụng kinh, thắp hương trước tượng và quét điện.',
+    ],
+  },  {
     title: 'NPC ngồi nghỉ trên ghế hành lang',
     date: '2026-11-19',
     items: [
