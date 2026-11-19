@@ -17,7 +17,7 @@ import { buildZafu, type ZafuPosition } from './zafu';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_FALLS, RIVER_SOURCE_Z, RIVER_MOUTH_Z, riverAt, TINH_THAT,
-  DUOC_SU_YAW, duocSuWorld, EAST_BANK_SHIFT, RIVER_BRIDGES, RIVER_EAST_WALK_X, onRiverBridge, WALL,
+  DUOC_SU_YAW, duocSuWorld, EAST_BANK_SHIFT, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverBridgeY, WALL,
   expansionGroundY, NGOC_EAST_LANE, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
@@ -28,17 +28,17 @@ import { nearWalkway, NGOC_EAST_PAVING } from './layout';
 import { duocSuRoof, duocSuStyle } from './duoc-su-style';
 import { buildRiverWaterfall } from './river-waterfall';
 import { buildPondLotus } from './pond-lotus';
+import { FLOWER_COLORS, PlantBatch } from './landscape';
 import type { Seat, TempleCtx, Zone } from './temple';
 
 const MAT_KEYS = [
   'stone', 'paving', 'stoneDark', 'granite', 'graniteDark', 'tile', 'red', 'gold', 'wall', 'wood', 'darkWood',
-  'trunk', 'pine', 'bamboo', 'bambooLeaf', 'leaf', 'veg', 'soil', 'flowerA', 'flowerB', 'flowerC',
+  'trunk', 'pine', 'bamboo', 'bambooLeaf', 'leaf', 'soil',
   'lamp', 'rock', 'dark', 'dsStone', 'dsTimber', 'dsPlaster', 'dsGold', 'dsDarkwood',
 ] as const;
 type MatKey = (typeof MAT_KEYS)[number];
 
-/** Vật liệu không đổ bóng (ngọn rau, lòng hang). */
-const NO_SHADOW = new Set<MatKey>(['dark', 'veg']);
+const NO_SHADOW = new Set<MatKey>(['dark']);
 
 const rng = (seed: number) => {
   let s = seed >>> 0;
@@ -92,10 +92,6 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   const graniteM = c.lamb(0xa5a29a, { map: stoneTexture([158, 156, 148], [2, 2]), roughness: 0.86 });
   const graniteDarkM = c.lamb(0x76736c, { map: stoneTexture([108, 106, 100], [2, 1]), roughness: 0.9 });
   const soilM = c.lamb(0x6b5233, { roughness: 1 });
-  const vegM = c.lamb(0x5aa04a, { flatShading: true });
-  const flowerAM = c.lamb(0xe4698c, { emissive: 0x1a0a10 });
-  const flowerBM = c.lamb(0xf2d05a, { emissive: 0x1a1408 });
-  const flowerCM = c.lamb(0xe8f2f8, { emissive: 0x101418 });
   const trunkM = c.lamb(0x6b4a2b);
   const pineM = c.lamb(0x2f6a45, { flatShading: true });
   const bambooStemM = c.lamb(0x9cb84e, { flatShading: true });
@@ -113,7 +109,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     stone: stoneM, paving: pavingMaterial(), stoneDark: stoneDarkM, granite: graniteM, graniteDark: graniteDarkM,
     tile: c.tileM, red: c.redM, gold: c.goldM, wall: c.wallM, wood: woodM, darkWood: darkWoodM,
     trunk: trunkM, pine: pineM, bamboo: bambooStemM, bambooLeaf: bambooLeafM, leaf: leafM,
-    veg: vegM, soil: soilM, flowerA: flowerAM, flowerB: flowerBM, flowerC: flowerCM,
+    soil: soilM,
     lamp: lampM, rock: rockM, dark: darkM,
     dsStone: duocSuStyle.stone, dsTimber: duocSuStyle.timber, dsPlaster: duocSuStyle.plaster,
     dsGold: duocSuStyle.gold, dsDarkwood: duocSuStyle.darkwood,
@@ -277,7 +273,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     if (Math.abs(x - DUOC_SU.x) <= DUOC_SU.hx && Math.abs(z - DUOC_SU.z) <= DUOC_SU.hz) y = Math.max(y, DUOC_SU.y);
     for (const h of TINH_THAT) if (Math.abs(x - h.x) <= 1.6 && Math.abs(z - h.z) <= 1.25) y = Math.max(y, 0.16);
     if (x >= -90 && x <= -66 && Math.abs(z - 2) <= 1.1) y = Math.max(y, 0.28);
-    if (onRiverBridge(x, z)) y = Math.max(y, RIVER.bridgeY);
+    y = Math.max(y, riverBridgeY(x, z));
     return y;
   };
   const solid = (x: number, z: number, r: number) => { colliders.push({ x, z, r }); };
@@ -425,15 +421,27 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       { x: -79.8, z: -51.6, w: 4.4, d: 1.5 }, { x: -79.8, z: -48.7, w: 4.4, d: 1.5 }, { x: -79.8, z: -45.8, w: 4.4, d: 1.5 },
       { x: -85.2, z: -37.4, w: 4.0, d: 1.4 }, { x: -74.0, z: -38.0, w: 2.6, d: 1.4 },
     ];
-    for (const bd of beds) {
-      addBox('soil', bd.w, 0.3, bd.d, bd.x, 0.15, bd.z);
-      const cols = Math.max(2, Math.round(bd.w / 0.42));
+    const crops = new PlantBatch();
+    const rand = rng(47321);
+    for (const [index, bd] of beds.entries()) {
+      const crop = (['cabbage', 'mustard', 'onion'] as const)[index % 3];
+      addBox('soil', bd.w, 0.19, bd.d, bd.x, 0.095, bd.z);
+      for (const s of [-1, 1]) {
+        addBox('wood', bd.w, 0.19, 0.08, bd.x, 0.095, bd.z + s * (bd.d / 2 - 0.04));
+        addBox('wood', 0.08, 0.19, bd.d - 0.16, bd.x + s * (bd.w / 2 - 0.04), 0.095, bd.z);
+        addBox('soil', bd.w - 0.23, 0.08, 0.5, bd.x, 0.21, bd.z + s * 0.34);
+      }
+      const cols = Math.max(2, Math.round(bd.w / (crop === 'cabbage' ? 0.58 : 0.43)));
       for (let i = 0; i < cols; i++) {
         for (let r = 0; r < 2; r++) {
-          addSphere('veg', 0.17, bd.x - bd.w / 2 + 0.3 + i * (bd.w - 0.6) / (cols - 1), 0.36 + (r % 2) * 0.03, bd.z - 0.35 + r * 0.7);
+          const x = bd.x - bd.w / 2 + 0.32 + i * (bd.w - 0.64) / (cols - 1);
+          crops.crop(x + (rand() - 0.5) * 0.08, 0.25, bd.z - 0.34 + r * 0.68, crop,
+            0.26 + rand() * 0.07, rand() * Math.PI * 2);
         }
       }
     }
+    // A continuous dirt aisle joins the east gate; rows and tools stay outside it.
+    addBox('soil', 15.9, 0.024, 1.8, -72.02, 0.012, -42);
 
     // ao sen nhỏ
     for (let i = 0; i < 24; i++) {
@@ -457,6 +465,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     seatPad(-82.8, -41.9, Math.PI / 2, true);
     zones.push({ x: FARM.x, z: FARM.z, r: 14, id: 'vuonRau' });
     const { group } = flush('farm');
+    group.add(crops.build('farm-vegetable-rows'));
     group.add(waterEllipse(FARM_POND.x, FARM_POND.z, FARM_POND.a, FARM_POND.b));
     const plants = buildPondLotus(FARM_POND.a, FARM_POND.b, 0.06, 19, 4488);
     plants.position.x = FARM_POND.x;
@@ -676,13 +685,15 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     lawn.name = 'flowerHill-lawn';
 
     const rand = rng(70123);
+    const flowers = new PlantBatch();
     const beds: { x: number; z: number; a: number; b: number }[] = [
       { x: 74.0, z: 22.0, a: 3.4, b: 2.4 }, { x: 84.4, z: 23.4, a: 3.0, b: 2.2 },
       { x: 71.4, z: 31.6, a: 2.6, b: 2.2 }, { x: 79.4, z: 33.4, a: 3.6, b: 2.4 },
       { x: 86.0, z: 33.0, a: 2.6, b: 2.0 }, { x: 84.6, z: 16.6, a: 2.4, b: 1.8 },
     ];
-    for (const bed of beds) {
+    for (const [index, bed] of beds.entries()) {
       const bd = { ...bed, x: bed.x + EAST_BANK_SHIFT };
+      const color = FLOWER_COLORS[index % FLOWER_COLORS.length];
       for (let i = 0; i < 20; i++) {
         const t = (i / 20) * Math.PI * 2;
         addBox('stone', 0.55, 0.16, 0.34, bd.x + Math.cos(t) * (bd.a + 0.2), 0.08,
@@ -691,8 +702,8 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       for (let i = 0; i < 46; i++) {
         const ang = rand() * Math.PI * 2, r2 = Math.sqrt(rand()) * 0.94;
         const px = bd.x + Math.cos(ang) * bd.a * r2, pz = bd.z + Math.sin(ang) * bd.b * r2;
-        const key: MatKey = i % 3 === 0 ? 'flowerA' : i % 3 === 1 ? 'flowerB' : 'flowerC';
-        addSphere(key, 0.11 + rand() * 0.07, px, 0.24 + rand() * 0.12, pz);
+        flowers.flower(px, 0.03, pz, 0.37 + rand() * 0.33,
+          i % 6 === 0 ? 0xffead9 : color, ang, 5 + index % 3);
       }
     }
     // ghế đá + cây bóng mát (né điểm hoa (79,28) và lối vào)
@@ -712,7 +723,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     addPostedSign('VƯỜN HOA', 2.4, 0.6, 77.4 + EAST_BANK_SHIFT, 1.1, 20.4, Math.PI / 2);
     zones.push({ x: cx, z: cz, r: 12, id: 'vuonHoa' });
     const { group } = flush('flowerHill');
-    group.add(lawn);
+    group.add(lawn, flowers.build('east-bank-flower-clusters'));
   }
 
   // =====================================================================================
@@ -720,7 +731,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   // =====================================================================================
   const waterfall = buildRiverWaterfall();
   {
-    const { bridges, bridgeHalf } = RIVER;
+    const { bridges, bridgeHalf, bridgeRamp, bridgeY: top } = RIVER;
     // Kè đá dọc hai mép cong: thanh đá nối các mốc 2 m + trụ đá mỗi ~4 m.
     for (const side of [-1, 1]) {
       for (let pz = RIVER_SOURCE_Z; pz < RIVER_MOUTH_Z; pz += 2) {
@@ -731,21 +742,39 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
         const dx = (b.x + side * b.hw) - (a.x + side * a.hw);
         const dz = Math.min(pz + 2, RIVER_MOUTH_Z) - pz;
         addBox('stone', 0.6, 0.22, Math.hypot(dx, dz) + 0.5, xc, 0.05, zc, Math.atan2(dx, dz));
-        if (Math.round((pz - RIVER_SOURCE_Z) / 2) % 2 === 0 && !bridges.some(bz => Math.abs(pz - bz) < 2.8)) {
+        if (Math.round((pz - RIVER_SOURCE_Z) / 2) % 2 === 0 && !bridges.some(bz => Math.abs(pz - bz) <= bridgeHalf + 0.4)) {
           addBox('stoneDark', 0.34, 0.36, 0.34, a.x + side * (a.hw + 0.55), 0.14, pz);
         }
       }
     }
     for (const { x: bx, z: bz, halfSpan } of RIVER_BRIDGES) {
-      const rail = halfSpan - 0.9;
-      const top = RIVER.bridgeY;
-      addBox('paving', 2 * halfSpan, 0.24, 2 * bridgeHalf, bx, top - 0.12, bz);
+      const rail = halfSpan - bridgeRamp, depth = 0.48;
+      const width = 2 * bridgeHalf;
+      addBox('paving', 2 * rail, depth, width, bx, top - depth / 2, bz);
       for (const s of [-1, 1]) {
-        addBox('stone', 2 * rail, 0.42, 0.2, bx, top + 0.21, bz + s * bridgeHalf);
-        for (let i = -6; i <= 6; i++) addBox('stoneDark', 0.24, 0.6, 0.24, bx + rail * i / 6, top + 0.28, bz + s * bridgeHalf);
-        wallLine(bx - rail, bz + s * bridgeHalf, bx + rail, bz + s * bridgeHalf, 0.2, 0.6);
+        const ramp = new THREE.BoxGeometry(bridgeRamp, depth, width);
+        const pos = ramp.getAttribute('position');
+        for (let i = 0; i < pos.count; i++) {
+          pos.setY(i, pos.getY(i) - s * pos.getX(i) * top / bridgeRamp);
+        }
+        ramp.computeVertexNormals();
+        put('paving', ramp, bx + s * (rail + bridgeRamp / 2), (top - depth) / 2, bz);
       }
-      for (const px of [bx - rail * 0.64, bx, bx + rail * 0.64]) addBox('stoneDark', 0.8, 1.0, 2.2, px, -0.48, bz);
+      for (const s of [-1, 1]) {
+        const z = bz + s * (bridgeHalf - 0.10);
+        addBox('granite', 2 * rail, 0.36, 0.32, bx, top + 0.18, z);
+        addBox('stone', 2 * rail, 0.16, 0.36, bx, top + 0.99, z);
+        for (let i = -8; i <= 8; i++) {
+          const x = bx + rail * i / 8, end = Math.abs(i) === 8;
+          addBox('stoneDark', end ? 0.48 : 0.31, end ? 1.24 : 1.05, end ? 0.48 : 0.34, x, top + (end ? 0.6 : 0.52), z);
+          if (end) addBox('granite', 0.59, 0.14, 0.59, x, top + 1.26, z);
+        }
+        colliders.push({ x: bx - rail, z, x2: bx + rail, z2: z, r: 0.19 });
+      }
+      for (const px of [bx - rail * 0.64, bx, bx + rail * 0.64]) {
+        addBox('stoneDark', 1.6, 1.36, width - 0.56, px, -0.48, bz);
+        addBox('granite', 1.94, 0.28, width - 0.2, px, 0.04, bz);
+      }
     }
     const { x: px, z: pz, a, b } = RIVER.pond;
     const segments = Math.ceil(Math.PI * Math.max(a, b) / 0.7);

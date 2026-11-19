@@ -24,7 +24,7 @@ export interface Seat { x: number; z: number; ry: number; rest?: boolean; sitY?:
 export interface Zone { x: number; z: number; r: number; id: string }
 export interface TempleCtx {
   scene: THREE.Scene;
-  colliders: { x: number; z: number; r: number }[];
+  colliders: import('../shared/pathfind').Collider[];
   lamb: (c: number, extra?: Partial<THREE.MeshStandardMaterialParameters>) => THREE.MeshStandardMaterial;
   roofGeometry: (w: number, d: number, h: number, lift?: number) => THREE.BufferGeometry;
   tileM: THREE.Material;

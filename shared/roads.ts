@@ -78,7 +78,8 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'bridgeS', x: 0, z: 26.5 }, // was (0, 30.2); lake now reaches z = 24
   { id: 'bridgeN', x: 0, z: 1.5 }, // was (0, 13.8); lake now starts at z = 4
   { id: 'plaza', x: 0, z: 2 }, // was (0, 6) â€” axis / cross-path crossroads
-  { id: 'axisMid', x: 4.2, z: -17 }, // east of the centered courtyard incense urn
+  { id: 'axisMid', x: 4.4, z: -18 }, // east of the centered courtyard incense urn
+  { id: 'axisTurn', x: 3, z: -16 },
   { id: 'courtEastEntry', x: 5.75, z: 0 },
   { id: 'courtEastFront', x: 5.75, z: -18.6 },
   { id: 'hallFront', x: 0, z: -20 },
@@ -119,34 +120,48 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'bellTower', x: 34, z: -6 }, // bell tower = +34
   { id: 'bellW', x: 28, z: -6 }, // paved lane x = 28 under the bell tower
   { id: 'drumTower', x: -34, z: -6 }, // drum tower = âˆ’34
-  { id: 'drumTowerW', x: -40, z: -8 }, // west of the drum tower
+  { id: 'drumTowerW', x: -39.2, z: -7.3 },
+  { id: 'drumNorthTurn', x: -39.5, z: -9 },
   { id: 'zenOut', x: -28.3, z: -8 }, // east of the drum tower, at the z = -17 wall gap
   { id: 'quanYard', x: 28, z: 19.5 },
+  { id: 'quanEastTurn', x: 31.5, z: 17 },
   { id: 'quanE', x: 34, z: 14 }, // east of the Quan Ã‚m court (statue at 28,14)
   { id: 'quanSE', x: 34, z: 7 },
   { id: 'buddhaYard', x: -22.6, z: 14 },
-  { id: 'denTrinh', x: 11, z: 39 },
+  { id: 'denTrinh', x: 9.7, z: 39 },
+  { id: 'denApproach', x: 7, z: 40 },
+  { id: 'denWestTurn', x: 8, z: 36.5 },
   { id: 'restArea', x: -35, z: 33 }, // khu nghá»‰ (WEST now)
+  { id: 'restTurn', x: -33, z: 34.25 },
+  { id: 'restNorthTurn', x: -25.5, z: 26.5 },
   { id: 'restEast', x: -27, z: 33 },
   { id: 'restSE', x: -27, z: 39 },
   { id: 'laneSW2', x: -27, z: 41.5 }, // paved south lane (z 39.8â€¦42.2)
   { id: 'laneSW1', x: -14, z: 41.5 },
   { id: 'laneSE1', x: 14, z: 41.5 },
   { id: 'denN', x: 11.5, z: 35.5 },
-  { id: 'denE', x: 18, z: 37 },
-  { id: 'denE2', x: 18, z: 42 },
+  { id: 'denE', x: 18.6, z: 35.5 },
+  { id: 'denEastTurn', x: 20.1, z: 38 },
+  { id: 'denE2', x: 19.9, z: 42 },
+  { id: 'gateEastTurn', x: 8, z: 42.9 },
   { id: 'dienMau', x: 39, z: 14.5 },
   { id: 'dienMauW', x: 33, z: 11 }, // paved lane x 27â€¦36 to the Äiá»‡n Máº«u forecourt
-  { id: 'bodhiTree', x: 35.5, z: 20 },
+  { id: 'dienMauTurn', x: 35.5, z: 13.5 },
+  { id: 'bodhiTree', x: 35.1, z: 18.9 },
   // Báº£o ThÃ¡p (âˆ’34, âˆ’15): stop south of the steps, two cipher lanes east / west.
   { id: 'baoThap', x: -34, z: -7.6 },
   { id: 'baoE', x: -25, z: -11 },
   { id: 'baoW', x: -41, z: -11 },
+  { id: 'baoSouthTurn', x: -38, z: -6.5 },
+  { id: 'baoEastTurn', x: -32, z: -9 },
+  { id: 'zenGateTurn', x: -28, z: -17 },
+  { id: 'zenSouthTurn', x: -28.1, z: -15.25 },
   { id: 'phongCDDoor', ...PHONG_CD_DOOR },
   { id: 'phongCDLane', x: PHONG_CD_DOOR.x - 3.2, z: PHONG_CD_DOOR.z },
   { id: 'phongCDSouth', x: PHONG_CD_DOOR.x - 3.2, z: 41.5 },
   // â”€â”€ VÆ°á»n TÃ¢y (ornamental garden) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'gateW', x: -10.6, z: 40.7 },
+  { id: 'westGardenTurn', x: -31.5, z: 27 },
   { id: 'vuonCayE', x: -37.8, z: 28.4 },
   { id: 'vuonCay', x: -48, z: 24.5 },
   { id: 'vuonCayIn', x: -48, z: 22 },
@@ -284,7 +299,7 @@ export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
 export const ROAD_EDGES: [string, string][] = [
   // â”€â”€ Axis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['gate', 'bridgeS'], ['bridgeS', 'bridgeN'], ['bridgeN', 'plaza'],
-  ['plaza', 'axisMid'], ['axisMid', 'hallFront'], ['hallFront', 'hallIn'],
+  ['plaza', 'axisTurn'], ['axisTurn', 'axisMid'], ['axisMid', 'hallFront'], ['hallFront', 'hallIn'],
   ['plaza', 'courtEastEntry'], ['courtEastEntry', 'courtEastFront'], ['courtEastFront', 'hallFront'],
   ['plaza', 'pillars'],
   // â”€â”€ Cross path z = 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -292,12 +307,12 @@ export const ROAD_EDGES: [string, string][] = [
   ['plaza', 'pathE1'], ['pathE1', 'pathE2'], ['pathE2', 'pathE3'], ['pathE3', 'pathE4'], ['pathE4', 'riverBankW'],
   ['sideGateW', 'lotusBridgeW'], ['lotusBridgeW', 'lotusBridgeS'], ['lotusBridgeS', 'lotusBridgeE'],
   // â”€â”€ Hall / corridors / stair â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['corrW', 'corrWMid'], ['corrWMid', 'westMid'], ['corrW', 'corrW2'], ['corrW2', 'westMid'],
+  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['corrW', 'corrWMid'], ['corrWMid', 'westMid'], ['corrW2', 'zenSouthTurn'], ['zenSouthTurn', 'zenGateTurn'],
   ['hallFront', 'hallSE'], ['hallSE', 'eastMid'],
-  ['pathE1', 'hallEastWp'],
+  ['pathE2', 'hallEastWp'],
   ['hallIn', 'hallAisleE'], ['hallAisleE', 'hallAisleN'], ['hallAisleN', 'stairApp'], ['stairApp', 'stairTop'], ['stairTop', 'tamThe'],
   // â”€â”€ Towers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['pathE2', 'bellW'], ['bellW', 'bellTower'], ['hallEastWp', 'bellTower'],
+  ['pathE2', 'bellW'], ['bellW', 'bellTower'], ['hallEastWp', 'bellW'],
   ['drumTower', 'drumTowerW'], ['drumTower', 'zenOut'], ['zenOut', 'pathW2'],
   // â”€â”€ Rear road z = âˆ’46 and bypasses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['westMid', 'westNorth'], ['westNorth', 'rearKT'], ['rearKT', 'rearW'], ['rearW', 'westRingN'],
@@ -311,25 +326,25 @@ export const ROAD_EDGES: [string, string][] = [
   ['rearTO', 'toGate'], ['toGate', 'toIn'], ['toIn', 'toYard'], ['toYard', 'toE'], ['toE', 'amCoE1'],
   ['amCoE1', 'amCoE2'], ['amCoE2', 'amCoDoor'], ['amCoE2', 'amCoEast'],
   // â”€â”€ Quan Ã‚m / Pháº­t TÃ¢y / Äiá»‡n Máº«u â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['quanYard', 'quanE'], ['quanE', 'quanSE'], ['quanSE', 'pathE2'],
-  ['quanYard', 'dienMau'], ['dienMau', 'dienMauW'], ['dienMauW', 'quanSE'], ['bodhiTree', 'dienMau'],
-  ['buddhaYard', 'pathW2'], ['buddhaYard', 'restArea'],
+  ['quanYard', 'quanEastTurn'], ['quanEastTurn', 'quanE'], ['quanE', 'quanSE'], ['quanSE', 'pathE2'],
+  ['quanYard', 'dienMau'], ['dienMau', 'dienMauTurn'], ['dienMauTurn', 'dienMauW'], ['dienMauW', 'quanSE'], ['bodhiTree', 'dienMau'],
+  ['buddhaYard', 'pathW2'], ['buddhaYard', 'restNorthTurn'], ['restNorthTurn', 'restEast'],
   // â”€â”€ Rest garden + south lanes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['restArea', 'restEast'], ['restEast', 'restSE'], ['restSE', 'laneSW2'],
+  ['restArea', 'restTurn'], ['restTurn', 'restEast'], ['restEast', 'restSE'], ['restSE', 'laneSW2'],
   ['laneSW2', 'laneSW1'], ['laneSW1', 'gate'],
   // â”€â”€ Äá»n TrÃ¬nh â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['gate', 'denTrinh'], ['denTrinh', 'denN'], ['denN', 'denE'], ['denE', 'denE2'],
-  ['denE2', 'laneSE1'], ['laneSE1', 'gate'],
+  ['gate', 'denApproach'], ['denApproach', 'denTrinh'], ['denTrinh', 'denWestTurn'], ['denWestTurn', 'denN'], ['denN', 'denE'], ['denE', 'denEastTurn'], ['denEastTurn', 'denE2'],
+  ['denE2', 'laneSE1'], ['laneSE1', 'gateEastTurn'], ['gateEastTurn', 'gate'],
   // â”€â”€ Báº£o ThÃ¡p (circled, never crossed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['baoThap', 'baoE'], ['baoE', 'zenIn'], ['baoThap', 'baoW'], ['baoW', 'thienDuong'],
-  ['baoW', 'drumTowerW'],
+  ['baoThap', 'baoEastTurn'], ['baoEastTurn', 'baoE'], ['baoE', 'zenGateTurn'], ['zenGateTurn', 'zenIn'],
+  ['baoThap', 'baoSouthTurn'], ['baoSouthTurn', 'baoW'], ['baoW', 'drumNorthTurn'], ['drumNorthTurn', 'drumTowerW'],
   // â”€â”€ Zen garden â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['zenIn', 'zenGarden'], ['zenGarden', 'thienDuong'], ['zenIn', 'zenW'], ['zenW', 'zenE2'],
   ['zenE2', 'zenE1'], ['zenE1', 'hallFront'],
   // â”€â”€ PhÃ²ng Ghi CÃ´ng Äá»©c â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['phongCDDoor', 'phongCDLane'], ['phongCDLane', 'phongCDSouth'], ['phongCDSouth', 'denE2'],
   // â”€â”€ VÆ°á»n TÃ¢y â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['gate', 'gateW'], ['gateW', 'vuonCayE'], ['vuonCayE', 'vuonCay'],
+  ['gate', 'gateW'], ['gateW', 'westGardenTurn'], ['westGardenTurn', 'vuonCayE'], ['vuonCayE', 'vuonCay'],
   ['vuonCay', 'vuonCayIn'], ['vuonCayIn', 'vuonCayE2'], ['vuonCayE2', 'vuonCayLane'],
   ['vuonCayNW', 'vuonCayN'], ['vuonCayN', 'vuonCayNE'], ['vuonCayNE', 'vuonCayE'],
   // â”€â”€ Market â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

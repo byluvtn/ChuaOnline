@@ -3,6 +3,7 @@ import { toon } from './toon';
 import { signTexture } from './textures';
 import { groundY } from './layout';
 import { fitModel, loadModel } from './models';
+import { PlantBatch } from './landscape';
 import { GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEEDS, type GardenPlotState, type GardenSpecies } from '../shared/game.js';
 
 type Collider = { x: number; z: number; r: number; x2?: number; z2?: number };
@@ -52,8 +53,6 @@ export function buildVuonCay(scene: THREE.Scene, colliders: Collider[]): void {
   const stone = toon(0x9a9a9a);
   const soil = toon(0x4a2f1d);
   const gravel = toon(0xb8a88a);
-  const leaf = toon(0x3f7a35);
-  const bark = toon(0x5a3a20);
 
   const add = (m: THREE.Object3D, shadow = true): void => {
     m.castShadow = shadow;
@@ -143,8 +142,13 @@ export function buildVuonCay(scene: THREE.Scene, colliders: Collider[]): void {
   box(12.6, 0.04, 2.4, gravel, GATE_X, 0.02, 18.1);
 
   // ---- Luống ----
+  const furrow = toon(0x674631);
   for (const p of GARDEN_PLOTS) {
-    box(2.6, 0.22, 1.2, soil, p.x, 0.11, p.z);
+    const isFarmPlot = p.id >= 9;
+    box(2.6, isFarmPlot ? 0.18 : 0.22, 1.2, soil, p.x, isFarmPlot ? 0.09 : 0.11, p.z);
+    if (isFarmPlot) {
+      for (const dz of [-0.32, 0, 0.32]) box(2.37, 0.04, 0.20, furrow, p.x, 0.20, p.z + dz);
+    }
     box(2.6, 0.25, 0.1, wood, p.x, 0.125, p.z - 0.55);
     box(2.6, 0.25, 0.1, wood, p.x, 0.125, p.z + 0.55);
     box(0.1, 0.25, 1.0, wood, p.x - 1.25, 0.125, p.z);
@@ -184,32 +188,12 @@ export function buildVuonCay(scene: THREE.Scene, colliders: Collider[]): void {
   colliders.push({ x: wx, z: wz, r: 0.8 });
 
   // ---- Cây bóng mát (cố định) ----
-  const tree = (x: number, z: number): void => {
-    const g = new THREE.Group();
-    g.position.set(x, groundY(x, z), z);
-    g.scale.setScalar(1.3);
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 4.1, 8), bark);
-    trunk.position.y = 2.05;
-    trunk.castShadow = true;
-    g.add(trunk);
-    const tiers: [number, number, number, number][] = [
-      [0, 4.2, 0, 1.2],
-      [0.1, 4.85, -0.05, 1.0],
-      [-0.05, 5.4, 0.05, 0.75],
-    ];
-    for (const [ox, oy, oz, s] of tiers) {
-      const c = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), leaf);
-      c.position.set(ox, oy, oz);
-      c.scale.setScalar(s);
-      c.castShadow = true;
-      g.add(c);
-    }
-    scene.add(g);
+  const trees = new PlantBatch();
+  for (const [i, [x, z]] of [[-43.1, 14.3], [-42.5, 12.7], [-55.8, 25]].entries()) {
+    trees.tree(x, groundY(x, z), z, 7.1 + i * 0.45, i, i * 2.4);
     colliders.push({ x, z, r: 0.5 });
-  };
-  tree(-43.1, 14.3);
-  tree(-42.5, 12.7);
-  tree(-55.8, 25);
+  }
+  scene.add(trees.build('orchard-shade-trees', true));
 
   // ---- Bảng đếm ----
   for (const sx of [-0.7, 0.7]) {

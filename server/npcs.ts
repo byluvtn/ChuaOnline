@@ -1361,8 +1361,17 @@ function runSchedule(room: NpcRoom, n: Npc, now: number, online: number) {
   }
   if (n.def.behavior === 'bell') {
     const bell = activeBell(now);
-    if (bell && n.rungKey !== bell.key) { n.rungKey = bell.key; n.phase = 'act'; s.anim = 'ring'; n.until = bell.endsAt; }
-    else if (!bell && n.phase === 'act' && s.anim === 'ring') { n.phase = 'idle'; s.anim = 'idle'; n.until = now + 500; }
+    if (bell && n.rungKey !== bell.key) {
+      const tower = nodePt('bellTower');
+      if (dist(s, tower) > 0.8) {
+        const target = n.route.at(-1);
+        if (n.phase !== 'walk' || !target || dist(target, tower) > 0.12) startWalk(n, routeFrom(s, 'bellTower'), 1.2);
+        return;
+      }
+      n.rungKey = bell.key; n.route = []; n.phase = 'act'; s.anim = 'ring'; n.until = bell.endsAt;
+    } else if (!bell && n.phase === 'act' && s.anim === 'ring') {
+      n.phase = 'idle'; s.anim = 'idle'; n.until = now + 500;
+    }
     return;
   }
   if (n.def.behavior !== 'wander') return;

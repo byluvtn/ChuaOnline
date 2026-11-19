@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_BRIDGES, RIVER_FALLS, RIVER_MOUTH_Z, riverAt, DUOC_SU, DUOC_SU_DOOR, DUOC_SU_YAW, duocSuWorld, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
 import { MAP_HALF, MAP_Z_MIN, MAP_Z_MAX } from '../shared/types';
 import { clampToCompound, resolveBridge, resolveWater, groundY, nearWalkway, NGOC_APPROACH, NGOC_EAST_LANE, NGOC_EAST_PAVING, WALKWAY_RECTS, TAM_THE_PLAT, VIEN_TO, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP } from '../src/layout';
-import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath } from '../shared/roads';
+import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath, routeFrom } from '../shared/roads';
 import { createPathfinder } from '../shared/pathfind';
 import { NPC_QUESTS } from '../shared/game';
 import { createAnimals } from '../server/animals';
+import { createNpcRoom, tickNpcs } from '../server/npcs';
 import { buildPondLotus } from '../src/pond-lotus';
 
 const lotus = buildPondLotus(LAKE.a, LAKE.b, 0.14, 32, 8113, (x, _z, radius) => Math.abs(x) > BRIDGE.hw + radius);
@@ -132,9 +133,17 @@ const north = { x: 0, z: -130 }; clampToCompound(north); assert(north.z > WALL.z
 const southGate = { x: 0, z: 45 }; clampToCompound(southGate); assert.equal(southGate.z, 45);
 const southWall = { x: 20, z: 45 }; clampToCompound(southWall); assert(southWall.z > 45.5);
 for (let x = -95; x <= -60; x += 0.1) assert(!expansionWaterBlocked(x, 2), `Lotus bridge blocked at ${x}`);
-for (const { x: center, z, halfSpan } of RIVER_BRIDGES) for (let x = center - halfSpan + 0.01; x < center + halfSpan; x += 0.1) {
-  assert(!expansionWaterBlocked(x, z), `River bridge blocked at ${x},${z}`);
-  assert.equal(groundY(x, z), RIVER.bridgeY);
+assert.equal(RIVER.bridgeHalf * 2, 5.6);
+for (const { x: center, z, halfSpan } of RIVER_BRIDGES) {
+  for (const dz of [-2.15, 0, 2.15]) for (let x = center - halfSpan + 0.01; x < center + halfSpan; x += 0.1) {
+    assert(!expansionWaterBlocked(x, z + dz), `River bridge blocked at ${x},${z + dz}`);
+    const rise = RIVER.bridgeY * Math.min(1, (halfSpan - Math.abs(x - center)) / RIVER.bridgeRamp);
+    assert(Math.abs(groundY(x, z + dz) - rise) < 1e-8);
+  }
+  for (const side of [-1, 1]) {
+    assert.equal(groundY(center + side * (halfSpan + 0.01), z), 0);
+    assert(expansionWaterBlocked(center, z + side * (RIVER.bridgeHalf + 0.01)));
+  }
 }
 for (const pos of [{ x: -78, z: -2 }, { x: riverAt(-20).x, z: -20 }, { x: RIVER.pond.x, z: RIVER.pond.z + 2 }, { x: -70, z: -35 }]) {
   assert(expansionWaterBlocked(pos.x, pos.z));
@@ -186,4 +195,42 @@ for (const [a, b] of ROAD_EDGES) {
   }
 }
 assert.deepEqual(waterEdges, [], 'Road edges cross expansion water');
-console.log(`PASS: 299 steps / 2 landings; height alignment; wall/gate crossings; water escapes; ${ROAD_NODES.length} connected road nodes; ${ROAD_EDGES.length} edges outside expansion water.`);
+for (const [from, to, deck] of [
+  ['riverBankW', 'riverBankE', 'riverBridgeS'], ['riverNorthW', 'riverNorthE', 'riverBridgeN'],
+] as const) {
+  assert.deepEqual(roadPath(from, to), [from, deck, to]);
+  assert.deepEqual(roadPath(to, from), [to, deck, from]);
+  // Run the server movement with the same offset allowed for a visitor joining a road.
+  const noonFree = Date.UTC(2026, 10, 19, 8);
+  const crossingRoom = createNpcRoom(noonFree);
+  const npc = crossingRoom.npcs.find(n => n.def.id === 'npc1')!;
+  const start = byId.get(from)!, landing = byId.get(to)!;
+  Object.assign(npc.state, { x: start.x, z: start.z + 0.8, anim: 'walk' });
+  npc.phase = 'walk'; npc.speed = 1.2; npc.route = routeFrom(npc.state, to);
+  for (let t = noonFree + 100; t <= noonFree + 40_000 && npc.phase === 'walk'; t += 100) {
+    tickNpcs(crossingRoom, t, 1);
+    assert(!expansionWaterBlocked(npc.state.x, npc.state.z));
+  }
+  assert(Math.hypot(npc.state.x - landing.x, npc.state.z - landing.z) < 0.25, `NPC did not cross ${deck}`);
+}
+// Room starts right at the 18:00 VN bell window, with the attendant away from the tower.
+const bellTime = Date.UTC(2026, 10, 19, 11), npcRoom = createNpcRoom(bellTime);
+const attendant = npcRoom.npcs.find(n => n.def.behavior === 'bell')!;
+const tower = byId.get('bellTower')!, away = byId.get('pathE2')!;
+Object.assign(attendant.state, { x: away.x, z: away.z });
+tickNpcs(npcRoom, bellTime + 100, 1);
+assert.equal(attendant.state.anim, 'walk');
+assert.equal(attendant.state.act, null);
+let rang = false;
+for (let t = bellTime + 200; t < bellTime + 60_000; t += 100) {
+  tickNpcs(npcRoom, t, 1);
+  if (attendant.state.anim !== 'ring') continue;
+  assert(Math.hypot(attendant.state.x - tower.x, attendant.state.z - tower.z) <= 0.8);
+  assert.equal(attendant.state.act, 'ring');
+  rang = true;
+  break;
+}
+assert(rang, 'The attendant should reach the tower and ring within the scheduled window');
+tickNpcs(npcRoom, bellTime + 60_000, 1);
+assert.notEqual(attendant.state.anim, 'ring');
+console.log(`PASS: 299 steps / 2 landings; bridge widths and ramp heights; bell action at the tower; ${ROAD_NODES.length} connected road nodes; ${ROAD_EDGES.length} edges outside expansion water.`);

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { FireworkSize } from '../shared/types';
+import { ROAD_EDGES, ROAD_NODES } from '../shared/roads';
+import type { Collider } from '../shared/pathfind';
 import { createFireworks, type FireworkCue } from './fireworks';
 import { fitModel, loadModel } from './models';
 import { paveCompound, removeSolidGrassClumps, SERENE_SKY } from './compound';
@@ -11,23 +13,25 @@ import { buildSeatedBuddhaStatue } from './statue-scan';
 import { buildGarden } from './garden';
 import { buildVuonCay } from './vuoncay';
 import { buildMarket } from './market';
+import { FLOWER_COLORS, PlantBatch } from './landscape';
+import { createSkyDome } from './sky';
 
-export interface Mood { sky: string; zenith: string; sun: string; sunI: number; hemi: string; fog: number; night?: boolean }
+export interface Mood { sky: string; zenith: string; sun: string; sunI: number; hemi: string; night?: boolean }
 /**
  * Bảng màu không gian thiền tự.
  * Trước đây cả ba phòng đều dùng tông cam đục của "bão cát sa mạc"; nay là bầu trời
  * xanh trong, yên bình: ngày nắng dịu, hoàng hôn tím nhạt, đêm trăng xanh thẫm.
  */
 export const MOODS: Record<string, Mood> = {
-  'vo-luong': { sky: '#dcefff', zenith: '#5aa7e0', sun: '#fff6e2', sunI: 2.2, hemi: '#eaf4ff', fog: 0.0060 },
-  'tu-bi': { sky: '#e7f2ff', zenith: '#4f9bd8', sun: '#ffffff', sunI: 2.4, hemi: '#f0f7ff', fog: 0.0054 },
-  'an-lac': { sky: '#ffe9d2', zenith: '#7fa8d8', sun: '#ffe2b8', sunI: 1.6, hemi: '#f3e9ff', fog: 0.0058, night: true },
+  'vo-luong': { sky: '#dcefff', zenith: '#5aa7e0', sun: '#fff6e2', sunI: 2.2, hemi: '#eaf4ff' },
+  'tu-bi': { sky: '#e7f2ff', zenith: '#4f9bd8', sun: '#ffffff', sunI: 2.4, hemi: '#f0f7ff' },
+  'an-lac': { sky: '#2c416c', zenith: '#121b38', sun: '#c7d5ff', sunI: 0.95, hemi: '#d4ddff', night: true },
 };
 
 export interface World {
   scene: THREE.Scene;
   ground: THREE.Mesh;
-  colliders: { x: number; z: number; r: number }[];
+  colliders: Collider[];
   update(t: number, focus: THREE.Vector3): void;
   spawnLantern(x: number, z: number): void;
   spawnIncense(x: number, z: number): void;
@@ -77,8 +81,7 @@ function roofGeometry(w: number, d: number, h: number, lift = 0.55) {
 
 export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: FireworkCue): World {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(SERENE_SKY.day.fog);
-  scene.fog = new THREE.FogExp2(SERENE_SKY.day.fog, SERENE_SKY.day.fogDensity);
+  scene.background = new THREE.Color(SERENE_SKY.day.horizon);
 
   const hemi = new THREE.HemisphereLight(0xeaf4ff, 0x4a5a38, 1.05);
   scene.add(hemi);
@@ -92,72 +95,15 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
   scene.add(sun);
   scene.add(sun.target);
 
-  // ---- Sky dome (gradient + sun glow) ----
-  const skyU = {
-    horizon: { value: new THREE.Color(SERENE_SKY.day.horizon) }, zenith: { value: new THREE.Color(SERENE_SKY.day.zenith) },
-    sunDir: { value: sun.position.clone().normalize() }, sunCol: { value: new THREE.Color(SERENE_SKY.day.sun) },
-  };
-  scene.add(new THREE.Mesh(
-    new THREE.SphereGeometry(220, 32, 16),
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false, fog: false, uniforms: skyU,
-      vertexShader: 'varying vec3 v; void main(){ v = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: `uniform vec3 horizon; uniform vec3 zenith; uniform vec3 sunDir; uniform vec3 sunCol; varying vec3 v;
-        void main(){ float h = clamp(v.y,0.0,1.0); vec3 c = mix(horizon, zenith, pow(h,0.55));
-          float s = max(dot(normalize(v), sunDir),0.0); c += sunCol * (pow(s,64.0)*0.9 + pow(s,6.0)*0.22);
-          gl_FragColor = vec4(c,1.0); }`,
-    }),
-  ));
-
-  // ---- Mặt trăng (đĩa + halo) và sao: hiện theo nightK, cố định trên trời Bắc-Tây ----
-  const MOON_POS = new THREE.Vector3(-70, 100, -140);
-  // Viền tối mỏng quanh đĩa trăng để trăng vẫn đọc được trên nền trời nhạt
-  // (rạng sáng/hoàng hôn và palette An Lạc) — trên trời đêm tối viền này chìm hẳn.
-  const rimMat = new THREE.MeshBasicMaterial({ color: 0x2a3a6b, fog: false, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
-  const moonRim = new THREE.Mesh(new THREE.CircleGeometry(9, 48), rimMat);
-  moonRim.position.copy(MOON_POS).multiplyScalar(1.002);
-  moonRim.lookAt(0, 0, 0);
-  moonRim.visible = false;
-  scene.add(moonRim);
-  const moonMat = new THREE.MeshBasicMaterial({ color: 0xf5f1de, fog: false, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
-  const moon = new THREE.Mesh(new THREE.CircleGeometry(8, 48), moonMat);
-  moon.position.copy(MOON_POS);
-  moon.lookAt(0, 0, 0);
-  moon.visible = false;
-  scene.add(moon);
-  const haloMat = new THREE.SpriteMaterial({ map: glowTexture(), color: 0xcdd8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
-  const halo = new THREE.Sprite(haloMat);
-  halo.scale.setScalar(30);
-  halo.position.copy(MOON_POS).multiplyScalar(0.99);
-  halo.visible = false;
-  scene.add(halo);
-
-  const starMat = new THREE.PointsMaterial({
-    size: 1.4, map: glowTexture(), color: 0xffffff, transparent: true, opacity: 0,
-    depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
-  });
-  const stars = (() => {
-    const n = 400, R = 200, minY = 25;
-    const pos = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const y = minY / R + rngSeed(i + 2000) * (1 - minY / R);
-      const a = rngSeed(i + 3000) * Math.PI * 2, r = Math.sqrt(1 - y * y);
-      pos[i * 3] = Math.cos(a) * r * R; pos[i * 3 + 1] = y * R; pos[i * 3 + 2] = Math.sin(a) * r * R;
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const pts = new THREE.Points(g, starMat);
-    pts.frustumCulled = false; pts.visible = false;
-    scene.add(pts);
-    return pts;
-  })();
+  const { mesh: sky, uniforms: skyU } = createSkyDome();
+  scene.add(sky);
 
   const colliders: World['colliders'] = [];
 
   // ---- Distant mountains (layered silhouettes) ----
   const mtnMats: THREE.MeshBasicMaterial[] = [];
   for (let layer = 0; layer < 3; layer++) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0x6f8a9e, fog: true });
+    const mat = new THREE.MeshBasicMaterial({ color: 0x6f8a9e });
     mtnMats.push(mat);
     for (let i = 0; i < 14; i++) {
       const a = (i / 14) * Math.PI * 2 + layer * 0.2;
@@ -211,11 +157,9 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
   colliders.push({ x: altar.position.x, z: altar.position.z, r: 1.9 });
 
   // ---- Trees (rounded canopies) + bushes + flowers (instanced) ----
-  const trunkG = new THREE.CylinderGeometry(0.2, 0.34, 2.2, 8);
-  const trunkM = lamb(0x6b4a2b);
-  const canopyG = new THREE.IcosahedronGeometry(1, 1);
-  const canopyMs = [lamb(0x3f8a3e, { flatShading: true }), lamb(0x4e9c45, { flatShading: true }), lamb(0x2f7a40, { flatShading: true })];
   const treeSpots: { x: number; z: number; s: number; v: number }[] = [];
+  const byId = new Map(ROAD_NODES.map(p => [p.id, p]));
+  const roadSegments = ROAD_EDGES.map(([a, b]) => [byId.get(a)!, byId.get(b)!] as const);
   const scatterHalf = -WALL.xW + 6; // Keep the seeded mainland foliage stable when the authored east bank grows.
   for (let i = 0; i < 400 && treeSpots.length < 90; i++) {
     const x = (rngSeed(i) - 0.5) * 2 * (scatterHalf + 24), z = (rngSeed(i + 100) - 0.5) * 2 * (scatterHalf + 24);
@@ -230,35 +174,32 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     if (Math.hypot(x + 53.7, z - 23.4) < 2) continue;
     treeSpots.push({ x, z, s, v: i % 4 });
   }
+  const trees = new PlantBatch();
   treeSpots.forEach(({ x, z, s, v }) => {
     if (v === 3) return;
-    const t = new THREE.Group();
-    const trunk = new THREE.Mesh(trunkG, trunkM); trunk.position.y = 1.1; trunk.castShadow = true; t.add(trunk);
-    const mat = canopyMs[v % 3];
-    for (let k = 0; k < 3; k++) {
-      const c = new THREE.Mesh(canopyG, mat);
-      c.scale.setScalar(1.5 - k * 0.22);
-      c.position.set((k - 1) * 0.5 * (k % 2 ? 1 : -1), 2.9 + k * 0.7, k * 0.2 - 0.2);
-      c.castShadow = true; t.add(c);
-    }
-    t.position.set(x, 0, z); t.scale.setScalar(s); t.rotation.y = rngSeed(x + z) * 6;
-    scene.add(t);
+    if (roadSegments.some(([a, b]) => {
+      const dx = b.x - a.x, dz = b.z - a.z;
+      const t = THREE.MathUtils.clamp(((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+      return Math.hypot(x - a.x - t * dx, z - a.z - t * dz) < 0.5 * s + 0.55;
+    })) return;
+    trees.tree(x, groundY(x, z), z, (5.15 + v * 0.35) * s, v, rngSeed(x + z) * 6);
     colliders.push({ x, z, r: 0.5 * s });
   });
+  scene.add(trees.build('campus-shade-trees', true));
 
-  const flowerCount = 420;
-  const flowerM = new THREE.MeshStandardMaterial({ roughness: 0.7, emissive: 0x201010 });
-  const flowers = new THREE.InstancedMesh(new THREE.SphereGeometry(0.12, 6, 5), flowerM, flowerCount);
-  const dummy = new THREE.Object3D();
-  const palette = [0xff8fb6, 0xffffff, 0xffd35a, 0xff7a6a, 0xc79bff].map((c) => new THREE.Color(c));
-  for (let i = 0; i < flowerCount; i++) {
+  const flowers = new PlantBatch();
+  for (let i = 0; i < 95; i++) {
     let x: number, z: number, tries = 0;
     do { x = (rngSeed(i + 500 + tries * 1000) - 0.5) * 2 * scatterHalf * 0.95; z = (rngSeed(i + 900 + tries * 1000) - 0.5) * 2 * scatterHalf * 0.95; tries++; }
     while (blocked(x, z) && tries < 10);
-    dummy.position.set(x, 0.1, z); dummy.scale.setScalar(blocked(x, z) ? 0 : 0.7 + rngSeed(i) * 0.9); dummy.updateMatrix();
-    flowers.setMatrixAt(i, dummy.matrix); flowers.setColorAt(i, palette[i % palette.length]);
+    if (blocked(x, z)) continue;
+    for (let j = 0; j < 3; j++) {
+      const a = i + j * 2.4, px = x + Math.cos(a) * 0.32, pz = z + Math.sin(a) * 0.32;
+      if (!blocked(px, pz)) flowers.flower(px, groundY(px, pz), pz, 0.23 + rngSeed(i * 3 + j) * 0.24,
+        FLOWER_COLORS[i % FLOWER_COLORS.length], a);
+    }
   }
-  scene.add(flowers);
+  scene.add(flowers.build('campus-wildflowers'));
 
   // Bụi cỏ dạng khối cứng quanh quảng trường đã được loại bỏ hoàn toàn (xem paveCompound):
   // mặt sân nay là gạch đá phẳng, không còn các "cục" hình học lổn nhổn giữa khuôn viên.
@@ -379,19 +320,6 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
   paveCompound(scene);
   void LAKE; void HALL;
 
-  // ---- Clouds ----
-  const clouds: THREE.Group[] = [];
-  const cloudM = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, fog: false });
-  for (let i = 0; i < 9; i++) {
-    const c = new THREE.Group();
-    for (let k = 0; k < 5; k++) {
-      const p = new THREE.Mesh(new THREE.SphereGeometry(5 + rngSeed(i * 7 + k) * 5, 10, 8), cloudM);
-      p.position.set(k * 6 - 12, rngSeed(k + i) * 3, rngSeed(k * 3 + i) * 4); p.scale.y = 0.45; c.add(p);
-    }
-    c.position.set((rngSeed(i) - 0.5) * 260, 60 + rngSeed(i + 5) * 25, (rngSeed(i + 30) - 0.5) * 220 - 40);
-    scene.add(c); clouds.push(c);
-  }
-
   // ---- Dynamic particles: falling petals + fireflies ----
   const petals = (() => {
     const n = 90;
@@ -509,36 +437,35 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
 
   type SkyHex = (typeof SERENE_SKY)['day'];
   interface Look {
-    horizon: THREE.Color; zenith: THREE.Color; sun: THREE.Color; hemi: THREE.Color; fog: THREE.Color;
-    fogDensity: number; sunI: number; hemiI: number; night: number; sunOff: THREE.Vector3;
+    horizon: THREE.Color; zenith: THREE.Color; sun: THREE.Color; hemi: THREE.Color;
+    sunI: number; hemiI: number; night: number; sunOff: THREE.Vector3;
   }
   const newLook = (): Look => ({
-    horizon: new THREE.Color(), zenith: new THREE.Color(), sun: new THREE.Color(), hemi: new THREE.Color(), fog: new THREE.Color(),
-    fogDensity: 0, sunI: 0, hemiI: 0, night: 0, sunOff: new THREE.Vector3(),
+    horizon: new THREE.Color(), zenith: new THREE.Color(), sun: new THREE.Color(), hemi: new THREE.Color(),
+    sunI: 0, hemiI: 0, night: 0, sunOff: new THREE.Vector3(),
   });
   const makeLook = (p: SkyHex, sunI: number, hemiI: number, night: number, off: [number, number, number]): Look => {
     const L = newLook();
-    L.horizon.set(p.horizon); L.zenith.set(p.zenith); L.sun.set(p.sun); L.hemi.set(p.hemi); L.fog.set(p.fog);
-    L.fogDensity = p.fogDensity; L.sunI = sunI; L.hemiI = hemiI; L.night = night; L.sunOff.set(off[0], off[1], off[2]);
+    L.horizon.set(p.horizon); L.zenith.set(p.zenith); L.sun.set(p.sun); L.hemi.set(p.hemi);
+    L.sunI = sunI; L.hemiI = hemiI; L.night = night; L.sunOff.set(off[0], off[1], off[2]);
     return L;
   };
   const mix = (x: number, y: number, s: number) => x + (y - x) * s;
   const lerpLook = (o: Look, a: Look, b: Look, s: number) => {
     o.horizon.lerpColors(a.horizon, b.horizon, s); o.zenith.lerpColors(a.zenith, b.zenith, s);
-    o.sun.lerpColors(a.sun, b.sun, s); o.hemi.lerpColors(a.hemi, b.hemi, s); o.fog.lerpColors(a.fog, b.fog, s);
-    o.fogDensity = mix(a.fogDensity, b.fogDensity, s); o.sunI = mix(a.sunI, b.sunI, s);
+    o.sun.lerpColors(a.sun, b.sun, s); o.hemi.lerpColors(a.hemi, b.hemi, s);
+    o.sunI = mix(a.sunI, b.sunI, s);
     o.hemiI = mix(a.hemiI, b.hemiI, s); o.night = mix(a.night, b.night, s);
     o.sunOff.lerpVectors(a.sunOff, b.sunOff, s);
   };
   /** Lerp mũ palette "hiện tại" về palette mục tiêu (cùng kiểu với nightK). */
   const approachLook = (c: Look, g: Look, k: number) => {
     c.horizon.lerp(g.horizon, k); c.zenith.lerp(g.zenith, k); c.sun.lerp(g.sun, k);
-    c.hemi.lerp(g.hemi, k); c.fog.lerp(g.fog, k);
-    c.fogDensity = mix(c.fogDensity, g.fogDensity, k); c.sunI = mix(c.sunI, g.sunI, k);
+    c.hemi.lerp(g.hemi, k); c.sunI = mix(c.sunI, g.sunI, k);
     c.hemiI = mix(c.hemiI, g.hemiI, k); c.sunOff.lerp(g.sunOff, k);
   };
 
-  const DAWN_SKY: SkyHex = { horizon: 0xffd9e8, zenith: 0x8fb4e0, sun: 0xffd9b0, hemi: 0xffe9f2, fog: 0xf2d9e8, fogDensity: 0.0062 };
+  const DAWN_SKY: SkyHex = { horizon: 0xffd9e8, zenith: 0x8fb4e0, sun: 0xffd9b0, hemi: 0xffe9f2 };
   const LOOK_DAY = makeLook(SERENE_SKY.day, 2.2, 1.05, 0, [-26, 38, 22]);
   const LOOK_DAWN = makeLook(DAWN_SKY, 1.5, 1.0, 0.4, [38, 14, 22]);
   const LOOK_DUSK = makeLook(SERENE_SKY.dusk, 1.6, 0.95, 0.3, [-38, 14, 22]);
@@ -562,13 +489,10 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
 
   const cur = makeLook(SERENE_SKY.day, 2.2, 1.05, 0, [-26, 38, 22]); // palette "hiện tại"
   const fixedLook = newLook();                                      // palette cố định của An Lạc
-  const CLOUD_DAY = new THREE.Color(0xffffff), CLOUD_NIGHT = new THREE.Color(0x93a7cc);
-
-  /** Áp palette hiện tại lên scene / sương / dome / đèn / núi xa (chạy mỗi frame). */
+  /** Áp palette hiện tại lên bầu trời, đèn và núi xa. */
   const applyLook = (L: Look) => {
-    if (scene.background instanceof THREE.Color) scene.background.copy(L.fog);
-    if (scene.fog instanceof THREE.FogExp2) { scene.fog.color.copy(L.fog); scene.fog.density = L.fogDensity; }
-    skyU.horizon.value.copy(L.horizon); skyU.zenith.value.copy(L.zenith); skyU.sunCol.value.copy(L.sun);
+    if (scene.background instanceof THREE.Color) scene.background.copy(L.horizon);
+    skyU.horizon.value.copy(L.horizon); skyU.zenith.value.copy(L.zenith); skyU.lightColor.value.copy(L.sun);
     sun.color.copy(L.sun); sun.intensity = L.sunI;
     hemi.color.copy(L.hemi); hemi.intensity = L.hemiI;
     mtnMats.forEach((mm, i) => mm.color.copy(L.horizon).lerp(L.zenith, 0.35 + i * 0.12).multiplyScalar(0.9 - i * 0.06));
@@ -580,8 +504,8 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     cycleEnabled = !m.night;
     if (m.night) {
       fixedLook.horizon.set(m.sky); fixedLook.zenith.set(m.zenith); fixedLook.sun.set(m.sun);
-      fixedLook.hemi.set(m.hemi); fixedLook.fog.set(m.sky);
-      fixedLook.fogDensity = m.fog; fixedLook.sunI = m.sunI; fixedLook.hemiI = 0.85; fixedLook.night = 1;
+      fixedLook.hemi.set(m.hemi);
+      fixedLook.sunI = m.sunI; fixedLook.hemiI = 0.85; fixedLook.night = 1;
       fixedLook.sunOff.set(-18, 26, -36); // cùng hướng trăng để bóng đổ + quầng sáng khớp
       nightTarget = 1;
     }
@@ -600,20 +524,13 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     approachLook(cur, goal, k);
     applyLook(cur);
     nightK += (nightTarget - nightK) * k;
-    // mây: trắng 0.85 (ngày) -> xanh xám ánh trăng 0.55 (đêm)
-    cloudM.color.copy(CLOUD_DAY).lerp(CLOUD_NIGHT, nightK);
-    cloudM.opacity = mix(0.85, 0.55, nightK);
-    // trăng: 0 khi nightK ~ 0, đủ 1 khi nightK >= 0.8; sao: nightK * 0.9
-    const moonA = Math.min(1, Math.max(0, nightK / 0.8));
-    moonMat.opacity = moonA; haloMat.opacity = moonA * 0.6; rimMat.opacity = moonA;
-    moon.visible = moonA > 0.01; halo.visible = moonA > 0.01; moonRim.visible = moonA > 0.01;
-    starMat.opacity = nightK * 0.9; stars.visible = nightK > 0.01;
+    skyU.night.value = nightK;
+    skyU.time.value = t;
     glowers.forEach((m, i) => (m.emissiveIntensity = (1.1 + nightK * 1.4) + Math.sin(t * 3 + i * 1.7) * 0.18));
     glowSprites.forEach((s, i) => ((s.material as THREE.SpriteMaterial).opacity = (0.45 + nightK * 0.4) * (0.85 + Math.sin(t * 2.4 + i) * 0.15)));
     redBase.emissiveIntensity = 0.9 + nightK * 1.1;
     flies.m.opacity = 0.2 + nightK * 0.8;
     redLanterns.forEach((m, i) => { m.position.y += Math.sin(t * 1.5 + i) * 0.0016; m.rotation.z = Math.sin(t * 1.2 + i) * 0.05; });
-    clouds.forEach((c, i) => { c.position.x += dt * (0.8 + (i % 3) * 0.3); if (c.position.x > 170) c.position.x = -170; });
     // falling petals, wrapped around the player
     for (let i = 0; i < petals.n; i++) {
       let y = petals.pos[i * 3 + 1] - dt * (0.7 + petals.seed[i] * 0.7);
@@ -672,7 +589,7 @@ export function createWorld(renderer: THREE.WebGLRenderer, onFireworkCue?: Firew
     // keep the shadow frustum centered on the player; hướng mặt trời theo phase hiện tại
     sun.target.position.set(focus.x, 0, focus.z);
     sun.position.set(focus.x + cur.sunOff.x, cur.sunOff.y, focus.z + cur.sunOff.z);
-    skyU.sunDir.value.copy(cur.sunOff).normalize();
+    skyU.lightDir.value.copy(cur.sunOff).normalize();
   };
 
   return { scene, ground, colliders, update, spawnLantern, spawnIncense, spawnBurst, spawnSkyLantern, spawnFirework, clearFireworks: fireworks.clear, setMood, altar: altar.position.clone(), sun, seats: temple.seats, zoneAt: temple.zoneAt, resolveWater, groundY, ringBell: temple.ringBell, ringDrum: temple.ringDrum, setHonorBoard: temple.setHonorBoard, setStele: temple.setStele, noticeBoard: temple.noticeBoard };

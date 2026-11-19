@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { LAKE, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS, BAO_THAP, MAIN_COURT, nearWalkway } from './layout';
 import { stoneTexture, vietnameseColumnTexture } from './textures';
 import { loadModel } from './models';
+import { FLOWER_COLORS, PlantBatch } from './landscape';
 
 /* =====================================================================
  * SỬA CHỮA KIẾN TRÚC & CẢNH QUAN KHUÔN VIÊN CHÙA
@@ -139,34 +140,19 @@ export function sealArchitectureJoints(root: THREE.Object3D, opts: SealOpts = {}
 // ------------------------------------------------------------------ 2. bầu trời xanh yên bình
 export interface SkyPalette {
   horizon: number; zenith: number; sun: number; hemi: number;
-  fog: number; fogDensity: number; night?: boolean;
 }
 
 /**
- * Bảng màu thiền tự: xanh da trời dịu ở đỉnh, trắng ngà ở chân trời, sương mờ
- * rất nhẹ. Dùng thay cho tông "bão cát sa mạc" (cam đục) trước đây.
+ * Bảng màu của bầu trời, không pha màu lên cảnh vật theo khoảng cách.
  */
 export const SERENE_SKY: Record<'day' | 'dusk' | 'night', SkyPalette> = {
-  day:   { horizon: 0xdcefff, zenith: 0x5aa7e0, sun: 0xfff6e2, hemi: 0xeaf4ff, fog: 0xd8ecfb, fogDensity: 0.0062 },
-  dusk:  { horizon: 0xffe9d2, zenith: 0x7fa8d8, sun: 0xffe2b8, hemi: 0xf3e9ff, fog: 0xe6ecf8, fogDensity: 0.0058 },
-  night: { horizon: 0x8fa7d8, zenith: 0x2a3a6b, sun: 0xbcd0ff, hemi: 0xc9d8ff, fog: 0x6f86b8, fogDensity: 0.0078, night: true },
+  day:   { horizon: 0xdcefff, zenith: 0x5aa7e0, sun: 0xfff6e2, hemi: 0xeaf4ff },
+  dusk:  { horizon: 0xffe9d2, zenith: 0x7fa8d8, sun: 0xffe2b8, hemi: 0xf3e9ff },
+  night: { horizon: 0x263d67, zenith: 0x09132d, sun: 0xbcd0ff, hemi: 0xc9d8ff },
 };
 
 export function sereneSky(kind: 'day' | 'dusk' | 'night' = 'day'): SkyPalette {
   return SERENE_SKY[kind];
-}
-
-/** Áp bảng màu trời lên scene + sương + dome shader (uniform đã tạo ở world.ts). */
-export function applySkyPalette(
-  scene: THREE.Scene,
-  uniforms: { horizon: { value: THREE.Color }; zenith: { value: THREE.Color }; sunCol: { value: THREE.Color } },
-  pal: SkyPalette,
-) {
-  if (scene.background instanceof THREE.Color) scene.background.set(pal.fog);
-  if (scene.fog instanceof THREE.FogExp2) { scene.fog.color.set(pal.fog); scene.fog.density = pal.fogDensity; }
-  uniforms.horizon.value.set(pal.horizon);
-  uniforms.zenith.value.set(pal.zenith);
-  uniforms.sunCol.value.set(pal.sun);
 }
 
 // ------------------------------------------------------------------ 3. hồ cá về trung tâm
@@ -479,13 +465,11 @@ export function buildFlowerBeds(g: GardenCtx) {
   const soilM = g.lamb(0x6b4a2e, { roughness: 1 });
   const pebM = g.lamb(0xbdb5a6, { flatShading: true });
   const bushM = g.lamb(0x3f8a3e, { flatShading: true });
-  const flowerM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7, emissive: 0x1a0c10 });
-  const palette = [0xf4978e, 0xf2c14e, 0x9b7ede].map((c) => new THREE.Color(c));
+  const flowers = new PlantBatch();
   const o = new THREE.Object3D();
   const nFl = 130, nPeb = 40;
-  const flowers = new THREE.InstancedMesh(new THREE.SphereGeometry(0.17, 8, 6), flowerM, FLOWER_BEDS.length * nFl);
   const pebbles = new THREE.InstancedMesh(new THREE.SphereGeometry(0.16, 8, 6), pebM, FLOWER_BEDS.length * nPeb);
-  let fi = 0, pi = 0;
+  let pi = 0;
   const bushes: [number, number, number][] = [[-3, 0.6, 0.7], [-0.5, -2.0, 0.55], [-0.8, 2.1, 0.6], [1.2, 0, 0.5]];
   for (const bed of FLOWER_BEDS) {
     const side = Math.sign(bed.x);
@@ -502,9 +486,9 @@ export function buildFlowerBeds(g: GardenCtx) {
     for (let i = 0; i < nFl; i++) {
       const r = Math.sqrt((i + 0.5) / nFl) * 0.93, ang = i * 2.39996;
       const x = bed.x + Math.cos(ang) * r * bed.a, z = bed.z + Math.sin(ang) * r * bed.b;
-      const hit = keep.some(([kx, kz, kr]) => Math.hypot(x - kx, z - kz) < kr);
-      o.position.set(x, hit ? -5 : GY + 0.2, z); o.scale.set(1, hit ? 0.01 : 0.6, 1); o.rotation.set(0, 0, 0); o.updateMatrix();
-      flowers.setMatrixAt(fi, o.matrix); flowers.setColorAt(fi, palette[(i * 7 + (i >> 2)) % 3]); fi++;
+      if (keep.some(([kx, kz, kr]) => Math.hypot(x - kx, z - kz) < kr)) continue;
+      const band = Math.floor((Math.atan2(z - bed.z, x - bed.x) + Math.PI) * 0.8) % FLOWER_COLORS.length;
+      flowers.flower(x, GY + 0.015, z, 0.33 + ((i * 37) % 19) / 55, FLOWER_COLORS[band], ang, 5 + band % 3);
     }
     for (const [dx, dz, r] of bushes) {
       const b = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), bushM);
@@ -515,30 +499,22 @@ export function buildFlowerBeds(g: GardenCtx) {
       woodBench(g, grp, bx, bz, Math.atan2(LAKE.x - bx, LAKE.z - bz));
     }
   }
-  flowers.instanceMatrix.needsUpdate = true; if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
   pebbles.instanceMatrix.needsUpdate = true;
-  pebbles.castShadow = true; grp.add(flowers, pebbles);
+  pebbles.castShadow = true; grp.add(flowers.build('pond-flower-clusters'), pebbles);
 }
 
 /** Khu 3 — khu nghỉ bóng cây (Đông–Nam): 3 cây lớn tam giác, 2 bộ bàn đá, 3 ghế gỗ dài. */
 export function buildRestArea(g: GardenCtx) {
   const grp = new THREE.Group(); grp.name = 'rest-area'; g.scene.add(grp);
   const cx = REST.x, cz = REST.z;
-  const trunkM = g.lamb(0x5f4026);
-  const canopyMs = [g.lamb(0x3f8a3e, { flatShading: true }), g.lamb(0x4e9c45, { flatShading: true }), g.lamb(0x2f7a40, { flatShading: true })];
+  const trees = new PlantBatch();
   for (let i = 0; i < 3; i++) {
     const a = -Math.PI / 2 + (i * Math.PI * 2) / 3, x = cx + Math.cos(a) * 4.2, z = cz + Math.sin(a) * 4.2;
     if (nearWalkway(x, z, 1.1)) continue;
-    const t = new THREE.Group();
-    const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.5, 5.8, 10), trunkM); tr.position.y = 2.9; tr.castShadow = true; t.add(tr);
-    const parts: [number, number, number, number][] = [[0, 6.6, 0, 2.5], [1.3, 6.4, 0.5, 1.9], [-1.2, 6.5, -0.6, 2.0], [0.2, 7.6, 0.3, 1.7]];
-    parts.forEach(([px, py, pz, r], k) => {
-      const cr = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), canopyMs[(i + k) % 3]);
-      cr.scale.y = 0.8; cr.position.set(px, py, pz); cr.castShadow = true; cr.receiveShadow = true; t.add(cr);
-    });
-    t.position.set(x, GY, z); t.rotation.y = i * 2; grp.add(t);
+    trees.tree(x, GY, z, 8.1 + i * 0.35, i, i * 2);
     g.colliders.push({ x, z, r: 0.5 });
   }
+  grp.add(trees.build('rest-area-shade-trees', true));
   stoneTableSet(g, grp, cx - 1.9, cz - 0.9, 0.3);
   stoneTableSet(g, grp, cx + 2.3, cz - 1.1, 1.1);
   for (const deg of [-30, 90, 210]) {
