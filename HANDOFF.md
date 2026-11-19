@@ -6,8 +6,9 @@
 - `npm run typecheck` kiểm tra kiểu. `npm run build` cho bản production.
 - Thư mục `data` không nằm trong repo, copy riêng nếu cần dữ liệu cũ.
 
-## Bàn giao cho Muse ở nhà — prompt thiền định (2026-11-18 16:45)
+## Bàn giao cho Muse ở nhà — prompt thiền định (2026-11-18 16:45) — ✅ XONG 18/11 (f6816cc, live 17:30, tin 138–139)
 
+- ✅ ĐÃ XONG 18/11 17:29 (commit `f6816cc`, live 17:30): hào quang 2 tầng đúng spec + giãn cách bồ đoàn 60/24/72 + 2 tin tức (138–139). Hình đệm là thiết kế lathe+cánh sen của `225234e` (giữ nguyên zafu.ts, chỉ đổi lưới ngồi). Đừng chạy lại file prompt này.
 - VIỆC CHÍNH (user giao cho Muse ở nhà làm): implement theo file `prompt-thien-dinh-hao-quang-bo-doan.md` ở gốc repo — 1 session Kilo, 1 commit chung. Phần A: hào quang thiền định 2 tầng theo ngày (ngồi liên tục 10 phút → hào quang thường, 20 phút → hào quang lớn; qua 00:00 mất, hôm sau thiền lại; xóa `hao_quang` khỏi shop; NPC role `abbot` có hào quang mặc định). Phần B: bồ đoàn cánh sen (2 vòng cánh hồng) + giãn cách lưới ngồi (Chính Điện 96→60, Tam Thế 48→24, deck 98→72, thiền đường 12→10; 2 bồ đoàn tụng kinh ở (0,2)/(0,4) GIỮ NGUYÊN — vị trí quest CHANT_SEATS). Spec đầy đủ, tin tức (2 entries, LATEST +2) và nghiệm thu đều trong file đó. Hai file spec riêng trước đó đã gộp — chỉ chạy file gộp này.
 - HEAD lúc bàn giao: `a85877b`, `LATEST_NEWS_ID = 137`, live trên Oracle (auto-pull 5 phút).
 - Quy tắc nhớ: mỗi tính năng phải có tin tức; commit message tiếng Việt không dấu như các commit trước; `git add` từng file, không `git add -A`; không force-push.
@@ -39,8 +40,8 @@
 
 ## Việc còn tồn (2026-11-18 16:45)
 
-- `d5736ee` ("expand Chua Ngoc and redesign its approach", 10 files, expansion.ts 230 dòng) KHÔNG có tin tức — vi phạm luật tin, cần bổ sung 1 tin sau.
-- Thác Bản Giốc `2f58d35` (3 tầng, tin 136) đã build xong từ prompt nhưng chưa review chi tiết code.
+- ~~`d5736ee` ("expand Chua Ngoc and redesign its approach", 10 files, expansion.ts 230 dòng) KHÔNG có tin tức~~ — ✅ ĐÃ BỔ SUNG 19/11 (commit `2a48214`, tin 141 'Lối lên Chùa Ngọc rộng hơn...'; cùng commit bổ sung tin 142 'Chuông, trống chùa có tiếng thật' cho `225234e`).
+- Thác Bản Giốc `2f58d35` (3 tầng, tin 136) — ✅ ĐÃ REVIEW 18/11 (Lux): PASS — 3 tầng (2.16/4.96/8.48 m), 9 rèm nước, hồ ngọc 0x35a0a8, karst, cá 7 con, update đã nối; rộng ~12,4 m thay vì ~14 m như prompt, không đáng kể.
 - User báo "không vào được chua247" lúc 13:31 — server kiểm tra bình thường (site 200, service active, socket.io OK), nghi stale service-worker cache; đã dặn user đóng tab mở lại, đang chờ user trả lời (ảnh chụp + thiết bị). Đừng đụng vào server vì vụ này khi chưa có thêm thông tin.
 - Sau đợt thiền định: Prompt B (animation pass — crossfades ≥0.12s, FPS independence, no foot sliding, no LOD pop-in; kit ở `prompt-audit-fable-chua-online.md`) rồi R4. NPC 25 cạnh đường trung tâm vẫn lỗi (HANDOFF cũ ghi rõ).
 
@@ -149,7 +150,7 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
 
 ## Việc để lại làm sau ở nhà (user dặn 2026-11-17 17:00)
 
-### 1. Phân tán NPC khỏi khu giữa (CHƯA LÀM)
+### 1. Phân tán NPC khỏi khu giữa (✅ XONG 19/11 — b2ece2b)
 
 - Vấn đề (user quan sát 2026-11-17): NPC tập trung đông ở giữa
   (quảng trường/cầu/sân điện); luồng đi của NPC là vào cổng → qua cầu
@@ -173,6 +174,7 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
   không phải tính năng mới).
 - Lưu ý: Lux đã cho agent làm thử lúc 16:53 nhưng user bảo dừng để
   về nhà tự làm — agent tắt khi mới đang clone, chưa viết code nào.
+- ✅ XONG 19/11 09:46 (commit `b2ece2b`): phân tán NPC v2 + THÊM 4 người phụ trách khu mới (Sư Cô trông Điện Dược Sư, Tiểu Trồng Rau, Tiểu Quét Thang, Cô Trông Đình) với nhiệm vụ hằng ngày tại chỗ (+115 xu, +70 công đức/ngày). Vì thêm NPC + nhiệm vụ mới (tính năng, không chỉ cân bằng) nên đợt này CÓ tin tức — tin 140.
 
 ### 2. Đợt 3 còn lại: 3.15 + 3.16 (✅ XONG 17/11)
 
@@ -199,9 +201,7 @@ Push lên `origin/main` (byluvtn/ChuaOnline).
   spec gốc không còn ý nghĩa — xóa hẳn `.github/workflows/deploy-fly.yml`
   + `fly.toml` trong commit 3.16 này. Không còn tham chiếu live nào (chỉ
   còn nhắc trong AUDIT.md / flyio-deploy.md / Dockerfile — tài liệu/lịch
-  sử, để nguyên). ⚠️ Lọc `.md`-only cho auto-pull Oracle CHƯA làm được:
-  deploy.sh + trigger pull chỉ nằm trên VM Oracle, không có IP/key SSH —
-  cần user tự sửa trên VM hoặc cấp quyền.
+  sử, để nguyên). ✅ Lọc `.md`-only cho auto-pull Oracle ĐÃ CÓ (phát hiện 18/11: log ghi "docs-only changes — pulling without rebuild/restart", 8 lần) — push chỉ có .md không restart game nữa. Không rõ ai làm, khi nào.
 
 ---
 
