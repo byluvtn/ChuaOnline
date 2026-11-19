@@ -34,6 +34,9 @@ export interface PlayerState {
   act?: NpcAct | null;
   /** tầng hào quang thiền trong ngày (0 = không có); chỉ người chơi có, NPC không có */
   halo?: 0 | 1 | 2;
+  /** id ghế thật đang ngồi trong `shared/seats.ts` (ghế gỗ/đá, không phải bồ đoàn thiền).
+   *  Chỉ người chơi có; máy chủ xoá khi đứng dậy hoặc rời phòng. */
+  seat?: string | null;
 }
 
 export interface ChatMessage { id: number; sid?: string; name: string; text: string; t: number; sys?: boolean }

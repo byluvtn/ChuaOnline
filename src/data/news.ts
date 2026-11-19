@@ -1,13 +1,30 @@
+import { HanhNguyenQuestGoal, TITLES } from '../../shared/game';
+
 export interface NewsItem {
   title: string;
   date: string;
   items: string[];
 }
 
-// Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 153;
-
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Chỉnh lại chùa: cổng, bản đồ, ghế ngồi và tiếng pháo hoa',
+    date: '2026-11-19',
+    items: [
+      'Tam Quan và cổng Đông, cổng Tây có mái ngói đỏ, đầu đao vàng. Vườn rau có cổng gỗ riêng ở lối vào.',
+      'Điện Dược Sư lùi xa bờ sông, Bảo Tháp dời về phía tây Động Thiền. Hồ sen Tây và đình ngắm sen chuyển lên cạnh vườn rau, trả lại lối thẳng từ cổng Tây vào chùa. Rừng trúc và vườn hoa có khoảng đi bộ ở giữa.',
+      'Bỏ cụm tre cao cạnh hàng bụi ở Vườn Phóng Sinh, giữ nguyên hàng bụi tròn.',
+      'Bản đồ lớn và bản đồ nhỏ cập nhật công trình; bản đồ lớn thêm điểm đến, gồm cổng vườn rau, bờ ao rau, bến thả phóng sinh, sân Quan Âm và cầu đá phía bắc Sông Đông.',
+      'Điểm danh, Nhiệm vụ và Cửa hàng nằm ngay dưới thông tin nhân vật. Mỗi món trong cửa hàng có hình riêng.',
+      'Pháo hoa có tiếng rít lúc bay, tiếng rồng gầm và tiếng phượng kêu lúc hiện hình. Tiếng trống ở gác trống rõ hơn.',
+      'Chùa Ngọc và Điện Dược Sư có câu đối tiếng Việt và bảng giải nghĩa. Tượng hành lang đứng trên bệ đá hai tầng có đài sen.',
+      'Nhà khách có bốn giường để khách và người trong chùa nghỉ theo ca. Tiểu Trồng Rau đi múc nước, tưới cây và quét lối; Sư Cô Điện Dược Sư đi tuần quanh điện.',
+      'Đến gần ghế trống để ngồi nghỉ. Chùa Ngọc có hai bồ đoàn thiền mới và học sinh nam có thể đi bộ lên sân chùa.',
+      'Bia công đức lên bờ đông hồ cá koi. Cầu đỏ được bỏ, đường vào sân chùa đi vòng hai bờ hồ.',
+      'Các sư thầy có vòng sáng cánh sen như tượng Phật, trụ trì có vòng lớn và sáng hơn. Vòng sáng của người chơi giữ nguyên.',
+      `Thêm 12 danh hiệu, nâng tổng số lên ${TITLES.length}. Danh hiệu Hạnh nguyện viên dung cần hoàn thành ${HanhNguyenQuestGoal} nhiệm vụ khác nhau.`,
+    ],
+  },
   {
     title: 'Tụng kinh có nút gõ mõ tay và chạy nền',
     date: '2026-11-19',
@@ -1354,3 +1371,6 @@ export const NEWS: NewsItem[] = [
     ],
   },
 ];
+
+// Duy trì độ lệch 2 giữa số mục lưu trữ và mốc đã đọc sau khi chuẩn hóa số tin ngày 17/11.
+export const LATEST_NEWS_ID = NEWS.length - 2;

@@ -2,6 +2,7 @@ import './polyfill';
 import * as THREE from 'three';
 import { NGOC_HALL, NGOC_TERRACE } from '../shared/campus';
 import { RIVER_BOATS, RIVER_DOCK, nearRiverDock, type RiverBoatId, type RiverBoatState } from '../shared/river-tour';
+import { SEAT_REACH_M, nearestSeat, seatBodyY, seatById, seatStandAt, type CatalogSeat } from '../shared/seats';
 import { buildRiverBoat } from './river-boat';
 import { io, type Socket } from 'socket.io-client';
 import { api, clearToken, getToken, setToken } from './api';
@@ -10,7 +11,7 @@ import { audio } from './audio';
 import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
-import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, RIVER, RIVER_PATH, NGOC, NGOC_EAST_MAP_RECTS, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND } from './layout';
+import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, LOTUS_PAVILION, RIVER, RIVER_PATH, NGOC, NGOC_EAST_MAP_RECTS, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND, BAMBOO, FLOWER_HILL } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -27,6 +28,7 @@ import { renderGardenTrees, setGardenGateBoard } from './vuoncay';
 import { initAnimals, updateAnimals, nearestFeedable, lostAnimal, flockPos } from './animals';
 import { createKoi } from './koi';
 import { buildBuddha, buildQuanAm } from './statues';
+import { buildHalo } from './statue-halo';
 import type { QuestErrorCode } from '../shared/game';
 import { ACTION_RULES, CHAIN_QUESTS, GARDEN_GOOD_SEEDS, GARDEN_PLOTS, GARDEN_SEEDS, HALO_TIER1_SEC, HALO_TIER2_SEC, MARKET_STALLS, MEDITATE_TICK_MS, NPC_QUESTS, ROOMS, TITLES, defaultTitle, titleName, type GardenPlotState, type GardenSpecies, type MeditationDailyInfo, type MeditationInfo, type QuestState, type QuestZone } from '../shared/game';
 import { dayKeyICT, weekKey } from '../shared/time';
@@ -193,11 +195,14 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
-const world = createWorld(renderer, (phase, x, z, strength, crackle) => {
+const world = createWorld(renderer, (phase, x, z, strength, crackle, kind) => {
   const p = me?.char.root.position;
   if (!p) return;
   const distance = Math.hypot(p.x - x, p.z - z);
-  audio.firework(phase, strength * Math.max(0, 1 - distance / 65), crackle);
+  const audible = strength * Math.max(0, 1 - distance / 65);
+  audio.firework(phase, audible, crackle);
+  // Tiếng rồng gầm / phượng kêu chỉ có ở phòng bắn, vẫn theo âm lượng và khoảng cách.
+  if (phase === 'burst' && (kind === 'dragon' || kind === 'phoenix')) audio.firework(kind, audible);
 });
 initAnimals(world.scene, () => settings.showNames);
 const weather = createWeather(world.scene, () => roomId !== 'an-lac' && settings.quality !== 'low');
@@ -219,9 +224,9 @@ function syncRiverFleet(boats: RiverBoatState[]) {
 
 /** Vòng collider viền hồ — CHỈ dành cho pathfinder (không vào world.colliders). */
 function lakeRingColliders() {
-  const PAD = 0.9;          // đệm ngoài mép hồ
-  const R = 0.9;            // bán kính mỗi collider con
-  const STEP = 1.1;         // khoảng cách tâm tối đa (<= 1.2 m để segmentClear không lọt khe)
+  const PAD = 0.3;          // tâm của gờ đá, không lấn vào lối bờ ở x = ±15.9
+  const R = 0.42;           // bán kính gờ đá; pathfinder cộng thêm khoảng hở cho nhân vật
+  const STEP = 1.1;
   const a = LAKE.a + PAD, b = LAKE.b + PAD;
   // Chu vi xấp xỉ Ramanujan → số điểm
   const h = ((a - b) * (a - b)) / ((a + b) * (a + b));
@@ -232,8 +237,8 @@ function lakeRingColliders() {
     const t = (i / n) * Math.PI * 2;
     const x = LAKE.x + Math.cos(t) * a;
     const z = LAKE.z + Math.sin(t) * b;
-    // Chừa khe hành lang cầu: chỉ bỏ điểm sát hai đầu cầu, không bỏ cả dải theo z
-    if (Math.abs(x - BRIDGE.x) < BRIDGE.hw + R + 0.55 && z >= BRIDGE.z0 - 1 && z <= BRIDGE.z1 + 1) continue;
+    // L1: the red bridge is gone, so no deck corridor to leave open.
+    // Keep the Thủy Đình pier approach on the west shore walkable.
     if (x >= -12 && x <= -3 && Math.abs(z - 23) <= 3) continue;
     out.push({ x, z, r: R });
   }
@@ -248,12 +253,9 @@ function currentNavigation() {
   navigation = createPathfinder(
     [...world.colliders, ...lakeRingColliders()],
     {
-      deck: BRIDGE,
-      // loại điểm nằm trong hồ mà không thuộc mặt cầu (để escapePoint không chọn điểm trong nước)
+      // L1: no deck any more — the koi lake is crossed on the dry bank lanes.
       avoid: (p) => expansionWaterBlocked(p.x, p.z) || (inPsPond(p.x, p.z) && !onPsPier(p.x, p.z)) ||
-        (p.z > BRIDGE.z0 + 0.35 && p.z < BRIDGE.z1 - 0.35 && Math.abs(p.x - BRIDGE.x) > BRIDGE.hw - 0.15 && Math.abs(p.x - BRIDGE.x) < BRIDGE.hw + 0.15) ||
-        (inLake(p.x, p.z) && !(Math.abs(p.x - BRIDGE.x) < BRIDGE.hw && p.z >= BRIDGE.z0 && p.z <= BRIDGE.z1) &&
-          !(p.x >= -10.6 && p.x <= -4.4 && Math.abs(p.z - 23) <= 1.6)),
+        (inLake(p.x, p.z) && !(p.x >= -10.6 && p.x <= -4.4 && Math.abs(p.z - 23) <= 1.6)),
     },
   );
   return navigation;
@@ -363,6 +365,9 @@ guideGroup.visible = false;
 world.scene.add(guideGroup);
 let dragging = false, dragMoved = 0;
 let sitting = false;
+/** id ghế thật (K1) đang ngồi; null = đang thiền trên bồ đoàn hoặc đang đứng. */
+let mySeatId: string | null = null;
+const seatBtn = $('seatBtn');
 const joy = { x: 0, y: 0, id: -1 };
 
 const STATUS_TEXT: Record<NpcAct, string> = {
@@ -392,12 +397,16 @@ function addPlayer(p: PlayerState) {
   char.setLabel(p.name, p.npc ? undefined : levelOf(p.merit), p.id === myId, p.npc ? undefined : (p.title ? titleName(p.title) : undefined));
   char.label.visible = settings.showNames;
   char.setAccessory(p.accessory);
-  if (p.npc && p.role === 'abbot') char.setHalo(1);
-  else if (!p.npc) char.setHalo(p.halo ?? 0);
-  char.root.position.set(p.x, 0, p.z);
+  if (p.npc && p.role === 'abbot') {
+    const abbot = p.id === 'npc1';
+    // The model's petals end at 1.222 times the radius. Attach to the head so it follows bowing too.
+    const halo = buildHalo(0.78 / 1.222 * (abbot ? 1.15 : 1), 1.68 - char.head.position.y, -0.55, abbot);
+    char.head.add(halo);
+  } else if (!p.npc) char.setHalo(p.halo ?? 0);
+  char.root.position.set(p.x, p.y ?? world.groundY(p.x, p.z), p.z);
   if (p.npc) char.root.visible = settings.showNpcs;
   world.scene.add(char.root);
-  const r: Remote = { char, target: new THREE.Vector3(p.x, p.y ?? world.groundY(p.x, p.z), p.z), ry: p.ry, anim: p.anim, actionUntil: 0, data: p, act: null };
+  const r: Remote = { char, target: char.root.position.clone(), ry: p.ry, anim: p.anim, actionUntil: 0, data: p, act: null };
   remotes.set(p.id, r);
   return r;
 }
@@ -670,6 +679,8 @@ function connect() {
     startMenu();
     me = remotes.get(myId) ?? null;
     sitting = false;
+    mySeatId = null;
+    if (seatBtn) seatBtn.hidden = true;
     $('sitBtn').classList.remove('on');
     $('msgs').innerHTML = '';
     w.chat.forEach(addChat);
@@ -761,13 +772,14 @@ function connect() {
     if (me) me.ry = Math.PI / 2;
     toast('Thuyền đã về bến Sông Đông');
   });
-  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'y' | 'ry' | 'anim' | 'act'>[]; boats: RiverBoatState[]; animals?: AnimalState[] }) => {
+  s.on('state', (st: { online: number; players: Pick<PlayerState, 'id' | 'x' | 'z' | 'y' | 'ry' | 'anim' | 'act' | 'seat'>[]; boats: RiverBoatState[]; animals?: AnimalState[] }) => {
     $('onlineN').textContent = String(st.online);
     latestAnimals = st.animals ?? [];
     syncRiverFleet(st.boats);
     for (const p of st.players) {
       const r = remotes.get(p.id);
       if (!r || p.id === myId) continue;
+      r.data.seat = p.seat ?? null;
       r.target.set(p.x, p.y ?? world.groundY(p.x, p.z), p.z);
       r.ry = p.ry;
       if (performance.now() > r.actionUntil) r.anim = p.anim;
@@ -1294,6 +1306,36 @@ function nearestFreeSeat(limit = Infinity): { x: number; z: number; ry: number }
   return best;
 }
 
+/**
+ * K1: rời ghế thật. Chỗ đứng nằm sau lưng ghế, ngoài collider; nếu chỗ đó bị
+ * chặn thì thử xa hơn trước khi báo lỗi.
+ */
+function leaveSeat() {
+  if (!me || !mySeatId || !socket) return;
+  const seat = seatById(mySeatId);
+  const root = me.char.root;
+  mySeatId = null;
+  socket.emit('seat:release');
+  if (seat) {
+    const options = [seatStandAt(seat), seatStandAt(seat, 1.4), seatStandAt(seat, 1.8)];
+    const best = options.find((p) => !blockedForStand(p.x, p.z)) ?? options[0];
+    root.position.set(best.x, world.groundY(best.x, best.z), best.z);
+    prevPos.x = best.x; prevPos.z = best.z;
+  }
+  me.anim = 'idle';
+  $('seatBtn').hidden = true;
+}
+
+/** Chỗ đứng có nằm trong collider nào không (chỉ xét quanh ghế, r + thân 0,4). */
+function blockedForStand(x: number, z: number): boolean {
+  for (const c of world.colliders) {
+    const lc = c as typeof c & { x2?: number; z2?: number };
+    if (lc.x2 !== undefined && lc.z2 !== undefined) continue;
+    if (Math.hypot(x - c.x, z - c.z) < c.r + 0.45) return true;
+  }
+  return false;
+}
+
 function setSitting(v: boolean) {
   if (v && myBoat !== undefined) return;
   if (v && !sitting && me) {
@@ -1305,8 +1347,25 @@ function setSitting(v: boolean) {
   $('sitBtn').classList.toggle('on', v);
 }
 
+function sitOnSeat(seat: CatalogSeat) {
+  if (!me || !socket || myBoat !== undefined) return;
+  if (mySeatId) leaveSeat();
+  if (sitting) setSitting(false);
+  socket.emit('seat:sit', { id: seat.id }, (r: { ok: boolean; error?: string; seat?: string }) => {
+    if (!r?.ok) { toast(r?.error ?? 'Không ngồi được ghế này'); return; }
+    mySeatId = r.seat ?? seat.id;
+    const root = me!.char.root;
+    root.position.set(seat.x, world.groundY(seat.x, seat.z), seat.z);
+    me!.ry = seat.ry;
+    $('seatBtn').hidden = false;
+    ($('seatBtn').querySelector('.lb') as HTMLElement).textContent = 'Đứng dậy';
+    toast(`Đang ngồi ${seat.area.toLowerCase()} — chỗ này không tính công đức`);
+  });
+}
+
 function teleportTo(x: number, z: number) {
   if (!me || myBoat !== undefined) return;
+  if (mySeatId) leaveSeat();
   const y = world.groundY(x, z);
   me.char.root.position.set(x, y, z);
   me.target.set(x, y, z);
@@ -1330,6 +1389,7 @@ function doAction(kind: ActionKind, wish?: string, keepSeat = false): boolean {
   if (!me || !socket) return false;
   if (myBoat !== undefined && kind !== 'lantern') return false;
   if (kind !== 'bow') bowSeat = null;
+  if (mySeatId) leaveSeat();
   if (performance.now() < (cooling[kind] ?? 0)) return false;
   audio.unlock();
   if (kind !== 'palms' && kind !== 'beads') audio.play(kind);
@@ -1371,7 +1431,18 @@ document.querySelectorAll<HTMLButtonElement>('#actions [data-act]').forEach((b) 
   else if (kind === 'chant') openPanel('chant', panelCtx());
   else doAction(kind);
 }));
-$('sitBtn').onclick = () => { clickTarget = null; bowSeat = null; setSitting(!sitting); if (sitting) toast('Thiền định... công đức được cộng mỗi 10 giây'); };
+$('sitBtn').onclick = () => {
+  if (mySeatId) leaveSeat();
+  clickTarget = null; bowSeat = null; setSitting(!sitting);
+  if (sitting) toast('Thiền định... công đức được cộng mỗi 10 giây');
+};
+$('seatBtn').onclick = () => {
+  if (mySeatId) { leaveSeat(); return; }
+  if (!me) return;
+  const p = me.char.root.position;
+  const seat = nearestSeat(p.x, p.z, SEAT_REACH_M);
+  if (seat) sitOnSeat(seat);
+};
 $('lanternBtn').onclick = () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); };
 $('wishCancel').onclick = () => ($('wishModal').hidden = true);
 $('wishOk').onclick = () => {
@@ -1446,6 +1517,7 @@ function rampSpeed(target: number, dt: number) {
 
 const prevPos = { x: 0, z: 0 };
 function collide(pos: THREE.Vector3) {
+  // L1: bridge deck removed; resolveBridge() is a no-op shim.
   const onDeck = resolveBridge(pos, prevPos);
   for (const c of world.colliders) {
     const w = c as typeof c & { x2?: number; z2?: number };
@@ -1780,6 +1852,24 @@ function myPos(): Pt | null {
   return me ? { x: me.char.root.position.x, z: me.char.root.position.z } : null;
 }
 
+/** K1: hiện "Ngồi" khi đứng gần ghế thật, "Đứng dậy" khi đang ngồi ghế. */
+function updateSeatBtn() {
+  if (!me || myBoat !== undefined) { if (!seatBtn.hidden) seatBtn.hidden = true; return; }
+  const lb = seatBtn.querySelector('.lb')!;
+  if (mySeatId) {
+    if (seatBtn.hidden) seatBtn.hidden = false;
+    if (lb.textContent !== 'Đứng dậy') lb.textContent = 'Đứng dậy';
+    return;
+  }
+  // Đang thiền trên bồ đoàn: nút Thiền đã bật, không mời ngồi ghế nữa.
+  if (sitting) { if (!seatBtn.hidden) seatBtn.hidden = true; return; }
+  const p = me.char.root.position;
+  const seat = nearestSeat(p.x, p.z, SEAT_REACH_M);
+  if (!seat) { if (!seatBtn.hidden) seatBtn.hidden = true; return; }
+  if (seatBtn.hidden) seatBtn.hidden = false;
+  if (lb.textContent !== 'Ngồi') lb.textContent = 'Ngồi';
+}
+
 const animalBtn = $('animalBtn') as HTMLButtonElement;
 type AnimalAct = { event: 'feed' | 'find' | 'feedBird' | 'feedPet'; id?: string };
 let animalAct: AnimalAct | null = null;
@@ -1863,6 +1953,8 @@ const MM_BUILDINGS = [
   { x: DUOC_SU.x, z: DUOC_SU.z, hx: DUOC_SU.hx, hz: DUOC_SU.hz, label: 'Dược Sư' },
   { ...NGOC_HALL, label: 'Chùa Ngọc' },
   { ...RIVER_DOCK, z: (RIVER_DOCK.north + RIVER_DOCK.south) / 2, hx: 1.35, hz: (RIVER_DOCK.south - RIVER_DOCK.north) / 2, label: 'Bến thuyền' },
+  // C1: the relocated lantern pavilion and the two dry bank lanes round the koi lake.
+  { x: LOTUS_PAVILION.x, z: LOTUS_PAVILION.z, hx: 2.4, hz: 2.4, label: 'Đình Sen' },
 ];
 const MM_ROADS = new Map(ROAD_NODES.map((n) => [n.id, n]));
 
@@ -1919,8 +2011,11 @@ function drawMinimap() {
   }
   g.closePath(); g.fill(); g.stroke();
   g.lineWidth = dpr;
+  // C1/L1: no red bridge — draw the two dry paved bank lanes and the south link instead.
   g.fillStyle = '#d6b994';
-  g.fillRect(X(BRIDGE.x - BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
+  g.fillRect(X(LAKE.a + 1.4), Z(LAKE.z - LAKE.b - 1.4), 2 * k, (LAKE.b * 2 + 2.8) * k);
+  g.fillRect(X(-LAKE.a - 3.4), Z(LAKE.z - LAKE.b - 1.4), 2 * k, (LAKE.b * 2 + 2.8) * k);
+  g.fillRect(X(-LAKE.a - 3.4), Z(LAKE.z + LAKE.b + 1.4), (LAKE.a + 3.4) * 2 * k, 1.2 * k);
   g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, (NGOC.stairStart - NGOC.stairTop) * k);
   g.fillRect(X(NGOC.x - NGOC_TERRACE.half), Z(NGOC_TERRACE.north), NGOC_TERRACE.half * 2 * k, (NGOC.stairTop - NGOC_TERRACE.north) * k);
   g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -2144,13 +2239,14 @@ function zoneNameOf(x: number, z: number): string {
   if (near(NGOC.x, NGOC.z, 6)) return 'Chùa Ngọc';
   if (near(TANG_XA.x, TANG_XA.z, 8)) return 'Tăng xá';
   if (near(-76, -42, 14)) return 'Vườn rau';
-  if (near(80, -3, 18)) return 'Rừng trúc';
-  if (near(79, 28, 13)) return 'Vườn hoa';
+  if (near(BAMBOO.x, (BAMBOO.z0 + BAMBOO.z1) / 2, 18)) return 'Rừng trúc';
+  if (near(FLOWER_HILL.x, (FLOWER_HILL.z0 + FLOWER_HILL.z1) / 2, 13)) return 'Vườn hoa';
   if (near(PHONG_CD.x, PHONG_CD.z, 7)) return 'Phòng ghi công đức';
   if (near(REST.x, REST.z, 7)) return 'Khu nghỉ';
   if (near(30, -31, 5)) return 'Bến Phóng Sinh';
-  if (inRect(BRIDGE.x - BRIDGE.hw, BRIDGE.x + BRIDGE.hw, BRIDGE.z0, BRIDGE.z1)) return 'Cầu hồ koi';
-  if (near(LAKE.x, LAKE.z, 14)) return 'Hồ cá koi';
+  // L1: no red bridge — standing on either dry bank lane still counts as the koi lake.
+  if (near(LAKE.x, LAKE.z, 17) && ((x - LAKE.x) ** 2 / LAKE.a ** 2 + (z - LAKE.z) ** 2 / LAKE.b ** 2 > 1)) return 'Hồ cá koi';
+  if (near(LOTUS.x, LOTUS.z, 14)) return 'Hồ sen Tây';
   if (inRect(5, 55, 47, 60)) return 'Chợ';
   if (near(11, 39, 5)) return 'Đền Trình';
   if (inRect(-17, 17, -14, 14)) return 'Sân Chùa';
@@ -2547,7 +2643,7 @@ function updateCouplet() {
   const id = world.zoneAt(me.char.root.position.x, me.char.root.position.z);
   if (id === curZone) return;
   curZone = id;
-  const c = id ? COUPLETS[id] : null;
+  const c = id ? COUPLETS[id === 'chuaNgoc' ? 'ngoc' : id] : null;
   if (!c || dismissed.has(c.id)) { hideCouplet(); return; }
   const el = $('couplet');
   el.replaceChildren();
@@ -2841,10 +2937,21 @@ function loop(now: number = performance.now()) {
         if (doAction('bow', undefined, true)) bowSeat = null;
       }
     }
+    if (moving && mySeatId) leaveSeat();
     if (moving) myActionUntil = 0;
-    collide(root.position);
-    root.position.y += (world.groundY(root.position.x, root.position.z) - root.position.y) * Math.min(1, dt * 14);
-    me.anim = now < myActionUntil ? me.anim : sitting ? 'sit' : moving ? (running ? 'run' : 'walk') : 'idle';
+    if (mySeatId) {
+      // Máy chủ là nguồn toạ độ ghế: giữ cứng để collide()/groundY không kéo người ngồi.
+      const seat = seatById(mySeatId);
+      if (seat) {
+        root.position.x = seat.x; root.position.z = seat.z;
+        root.position.y = world.groundY(seat.x, seat.z);
+        me.ry = seat.ry;
+      }
+    } else {
+      collide(root.position);
+      root.position.y += (world.groundY(root.position.x, root.position.z) - root.position.y) * Math.min(1, dt * 14);
+    }
+    me.anim = now < myActionUntil ? me.anim : mySeatId ? 'sit' : sitting ? 'sit' : moving ? (running ? 'run' : 'walk') : 'idle';
     // HUD cập nhật mỗi giây khi đang thiền để số phút cộng dồn đi theo thời gian thực.
     if (sitting && now - (lastHudTick ?? 0) >= 1000) { lastHudTick = now; syncMedDay(); updateMeditationHud(); }
     // Trạng thái của chính mình: tụng kinh → 'chant', ngồi thiền → 'meditate'; chỉ vẽ lại khi đổi.
@@ -2951,8 +3058,19 @@ function loop(now: number = performance.now()) {
     animateCharacter(r.char, boatPose ? 'boatSeat' : r.anim, t);
     if (!boatPose && r.anim === 'sit') {
       const { x, z } = r.char.root.position;
-      const seat = world.seats.find(s => s.sitY !== undefined && Math.abs(s.x - x) < 0.18 && Math.abs(s.z - z) < 0.18);
-      if (seat?.sitY !== undefined) r.char.body.position.y += Math.max(0, seat.sitY - r.char.root.position.y);
+      if (id === myId && mySeatId) {
+        // Ghế thường (K1): nâng thân tới mặt ghế, như bồ đoàn có sitY bên dưới.
+        const s = seatById(mySeatId);
+        if (s) r.char.body.position.y = seatBodyY(s.sitH);
+      } else {
+        const seated = r.data.seat ? seatById(r.data.seat) : undefined;
+        if (seated) {
+          r.char.body.position.y = seatBodyY(seated.sitH);
+        } else {
+          const seat = world.seats.find(s => s.sitY !== undefined && Math.abs(s.x - x) < 0.18 && Math.abs(s.z - z) < 0.18);
+          if (seat?.sitY !== undefined) r.char.body.position.y += Math.max(0, seat.sitY - r.char.root.position.y);
+        }
+      }
     }
   });
 
@@ -2962,6 +3080,7 @@ function loop(now: number = performance.now()) {
   updateDonorBtn();
   updateNoticeBtn();
   updateAnimalBtn();
+  updateSeatBtn();
   updateNpcMarkers();
   updateTracker();
   updateAnimals(latestAnimals, dt);

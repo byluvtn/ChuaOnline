@@ -6,8 +6,8 @@ export const WALL = { xW: -92, xE: 104, zN: -130, zS: 45, gate: 4.4, sideGateZ: 
 export const MAP_Z_MIN = WALL.zN;
 export const LAKE = { x: 0, z: 14, a: 14, b: 10 };
 export const BRIDGE = { x: 0, z0: 2, z1: 26, hw: 2.3, peak: 1.4 };
-export const LOTUS = { x: -78, z: -2, a: 10, b: 7 };
-export const LOTUS_PAVILION = { x: -70, z: 5 };
+export const LOTUS = { x: -78, z: -24, a: 10, b: 7 };
+export const LOTUS_PAVILION = { x: -70, z: -13 };
 const FALLS_SCALE = 1.5;
 export const RIVER_FALLS = { x: 80, z: -82, scale: FALLS_SCALE, hw: 8 * FALLS_SCALE, wallHw: 10 * FALLS_SCALE };
 // Keep the west bank beside the existing garden ring when widening the river.
@@ -58,6 +58,29 @@ export function onRiverBridge(x: number, z: number, clearance = 0) {
   return RIVER_BRIDGES.some(b => Math.abs(x - b.x) <= b.halfSpan && Math.abs(z - b.z) <= RIVER.bridgeHalf - clearance);
 }
 
+/**
+ * A1: gaps between the Dược Sư base/roof and the east river edge at z = -38, plus the setback
+ * from the east wall. The base is what `DUOC_SU.hx` describes; the roof uses the 15 m span the
+ * hall is drawn with in `src/expansion.ts` (addRoof(15.0, 11.4, ...)).
+ */
+export function duocSuRiverGap(x: number, hx = DUOC_SU.hx) {
+  const river = riverAt(DUOC_SU.z);
+  const waterEast = river.x + river.hw; // east water edge
+  const baseWest = x - hx, baseEast = x + hx;
+  const roofHw = 7.5; // half of the 15 m lower roof span
+  const roofWest = x - roofHw;
+  return {
+    waterEast,
+    baseWest,
+    baseGap: baseWest - waterEast,
+    roofGap: roofWest - waterEast,
+    eastWall: WALL.xE - baseEast,
+    bankWalk: RIVER_EAST_WALK_X,
+    roofHw,
+    overlapsWalk: baseWest <= RIVER_EAST_WALK_X,
+  };
+}
+
 /** The same arch profile is used by deck geometry, characters and boats. */
 export function riverArchY(offset: number, halfSpan: number) {
   const u = Math.min(1, Math.abs(offset) / halfSpan);
@@ -70,10 +93,17 @@ export function riverBridgeY(x: number, z: number) {
   return 0;
 }
 
-export const BAMBOO = { x: 85 + EAST_BANK_SHIFT, z: -3 };
-export const FLOWER_HILL = { x: 79 + EAST_BANK_SHIFT, z: 28 };
+/**
+ * A2: the two east groves are kept apart. Each clump is planted inside its own z band and the
+ * 10 m band between them (bambooZ1 .. flowerZ0) is left bare so one path runs between the two.
+ * The trees stay inside x 79.5 + shift .. 90, so the walk along RIVER_EAST_WALK_X is clear.
+ */
+export const BAMBOO = { x: 85 + EAST_BANK_SHIFT, z: -3, z0: -20, z1: 8 };
+export const FLOWER_HILL = { x: 79 + EAST_BANK_SHIFT, z: 28, z0: 18, z1: 40 };
 export const CAVE = { x: -26, z: -104 };
-export const DUOC_SU = { x: 85 + EAST_BANK_SHIFT, z: -38, hx: 4.5, hz: 6, y: 0.45 };
+// A1: the hall stood 3.0 m from the river (base edge) and 1.8 m at the roof. Moved east so the
+// base clears the east water edge by 7.5 m and the wide roof by 6.3 m, keeping 2.0 m from x = 104.
+export const DUOC_SU = { x: 97.5, z: -38, hx: 4.5, hz: 6, y: 0.45 };
 export const DUOC_SU_YAW = -Math.PI / 2;
 export const duocSuWorld = (x: number, z: number) => ({ x: DUOC_SU.x - z, z: DUOC_SU.z + x });
 export const DUOC_SU_DOOR = duocSuWorld(0, DUOC_SU.hx + 0.7);
@@ -144,9 +174,16 @@ export function inEllipse(x: number, z: number, p: { x: number; z: number; a: nu
   return ((x - p.x) / (p.a + pad)) ** 2 + ((z - p.z) / (p.b + pad)) ** 2 < 1;
 }
 
+/** A4: straight paved walk from the west gate (x=-92, z=2) to the plaza. */
+export function onWestGateWalk(x: number, z: number) {
+  return Math.abs(z - WALL.sideGateZ) <= 1.4 && x >= WALL.xW && x <= 0;
+}
+
 /** Water outside the three traversable bridge decks (body clearance included). */
 export function expansionWaterBlocked(x: number, z: number): boolean {
-  if (inEllipse(x, z, LOTUS, 0.25) && !(Math.abs(z - 2) <= 0.9 && x >= -90 && x <= -66)) return true;
+  // A4: the lotus lake moved north beside the vegetable garden, so the west-gate walk on z = 2
+  // no longer crosses water and needs no boardwalk carve-out.
+  if (inEllipse(x, z, LOTUS, 0.25)) return true;
   if (inEllipse(x, z, FARM_POND, 0.25)) return true;
   if (z >= RIVER_SOURCE_Z - 0.25 && z <= RIVER_MOUTH_Z + 0.25) {
     const { x: cx, hw } = riverAt(z);
@@ -173,11 +210,13 @@ export function resolveExpansionWater(p: { x: number; z: number }, prev?: { x: n
   p.x = 0; p.z = 30;
 }
 
-/** Shared wall limits, including short exterior pockets at the side gates. */
+/** Giới hạn tường chung; chỉ giữ ngưỡng hẹp bên ngoài hai cổng phụ. */
 export function clampCampus(p: { x: number; z: number }) {
   const inSideGate = Math.abs(p.z - WALL.sideGateZ) < WALL.sideGateHalf - 0.4;
-  const inset = inSideGate ? -4 : 0.8;
+  const inset = inSideGate ? -0.75 : 0.8;
   p.x = Math.max(WALL.xW + inset, Math.min(WALL.xE - inset, p.x));
   p.z = Math.max(WALL.zN + 0.8, Math.min(WALL.zS + 13, p.z));
-  if (Math.abs(p.x) > WALL.gate && p.z > WALL.zS - 0.8 && p.z < WALL.zS + 0.8) p.z = p.z < WALL.zS ? WALL.zS - 0.8 : WALL.zS + 0.8;
+  const ax = Math.abs(p.x);
+  const inTamQuan = ax < WALL.gate || Math.abs(ax - (WALL.gate + 3.2)) < 0.82;
+  if (!inTamQuan && p.z > WALL.zS - 0.8 && p.z < WALL.zS + 0.8) p.z = p.z < WALL.zS ? WALL.zS - 0.8 : WALL.zS + 0.8;
 }

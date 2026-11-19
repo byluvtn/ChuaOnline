@@ -62,6 +62,16 @@ export const COUPLETS: Record<string, Couplet> = {
     am: ['Mẫu nghi thiên hạ, lòng từ che chở đàn con', 'Đức rộng sông trời, ơn người nuôi dưỡng muôn nhà'],
     nghia: 'Mẫu là bậc mẹ của muôn dân, lòng từ che chở đàn con; đức rộng như sông trời, ơn nuôi dưỡng trải khắp muôn nhà.',
   },
+  ngoc: {
+    id: 'ngoc', where: 'Chùa Ngọc',
+    am: ['Ngàn bậc thang đưa lên chùa Ngọc', 'Muôn đóa sen nở đón khách thiền'],
+    nghia: 'Mỗi bậc thang lên chùa là một bước lắng lòng; hoa sen nở đón người tìm về chốn yên tĩnh.',
+  },
+  duocSu: {
+    id: 'duocSu', where: 'Điện Dược Sư — thờ Phật Dược Sư',
+    am: ['Ánh từ Dược Sư, bệnh khổ tiêu tan', 'Sen vàng tịnh độ, thân tâm an lạc'],
+    nghia: 'Ánh từ bi của Phật Dược Sư nhắc người viếng mở lòng với những ai đang đau bệnh; sen vàng gợi sự bình an của thân và tâm.',
+  },
   nhaKhach: {
     id: 'nhaKhach', where: 'Nhà khách — đón khách thập phương',
     am: ['Cửa chùa rộng mở, khách bốn phương đều là bạn', 'Chén trà thanh đạm, duyên lành gặp gỡ ngàn xưa'],

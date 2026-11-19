@@ -60,15 +60,21 @@ function makeRelief() {
 }
 
 let reliefGeometry: THREE.BufferGeometry[] | undefined;
+let brightRelief: THREE.Material[] | undefined;
 
 /** Radiant lotus aureole in the statue's local XY plane, with +Z facing the player. */
-export function buildHalo(radius: number, y: number, z: number) {
+export function buildHalo(radius: number, y: number, z: number, bright = false) {
   reliefGeometry ??= makeRelief();
   const halo = new THREE.Group();
   halo.name = 'halo';
   halo.position.set(0, y, z);
   halo.scale.setScalar(radius);
-  [solarGold, lightGold, ivory].forEach((material, i) => {
+  const materials = bright ? (brightRelief ??= [solarGold.clone(), lightGold.clone(), ivory.clone()].map(material => {
+    if (material instanceof THREE.MeshStandardMaterial) material.emissiveIntensity *= 1.35;
+    else material.color.multiplyScalar(1.25);
+    return material;
+  })) : [solarGold, lightGold, ivory];
+  materials.forEach((material, i) => {
     // Separate the sculpted relief from glow so statue bounds can ignore the soft edge.
     halo.add(new THREE.Mesh(reliefGeometry![i], material));
   });

@@ -1,6 +1,13 @@
 /** Shared layout constants + height/blocking queries for the temple compound. */
-import { WALL, LAKE, BRIDGE, LOTUS, RIVER, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverBridgeY, DUOC_SU, NGOC, NGOC_EAST_LANE, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, LOTUS, LOTUS_PAVILION, RIVER, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverBridgeY, DUOC_SU, NGOC, NGOC_EAST_LANE, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
+import { onWestGateWalk } from '../shared/campus';
+/**
+ * L1: the red koi bridge was removed. `BRIDGE` (from shared/campus) is kept only as an inert
+ * shim for legacy imports; it no longer describes a walkable deck. `bridgeY` is always 0 and
+ * `resolveBridge` reports "not on a deck". Walkers cross on the dry ring round the koi lake
+ * (road nodes bridgeE / bridgeW, WALKWAY_RECTS bank lanes).
+ */
 import { riverDockY } from '../shared/river-tour';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
@@ -19,7 +26,8 @@ export const PATH_Z = 2;
 export const SIDE_X = 28;
 export const PAGODA = { x: 34, z: -15 };
 export const TAM_THE = { x: 0, z: -68 };
-export const BAO_THAP = { x: -34, z: -15 };
+/** A3: Bảo Tháp moved north-west of Động Thiền, clear of Gác Trống and Thiền Đường. */
+export const BAO_THAP = { x: -46, z: -102 };
 /**
  * Nền Điện Tam Thế: mặt nền đi được cao 3.0 (hx/hz theo trục thế giới), sườn dốc thoải 1.2 quanh nền;
  * thang lớn giữa trục (|x| <= stairW) dốc đều từ y 0 ở zStart lên y 3.0 ở stairTop (world z của bậc trên cùng).
@@ -90,9 +98,19 @@ export const WALKWAY_RECTS = [
   [DRUM.x, DRUM.z - 1.2, -SIDE_X, DRUM.z + 1.2],
   [SIDE_X, BELL.z - 1.2, BELL.x, BELL.z + 1.2],
   [SIDE_X - 1.2, BELL.z, SIDE_X + 1.2, PATH_Z],
-  [BRIDGE.x - bridgeApproachHalf, BRIDGE.z1 - 0.4, BRIDGE.x + bridgeApproachHalf, WALL.zS],
+  [BRIDGE.x - bridgeApproachHalf, 24.8, BRIDGE.x + bridgeApproachHalf, WALL.zS],
+  // L1: the red koi bridge is gone. The axis is now a dry paved loop around both banks of the
+  // lake: gate approach → north link (z 24.8…26.6) → east or west bank lane → cross path z = 2.
+  [-BRIDGE.x - (LAKE.a + 3.4), 24.8, BRIDGE.x + LAKE.a + 3.4, 26.6],
+  [LAKE.a + 1.4, PATH_Z, LAKE.a + 3.4, 26.6],
+  [-LAKE.a - 3.4, PATH_Z, -LAKE.a - 1.4, 26.6],
   [BRIDGE.x + bridgeApproachHalf, DEN_TRINH.z - 1.2, DEN_TRINH.x - 2.6, DEN_TRINH.z + 1.2],
   [-SIDE_X - 1.2, ZEN.z, -SIDE_X + 1.2, PATH_Z],
+  // A4: west gate straight walk is now ordinary paving — no lake to bridge at z = 2.
+  [WALL.xW, PATH_Z - 1.4, 0, PATH_Z + 1.4],
+  // A4: small flat landing at the relocated pavilion's south-east approach.
+  [LOTUS_PAVILION.x - 2.7, LOTUS_PAVILION.z - 4.2, LOTUS_PAVILION.x + 2.7, LOTUS_PAVILION.z - 2.2],
+  [LOTUS_PAVILION.x + 2.7, LOTUS.z - LOTUS.b, LOTUS_PAVILION.x + 4.7, LOTUS_PAVILION.z],
   [-58, -48, 58, -43], [-1.2, -51, 1.2, -42],
   [VIEN_KT.gateX - 1.2, -58, VIEN_KT.gateX + 1.2, -43],
   [VIEN_TO.gateX - 1.2, -58, VIEN_TO.gateX + 1.2, -43],
@@ -101,7 +119,8 @@ export const WALKWAY_RECTS = [
   [PHONG_CD_DOOR.x - 4.2, PHONG_CD.z, PHONG_CD_DOOR.x - 2.2, 41],
   [19.8, -31, 22.2, -19], [19.8, -32.2, 25.5, -29.8],
   [50.3, -31, 52.7, -23], [33, -25.2, 52.7, -22.8],
-  [BAO_THAP.x - 1.2, ZEN.z - 1, BAO_THAP.x + 1.2, BAO_THAP.z - BAO_THAP_PLAT.r - 1],
+  [BAO_THAP.x - 1.2, BAO_THAP.z + 5, BAO_THAP.x + 1.2, BAO_THAP.z + BAO_THAP_PLAT.r + 6],
+  [BAO_THAP.x - 1.2, -88, BAO_THAP.x + 1.2, -82],
   [THIEN_DUONG.x + THIEN_DUONG_PLAT.hx, THIEN_DUONG.z - 1.2, -SIDE_X - 1.2, THIEN_DUONG.z + 1.2],
   [28, 8.8, 35, 11.2], [-48, -59.2, -27, -56.8], [-42.2, -67, -39.8, -58],
   [27, -59.2, 50, -56.8], [34.8, -63.75, 37.2, -58],
@@ -130,12 +149,9 @@ export function nearWalkway(x: number, z: number, clearance: number) {
     Math.hypot(Math.max(x0 - x, x - x1, 0), Math.max(z0 - z, z - z1, 0)) <= clearance);
 }
 
-export function bridgeY(x: number, z: number) {
-  if (Math.abs(x - BRIDGE.x) > BRIDGE.hw + 0.3) return 0;
-  const c = (BRIDGE.z0 + BRIDGE.z1) / 2, half = (BRIDGE.z1 - BRIDGE.z0) / 2;
-  const u = (z - c) / half;
-  if (Math.abs(u) > 1) return 0;
-  return 0.12 + BRIDGE.peak * (1 - u * u);
+/** L1: no arched deck remains; the koi lake is crossed on the dry bank lanes at x = ±(LAKE.a + 1.4…3.4). */
+export function bridgeY(_x: number, _z: number) {
+  return 0;
 }
 
 /** Ground height under (x, z): hall platform, meditation decks, corridors and bridge are raised. */
@@ -253,7 +269,7 @@ export function blocked(x: number, z: number) {
   if (Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 3.5) return true;
   if (ax < HALL.hx + 5 && Math.abs(z - HALL.z) < HALL.hz + 5) return true;
   if (ax < 24.5 && z > -21 && z < 1.5) return true;
-  if (inLake(x, z, 3.5) || (Math.abs(x - BRIDGE.x) < 4 && z > BRIDGE.z0 - 2 && z < BRIDGE.z1 + 2)) return true;
+  if (inLake(x, z, 3.5)) return true; // L1: no bridge strip to protect any more
   if (Math.hypot(x - BELL.x, z - BELL.z) < 7 || Math.hypot(x - QUAN.x, z - QUAN.z) < 9) return true;
   if (Math.hypot(x - DRUM.x, z - DRUM.z) < 7) return true;
   if (Math.hypot(x - DEN_TRINH.x, z - DEN_TRINH.z) < 5.5) return true;
@@ -290,11 +306,23 @@ export function blocked(x: number, z: number) {
   if ((x >= 48.5 && x <= 50.5 && z >= -31.5 && z <= -23) || (x >= 32.5 && x <= 50.5 && z >= -25.1 && z <= -23.1)) return true;
   if (Math.abs(x - 21) < 2.2 && z > -32 && z < -18) return true;
   if (Math.abs(x + 59) < 2.2 && z > -79 && z < 42) return true;
+  // A4: keep the new west-gate walk and the relocated pavilion clear of random scenery.
+  if (onWestGateWalk(x, z)) return true;
+  if (inEllipse(x, z, LOTUS, 2)) return true;
   if (Math.abs(x - BAO_THAP.x) < 2.2 && z > BAO_THAP.z + BAO_THAP_PLAT.step1.z0 - 1 && z < BAO_THAP.z + BAO_THAP_PLAT.step2.z1 + 1) return true;
+  if (Math.abs(x - BAO_THAP.x) < 2.2 && z > BAO_THAP.z && z < -82) return true; // A3 tower lane
   if (x < -27 && x > -41 && Math.abs(z + 27) < 2.2) return true;
   if (x > 27 && x < 36 && Math.abs(z - DIEN_MAU.z) < 2.2) return true;
   if (x > PHONG_CD_DOOR.x - 5 && x < PHONG_CD.x - 3 && Math.abs(z - PHONG_CD.z) < 2.2) return true;
   return false;
+}
+
+/**
+ * Walkability of the axis past the koi lake. L1: no deck, so the koi pond water is the only
+ * thing that blocks it; the paving over z 2..26 is the bank ring (WALKWAY_RECTS).
+ */
+export function onAxisWaterGap(x: number, z: number) {
+  return inLake(x, z) && !(x >= PIER.x0 && x <= PIER.x1 && Math.abs(z - PIER.z) <= PIER.hw);
 }
 
 /** Keep walkers inside the compound walls (the south gate stays open). */
@@ -302,26 +330,19 @@ export function clampToCompound(p: { x: number; z: number }) {
   clampCampus(p);
 }
 
-/** Thành cầu: giữ người đi trên mặt cầu, chặn bước ngang qua thành. Trả về true nếu đang trên mặt cầu. */
-export function resolveBridge(p: { x: number; z: number }, prev: { x: number; z: number }): boolean {
-  const inZ = (z: number) => z >= BRIDGE.z0 && z <= BRIDGE.z1;
-  if (!inZ(p.z)) return false;
-  // Both landings meet the transverse paths; do not treat them as bridge rails.
-  if (p.z <= BRIDGE.z0 + 0.35 || p.z >= BRIDGE.z1 - 0.35) return false;
-  const dx = p.x - BRIDGE.x;
-  const lim = BRIDGE.hw - 0.15;
-  const wasOn = inZ(prev.z) && Math.abs(prev.x - BRIDGE.x) <= BRIDGE.hw + 0.15 && Math.abs(dx) < BRIDGE.hw + 1;
-  const enteringFromEnd = !inZ(prev.z) && Math.abs(dx) <= BRIDGE.hw + 0.15;
-  if (wasOn || enteringFromEnd) {
-    p.x = BRIDGE.x + Math.max(-lim, Math.min(lim, dx));
-    return true;
-  }
-  if (Math.abs(dx) < BRIDGE.hw + 0.15) p.x = BRIDGE.x + (prev.x >= BRIDGE.x ? 1 : -1) * (BRIDGE.hw + 0.15);
+/**
+ * L1: the red koi bridge was removed, so no walker is ever "on the deck".
+ * Kept as a no-op shim for the movement loop and the server water checks.
+ */
+export function resolveBridge(_p: { x: number; z: number }, _prev: { x: number; z: number }): boolean {
   return false;
 }
 
-/** Keep walkers out of the lake except on the bridge deck. */
-export function resolveWater(p: { x: number; z: number }, onDeck = true, prev?: { x: number; z: number }) {
+/**
+ * Keep walkers out of the lake. L1 removed the red bridge, so there is no deck exemption any
+ * more: every water point is pushed back to the dry rim on the same bearing.
+ */
+export function resolveWater(p: { x: number; z: number }, _onDeck = true, prev?: { x: number; z: number }) {
   resolveExpansionWater(p, prev);
   if (inPsPond(p.x, p.z) && !(p.x >= PS_PIER.x0 - 0.2 && p.x <= PS_PIER.x1 + 0.2 && Math.abs(p.z - PS_PIER.z) <= PS_PIER.hw + 0.2)) {
     const ux = (p.x - PS_POND.x) / PS_POND.a, uz = (p.z - PS_POND.z) / PS_POND.b;
@@ -332,10 +353,6 @@ export function resolveWater(p: { x: number; z: number }, onDeck = true, prev?: 
   }
   if (!inLake(p.x, p.z)) return;
   if (p.x >= PIER.x0 - 0.2 && p.x <= PIER.x1 + 0.2 && Math.abs(p.z - PIER.z) <= PIER.hw + 0.2) return;
-  if (onDeck && Math.abs(p.x - BRIDGE.x) < BRIDGE.hw + 0.6) {
-    p.x = Math.max(BRIDGE.x - BRIDGE.hw + 0.1, Math.min(BRIDGE.x + BRIDGE.hw - 0.1, p.x));
-    return;
-  }
   const ux = (p.x - LAKE.x) / LAKE.a, uz = (p.z - LAKE.z) / LAKE.b;
   const l = Math.hypot(ux, uz) || 1;
   const k = 1.02 / l;

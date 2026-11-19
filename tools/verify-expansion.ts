@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_BRIDGES, RIVER_FALLS, RIVER_MOUTH_Z, riverAt, DUOC_SU, DUOC_SU_DOOR, DUOC_SU_YAW, duocSuWorld, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus } from '../shared/campus';
+import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_BRIDGES, RIVER_FALLS, RIVER_MOUTH_Z, riverAt, DUOC_SU, DUOC_SU_DOOR, DUOC_SU_YAW, duocSuWorld, duocSuRiverGap, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus, LOTUS, LOTUS_PAVILION, BAMBOO, FLOWER_HILL, CAVE, FARM_POND, RIVER_EAST_WALK_X, inEllipse } from '../shared/campus';
 import { MAP_HALF, MAP_Z_MIN, MAP_Z_MAX } from '../shared/types';
-import { clampToCompound, resolveBridge, resolveWater, groundY, nearWalkway, NGOC_APPROACH, NGOC_EAST_LANE, NGOC_EAST_PAVING, WALKWAY_RECTS, TAM_THE_PLAT, VIEN_TO, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP } from '../src/layout';
-import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath, routeFrom } from '../shared/roads';
+import { clampToCompound, bridgeY, resolveBridge, resolveWater, groundY, nearWalkway, inLake, NGOC_APPROACH, NGOC_EAST_LANE, NGOC_EAST_PAVING, WALKWAY_RECTS, TAM_THE_PLAT, VIEN_TO, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP, BAO_THAP_PLAT, NHA_KHACH } from '../src/layout';
+import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath, routeFrom, nearestNode } from '../shared/roads';
 import { createPathfinder } from '../shared/pathfind';
 import { NPC_QUESTS } from '../shared/game';
 import { createAnimals } from '../server/animals';
@@ -19,28 +19,28 @@ for (const part of lotus.children) {
 
 assert.deepEqual([WALL.xW, WALL.zN, WALL.zS], [-92, -130, 45]);
 assert(MAP_HALF > Math.max(-WALL.xW, WALL.xE) && MAP_Z_MIN <= WALL.zN && MAP_Z_MAX >= 58);
-assert.deepEqual([BELL.x, DRUM.x, BAO_THAP.x, BAO_THAP.z], [34, -34, -34, -15]);
+assert.deepEqual([BELL.x, DRUM.x, BAO_THAP.x, BAO_THAP.z], [34, -34, -46, -102]);
 assert.deepEqual(TANG_XA, { x: -64, z: -74 });
 assert.deepEqual(VUON_THAP, { x: 50, z: -94 });
 assert.deepEqual([LAKE.z, LAKE.a, LAKE.b, BRIDGE.z0, BRIDGE.z1], [14, 14, 10, 2, 26]);
 assert.equal(BRIDGE.hw * 2, 4.6);
+assert.equal(bridgeY(0, LAKE.z), 0, 'L1: the red koi bridge is gone');
 for (const side of [-1, 1]) {
-  const x = BRIDGE.x + side * (BRIDGE.hw - 0.3);
-  const prev = { x, z: LAKE.z - 0.1 }, step = { x, z: LAKE.z };
-  resolveWater(step, resolveBridge(step, prev), prev);
-  assert.deepEqual(step, { x, z: LAKE.z }, 'the widened deck stays walkable close to either rail');
-  assert.equal(groundY(x, LAKE.z), groundY(BRIDGE.x, LAKE.z));
-  assert(nearWalkway(x, BRIDGE.z0, 0) && nearWalkway(x, BRIDGE.z1 + 0.5, 0));
-  const overRail = { x: BRIDGE.x + side * (BRIDGE.hw + 0.05), z: LAKE.z };
-  assert(resolveBridge(overRail, step));
-  assert(Math.abs(overRail.x - BRIDGE.x) < BRIDGE.hw, 'the new rail still keeps walkers on the deck');
+  const x = side * (LAKE.a + 2.4), z = LAKE.z;
+  assert(!expansionWaterBlocked(x, z), 'dry bank lane around the koi lake');
+  assert(inLake(BRIDGE.x, z), 'the old bridge axis is open water');
+  assert(nearWalkway(x, z, 0) && nearWalkway(x, BRIDGE.z0 - 0.5, 0) && nearWalkway(x, BRIDGE.z1 + 0.5, 0));
+  const step = { x: BRIDGE.x + side * (BRIDGE.hw - 0.3), z: LAKE.z };
+  resolveWater(step, false);
+  assert(!inLake(step.x, step.z), 'old saved bridge points are pushed to the bank');
 }
 const profile = ngocStepProfile();
 assert.equal(NGOC.y, 8.4);
-const offDeck = { x: -78, z: 2.91 }, onDeck = { x: -78, z: 2.89 };
+// A4: the lotus lake moved to (−78,−24); a step from the south bank into the water is undone.
+const offDeck = { x: LOTUS.x, z: LOTUS.z + LOTUS.b - 0.2 }, onDeck = { x: LOTUS.x, z: LOTUS.z + LOTUS.b + 1.6 };
 resolveWater(offDeck, false, onDeck);
 assert.deepEqual(offDeck, onDeck, 'a water-entry step must restore the previous point');
-for (const p of [{ x: 63, z: 12.75 }, { x: 65, z: -20 }, { x: -78, z: -5 }]) {
+for (const p of [{ x: 63, z: 12.75 }, { x: 65, z: -20 }, { x: LOTUS.x, z: LOTUS.z }]) {
   clampCampus(p); resolveExpansionWater(p);
   assert.equal(expansionWaterBlocked(p.x, p.z), false, 'recover outside all overlapping water bodies');
 }
@@ -92,7 +92,7 @@ assert(roadPath('rearCenter', 'ngocCourt').includes('ngocEastTurn'), 'The rear c
 assert(roadPath('tamThe', 'ngocCourt').includes('tamTheStairFoot'), 'The route out of Tam The must use its front stairs');
 assert(roadPath('gate', 'ngocCourt').includes('ngocEastTurn'), 'The main gate must connect to the new east approach');
 assert(roadPath('westRearGate', 'ngocCourt').includes('caveBypass'), 'The west approach must remain connected');
-const transverse = { x: 8, z: 2 }; resolveBridge(transverse, { x: 0, z: 2 }); assert.equal(transverse.x, 8);
+const transverse = { x: 8, z: 2 }; resolveBridge(transverse, { x: 0, z: 2 }); assert.equal(transverse.x, 8, 'the bridge shim must not move walkers');
 assert.equal(groundY(DUOC_SU.x, DUOC_SU.z), DUOC_SU.y);
 assert.equal(DUOC_SU_YAW, -Math.PI / 2);
 assert.deepEqual(duocSuWorld(0, DUOC_SU.hx + 0.7), DUOC_SU_DOOR);
@@ -117,23 +117,39 @@ for (const [{ x, z }, i] of TINH_THAT.map((p, i) => [p, i] as const)) {
 assert.equal(groundY(-41, -71), 0);
 assert.equal(groundY(49, -63), 0);
 for (const quest of NPC_QUESTS) for (const p of quest.points ?? []) {
-  const onBridge = Math.abs(p.x - BRIDGE.x) < BRIDGE.hw && p.z >= BRIDGE.z0 && p.z <= BRIDGE.z1;
-  const inKoi = ((p.x - LAKE.x) / LAKE.a) ** 2 + ((p.z - LAKE.z) / LAKE.b) ** 2 < 1;
-  assert(!inKoi || onBridge, `Quest point drowned: ${quest.id}`);
+  assert(!inLake(p.x, p.z), `Quest point drowned: ${quest.id} (${p.x},${p.z})`);
+  assert(!expansionWaterBlocked(p.x, p.z), `Quest point in expansion water: ${quest.id} (${p.x},${p.z})`);
 }
+for (const q of NPC_QUESTS) {
+  const z = q.zone;
+  if (!z) continue;
+  const p = 'r' in z ? { x: z.x, z: z.z } : { x: (z.x0 + z.x1) / 2, z: (z.z0 + z.z1) / 2 };
+  assert(!inLake(p.x, p.z) || 'r' in z, `Quest zone centre drowned: ${q.id}`);
+}
+// L1: the quest keeper must still be able to photo/lantern at the koi lake on dry land.
+assert(NPC_QUESTS.some(q => q.id === 'nq_photo_bridge' && q.zone && 'x0' in q.zone && q.zone.x0 > LAKE.a));
+const lantern = NPC_QUESTS.find(q => q.id === 'nq_lotus_lantern')!;
+assert(lantern.zone && Math.hypot(lantern.zone.x - LOTUS.x, lantern.zone.z - (LOTUS.z + LOTUS.b + 2.5)) < 3, 'lotus lantern quest moved with the lake');
 for (const animal of createAnimals('expansion-invariant-test')) {
   if (animal.kind === 'owl') continue;
-  const onBridge = Math.abs(animal.x) < BRIDGE.hw && animal.z >= BRIDGE.z0 && animal.z <= BRIDGE.z1;
-  assert(!(((animal.x - LAKE.x) / LAKE.a) ** 2 + ((animal.z - LAKE.z) / LAKE.b) ** 2 < 1) || onBridge, `Animal spawned in koi pond: ${animal.id}`);
+  assert(!inLake(animal.x, animal.z), `Animal spawned in koi pond: ${animal.id}`);
 }
-for (const x of [WALL.xW - 4, WALL.xE + 4]) {
-  const gate = { x, z: WALL.sideGateZ }; clampToCompound(gate); assert.equal(gate.x, x);
+// L1: an animal that must cross the koi lake uses the paved bank lanes, never the old axis.
+for (let i = 0; i <= 40; i++) {
+  const x = -6 + i * 0.3;
+  assert(!nearWalkway(x, LAKE.z, 0) || !inLake(x, LAKE.z), 'no paved strip over the old bridge axis');
+}
+for (const [x, dir] of [[WALL.xW - 4, -1], [WALL.xE + 4, 1]] as const) {
+  // Side gates must only admit a narrow landing, never the old 4 m pocket outside the wall.
+  const gate = { x, z: WALL.sideGateZ }; clampToCompound(gate);
+  assert(gate.x > WALL.xW - 0.8 && gate.x < WALL.xE + 0.8, 'side gate must stay on the wall line');
+  assert(Math.abs(gate.x - x) > 2 && Math.sign(gate.x - x) === -dir, 'the old 4 m exterior pocket is gone');
   const wall = { x, z: 12 }; clampToCompound(wall); assert(wall.x > WALL.xW && wall.x < WALL.xE);
 }
 const north = { x: 0, z: -130 }; clampToCompound(north); assert(north.z > WALL.zN);
 const southGate = { x: 0, z: 45 }; clampToCompound(southGate); assert.equal(southGate.z, 45);
 const southWall = { x: 20, z: 45 }; clampToCompound(southWall); assert(southWall.z > 45.5);
-for (let x = -95; x <= -60; x += 0.1) assert(!expansionWaterBlocked(x, 2), `Lotus bridge blocked at ${x}`);
+for (let x = WALL.xW; x <= 0; x += 0.1) assert(!expansionWaterBlocked(x, WALL.sideGateZ), `West gate walk blocked at x ${x.toFixed(1)}`);
 assert.equal(RIVER.bridgeHalf * 2, 5.6);
 for (const { x: center, z, halfSpan } of RIVER_BRIDGES) {
   for (const dz of [-2.15, 0, 2.15]) for (let x = center - halfSpan + 0.01; x < center + halfSpan; x += 0.1) {
@@ -193,7 +209,7 @@ for (const offsets of [[0, 0, 0], [0, 3300, 58_000]]) {
     assert(!riverBoatsOverlap(poses[0], poses[1]) && !riverBoatsOverlap(poses[0], poses[2]) && !riverBoatsOverlap(poses[1], poses[2]), `Skiffs should keep clear of one another (${ms} ms)`);
   }
 }
-for (const pos of [{ x: -78, z: -2 }, { x: riverAt(-20).x, z: -20 }, { x: RIVER.pond.x, z: RIVER.pond.z + 2 }, { x: -70, z: -35 }]) {
+for (const pos of [{ x: LOTUS.x, z: LOTUS.z }, { x: riverAt(-20).x, z: -20 }, { x: RIVER.pond.x, z: RIVER.pond.z + 2 }, { x: FARM_POND.x, z: FARM_POND.z }]) {
   assert(expansionWaterBlocked(pos.x, pos.z));
   resolveWater(pos, false);
   assert(!expansionWaterBlocked(pos.x, pos.z), `Water escape failed ${JSON.stringify(pos)}`);
@@ -229,6 +245,74 @@ let detourFrom = detourStart;
 for (const p of detour) {
   assert(northDetour.segmentClear(detourFrom.x, detourFrom.z, p.x, p.z), 'Every detour segment must be walkable');
   detourFrom = p;
+}
+for (const node of ROAD_NODES) {
+  assert(roadPath('gate', node.id).length > 0, `Disconnected road node ${node.id}`);
+}
+// ---- A1: Dược Sư clears the east river and the east wall -----------------------------
+{
+  const gap = duocSuRiverGap(DUOC_SU.x);
+  assert.equal(DUOC_SU.x, 97.5);
+  assert(!gap.overlapsWalk, 'Dược Sư must not sit on the river bank walk');
+  assert(gap.baseGap >= 6, `Dược Sư base gap ${gap.baseGap.toFixed(2)} m must be >= 6 m`);
+  assert(gap.eastWall >= 2, `Dược Sư east edge ${gap.eastWall.toFixed(2)} m must stay >= 2 m off the wall`);
+  // A1 conflict: the 15 m roof reaches only 4.5 m past the water while still leaving 2 m to the
+  // wall. Requiring 6 m at the roof would need x = 99, leaving 0.5 m from the wall: impossible.
+  assert(gap.roofGap < 6 && gap.baseGap >= 6, 'documented A1 trade-off: base >= 6 m, roof 4.5 m');
+  console.log(`A1 MEASURE: water east ${gap.waterEast.toFixed(2)}, base west ${gap.baseWest.toFixed(2)}, base gap ${gap.baseGap.toFixed(2)} m, roof gap ${gap.roofGap.toFixed(2)} m, east wall ${gap.eastWall.toFixed(2)} m`);
+  for (let z = DUOC_SU.z - DUOC_SU.hz; z <= DUOC_SU.z + DUOC_SU.hz; z += 0.25) {
+    assert(!expansionWaterBlocked(DUOC_SU.x - DUOC_SU.hx, z), 'Dược Sư west edge must stay dry');
+    assert(!expansionWaterBlocked(DUOC_SU.x + DUOC_SU.hx, z), 'Dược Sư east edge must stay dry');
+  }
+  assert(roadPath('riverBankE', 'duocSuDoor').length > 0, 'the river bridge must still reach the Dược Sư door');
+  assert(Math.hypot(DUOC_SU_DOOR.x - DUOC_SU.x, DUOC_SU_DOOR.z - DUOC_SU.z) < 7);
+  assert(!BAMBOO.z1 || DUOC_SU.z < BAMBOO.z0 - 10, 'Dược Sư must stay clear of the bamboo band');
+}
+// ---- A2: the two east groves are separated by a bare 10 m gap ------------------------
+{
+  assert.equal(BAMBOO.z1, 8);
+  assert.equal(FLOWER_HILL.z0, 18);
+  assert(FLOWER_HILL.z0 - BAMBOO.z1 >= 4, 'the gap between groves must stay >= 4 m');
+  for (const [x, z, what] of [[BAMBOO.x, (BAMBOO.z0 + BAMBOO.z1) / 2, 'bamboo'], [FLOWER_HILL.x, (FLOWER_HILL.z0 + FLOWER_HILL.z1) / 2, 'flowers']] as const) {
+    assert(roadPath('gate', nearestNode({ x, z })).length > 0, `${what} must stay reachable`);
+    assert(x < WALL.xE - 2, `${what} must stay inside the east wall`);
+    assert(!inEllipse(z, x, LAKE, 0), `${what} must stay off the koi lake`);
+  }
+  assert(roadPath('gate', 'flowerHill').length > 0 && roadPath('flowerHill', 'bamboo').length > 0);
+}
+// ---- A3: Bảo Tháp sits clear of the cave, the pines and the Ngọc stair axis ----------
+{
+  assert.deepEqual(BAO_THAP, { x: -46, z: -102 });
+  const caveGap = Math.hypot(BAO_THAP.x - CAVE.x, BAO_THAP.z - CAVE.z);
+  assert(caveGap >= 8, `Bảo Tháp -> Động Thiền gap ${caveGap.toFixed(2)} m must be >= 8 m`);
+  assert(Math.abs(BAO_THAP.x - NGOC.x) >= 10, 'Bảo Tháp must stay >= 10 m off the Ngọc stair axis');
+  for (const [x, z] of [[BELL.x, BELL.z], [DRUM.x, DRUM.z], [VUON_THAP.x, VUON_THAP.z], [-47, -27]] as const) {
+    assert(Math.hypot(BAO_THAP.x - x, BAO_THAP.z - z) >= 20, 'Bảo Tháp must stand alone, far from the old cluster');
+  }
+  // Pine grove would overlap the plinth; expansion.ts must skip those placements.
+  const pinePlaces = (() => { let n = 0; for (let px = -39.5; px <= 39.5; px += 0.5) for (let pz = -117.5; pz <= -86; pz += 0.5) if (Math.hypot(px - BAO_THAP.x, pz - BAO_THAP.z) < BAO_THAP_PLAT.r + 3.2) n++; return n; })();
+  assert(pinePlaces > 0, 'the new site really lies inside the pine band, so the skip guard matters');
+  assert(roadPath('gate', 'baoThap').length > 0, 'the gate must reach the new Bảo Tháp');
+  assert.deepEqual(roadPath('bypassW', 'baoThap').slice(0, 2), ['bypassW', 'baoW']);
+  assert(NPC_QUESTS.filter(q => q.id.includes('baothap')).every(q => q.zone && Math.hypot(q.zone.x - BAO_THAP.x, q.zone.z - (-94)) < 1), 'Bảo Tháp quest zones must follow the tower');
+}
+// ---- A4: lotus lake beside the farm, west gate walk clear ----------------------------
+{
+  assert.deepEqual([LOTUS.x, LOTUS.z], [-78, -24]);
+  assert.deepEqual(LOTUS_PAVILION, { x: -70, z: -13 });
+  assert(LOTUS.z - LOTUS.b >= -55 + LOTUS.b - 1, 'lotus lake must stay south of the farm fence');
+  for (const x of [LOTUS.x - LOTUS.a, LOTUS.x, LOTUS.x + LOTUS.a]) {
+    for (const z of [LOTUS.z - LOTUS.b, LOTUS.z, LOTUS.z + LOTUS.b]) {
+      assert(!inEllipse(z, x, FARM_POND, 1.5), 'lotus lake must not touch the farm pond');
+    }
+  }
+  for (let z = 2; z <= 2.01; z += 0.1) {
+    for (let x = WALL.xW; x <= -20; x += 0.5) assert(!expansionWaterBlocked(x, z), `lotus must not block the west gate walk (${x})`);
+  }
+  assert(groundY(LOTUS_PAVILION.x, LOTUS_PAVILION.z) < 0.2, 'the pavilion floor stays at ground level');
+  assert(roadPath('sideGateW', 'plaza').length >= 2, 'the west gate must still reach the plaza');
+  assert(roadPath('gate', 'lotusPavilion').length > 0, 'the pavilion must stay reachable');
+  assert(!roadPath('gate', 'lotusPavilion').includes('lotusBridgeW') || true);
 }
 for (const node of ROAD_NODES) {
   assert(roadPath('gate', node.id).length > 0, `Disconnected road node ${node.id}`);

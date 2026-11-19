@@ -202,7 +202,8 @@ interface Shot {
   delay: number; x: number; y: number; z: number; dx: number; dz: number; rise: number;
   kind: BurstType; palette: Palette; strength: number;
 }
-export type FireworkCue = (phase: 'launch' | 'burst', x: number, z: number, strength: number, crackle: boolean) => void;
+export type FireworkCue = (phase: 'launch' | 'burst', x: number, z: number, strength: number, crackle: boolean,
+  kind: BurstType) => void;
 
 function makeLauncher() {
   const group = new THREE.Group();
@@ -252,12 +253,12 @@ export function createFireworks(scene: THREE.Scene, renderer: THREE.WebGLRendere
       for (let i = 0; i < 4; i++) emit(0, 0, 0, s.dx, s.rise, s.dz, .65, ROCKET_TIME, 0, .82, i * TAU / 4, 0, .28, 10);
     });
     add(b, s.x, s.y, s.z, age, s);
-    if (age < .18) onCue?.('launch', s.x, s.z, s.strength, false);
+    if (age < .18) onCue?.('launch', s.x, s.z, s.strength, false, s.kind);
   };
   const explode = (s: Shot, age: number) => {
     const x = s.x + s.dx, z = s.z + s.dz;
     add(makeFireworkBurst(s.kind, s.palette, renderer.getPixelRatio()), x, s.y + s.rise, z, age);
-    if (age < .18) onCue?.('burst', x, z, s.strength, s.kind === 'crackle');
+    if (age < .18) onCue?.('burst', x, z, s.strength, s.kind === 'crackle', s.kind);
   };
   return {
     spawn(x: number, z: number, size: FireworkSize) {

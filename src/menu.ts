@@ -95,6 +95,9 @@ export function initMenu(ctx: MenuCtx): void {
     { id: 'logout', icon: 'exit', label: 'Thoát', run: () => ctx.logout() },
     { id: 'install', icon: 'install', label: 'Cài vào màn hình', run: openInstall },
   ];
+  // Ba mục hay dùng nằm cố định ở góc trên-trái, ngay dưới thông tin nhân vật.
+  const PINNED = ['checkin', 'quests', 'shop'] as const;
+  const bottomDefs = defs.filter((d) => !(PINNED as readonly string[]).includes(d.id));
 
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', 'Thanh tính năng');
@@ -103,6 +106,14 @@ export function initMenu(ctx: MenuCtx): void {
   const toggle = document.createElement('button');
   toggle.className = 'mtoggle';
   toggle.type = 'button';
+
+  // Nhóm ghim: dựng ngay dưới cụm thông tin nhân vật ở góc trên-trái, không phải lớp phủ,
+  // không cuộn theo thanh dưới và không đè #online / bản đồ nhỏ / nút thu gọn chat.
+  const pinnedWrap = document.createElement('div');
+  pinnedWrap.id = 'quickbar';
+  pinnedWrap.setAttribute('role', 'toolbar');
+  pinnedWrap.setAttribute('aria-label', 'Lối tắt');
+  (document.getElementById('profile') ?? document.getElementById('hud') ?? bar).insertAdjacentElement('afterend', pinnedWrap);
 
   const mk = (d: Def) => {
     const b = document.createElement('button');
@@ -127,21 +138,24 @@ export function initMenu(ctx: MenuCtx): void {
     if (d.id === 'logout') b.id = 'logoutBtn';
     return b;
   };
-  scroller.append(...defs.map(mk));
+  const byId = new Map(defs.map((d) => [d.id, d] as const));
+  pinnedWrap.append(...PINNED.map((id) => mk(byId.get(id)!)));
+  scroller.append(...bottomDefs.map(mk));
   bar.replaceChildren(toggle, scroller);
 
   const refreshDots = () => {
-    const d = bar.querySelector<HTMLElement>('.newsDot');
+    const q = (sel: string) => document.querySelector<HTMLElement>(sel);
+    const d = q('.newsDot');
     if (d) d.hidden = !newsUnread();
-    const c = bar.querySelector<HTMLElement>('.checkinDot');
+    const c = q('.checkinDot');
     if (c) c.hidden = !checkinPending();
-    const bd = bar.querySelector<HTMLElement>('.beadsDot');
+    const bd = q('.beadsDot');
     if (bd) bd.hidden = !beadsPending();
-    const m = bar.querySelector<HTMLElement>('.mailDot');
+    const m = q('.mailDot');
     if (m) m.hidden = !mailPending();
-    const g = bar.querySelector<HTMLElement>('.gamesDot');
+    const g = q('.gamesDot');
     if (g) g.hidden = !spinPending();
-    const jd = bar.querySelector<HTMLElement>('.journeyDot');
+    const jd = q('.journeyDot');
     if (jd) jd.hidden = !(festivalPending() || groupOpen());
   };
   refreshDots();
@@ -190,4 +204,5 @@ export function initMenu(ctx: MenuCtx): void {
   });
 
   hydrateIcons(bar);
+  hydrateIcons(pinnedWrap);
 }

@@ -33,16 +33,15 @@ export function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Record<s
   return el;
 }
 
-const ITEM_ICON: Record<string, string> = {
-  huong_tram: 'incense', hoa_sen: 'lotus', den_hoa_dang: 'lantern', mu_sen: 'lotus', hao_quang: 'halo', khan_do: 'scarf',
-  ao_dai_hong_sen: 'scarf', ao_dai_vang_nhat: 'scarf', ba_ba_nau: 'scarf', ba_ba_tim: 'scarf', ao_lam: 'scarf',
-  non_la: 'lotus', khan_dong: 'scarf',
-};
+/** Mỗi vật phẩm trong ITEMS có một minh hoạ riêng (`it_<id>` trong src/icons.ts), không dùng icon chung. */
+const ITEM_ICON: Record<string, string> = Object.fromEntries(
+  ITEMS.map((it) => [it.id, `it_${it.id}`]),
+);
 /** Icon tile from the static, trusted SVG table (never user input). */
 function ic(itemId: string): HTMLElement {
   const d = document.createElement('div');
   d.className = 'ic';
-  d.innerHTML = iconSvg(ITEM_ICON[itemId] ?? 'lotus');
+  d.innerHTML = iconSvg(ITEM_ICON[itemId] ?? 'lotus') || iconSvg('lotus');
   return d;
 }
 function price(n: number): HTMLElement {

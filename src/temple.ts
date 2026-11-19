@@ -8,9 +8,10 @@ import {
   NHA_TO, NHA_TO_PLAT, DIEN_MAU, DIEN_MAU_PLAT, NHA_KHACH, NHA_KHACH_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, TRAI_DUONG, TRAI_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, PS, PS_POND, PS_PIER, TANG_XA, TANG_XA_PLAT, AM_CO, AM_CO_PLAT, VUON_THAP, VUON_THAP_PLAT, BAO_THAP, BAO_THAP_PLAT, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, DEN_TRINH, DRUM, LAKE, PAGODA, PIER, PIER_FLOOR, PIER_RAMP, PLAZA, QUAN, WALL, WALKWAY_RECTS, nearWalkway, bridgeY, groundY, inLake, inPsPond, resolveWater,
 } from './layout';
 import { buildQuanAm } from './statues';
-import { createCorridorStatues, CORRIDOR_STATUE_NAMES } from './statue-corridor';
+import { GUEST_BEDS, GUEST_BED_SIZE, GUEST_MATTRESS_TOP, guestBedColliders } from './guest-beds';
+import { createCorridorPedestal, createCorridorStatues, CORRIDOR_STATUE_NAMES, PEDESTAL_HEIGHT } from './statue-corridor';
 import { buildCourtyardBuddha, buildCourtyardGuanyin } from './statue-courtyard';
-import { duocSuRoof, duocSuStyle } from './duoc-su-style';
+import { duocSuRoof, duocSuStyle, gateTiles } from './duoc-su-style';
 import { buildPondLotus } from './pond-lotus';
 import { PHONG_CD_YAW, phongCdWorld, ZAFU_HEIGHT, ZAFU_RADIUS, ZAFU_SCALE } from '../shared/campus';
 import { loadModel, fitModel, replaceModel } from './models';
@@ -170,10 +171,10 @@ export function buildTemple(c: TempleCtx) {
     for (let k = 0; k < 5; k++) {
       const z = -16.6 + 3.6 * k;
       const x = side * CORR.x + side * 1.85;
-      const ped = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.55, 1.5), arhatPedM);
-      ped.position.set(x, CORR.y + 0.275, z); ped.castShadow = ped.receiveShadow = true; ped.userData.sealable = true; arhatGroup.add(ped);
+      const ped = createCorridorPedestal(arhatPedM);
+      ped.position.set(x, CORR.y, z); arhatGroup.add(ped);
       const { slot, halo } = createCorridorStatue((k + (side > 0 ? 2 : 0)) % CORRIDOR_STATUE_NAMES.length);
-      slot.position.set(x, CORR.y + 0.55, z); slot.rotation.y = -side * Math.PI / 2;
+      slot.position.set(x, CORR.y + PEDESTAL_HEIGHT, z); slot.rotation.y = -side * Math.PI / 2;
       arhatGroup.add(slot);
       corridorHalos.push(halo);
       colliders.push({ x, z, r: 0.85 });
@@ -762,10 +763,20 @@ export function buildTemple(c: TempleCtx) {
       const bx = -hx + 0.35; // băng ghế dài dời sát tường Tây, xoay dọc theo trục z
       b(0.45, 0.06, 2.4, bx, y0 + 0.42, 0.6, woodM);
       for (const lz of [-0.4, 1.6]) b(0.38, 0.4, 0.1, bx, y0 + 0.2, lz, woodM);
+      // ---- I1: 4 giường khách (2 mỗi bên lối đi giữa), toạ độ lấy từ src/guest-beds.ts ----
+      for (const bed of GUEST_BEDS) {
+        const gx = bed.x - NHA_KHACH.x, gz = bed.z - NHA_KHACH.z;
+        b(GUEST_BED_SIZE.w, GUEST_BED_SIZE.frameH, GUEST_BED_SIZE.d, gx, y0 + GUEST_BED_SIZE.frameH / 2, gz, woodM);
+        b(GUEST_BED_SIZE.w - 0.1, GUEST_BED_SIZE.matH, GUEST_BED_SIZE.d - 0.1, gx, y0 + GUEST_MATTRESS_TOP - GUEST_BED_SIZE.matH / 2, gz, matM);
+        // gối ở đầu Bắc (local −Z), khớp hướng nằm ry = 0 của server
+        b(0.5, 0.12, 0.3, gx, y0 + GUEST_MATTRESS_TOP + 0.06, gz - GUEST_BED_SIZE.d / 2 + 0.2, paperM);
+      }
       mergeStaticByMaterial(g); scene.add(g);
       colliders.push({ x: NHA_KHACH.x, z: NHA_KHACH.z + tz, r: 0.9 });
       // băng ghế dài 0.45x2.4 (local x=-hx+0.35, z 0.6±1.2): 3 vòng r 0.5 dọc băng
       for (const lz of [-0.4, 0.6, 1.6]) colliders.push({ x: NHA_KHACH.x + bx, z: NHA_KHACH.z + lz, r: 0.5 });
+      // giường khách: 3 vòng r 0,45 mỗi giường, để người chơi không đi xuyên giường
+      for (const cb of guestBedColliders()) colliders.push(cb);
     }
 
     // --- Tăng xá: 2 giường + bàn nhỏ + đèn dầu ---
@@ -882,7 +893,7 @@ export function buildTemple(c: TempleCtx) {
     }
   }
 
-  // ---- koi lake + arched bridge (hồ nằm giữa khuôn viên, cầu bắc dọc Bắc–Nam) ----
+  // ---- HỒ CÁ KOI — bỏ hoàn toàn cầu đỏ (L1). Chỉ giữ hồ, bờ, cá, đình và bến gỗ. ----
   const pond = new THREE.Group();            // toàn bộ hồ trong một nhóm → dễ dời tâm
   pond.name = 'koi-pond';
   pond.position.set(LAKE.x, 0, LAKE.z);       // placeKoiPond() xác nhận lại vị trí tâm
@@ -895,28 +906,25 @@ export function buildTemple(c: TempleCtx) {
   water.scale.set(LAKE.a, LAKE.b, 1); water.rotation.x = -Math.PI / 2; water.position.y = 0.14; pond.add(water);
   const rimStone = lamb(0x8b7a64, { map: stoneTexture([140, 128, 110], [14, 1], 3) });
   const rimRadius = 0.42;
-  const rimEnd = Math.acos((BRIDGE.hw + rimRadius) / (LAKE.a + 0.3));
-  // Split the rim at both bridge landings so the stone curb never crosses the deck.
-  for (const center of [0, Math.PI]) {
-    const pts = Array.from({ length: 33 }, (_, i) => {
-      const a = center + (i / 16 - 1) * rimEnd;
+  // L1: full stone curb; there is no longer a bridge landing to leave a gap at x ≈ 0.
+  {
+    const pts = Array.from({ length: 65 }, (_, i) => {
+      const a = (i / 64) * Math.PI * 2;
       return new THREE.Vector3(Math.cos(a) * (LAKE.a + 0.3), 0, Math.sin(a) * (LAKE.b + 0.3));
     });
-    const rim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 64, rimRadius, 8), rimStone);
+    const rim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 96, rimRadius, 8), rimStone);
     rim.scale.y = 0.8; rim.position.y = 0.2; rim.castShadow = true; rim.receiveShadow = true; pond.add(rim);
   }
   const rocks = lamb(0x6e675c, { flatShading: true });
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2 + 0.2, rr = 0.5 + ((i * 37) % 10) / 14;
     const rx = Math.cos(a) * (LAKE.a + 0.9), rz = Math.sin(a) * (LAKE.b + 0.9);
-    if (Math.abs(LAKE.x + rx - BRIDGE.x) < BRIDGE.hw + rr + 0.3) continue;
     if (LAKE.x + rx < PIER.x1 && Math.abs(LAKE.z + rz - PIER.z) < PIER.hw + rr + 0.6) continue;
     const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0), rocks);
     r.position.set(rx, rr * 0.3, rz); r.scale.y = 0.65; r.rotation.set(i, i * 2, 0); r.castShadow = true; pond.add(r);
   }
-  pond.add(buildPondLotus(LAKE.a, LAKE.b, water.position.y, 32, 8113, (x, z, radius) =>
-    Math.abs(LAKE.x + x - BRIDGE.x) > BRIDGE.hw + radius + 0.15 &&
-    !(LAKE.x + x < PIER.x1 + radius && Math.abs(LAKE.z + z - PIER.z) < PIER.hw + radius)));
+  pond.add(buildPondLotus(LAKE.a, LAKE.b, water.position.y, 32, 8113, (_x, _z, _radius) =>
+    !(_x < PIER.x1 + 0.4 && Math.abs(_z - PIER.z) < PIER.hw + 0.4)));
   // ---- cá koi: 4 mẫu thật (Kohaku, Yamabuki, Shiro Utsuri, Hi), đuôi vẫy ----
   const koi: Koi[] = [];
   const KOI_VARIETIES: KoiVariety[] = ['kohaku', 'yamabuki', 'shiroUtsuri', 'hi'];
@@ -934,53 +942,8 @@ export function buildTemple(c: TempleCtx) {
   // xác nhận hồ nằm đúng tâm khuôn viên
   const pondHandle = placeKoiPond(pond, LAKE);
 
-  // ---- cầu đá vòm đỏ (model 3D, trang trí — bắc qua vịnh đông hồ cá koi) ----
-  const stoneBridge = new THREE.Group();
-  stoneBridge.name = 'stone-bridge';
-  loadModel('stone_bridge').then((base) => {
-    if (!base) return;
-    const inst = base.clone(true);
-    stoneBridge.add(inst);
-  });
-  stoneBridge.position.set(12.5, 0, LAKE.z); scene.add(stoneBridge);
-  colliders.push({ x: 12.5, z: LAKE.z - 2.8, r: 0.9 });
-  colliders.push({ x: 12.5, z: LAKE.z + 2.8, r: 0.9 });
-  colliders.push({ x: 12.5, z: LAKE.z, r: 1.2 });
-
-  // cầu cong: ván ghép, lan can, trụ, đèn — chạy dọc trục z qua hồ
-  const bridge = new THREE.Group(); bridge.name = 'arched-bridge'; scene.add(bridge);
-  const deckM = lamb(0x8a4a28), railM = c.redM;
-  const nSeg = 28, bw = BRIDGE.hw;
-  const segLen = (BRIDGE.z1 - BRIDGE.z0) / nSeg;
-  for (let i = 0; i < nSeg; i++) {
-    const z = BRIDGE.z0 + (i + 0.5) * segLen, z2 = z + segLen * 0.5, z1 = z - segLen * 0.5;
-    const y1 = bridgeY(BRIDGE.x, z1), y2 = bridgeY(BRIDGE.x, z2), ym = (y1 + y2) / 2;
-    const slope = Math.atan2(y2 - y1, segLen);
-    const seg = new THREE.Mesh(new THREE.BoxGeometry(bw * 2, 0.2, segLen + 0.06), deckM);
-    seg.position.set(BRIDGE.x, ym - 0.1, z); seg.rotation.x = -slope; seg.castShadow = seg.receiveShadow = true; bridge.add(seg);
-    for (const s of [-1, 1]) {
-      const rl = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, segLen + 0.04), railM);
-      rl.position.set(BRIDGE.x + s * (bw + 0.02), ym + 0.95, z); rl.rotation.x = -slope; bridge.add(rl);
-      if (i % 3 === 0) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.05, 8), railM);
-        post.position.set(BRIDGE.x + s * (bw + 0.02), ym + 0.45, z); bridge.add(post);
-        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), c.goldM); knob.position.set(BRIDGE.x + s * (bw + 0.02), ym + 1.05, z); bridge.add(knob);
-      }
-    }
-  }
-  for (const sz of [-1, 1]) { // piers
-    const pz = (BRIDGE.z0 + BRIDGE.z1) / 2 + sz * 4.6;
-    for (const s of [-1, 0, 1]) {
-      const pier = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.6, 8), lamb(0x6b6458));
-      pier.position.set(BRIDGE.x + s * (bw - 0.2), bridgeY(BRIDGE.x, pz) - 0.89, pz); bridge.add(pier);
-    }
-  }
-  const apexZ = (BRIDGE.z0 + BRIDGE.z1) / 2;
-  for (const s of [-1, 1]) {
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), c.redBase);
-    lamp.scale.set(1, 1.2, 1); lamp.position.set(BRIDGE.x + s * (bw + 0.02), bridgeY(BRIDGE.x, apexZ) + 1.7, apexZ); bridge.add(lamp);
-    glowSpr(lamp.position.x, lamp.position.y, lamp.position.z, 2, 0xff4a28, 0.5);
-  }
+  // L1: the red arched bridge, its piers, lamps, and its three colliders are gone.
+  // Traffic now follows the dry paved loop around the lake (road nodes bridgeE / bridgeW).
 
   // ---- Thủy Đình: đình nhỏ trên mặt hồ, phía Tây cầu trục, nối bờ Tây bằng cầu gỗ ----
   const thuy = new THREE.Group(); thuy.name = 'thuy-dinh'; scene.add(thuy);
@@ -1070,72 +1033,58 @@ export function buildTemple(c: TempleCtx) {
     t.position.set(w.position.x, 1.7, w.position.z); t.rotation.y = -ang; scene.add(t);
     // Không đẩy collider tường: clampToCompound đã chặn kín chu vi (K1); collider thưa 3 m vừa hở vừa thừa.
   };
+  const gateBrick = new THREE.MeshStandardMaterial({ color: 0x97442e, roughness: 0.9 });
+  const buildGate = (name: string, sign: string, x: number, z: number, yaw: number, scale: number, main = false) => {
+    const g = new THREE.Group();
+    g.name = name; g.position.set(x, 0, z); g.rotation.y = yaw; g.scale.setScalar(scale);
+    const box = (w: number, h: number, d: number, px: number, py: number, mat: THREE.Material) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(px, py, 0); m.castShadow = m.receiveShadow = true; g.add(m);
+    };
+    const post = (px: number, h: number, w: number, foot: number) => {
+      box(foot, 0.42, foot, px, 0.21, stoneBase);
+      box(w, h - 0.38, w, px, (h + 0.38) / 2, gateBrick);
+      for (const y of [0.47, h - 0.19]) box(w + 0.12, 0.10, w + 0.12, px, y, duocSuStyle.gold);
+      colliders.push({ x: x + px * scale * Math.cos(yaw), z: z - px * scale * Math.sin(yaw), r: foot * scale * 0.53 });
+    };
+    const roof = (px: number, py: number, w: number, d: number, rise: number, single = false) => {
+      const m = duocSuRoof(w, d, py, rise, { tile: gateTiles, single, bright: true });
+      m.position.x = px; g.add(m);
+    };
+    const mid = main ? WALL.gate + 0.85 : 1.85;
+    const wing = main ? WALL.gate + 3.2 : 3.17;
+    const lintel = main ? 6.45 : 5.82;
+    for (const s of [-1, 1]) {
+      post(s * mid, lintel, main ? 1.2 : 0.64, main ? 1.7 : 0.86);
+      if (main) post(s * (wing - 1.5), 4.65, 0.8, 1.2);
+      post(s * (main ? wing + 1.5 : WALL.sideGateHalf / scale + 0.24), main ? 4.65 : 4.18, main ? 0.8 : 0.52, main ? 1.2 : 0.68);
+      box(main ? 4.2 : 2.95, 0.48, 1.18, s * wing, main ? 4.68 : 4.21, gateBrick);
+      roof(s * wing, main ? 4.925 : 4.46, main ? 5.0 : 3.4, main ? 3.6 : 3.16, main ? 1.26 : 1.08, true);
+    }
+    box(main ? 11.7 : 5.6, 0.76, 1.5, 0, lintel + 0.18, gateBrick);
+    box(main ? 11.8 : 5.8, 0.16, 1.78, 0, lintel + 0.61, duocSuStyle.gold);
+    roof(0, lintel + 0.68, main ? 13.3 : 6.7, main ? 5.4 : 3.9, main ? 2.12 : 1.71);
+    const signMat = new THREE.MeshBasicMaterial({ map: signTexture(sign), toneMapped: false });
+    for (const s of [-1, 1]) {
+      const text = new THREE.Mesh(new THREE.PlaneGeometry(main ? 4.6 : 3.45, main ? 1.05 : 0.92), signMat);
+      text.position.set(0, lintel + 0.05, 0.80 * s);
+      if (s < 0) text.rotation.y = Math.PI;
+      g.add(text);
+    }
+    if (main) COLUMN_LABELS.tamQuan.forEach((text, i) => labelBoard(g, text, 0.58, 4.2, (i ? -1 : 1) * mid, 3.2, 0.63));
+    scene.add(g);
+    return g;
+  };
   wallSeg(WALL.xW, WALL.zN, WALL.xE, WALL.zN);
   for (const side of [-1, 1]) {
     const x = side < 0 ? WALL.xW : WALL.xE;
     wallSeg(x, WALL.zN, x, WALL.sideGateZ - WALL.sideGateHalf);
     wallSeg(x, WALL.sideGateZ + WALL.sideGateHalf, x, WALL.zS);
-    const g = new THREE.Group(); g.name = side < 0 ? 'gate-west' : 'gate-east';
-    for (const dz of [-WALL.sideGateHalf, WALL.sideGateHalf]) {
-      const post = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.2, 0.6), c.redM);
-      post.position.set(x, 1.6, WALL.sideGateZ + dz); g.add(post);
-      colliders.push({ x, z: WALL.sideGateZ + dz, r: 0.3 });
-    }
-    const roof = new THREE.Mesh(c.roofGeometry(3.4, 6, 1.3, 0.35), c.tileM);
-    roof.position.set(x, 3.6, WALL.sideGateZ); roof.castShadow = true; g.add(roof);
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.55), new THREE.MeshBasicMaterial({ map: signTexture(side < 0 ? 'CỔNG TÂY' : 'CỔNG ĐÔNG'), side: THREE.DoubleSide }));
-    sign.position.set(x - side * 0.4, 2.7, WALL.sideGateZ); sign.rotation.y = -side * Math.PI / 2; g.add(sign);
-    scene.add(g);
-    mergeStaticByMaterial(g);
+    buildGate(side < 0 ? 'gate-west' : 'gate-east', side < 0 ? 'CỔNG TÂY' : 'CỔNG ĐÔNG', x, WALL.sideGateZ, side * Math.PI / 2, 0.54);
   }
   wallSeg(WALL.xW, WALL.zS, -WALL.gate - 5.1, WALL.zS); wallSeg(WALL.gate + 5.1, WALL.zS, WALL.xE, WALL.zS);
   wallSeg(-WALL.gate - 1.7, WALL.zS, -WALL.gate - 0.6, WALL.zS); wallSeg(WALL.gate + 0.6, WALL.zS, WALL.gate + 1.7, WALL.zS);
-  const gate = new THREE.Group();
-  gate.name = 'tam-quan';
-  const gateRoof = (x: number, y: number, w: number, d: number, h: number) => {
-    const fallback = duocSuRoof(w, d, 0, h * 0.65);
-    fallback.position.set(x, y, 0);
-    gate.add(fallback);
-    replaceModel(gate, fallback, 'chinh-dien-roof', undefined, undefined, undefined, model => {
-      // Normalize the actual Chính Điện roof to each gate bay, without changing the shared model.
-      const bounds = new THREE.Box3().setFromObject(model);
-      const size = bounds.getSize(new THREE.Vector3());
-      const center = bounds.getCenter(new THREE.Vector3());
-      model.scale.set(w / size.x, h / size.y, d / size.z);
-      model.position.sub(new THREE.Vector3(center.x - x, bounds.min.y - y, center.z).multiply(model.scale));
-      fallback.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
-    });
-  };
-  for (const x of [-WALL.gate, WALL.gate]) {
-    const pl = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6.4, 1.2), c.redM); pl.position.set(x, 3.2, 0); pl.castShadow = true; pl.userData.sealable = true; gate.add(pl);
-    const b = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.5, 1.7), stoneBase); b.position.set(x, 0.25, 0); b.userData.sealable = true; gate.add(b);
-    colliders.push({ x, z: WALL.zS, r: 0.9 });
-    const sx = x + Math.sign(x) * 3.2;
-    for (const px of [sx - 1.5, sx + 1.5]) {
-      const sp = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4.6, 0.8), c.redM); sp.position.set(px, 2.3, 0); sp.castShadow = true; sp.userData.sealable = true; gate.add(sp);
-      const sb = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 1.2), stoneBase); sb.position.set(px, 0.2, 0); sb.userData.sealable = true; gate.add(sb);
-      colliders.push({ x: px, z: WALL.zS, r: 0.55 });
-    }
-    const sl = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.5, 1.1), c.redM); sl.position.set(sx, 4.7, 0); sl.castShadow = true; sl.userData.sealable = true; gate.add(sl);
-    gateRoof(sx, 4.91, 5.4, 3.8, 2.1);
-    for (const y of [0.58, 5.85, 6.24]) {
-      const band = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.13, 1.32), duocSuStyle.gold);
-      band.position.set(x, y, 0); gate.add(band);
-    }
-  }
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(WALL.gate * 2 + 4.6, 0.8, 1.5), c.redM); lintel.position.y = 6.45; lintel.castShadow = true; lintel.userData.sealable = true; gate.add(lintel);
-  const cornice = new THREE.Mesh(new THREE.BoxGeometry(11.05, 0.44, 2.14), duocSuStyle.timber);
-  cornice.position.y = 7.02; cornice.castShadow = true; gate.add(cornice);
-  const trim = new THREE.Mesh(new THREE.BoxGeometry(11.1, 0.10, 2.18), duocSuStyle.gold);
-  trim.position.y = 7.19; gate.add(trim);
-  gateRoof(0, 7.20, 13.3, 5.4, 4.4);
-  const gSign = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), new THREE.MeshBasicMaterial({ map: signTexture('CHÙA ONLINE') }));
-  gSign.position.set(0, 6.07, 0.82); gate.add(gSign);
-  const innerSign = gSign.clone(); innerSign.rotation.y = Math.PI; innerSign.position.z *= -1; gate.add(innerSign);
-  for (let i = 0; i < 2; i++) {
-    labelBoard(gate, COLUMN_LABELS.tamQuan[i], 0.5, 4.2, (i ? -1 : 1) * (WALL.gate - 0.9), 3.2, 0.64);
-  }
-  gate.position.set(0, 0, WALL.zS); scene.add(gate);
+  const gate = buildGate('tam-quan', 'CHÙA ONLINE', 0, WALL.zS, 0, 1, true);
   // ---- honor board (top 10 công đức, cập nhật động) beside the path up to the Koi pond ----
   let setHonorBoard: (rows: HonorRow[]) => void = () => {};
   {
@@ -1186,10 +1135,12 @@ export function buildTemple(c: TempleCtx) {
     colliders.push({ x: 5, z: 32, r: 1.0 });
   }
 
-  // Bia công đức tuần (R3.3): rìa quảng trường phía cổng, không chắn trục.
+  // Bia công đức tuần (R3.3): bờ Đông hồ cá koi, đứng ngoài làn đi bộ x = 15.9,
+  // mặt bia quay về Tây nhìn ra lối đi và hồ. Nội dung bia không đổi.
   const stele = new THREE.Group();
-  stele.position.set(10, 0, 14);
-  stele.rotation.y = Math.atan2(-10, -8);
+  stele.position.set(18.8, 0, 14);
+  stele.rotation.y = -Math.PI / 2;
+  const colliderStele = 1.2;
   const steleStone = new THREE.MeshStandardMaterial({ color: 0x8d8a82, roughness: 0.95 });
   const steleParts: Array<[number, number, number, number]> = [
     [1.6, 0.35, 0.5, 0.175],
@@ -1209,7 +1160,7 @@ export function buildTemple(c: TempleCtx) {
   steleFace.position.set(0, 1.35, 0.145);
   stele.add(steleFace);
   scene.add(stele);
-  colliders.push({ x: 10, z: 14, r: 1.2 });
+  colliders.push({ x: 18.8, z: 14, r: colliderStele });
 
   let steleKey = '';
   const setStele = (d: { name: string; merit: number; weekKey: string } | null) => {

@@ -299,8 +299,10 @@ export const MARKET_STALLS: { id: string; x: number; z: number }[] = [
 const Z_CHINH_DIEN: QuestZone = { x0: -17, x1: 17, z0: -42, z1: -22 };
 const Z_TAM_THE: QuestZone = { x0: -20, x1: 20, z0: -80, z1: -56 };
 const Z_THIEN_DUONG: QuestZone = { x: -47, z: -27, r: 7 };
-const Z_BAO_THAP: QuestZone = { x: -34, z: -15, r: 6 };
-const Z_CAU_SEN: QuestZone = { x0: -1.5, x1: 1.5, z0: 2, z1: 26 };
+/** A3: Bảo Tháp dời về (−46, −102); vùng nhiệm vụ bám theo nhưng chừa thân tháp ở giữa. */
+const Z_BAO_THAP: QuestZone = { x: -46, z: -94, r: 7 };
+/** L1: the red koi bridge is gone — quests now use the dry east bank lane beside the lake. */
+const Z_CAU_SEN: QuestZone = { x0: 15, x1: 17.6, z0: 9, z1: 19 };
 const Z_PS_PIER: QuestZone = { x: 30, z: -31, r: 3 };
 
 /** Người giao Q27–Q30. ĐỔI GIVER CHỈ SỬA DÒNG NÀY (quyết định 5 đã chốt: giữ npc38). */
@@ -310,8 +312,8 @@ export const GARDEN_GIVER = 'npc38';
 export const NPC_QUESTS: QuestDef[] = [
   { id: 'nq_sweep_plaza', label: 'Quét sân chùa', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc2',
     points: [{ x: -16.5, z: 1 }, { x: 16.5, z: 1 }, { x: -7.5, z: -1 }] },
-  { id: 'nq_sweep_bridge', label: 'Quét cầu sen', event: 'sweep', target: 2, coins: 15, merit: 10, giver: 'npc3',
-    points: [{ x: 0, z: 18 }, { x: 0, z: 26 }] },
+  { id: 'nq_sweep_bridge', label: 'Quét bờ hồ sen', event: 'sweep', target: 2, coins: 15, merit: 10, giver: 'npc3',
+    points: [{ x: 15.9, z: 10 }, { x: 15.9, z: 18 }] },
   { id: 'nq_sweep_zen', label: 'Quét vườn Thiền', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc7',
     points: [{ x: -40, z: -22 }, { x: -32, z: -30 }, { x: -39, z: -36 }] },
   { id: 'nq_sweep_road', label: 'Quét đường chùa', event: 'sweep', target: 3, coins: 15, merit: 10, giver: 'npc8',
@@ -339,7 +341,7 @@ export const NPC_QUESTS: QuestDef[] = [
     giver: 'npc5', zone: Z_BAO_THAP },
   { id: 'nq_buy_flower_help', label: 'Mua hoa huệ hộ', event: 'marketbuy', target: 2, coins: 20, merit: 10,
     giver: 'npc9', receiver: 'npc9', stall: 'stall_incense', steps: ['marketbuy', 'deliver'] },
-  { id: 'nq_photo_bridge', label: 'Chụp ảnh hộ ở cầu sen', event: 'visit', target: 2, coins: 15, merit: 8,
+  { id: 'nq_photo_bridge', label: 'Chụp ảnh hộ ở bờ hồ sen', event: 'visit', target: 2, coins: 15, merit: 8,
     giver: 'npc11', receiver: 'npc11', zone: Z_CAU_SEN, steps: ['visit', 'deliver'] },
   { id: 'nq_deliver_rice', label: 'Mang bao gạo hộ', event: 'talk', target: 2, coins: 25, merit: 10,
     giver: 'npc12', receiver: 'npc14', steps: ['talk', 'deliver'] },
@@ -384,9 +386,9 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'nq_farm_harvest', label: 'Thu hoạch rau vườn chùa', event: 'harvest', target: 1, coins: 25, merit: 12, giver: 'npc40' },
   { id: 'nq_ngoc_sweep', label: 'Quét thang lên Chùa Ngọc', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc41',
     points: [{ x: 0, z: -92 }, { x: 0, z: -103 }, { x: 0, z: -114 }] },
-  { id: 'nq_lotus_lantern', label: 'Thả đèn ở cầu sen', event: 'lantern', target: 1, coins: 20, merit: 10, giver: 'npc42', zone: { x: -78, z: 2, r: 3 } },
+  { id: 'nq_lotus_lantern', label: 'Thả đèn ở hồ sen', event: 'lantern', target: 1, coins: 20, merit: 10, giver: 'npc42', zone: { x: -78, z: -14.5, r: 3 } },
   { id: 'nq_lotus_sweep', label: 'Quét đình ngắm sen', event: 'sweep', target: 2, coins: 15, merit: 10, giver: 'npc42',
-    points: [{ x: -70, z: 5.5 }, { x: -78, z: 2 }] },
+    points: [{ x: -70, z: -16.6 }, { x: -78, z: -14.5 }] },
 ];
 
 /** Kho việc Sư Ông (10 việc): mỗi ngày VN hiện đúng 3 việc liên tiếp, cửa sổ trượt
@@ -556,6 +558,7 @@ export type TitleKind = 'level' | 'quests' | 'donated' | 'stat';
 export interface TitleRule { id: string; name: string; kind: TitleKind; need: number; desc: string; stat?: keyof PlayerStats }
 /** Số nhiệm vụ NPC (nq_) hiện có — q26 theo số này, không hard-code (Fable #54). */
 const NQ_COUNT = NPC_QUESTS.filter((q) => q.id.startsWith('nq_')).length;
+export const HanhNguyenQuestGoal = Math.min(35, NQ_COUNT);
 export const TITLES: TitleRule[] = [
   { id: 'lv-t1', name: 'Sơ phát tâm', kind: 'level', need: 1, desc: 'Đạt cấp 1' },
   { id: 'lv-t2', name: 'Cư sĩ', kind: 'level', need: 4, desc: 'Đạt cấp 4' },
@@ -567,12 +570,18 @@ export const TITLES: TitleRule[] = [
   { id: 'lv-t8', name: 'Giác hạnh', kind: 'level', need: 22, desc: 'Đạt cấp 22' },
   { id: 'lv-t9', name: 'Từ bi', kind: 'level', need: 25, desc: 'Đạt cấp 25' },
   { id: 'lv-t10', name: 'Trí tuệ', kind: 'level', need: 28, desc: 'Đạt cấp 28' },
+  { id: 'lv-t11', name: 'An nhiên', kind: 'level', need: 31, desc: 'Đạt cấp 31' },
+  { id: 'lv-t12', name: 'Thanh tịnh', kind: 'level', need: 34, desc: 'Đạt cấp 34' },
+  { id: 'lv-t13', name: 'Vô ngại', kind: 'level', need: 37, desc: 'Đạt cấp 37' },
+  { id: 'lv-t14', name: 'Viên mãn', kind: 'level', need: 40, desc: 'Đạt cấp 40' },
   { id: 'q5', name: 'Người Làm Thiện', kind: 'quests', need: 5, desc: 'Hoàn thành 5 nhiệm vụ khác nhau' },
   { id: 'q15', name: 'Bậc Thiện Hạnh', kind: 'quests', need: 15, desc: 'Hoàn thành 15 nhiệm vụ khác nhau' },
   { id: 'q26', name: 'Viên Mãn Hạnh Nguyện', kind: 'quests', need: NQ_COUNT, desc: `Hoàn thành ${NQ_COUNT} nhiệm vụ khác nhau` },
+  { id: 'q35', name: 'Hạnh nguyện viên dung', kind: 'quests', need: HanhNguyenQuestGoal, desc: `Hoàn thành ${HanhNguyenQuestGoal} nhiệm vụ khác nhau` },
   { id: 'd100', name: 'Người Gieo Duyên', kind: 'donated', need: 100, desc: 'Đóng góp tổng cộng 100 xu' },
   { id: 'd500', name: 'Thí Chủ', kind: 'donated', need: 500, desc: 'Đóng góp tổng cộng 500 xu' },
   { id: 'd1000', name: 'Đại Thí Chủ', kind: 'donated', need: 1000, desc: 'Đóng góp tổng cộng 1000 xu' },
+  { id: 'd5000', name: 'Phước điền vô lượng', kind: 'donated', need: 5000, desc: 'Đóng góp tổng cộng 5.000 xu' },
   { id: 'c50', name: 'Tụng Kinh Siêng Năng', kind: 'stat', stat: 'chants', need: 50, desc: 'Tụng kinh 50 lần' },
   { id: 'c200', name: 'Pháp Âm Vi Diệu', kind: 'stat', stat: 'chants', need: 200, desc: 'Tụng kinh 200 lần' },
   { id: 'i20', name: 'Hương Lòng Thành Kính', kind: 'stat', stat: 'incense', need: 20, desc: 'Thắp hương 20 lần' },
@@ -581,6 +590,12 @@ export const TITLES: TitleRule[] = [
   { id: 'l20', name: 'Người Thắp Sáng', kind: 'stat', stat: 'lanterns', need: 20, desc: 'Thả 20 đèn hoa đăng' },
   { id: 'be25', name: 'Niệm Phật Không Rời', kind: 'stat', stat: 'beadsRounds', need: 25, desc: 'Lần hạt 25 vòng' },
   { id: 'm3600', name: 'Định Tâm An Lạc', kind: 'stat', stat: 'meditateSec', need: 3600, desc: 'Thiền tổng cộng 60 phút' },
+  { id: 'c500', name: 'Pháp âm bất tuyệt', kind: 'stat', stat: 'chants', need: 500, desc: 'Tụng kinh 500 lần' },
+  { id: 'i300', name: 'Hương giới thanh tịnh', kind: 'stat', stat: 'incense', need: 300, desc: 'Thắp hương 300 lần' },
+  { id: 'b500', name: 'Kính lễ viên mãn', kind: 'stat', stat: 'bows', need: 500, desc: 'Lạy Phật 500 lần' },
+  { id: 'l100', name: 'Đèn sáng cúng Phật', kind: 'stat', stat: 'lanterns', need: 100, desc: 'Thả 100 đèn hoa đăng' },
+  { id: 'be100', name: 'Tràng hạt viên mãn', kind: 'stat', stat: 'beadsRounds', need: 100, desc: 'Lần hạt 100 vòng' },
+  { id: 'm18000', name: 'Thiền định thâm sâu', kind: 'stat', stat: 'meditateSec', need: 18000, desc: 'Thiền tổng cộng 5 giờ' },
 ];
 export interface TitleInput { level: number; questsDone: number; donated: number; stats: PlayerStats }
 /** Không backfill: quest_done và player_stats.incense bắt đầu từ 0, người chơi cũ không được cấp bù phần đã làm trước bản này. */

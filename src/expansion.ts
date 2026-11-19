@@ -18,17 +18,19 @@ import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferG
 import {
   BAMBOO, CAVE, DUOC_SU, FARM, FARM_POND, FLOWER_HILL, LOTUS, LOTUS_PAVILION, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_FALLS, RIVER_SOURCE_Z, RIVER_MOUTH_Z, riverAt, TINH_THAT,
   DUOC_SU_YAW, duocSuWorld, EAST_BANK_SHIFT, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverArchY, riverBridgeY, WALL,
-  expansionGroundY, NGOC_EAST_LANE, ngocHillGroundY, ngocStepProfile, ZAFU_SCALE,
+  expansionGroundY, NGOC_EAST_LANE, ngocHillGroundY, ngocStepProfile, ZAFU_RADIUS, ZAFU_SCALE,
 } from '../shared/campus';
 import { buildBuddha } from './statues';
 import { buildHalo, hideBakedHalo } from './statue-halo';
 import { fitModel, loadModel, replaceModel } from './models';
-import { grassTexture, glowTexture, signTexture, stoneTexture, woodTexture } from './textures';
+import { grassTexture, glowTexture, signTexture, stoneTexture, vietnameseColumnTexture, woodTexture } from './textures';
+import { COUPLETS } from './couplets';
 import { pavingMaterial } from './compound';
-import { nearWalkway, NGOC_EAST_PAVING } from './layout';
-import { duocSuRoof, duocSuStyle } from './duoc-su-style';
+import { nearWalkway, NGOC_EAST_PAVING, BAO_THAP, BAO_THAP_PLAT } from './layout';
+import { duocSuRoof, duocSuStyle, gateTiles } from './duoc-su-style';
 import { buildRiverWaterfall } from './river-waterfall';
 import { RIVER_BOATS, RIVER_DOCK } from '../shared/river-tour';
+import { BAMBOO_LOOP, BAMBOO_LOW_SEATS, CAVE_LOW_SEATS, CAVE_REST_SHELTERS, FARM_LOW_SEAT, FLOWER_LOW_SEATS, LOTUS_LOW_SEATS, NGOC_LOW_SEATS, type CatalogSeat } from '../shared/seats';
 import { buildPondLotus } from './pond-lotus';
 import { FLOWER_COLORS, PlantBatch } from './landscape';
 import { bladeGeometry, VegetationBatch } from './vegetation';
@@ -42,6 +44,17 @@ const MAT_KEYS = [
 type MatKey = (typeof MAT_KEYS)[number];
 
 const NO_SHADOW = new Set<MatKey>(['dark']);
+
+function hallCouplet(parent: THREE.Group, lines: [string, string], x: number, y: number, z: number, offset: number) {
+  lines.forEach((text, i) => {
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 3.24), new THREE.MeshBasicMaterial({
+      map: vietnameseColumnTexture(text, 200, 831), toneMapped: false,
+    }));
+    board.name = 'hall-couplet';
+    board.position.set(x + (i === 0 ? offset : -offset), y, z);
+    parent.add(board);
+  });
+}
 
 const rng = (seed: number) => {
   let s = seed >>> 0;
@@ -325,17 +338,14 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       const n = Math.max(1, Math.ceil(len / step));
       for (let i = 0; i <= n; i++) colliders.push({ x: x0 + (x1 - x0) * (i / n), z: z0 + (z1 - z0) * (i / n), r });
     };
-  /** Ghế ngồi: y do main lấy từ world.groundY, nên đệm/ghế luôn đặt sát đất (như bồ đoàn). */
-  const addSeat = (x: number, z: number, ry: number, rest = false) => seats.push({ x, z, ry, rest });
   const meditationPads: ZafuPosition[] = [];
   const meditationPad = (x: number, z: number, ry: number, w: number, depth: number, y: number) => {
     meditationPads.push({ x, z, ry, radius: w / 2, depthRadius: depth / 2, y });
     seats.push({ x, z, ry, rest: true, sitY: y + 0.14 * ZAFU_SCALE });
   };
-  /** Đệm/ghế thấp sát đất: người ngồi ở cao độ groundY như bồ đoàn trong chùa. */
-  const seatPad = (x: number, z: number, ry: number, rest = true, w = 1.1, d = 0.9, key: MatKey = 'stone') => {
-    addBox(key, w, 0.14, d, x, walkY(x, z) + 0.07, z, ry);
-    addSeat(x, z, ry, rest);
+  const seatPad = ({ x, z, ry, sitH }: CatalogSeat, w = 1.1, d = 0.9, key: MatKey = 'stone') => {
+    addBox(key, w, sitH, d, x, walkY(x, z) + sitH / 2, z, ry);
+    solid(x, z, 0.34);
   };
   /** Sprite phát sáng: đẩy vào c.glowSprites để world.update() nhấp nháy cùng đèn cũ. */
   const glow = (x: number, y: number, z: number, s: number, color = 0xffb040, op = 0.45) => {
@@ -384,7 +394,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   };
 
   // =====================================================================================
-  // 1. Hồ sen Tây, cầu đá z = 2, đình ngắm sen
+  // 1. Hồ sen Tây dời lên cạnh vườn rau, đình ngắm sen ở bờ Nam
   // =====================================================================================
   {
     const { x, z, a, b } = LOTUS;
@@ -393,24 +403,17 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       const t = (i / 58) * Math.PI * 2;
       addBox('stone', 0.95, 0.18, 0.62, x + Math.cos(t) * (a + 0.45), 0.09, z + Math.sin(t) * (b + 0.45), -t);
     }
-    const plants = buildPondLotus(a, b, 0.06, 84, 9174, (_px, pz, radius) => Math.abs(z + pz - 2) > 1.5 + radius);
+    const plants = buildPondLotus(a, b, 0.06, 84, 9174);
     plants.position.x = x;
     plants.position.z = z;
     flush('lotus-pond').group.add(plants);
   }
   {
-    // Cầu đá ngang hồ: x -90..-66 tại z = 2, mặt cầu y = 0.28 (khớp groundYBase)
-    const zc = 2, y = 0.28;
-    addBox('paving', 24, 0.24, 2.8, -78, y - 0.12, zc);
-    for (const s of [-1, 1]) {
-      addBox('stone', 24, 0.42, 0.2, -78, y + 0.21, zc + s * 1.4);
-      for (let px = -88; px <= -68; px += 2) addBox('stoneDark', 0.26, 0.62, 0.26, px, y + 0.28, zc + s * 1.4);
-      // lan can mảnh, chạy dọc cầu, chừa hai đầu cầu cho lối vào
-      wallLine(-88, zc + s * 1.4, -68, zc + s * 1.4, 0.2, 0.6);
-    }
-    // trụ đá đỡ cầu (nằm dưới mặt cầu, không tạo collider trên lối đi)
-    for (const px of [-84, -78, -72]) addBox('stoneDark', 0.9, 0.9, 2.4, px, -0.15, zc);
-    flush('lotus-bridge');
+    // A4: the old boardwalk across this lake is gone. The west gate now reaches the plaza on
+    // ordinary paving along z = 2; a short landing runs from the cross path to the south shore.
+    addBox('paving', 24, 0.24, 2.8, -78, 0.13, 2);
+    addBox('paving', 3.2, 0.24, 6.6, LOTUS.x, 0.13, LOTUS.z + LOTUS.b + 3.3);
+    flush('lotus-approach');
   }
   {
     // Đình ngắm sen: sàn lát sát đất (người chơi đứng ở y = 0), cửa vào góc Tây-Nam
@@ -427,8 +430,8 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     const { group: pavilionShell } = flush('dinhSen-architecture');
     replaceArchitecture(pavilionShell, 'dinh-sen-blender', px, pz);
     addSign('ĐÌNH SEN', 1.7, 0.44, px, top - 1.0, pz + 2.02);
-    seatPad(px, pz + 1.4, Math.PI, true, 1.0, 0.8, 'darkWood');
-    seatPad(px + 1.1, pz, -Math.PI / 2, true, 0.9, 0.8, 'darkWood');
+    seatPad(LOTUS_LOW_SEATS[0], 1.0, 0.8, 'darkWood');
+    seatPad(LOTUS_LOW_SEATS[1], 0.9, 0.8, 'darkWood');
     zones.push({ x: px, z: pz, r: 5, id: 'dinhSen' });
   }
   addPostedSign('HỒ SEN', 2.4, 0.6, LOTUS.x, 0.95, LOTUS.z + LOTUS.b + 1.4);
@@ -503,10 +506,20 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     wallLine(shedX + 0.75, shedZ + 1.2, shedX + 1.5, shedZ + 1.2, 0.22, 0.45);
     addSign('KHO NÔNG CỤ', 1.8, 0.45, shedX, shedBase + 2.5, shedZ + 1.34);
 
-    addPostedSign('VƯỜN RAU', 2.4, 0.6, fx1 - 0.35, 1.05, -42, Math.PI / 2);
-    seatPad(-82.8, -41.9, Math.PI / 2, true);
+    const farmGate = new THREE.Group();
+    farmGate.name = 'farm-gate'; farmGate.position.set(fx1, 0, FARM.z); farmGate.rotation.y = Math.PI / 2;
+    for (const s of [-1, 1]) {
+      addBox('darkWood', 0.30, 2.9, 0.30, fx1, 1.45, FARM.z + s * 1.74);
+      addBox('stone', 0.45, 0.22, 0.45, fx1, .11, FARM.z + s * 1.74);
+      colliders.push({ x: fx1, z: FARM.z + s * 1.74, r: .24 });
+    }
+    farmGate.add(duocSuRoof(4.45, 1.85, 2.95, 0.77, { tile: gateTiles, single: true }));
+    addBox('darkWood', 0.37, 0.22, 3.8, fx1, 2.88, FARM.z);
+    addSign('VƯỜN RAU', 2.05, 0.51, fx1 + 0.20, 2.55, FARM.z, Math.PI / 2);
+    seatPad(FARM_LOW_SEAT);
     zones.push({ x: FARM.x, z: FARM.z, r: 14, id: 'vuonRau' });
     const { group } = flush('farm');
+    group.add(farmGate);
     group.add(crops.build('farm-vegetable-rows'));
     group.add(waterEllipse(FARM_POND.x, FARM_POND.z, FARM_POND.a, FARM_POND.b));
     const plants = buildPondLotus(FARM_POND.a, FARM_POND.b, 0.06, 19, 4488);
@@ -558,13 +571,16 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   // =====================================================================================
   {
     const cx = BAMBOO.x, cz = BAMBOO.z;
+    const bz0 = BAMBOO.z0, bz1 = BAMBOO.z1, fz0 = FLOWER_HILL.z0, fz1 = FLOWER_HILL.z1;
     const roads: [number, number, number, number][] = [
-      [RIVER_EAST_WALK_X, 2, WALL.xE, 2], [cx, -20, cx, 2], [RIVER_EAST_WALK_X, -20, cx, -20],
-      [RIVER_EAST_WALK_X, 2, cx, cz], [cx, 2, FLOWER_HILL.x, 10],
+      [RIVER_EAST_WALK_X, 2, WALL.xE, 2], [cx, bz0, cx, bz1], [RIVER_EAST_WALK_X, bz0, cx, bz0],
+      [cx, fz0, FLOWER_HILL.x, fz0], [FLOWER_HILL.x, fz0, FLOWER_HILL.x, fz1],
+      // A2: clear 10 m walking gap between the two groves (z 8..18), no planting inside it.
+      [RIVER_EAST_WALK_X, bz1, WALL.xE, fz0],
     ];
     const nearRoad = (x: number, z: number, pad: number) => roads.some(([ax, az, bx, bz]) => distToSeg(x, z, ax, az, bx, bz) < pad);
 
-    const loop = { x0: 82 + EAST_BANK_SHIFT, x1: 88.4 + EAST_BANK_SHIFT, z0: -17.6, z1: -5.6, r: 1.8 };
+    const loop = BAMBOO_LOOP;
     const ringPts: { x: number; z: number }[] = [];
     const pushEdge = (ax: number, az: number, bx: number, bz: number) => {
       const n = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 1.7));
@@ -593,17 +609,9 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     // nhánh nối điểm trúc vào cạnh Bắc của vòng
     for (let i = 0; i <= 2; i++) {
       const t = i / 2;
-      addBox('paving', 1.5, 0.12, 1.5, cx, 0.06, cz + (z1 - cz) * t);
+      addBox('paving', 1.5, 0.12, 1.5, cx, 0.06, cz + (z0 - cz) * t);
     }
-    // ghế nghỉ bốn phía, quay vào trong vòng
-    const seatSpots: [number, number, number][] = [
-      [cx, z1 + 1.1, Math.PI], [cx, z0 - 1.1, 0], [x0 - 1.1, -11.6, Math.PI / 2], [x1 + 1.1, -11.6, -Math.PI / 2],
-    ];
-    for (const [sx, sz, ry] of seatSpots) {
-      if (nearRoad(sx, sz, 2.4)) continue;
-      seatPad(sx, sz, ry, true, 1.2, 0.5);
-      solid(sx, sz, 0.32);
-    }
+    for (const seat of BAMBOO_LOW_SEATS) seatPad(seat, 1.2, 0.5);
 
     const rand = rng(55123);
     const stems = new THREE.CylinderGeometry(0.8, 1, 1, 6, 1);
@@ -622,14 +630,14 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     const MOSS_COLORS = [0x527c3b, 0x68934a, 0x3f6c35, 0x83a34f] as const;
     let planted = 0, tufts = 0;
     for (let i = 0; i < 720 && planted < 124; i++) {
-      const x = 79.5 + EAST_BANK_SHIFT + rand() * 11.6, z = -20.5 + rand() * 34.6;
+      const x = 79.5 + EAST_BANK_SHIFT + rand() * 11.6, z = bz0 + 0.85 + rand() * (bz1 - bz0 - 1.7);
       if (nearRoad(x, z, 1.45) || nearWalkway(x, z, 1.0)) continue;
       let skip = false;
       for (const p of ringPts) if (Math.hypot(x - p.x, z - p.z) < 2.5) { skip = true; break; }
       if (skip) continue;
-      for (const [sx, sz] of seatSpots) if (Math.hypot(x - sx, z - sz) < 2.1) { skip = true; break; }
+      for (const seat of BAMBOO_LOW_SEATS) if (Math.hypot(x - seat.x, z - seat.z) < 2.1) { skip = true; break; }
       if (skip) continue;
-      if (distToSeg(x, z, cx, cz, cx, z1) < 2.4) continue; // nhánh nối
+      if (distToSeg(x, z, cx, cz, cx, z0) < 2.4) continue; // nhánh nối
       planted++;
       const culms = 2 + Math.floor(rand() * 3);
       for (let k = 0; k < culms; k++) {
@@ -650,7 +658,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       }
     }
     // Old bamboo: a visibly thicker, taller clump at the shady north edge of the grove.
-    const oldBambooX = 80.8 + EAST_BANK_SHIFT, oldBambooZ = -18.6;
+    const oldBambooX = 80.8 + EAST_BANK_SHIFT, oldBambooZ = z0 + 1.9;
     if (!nearRoad(oldBambooX, oldBambooZ, 2.4) && !nearWalkway(oldBambooX, oldBambooZ, 1.2)) {
       for (let k = 0; k < 7; k++) {
         const a = (k / 7) * Math.PI * 2;
@@ -666,14 +674,14 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     // Dense glade model in a few clearly marked gaps; instanced geometry supplies the canopy.
     void loadModel('bamboo_cluster').then(model => {
       if (!model) return;
-      for (const [gx, gz] of [[x1 + 1.5, -14.5], [x0 - 1.5, -7.5], [cx + 3.4, 0.8]]) {
+      for (const [gx, gz] of [[x1 + 1.5, z0 + 2], [x0 - 1.5, z1 - 2], [cx + 3.4, cz + 1]]) {
         if (nearRoad(gx, gz, 2.2) || nearWalkway(gx, gz, 1.0)) continue;
         const clump = fitModel(model.clone(true), 6.4);
         clump.position.set(gx, 0, gz);
         group.add(clump);
       }
     }).catch(() => {});
-    addPostedSign('RỪNG TRÚC', 2.2, 0.55, 81.1 + EAST_BANK_SHIFT, 1.1, -3.0, -Math.PI / 2);
+    addPostedSign('RỪNG TRÚC', 2.2, 0.55, 81.1 + EAST_BANK_SHIFT, 1.1, z0 + 4, -Math.PI / 2);
     zones.push({ x: cx, z: cz, r: 13, id: 'rungTruc' });
   }
 
@@ -753,6 +761,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     zones.push({ x, z, r: 8, id: 'duocSu' });
     const { group } = flush('duocSu');
     hallGroup(group);
+    hallCouplet(group, COUPLETS.duocSu.am, 0, y + 2.75, fz + 0.325, 1.8);
     const fallback = mergeStatue(buddha);
     fallback.position.set(0, y + 1.04, altarZ);
     fallback.name = 'expansion-buddha';
@@ -767,19 +776,20 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
   // =====================================================================================
   {
     const cx = FLOWER_HILL.x, cz = FLOWER_HILL.z;
+    const fz0 = FLOWER_HILL.z0, fz1 = FLOWER_HILL.z1;
     const lawn = new THREE.Mesh(new THREE.CircleGeometry(1, 44), grassM);
     lawn.rotation.x = -Math.PI / 2;
-    lawn.scale.set(10.6, 11.8, 1);
-    lawn.position.set(cx + 0.5, 0.02, cz - 0.5);
+    lawn.scale.set(10.6, (fz1 - fz0) / 2, 1);
+    lawn.position.set(cx + 0.5, 0.02, (fz0 + fz1) / 2);
     lawn.receiveShadow = true;
     lawn.name = 'flowerHill-lawn';
 
     const rand = rng(70123);
     const flowers = new PlantBatch();
     const beds: { x: number; z: number; a: number; b: number }[] = [
-      { x: 74.0, z: 22.0, a: 3.4, b: 2.4 }, { x: 84.4, z: 23.4, a: 3.0, b: 2.2 },
+      { x: 74.0, z: 21.5, a: 3.4, b: 2.2 }, { x: 84.4, z: 22.6, a: 3.0, b: 2.0 },
       { x: 71.4, z: 31.6, a: 2.6, b: 2.2 }, { x: 79.4, z: 33.4, a: 3.6, b: 2.4 },
-      { x: 86.0, z: 33.0, a: 2.6, b: 2.0 }, { x: 84.6, z: 16.6, a: 2.4, b: 1.8 },
+      { x: 86.0, z: 33.0, a: 2.6, b: 2.0 }, { x: 84.6, z: 36.4, a: 2.4, b: 1.8 },
     ];
     for (const [index, bed] of beds.entries()) {
       const bd = { ...bed, x: bed.x + EAST_BANK_SHIFT };
@@ -797,15 +807,15 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       }
     }
     // ghế đá + cây bóng mát (né điểm hoa (79,28) và lối vào)
-    for (const [x, bz2, ry] of [[71.6, 28.0, Math.PI / 2], [86.6, 29.4, -Math.PI / 2], [79.0, 38.0, Math.PI]] as const) {
-      const bx = x + EAST_BANK_SHIFT;
-      seatPad(bx, bz2, ry, true, 1.3, 0.6);
+    for (const seat of FLOWER_LOW_SEATS) {
+      const { x: bx, z: bz2, ry } = seat;
+      seatPad(seat, 1.3, 0.6);
       for (const s of [-1, 1]) {
         const nx = Math.cos(ry) * 0 - Math.sin(ry) * (s * 0.5), nz = Math.sin(ry) * 0 + Math.cos(ry) * (s * 0.5);
         addBox('stoneDark', 0.26, 0.14, 0.3, bx + nx, 0.07, bz2 + nz);
       }
     }
-    for (const [x, tz] of [[72.6, 26.6], [86.6, 26.0], [84, 17.6]] as const) {
+    for (const [x, tz] of [[72.6, 26.6], [86.6, 26.0], [84, 37.4]] as const) {
       const tx = x + EAST_BANK_SHIFT;
       placeTree('oak-natural', tx, tz, 5.9);
       solid(tx, tz, 0.55);
@@ -1061,9 +1071,16 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     for (const side of [-1, 1]) {
       balustrade(sx + side * edge, north + 0.24, sx + side * edge, south - 0.14);
       balustrade(sx + side * gateHalf, south - 0.14, sx + side * edge, south - 0.14);
-      seatPad(sx + side * 8.7, south - 2.45, Math.PI, true, 1.85, 0.95, 'dsStone');
     }
+    for (const seat of NGOC_LOW_SEATS) seatPad(seat, 1.85, 0.95, 'dsStone');
     balustrade(sx - edge, north + 0.24, sx + edge, north + 0.24);
+
+    // N1: hai bồ đoàn thiền thật trên sân thượng Chùa Ngọc, quay về bàn thờ phía Bắc.
+    // z = -118 cách đỉnh thang (z = -116) đúng 2 m về Bắc nên không chắn lối lên xuống;
+    // x = ±1,5 để hai đệm đối xứng trước cửa điện (z = -119,95) và cách xa hai băng
+    // ghế đá ở ±8,7. Đệm không có collider (như mọi bồ đoàn) nên lối đi vẫn thông.
+    // Cùng cỡ bồ đoàn trong chùa: buildZafu dùng RADIUS/HEIGHT của shared/campus.
+    for (const side of [-1, 1]) meditationPad(sx + side * 1.5, -118, Math.PI, ZAFU_RADIUS * 2, ZAFU_RADIUS * 2, sy + 0.02);
 
     const colH = 5.05;
     for (const ox of [-hx, -2.45, 2.45, hx]) for (const z of [entryZ, rearZ]) {
@@ -1104,6 +1121,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     addSign('CHÙA NGỌC', 3.55, 0.72, sx, sy + colH + 0.18, entryZ + 0.392);
     zones.push({ x: NGOC.x, z: NGOC.z, r: 10, id: 'chuaNgoc' });
     const { group } = flush('chuaNgoc');
+    hallCouplet(group, COUPLETS.ngoc.am, sx, sy + 2.75, entryZ + 0.33, 2.45);
     const roof = duocSuRoof(14.9, 9.3, sy + colH + 0.37, 3.0);
     roof.position.set(sx, 0, bodyZ);
     const statueHeight = 2.5;
@@ -1125,7 +1143,7 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     [-30, -95, -24, -96], [28, -100, 26, -101],
   ];
   const nearHillPath = (x: number, z: number, pad: number) => hillPaths.some(([ax, az, bx, bz]) => distToSeg(x, z, ax, az, bx, bz) < pad);
-  const restSpots: [number, number][] = [[-30, -95], [28, -100]];
+  const restSpots = CAVE_REST_SHELTERS;
 
   {
     const cx = CAVE.x, cz = CAVE.z, yb = expansionGroundY(cx, cz);
@@ -1202,13 +1220,12 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
     }
 
     // hai nhà nghỉ chân (sàn sát đất theo cao độ đồi)
-    for (const [rx, rz] of restSpots) {
+    for (const [i, [rx, rz]] of restSpots.entries()) {
       const ry = expansionGroundY(rx, rz);
       addBox('stone', 4.2, 0.12, 3.4, rx, ry + 0.06, rz);
       openHall(rx, rz, ry + 0.12, 1.5, 1.1, 2.2, 4.6, 4.0, 1.2, 0);
       addSign('NHÀ NGHỈ CHÂN', 1.7, 0.42, rx, ry + 2.55, rz + 1.15);
-      seatPad(rx - 0.9, rz, 0, true, 0.9, 0.8, 'darkWood');
-      seatPad(rx + 0.9, rz, 0, true, 0.9, 0.8, 'darkWood');
+      for (const seat of CAVE_LOW_SEATS[i]) seatPad(seat, 0.9, 0.8, 'darkWood');
       zones.push({ x: rx, z: rz, r: 4, id: 'nhaNghiChan' });
     }
     const { group } = flush('dongThien');
@@ -1242,6 +1259,9 @@ export function buildExpansion(c: TempleCtx): { seats: Seat[]; zones: Zone[]; up
       const pz = -86 - rand() * 31.5;
       if (Math.abs(px - NGOC.x) < NGOC_TERRACE.half + 2.4 && pz < NGOC.stairTop + 4) continue;
       if (nearHillPath(px, pz, 2.4)) continue;
+      // A3: keep the grove off the relocated Bảo Tháp plinth, its stair and its approach lane.
+      if (Math.hypot(px - BAO_THAP.x, pz - BAO_THAP.z) < BAO_THAP_PLAT.r + 3.2) continue;
+      if (nearWalkway(px, pz, 1.2)) continue;
       if (Math.hypot(px - CAVE.x, pz - CAVE.z) < 7.4) continue;
       if (restSpots.some(([rx, rz]) => Math.hypot(px - rx, pz - rz) < 5.0)) continue;
       placed++;

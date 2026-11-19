@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GARDEN_WOOD_SEATS, ZEN_STONE_SEATS } from '../shared/seats';
 import { LAKE, HALL, SIDE_X, ZEN, REST, FLOWER_BEDS, BAO_THAP, MAIN_COURT, nearWalkway } from './layout';
 import { stoneTexture, vietnameseColumnTexture } from './textures';
 import { loadModel } from './models';
@@ -296,13 +297,20 @@ export interface GardenCtx {
 
 const GY = 0.06;
 
+/**
+ * K1: ghế đá vườn thiền. Toạ độ lấy từ danh mục chung (shared/seats.ts) để mesh
+ * và chỗ ngồi người chơi luôn trùng nhau; ry của ghế đá chỉ quyết hướng tấm đá
+ * (đối xứng), hướng người ngồi do catalogue.ry quyết định.
+ */
 function stoneSeat(g: GardenCtx, parent: THREE.Object3D, x: number, z: number, ry: number, len = 1.8) {
   const s = new THREE.Group();
+  const known = ZEN_STONE_SEATS.find((seat) => Math.hypot(seat.x - x, seat.z - z) < 0.01);
   const top = new THREE.Mesh(new THREE.BoxGeometry(len, 0.18, 0.55), g.stoneM); top.position.y = 0.52; top.castShadow = top.receiveShadow = true; s.add(top);
   for (const sx of [-1, 1]) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.45, 0.5), g.stoneM); leg.position.set(sx * (len / 2 - 0.25), 0.25, 0); leg.castShadow = true; s.add(leg);
   }
-  s.position.set(x, GY, z); s.rotation.y = ry; parent.add(s);
+  const meshRy = known?.ry ?? ry;
+  s.position.set(x, GY, z); s.rotation.y = meshRy; parent.add(s);
 }
 
 function stoneTableSet(g: GardenCtx, parent: THREE.Object3D, x: number, z: number, ry = 0) {
@@ -318,16 +326,23 @@ function stoneTableSet(g: GardenCtx, parent: THREE.Object3D, x: number, z: numbe
   g.colliders.push({ x, z, r: 1.55 });
 }
 
+/**
+ * K1: băng ghế gỗ. Hướng mặt lấy từ danh mục chung khi có (ghế quanh bồn hoa và
+ * khu nghỉ chân), để tựa ghế luôn nằm sau lưng người ngồi. Ghế không có trong
+ * danh mục vẫn dựng theo `ry` truyền vào như cũ.
+ */
 function woodBench(g: GardenCtx, parent: THREE.Object3D, x: number, z: number, ry: number, len = 2.2) {
   const b = new THREE.Group();
+  const known = GARDEN_WOOD_SEATS.find((seat) => Math.hypot(seat.x - x, seat.z - z) < 0.01);
+  const yaw = known?.ry ?? ry;
   const wood = g.lamb(0x7a4e2c);
   const seat = new THREE.Mesh(new THREE.BoxGeometry(len, 0.1, 0.55), wood); seat.position.y = 0.5; seat.castShadow = true; b.add(seat);
   const back = new THREE.Mesh(new THREE.BoxGeometry(len, 0.4, 0.08), wood); back.position.set(0, 0.85, -0.24); back.rotation.x = -0.12; back.castShadow = true; b.add(back);
   for (const sx of [-1, 1]) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.5), g.lamb(0x4a2e18)); leg.position.set(sx * (len / 2 - 0.2), 0.25, 0); b.add(leg);
   }
-  b.position.set(x, GY, z); b.rotation.y = ry; parent.add(b);
-  const hl = len / 2 - 0.35, sx = Math.cos(ry), sz = -Math.sin(ry);
+  b.position.set(x, GY, z); b.rotation.y = yaw; parent.add(b);
+  const hl = len / 2 - 0.35, sx = Math.cos(yaw), sz = -Math.sin(yaw);
   g.colliders.push({ x: x - sx * hl, z: z - sz * hl, r: 0.5 }, { x, z, r: 0.5 }, { x: x + sx * hl, z: z + sz * hl, r: 0.5 });
 }
 

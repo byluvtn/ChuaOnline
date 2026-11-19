@@ -1,10 +1,10 @@
-import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BRIDGE, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, QUAN, WALL } from '../layout';
+import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
-import { NGOC_HALL, NGOC_TERRACE, RIVER_BRIDGES } from '../../shared/campus';
+import { FARM, FARM_POND, LOTUS, LOTUS_PAVILION, NGOC_HALL, NGOC_TERRACE, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_EAST_MAP_RECTS, NORTH_WALK_Z, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
+import { RIVER_BRIDGES } from '../../shared/campus';
 import { RIVER_DOCK } from '../../shared/river-tour';
 import { PLACES, type Place } from '../data/places';
-import { LOTUS, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_EAST_MAP_RECTS, NORTH_WALK_Z, FARM, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 
 export function openMap(ctx: MenuCtx) {
   openCustomPanel('Bản đồ chùa', (body) => {
@@ -58,7 +58,12 @@ export function openMap(ctx: MenuCtx) {
       rect(NGOC.x - NGOC.stairHalf, NGOC.stairTop, NGOC.x + NGOC.stairHalf, NGOC.stairStart, '#d4d1bd', '#8b9684');
       rect(NGOC.x - NGOC_TERRACE.half, NGOC_TERRACE.north, NGOC.x + NGOC_TERRACE.half, NGOC.stairTop, '#d4d1bd', '#8b9684');
       ellipse(LOTUS.x, LOTUS.z, LOTUS.a, LOTUS.b, '#8ec6e0', '#4f8fb0');
-      rect(-90, 0.9, -66, 3.1, '#d9c6a2', '#8a8270');
+      // A4: the old boardwalk is gone. The west-gate walk is ordinary paving; the pavilion sits
+      // on the south shore and is reached by a short landing.
+      rect(WALL.xW, PATH_Z - 1.4, 0, PATH_Z + 1.4, '#e8d6a4');
+      rect(LOTUS_PAVILION.x - 2.7, LOTUS_PAVILION.z - 4.2, LOTUS_PAVILION.x + 2.7, LOTUS_PAVILION.z - 2.2, '#d9c6a2');
+      rect(LOTUS.x - 1.6, LOTUS.z + LOTUS.b, LOTUS.x + 1.6, LOTUS_PAVILION.z - 2, '#d9c6a2');
+      rect(LOTUS_PAVILION.x - 2.4, LOTUS_PAVILION.z - 2.4, LOTUS_PAVILION.x + 2.4, LOTUS_PAVILION.z + 2.4, '#d9b98c', '#8a5a2b');
       const riverPath = (fill: string, stroke?: string) => {
         g.beginPath();
         for (let i = 0; i < RIVER_PATH.length; i++) {
@@ -77,9 +82,11 @@ export function openMap(ctx: MenuCtx) {
       riverPath('#8ec6e0');
       for (const { x, z, halfSpan } of RIVER_BRIDGES) rect(x - halfSpan, z - RIVER.bridgeHalf, x + halfSpan, z + RIVER.bridgeHalf, '#d9c6a2', '#8a8270');
       rect(RIVER_DOCK.edge - 1.7, RIVER_DOCK.north, RIVER_DOCK.edge + .75, RIVER_DOCK.south, '#a9733c', '#6e4a22');
-      rect(FARM.x - 12, -55, FARM.x + 12, -30, '#a3bd79', '#7d9b6c');
-      rect(BAMBOO.x - 4.5, -20, BAMBOO.x + 5.3, 14, '#91b690');
-      ellipse(FLOWER_HILL.x + 0.5, FLOWER_HILL.z - 0.5, 10.6, 11.8, '#c2d59f');
+      rect(FARM.x - 12, FARM.z - 13, FARM.x + 12, FARM.z + 12, '#a3bd79', '#7d9b6c');
+      rect(FARM.x + 10.8, FARM.z - 2.2, FARM.x + 12.6, FARM.z + 2.2, '#d9b98c', '#8a5a2b'); // C1/B3 farm gate
+      rect(BAMBOO.x - 4.5, BAMBOO.z0, BAMBOO.x + 5.3, BAMBOO.z1, '#91b690');
+      rect(FLOWER_HILL.x - 11.1, FLOWER_HILL.z0, FLOWER_HILL.x + 11.1, FLOWER_HILL.z1, '#c2d59f');
+      rect(FLOWER_HILL.x - 11.1, BAMBOO.z1, FLOWER_HILL.x + 11.1, FLOWER_HILL.z0, '#e8d6a4', '#8a8270'); // A2 walking gap
       ellipse(CAVE.x, CAVE.z, 5, 3, '#879a85');
       for (const p of TINH_THAT) rect(p.x - 1.6, p.z - 1.25, p.x + 1.6, p.z + 1.25, '#9c6648');
       // decks
@@ -89,9 +96,11 @@ export function openMap(ctx: MenuCtx) {
       }
       // hall
       rect(HALL.x - HALL.hx, HALL.z - HALL.hz, HALL.x + HALL.hx, HALL.z + HALL.hz, '#b5542f', '#6e2a14');
-      // lake + bridge
+      // lake + dry bank lanes (L1: the red koi bridge is gone)
       ellipse(LAKE.x, LAKE.z, LAKE.a, LAKE.b, '#8ec6e0', '#4f8fb0');
-      rect(BRIDGE.x - BRIDGE.hw, BRIDGE.z0, BRIDGE.x + BRIDGE.hw, BRIDGE.z1, '#a9733c', '#6e4a22');
+      rect(LAKE.a + 1.4, PATH_Z, LAKE.a + 3.4, LAKE.z + LAKE.b + 2.6, '#e8d6a4');
+      rect(-LAKE.a - 3.4, PATH_Z, -LAKE.a - 1.4, LAKE.z + LAKE.b + 2.6, '#e8d6a4');
+      rect(-LAKE.a - 3.4, LAKE.z + LAKE.b + 1.4, LAKE.a + 3.4, LAKE.z + LAKE.b + 2.6, '#e8d6a4');
       // towers
       for (const [p, c] of [[BELL, '#8a5a2b'], [DRUM, '#8a5a2b'], [QUAN, '#e6e0d0'], [PAGODA, '#b5542f'], [BAO_THAP, '#d9c27a']] as const) ellipse(p.x, p.z, 2.2, 2.2, c, '#4a2e18');
       const plat = (p: { x: number; z: number; hx: number; hz: number }, fill = '#b5542f', stroke = '#6e2a14') =>
@@ -110,8 +119,11 @@ export function openMap(ctx: MenuCtx) {
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 4.5, 4.5, '#e8d9a0', '#c9a96a');
       ellipse(BUDDHA_YARD.x, BUDDHA_YARD.z, 1.4, 1.4, '#e8b64a', '#8a5a2b');
       label('Chánh điện', HALL.x, HALL.z, '#fff3dc');
-      const LABEL_DZ: Record<string, number> = { 'Hồ cá koi': 2.5, 'Cầu cong': -7, 'Điện Tam Thế': -7, 'Bảo tháp': -6, 'Tháp cảnh': -5, 'Gác trống': 2, 'Vườn Tháp': -3.5, 'Nhà Tổ': 4, 'Sân thiền trái': -2.5, 'Sân thiền phải': -2.5, 'Chùa Ngọc': -7, 'Rừng thông': -3, 'Động thiền': -5, 'Tăng xá': -6, 'Tịnh thất': 4, 'Rừng trúc': -10, 'Sông Đông': 6 };
+      const LABEL_DZ: Record<string, number> = { 'Hồ cá koi': 6.2, 'Cầu cong': -7, 'Điện Tam Thế': -7, 'Bảo tháp': -6, 'Tháp cảnh': -5, 'Gác trống': 2, 'Vườn Tháp': -3.5, 'Nhà Tổ': 4, 'Sân thiền trái': -2.5, 'Sân thiền phải': -2.5, 'Chùa Ngọc': -7, 'Rừng thông': -3, 'Động thiền': -5, 'Tăng xá': -6, 'Tịnh thất': 4, 'Rừng trúc': -10, 'Sông Đông': 6 };
       for (const p of PLACES.slice(1)) label(p.name, p.x, p.z + (p.name in LABEL_DZ ? LABEL_DZ[p.name] : p.r > 4 ? 0 : 4));
+      // C1: small furniture that is not a full PLACES area but must be findable on the map.
+      rect(LOTUS_PAVILION.x - 2.3, LOTUS_PAVILION.z + 2.3, LOTUS_PAVILION.x - 1.7, LOTUS_PAVILION.z + 3.3, '#a9733c');
+      ellipse(18.8, 14, 1.0, 0.6, '#8d8a82', '#4a2e18'); // bia công đức tuần (L1)
       label('Bắc', 0, WALL.zN - 2.5); label('Nam', 0, WALL.zS + 3.6);
     };
     const draw = () => {
@@ -142,7 +154,7 @@ export function openMap(ctx: MenuCtx) {
     };
     const chips = h('div', { class: 'chips' }, ...PLACES.map((p) => h('button', { class: 'chip', onclick: () => { closePanel(); ctx.goTo(p.x, p.z); ctx.toast(`Đang đi tới ${p.name}`); } }, p.name)));
     body.append(
-      h('p', { class: 'hint', style: 'margin:0 0 8px' }, 'Chấm hồng là bạn, chấm xanh là người khác. Đường màu vàng nâu bên phải Điện Tam Thế dẫn lên Chùa Ngọc. Bấm vào địa điểm để đi tới đó.'),
+      h('p', { class: 'hint', style: 'margin:0 0 8px' }, 'Chấm hồng là bạn, chấm xanh là người khác. Đường màu vàng nâu bên phải Điện Tam Thế dẫn lên Chùa Ngọc. Hồ cá koi không còn cầu đỏ — đi vòng theo làn bờ Đông hoặc bờ Tây. Bấm vào địa điểm để đi tới đó.'),
       h('div', { class: 'tmap-wrap' }, cv), chips);
     return () => clearInterval(timer);
   });

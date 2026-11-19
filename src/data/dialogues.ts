@@ -189,27 +189,27 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     chanting: 'Mô Phật, thí chủ cứ tự nhiên, con tụng xong thời kinh này đã.',
   },
 
-  // npc3 — Tiểu Quét Cầu. Giao Q2: quét 2 điểm dưới cây gần cầu sen nhất.
+  // npc3 giao việc quét hai điểm trên lối bờ đông hồ cá koi.
   npc3: {
     name: 'Tiểu Quét Cầu',
-    role: 'Tiểu quét cầu sen',
+    role: 'Tiểu quét bờ hồ',
     greetings: [
-      { time: 'morning', text: 'Chào thí chủ! Sáng nay sương còn đọng trên cầu sen, đi cẩn thận kẻo trơn nhé.' },
-      { time: 'noon', text: 'Trưa rồi, con quét cầu xong là ra ao xem cá chép ăn.' },
-      { time: 'afternoon', text: 'Chào thí chủ! Chiều nay sen nở đẹp lắm, đứng trên cầu ngắm là thích nhất.' },
-      { time: 'evening', text: 'Chào thí chủ! Trời nhá nhem rồi, thí chủ qua cầu sen thì bước chậm kẻo trượt, con quét lần cuối đây.' },
+      { time: 'morning', text: 'Chào thí chủ! Sáng nay sương còn đọng trên lối bờ hồ, đi cẩn thận kẻo trơn nhé.' },
+      { time: 'noon', text: 'Trưa rồi, con quét lối đi xong là ra ngắm cá chép.' },
+      { time: 'afternoon', text: 'Chào thí chủ! Chiều nay sen nở đẹp lắm, đứng ở bờ hồ ngắm là thích nhất.' },
+      { time: 'evening', text: 'Chào thí chủ! Trời nhá nhem rồi, con quét lối bờ hồ lần cuối đây.' },
     ],
-    questOffer: 'Cầu sen lá rụng đầy cả mặt cầu, một mình con quét không kịp. Thí chủ giúp con quét hai chỗ ngay giữa mặt cầu nhé.',
-    questReminder: 'Cầu còn lá ở giữa mặt cầu đấy, thí chủ giúp con cho sạch nhé.',
-    questDone: 'Cầu sạch rồi, đi lại an toàn hẳn! Cảm ơn thí chủ nhé.',
+    questOffer: 'Lá rụng đầy lối đi. Thí chủ giúp con quét hai chỗ trên lối bờ đông hồ cá nhé.',
+    questReminder: 'Bờ đông hồ cá vẫn còn lá rụng, thí chủ giúp con quét sạch nhé.',
+    questDone: 'Lối bờ hồ sạch rồi, đi lại an toàn hẳn! Cảm ơn thí chủ nhé.',
     smallTalk: [
       'Cá chép dưới ao dạn lắm, cứ thấy bóng người là bơi lại xin ăn.',
       'Hoa sen tháng này nở to nhất, sáng nào con cũng ra ngắm trước khi quét.',
-      'Cầu gỗ này trời mưa là trơn lắm, thí chủ đi chậm thôi.',
+      'Mưa xuống thì lối lát đá trơn lắm, thí chủ đi chậm thôi.',
     ],
     farewell: [
-      'Thí chủ đi cẩn thận nhé, cầu sen trơn lắm!',
-      'Lần sau qua cầu nhớ ngắm sen nhé!',
+      'Thí chủ đi cẩn thận nhé, lối bờ hồ còn ướt!',
+      'Lần sau qua hồ nhớ ngắm sen nhé!',
     ],
     chanting: 'Mô Phật, thí chủ cứ tự nhiên lễ Phật, con tụng nốt câu kinh này.',
   },
@@ -413,21 +413,21 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     ],
   },
 
-  // npc11 — Cô Gái Trẻ. Việc nhờ vặt: nhờ chụp ảnh hộ ở cầu sen.
+  // npc11 nhờ chụp ảnh ở bờ đông hồ cá koi.
   npc11: {
     name: 'Cô Gái Trẻ',
     role: 'Phật tử đi lễ',
     greetings: [
       { time: 'morning', text: 'Chào anh/chị! Sáng nay em qua chùa sớm, sen nở đẹp quá.' },
-      { time: 'noon', text: 'Trưa nắng mà cầu sen vẫn mát, em đứng đây chụp ảnh nãy giờ.' },
+      { time: 'noon', text: 'Trưa nắng mà bờ hồ vẫn mát, em đứng đây chụp ảnh nãy giờ.' },
       { time: 'afternoon', text: 'Chào anh/chị! Chiều nay em rủ bạn qua chùa chơi, ai cũng khen chùa đẹp.' },
       { time: 'evening', text: 'Chào anh/chị! Chùa lên đèn lung linh quá, em chụp nốt mấy tấm ảnh đèn rồi mới về.' },
     ],
-    questOffer: 'Anh/chị chụp giúp em một tấm ảnh ở cầu sen với, em đi một mình không ai chụp cho.',
-    questReminder: 'Tấm ảnh ở cầu sen chụp giúp em chưa? Em đứng đây đợi nhé.',
+    questOffer: 'Anh/chị chụp giúp em một tấm ảnh ở bờ đông hồ cá với, em đi một mình không ai chụp cho.',
+    questReminder: 'Tấm ảnh ở bờ hồ chụp giúp em chưa? Em đứng đây đợi nhé.',
     questDone: 'Ảnh đẹp quá, cảm ơn anh/chị nhiều lắm!',
     smallTalk: [
-      'Em thích nhất là cầu sen, đứng đó chụp ảnh góc nào cũng đẹp.',
+      'Em thích nhất là bờ hồ cá, đứng đó chụp ảnh góc nào cũng đẹp.',
       'Cuối tuần em hay rủ bạn qua chùa, vừa lễ Phật vừa chụp ảnh.',
       'Em thích nhất là hoa sen hồng, nở to mà thơm dịu.',
     ],
@@ -1052,22 +1052,22 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     greetings: [
       { time: 'morning', text: 'Chào thí chủ, sáng nay sen nở đẹp lắm, thí chủ ra đình ngắm sen đi.' },
       { time: 'noon', text: 'Trưa nắng rồi, thí chủ vào đình ngồi nghỉ một lát cho mát nhé.' },
-      { time: 'afternoon', text: 'Chiều mát, sen thơm lắm, thí chủ thả đèn ở cầu sen rồi hẵng về.' },
+      { time: 'afternoon', text: 'Chiều mát, sen thơm lắm, thí chủ thả đèn ở bờ sen rồi hẵng về.' },
       { time: 'evening', text: 'Chào thí chủ, tối rồi, sen khép cánh rồi, thí chủ ngắm sen xong thì về cẩn thận nhé.' },
     ],
-    questOffer: 'Đình sen với cầu sen cần người trông nom mỗi ngày. Thí chủ giúp cô thả đèn với quét đình nhé.',
+    questOffer: 'Đình sen với lối bờ hồ cần người trông nom mỗi ngày. Thí chủ giúp cô thả đèn với quét đình nhé.',
     questReminder: 'Thí chủ làm xong việc ở đình sen chưa? Thả đèn với quét đình xong rồi quay lại gặp cô nhé.',
     questDone: 'Đình đã sạch, đèn đã thả. Cô cảm ơn thí chủ nhé.',
     questLines: {
       nq_lotus_lantern: {
-        offer: 'Thí chủ thả một đèn hoa đăng ở cầu sen giúp cô nhé, đứng trên cầu ván rồi thả đèn.',
-        reminder: 'Thí chủ thả đèn chưa? Ra cầu sen thả một đèn hoa đăng giúp cô nhé.',
+        offer: 'Thí chủ đứng trên lối lát đá ở bờ nam hồ sen Tây và thả một đèn hoa đăng giúp cô nhé.',
+        reminder: 'Thí chủ thả đèn chưa? Ra bờ nam hồ sen Tây giúp cô nhé.',
         done: 'Đèn đã thả xuống hồ sen rồi, cô chúc thí chủ an lành.',
       },
       nq_lotus_sweep: {
-        offer: 'Thí chủ quét giúp cô đình sen với cầu sen nhé, quét 2 chỗ là xong.',
-        reminder: 'Thí chủ quét đủ đình với cầu chưa? Quét xong rồi quay lại gặp cô nhé.',
-        done: 'Đình với cầu sạch sẽ rồi, thí chủ quét cẩn thận lắm.',
+        offer: 'Thí chủ quét giúp cô đình sen và lối bờ nam nhé, quét 2 chỗ là xong.',
+        reminder: 'Thí chủ quét đủ đình với lối bờ nam chưa? Quét xong rồi quay lại gặp cô nhé.',
+        done: 'Đình với lối bờ hồ sạch sẽ rồi, thí chủ quét cẩn thận lắm.',
       },
     },
     smallTalk: [

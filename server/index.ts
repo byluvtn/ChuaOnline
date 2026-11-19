@@ -25,6 +25,7 @@ import {
 import type { BellHeard, FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
 import { clampCampus, expansionWaterBlocked, resolveExpansionWater } from '../shared/campus.js';
 import { RIVER_BOATS, RIVER_BOAT_SEAT_Y, RIVER_BOAT_SEAT_Z, RIVER_DOCK, nearRiverDock, riverBoatAt, riverDeparture, riverTourDuration, type RiverBoatState, type RiverBoatTrip } from '../shared/river-tour.js';
+import { SEAT_REACH_M, seatById } from '../shared/seats.js';
 import { bindRitualSocket, ritualOnJoin, startRitualLoops, type RitualEnv, type RtSession } from './rituals.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
@@ -389,8 +390,16 @@ async function maybeAwardTitles(s: Session, announce = true) {
     io.to(s.room).emit('chat', sysMsg);
   } catch (e) { console.warn('[titles]', (e as Error).message); }
 }
+/**
+ * Ngồi thiền thật = anim 'sit' và KHÔNG ngồi trên ghế thường (K1). Ghế gỗ/đá chỉ
+ * cho nghỉ chân: cùng dáng ngồi nhưng không cộng giây thiền, không tính hào quang.
+ */
+function isMeditating(s: Session): boolean {
+  return s.state.anim === 'sit' && !s.state.seat;
+}
+
 function meditationInfo(room: string) {
-  const sitting = roomSessions(room).filter((s) => s.state.anim === 'sit').length;
+  const sitting = roomSessions(room).filter(isMeditating).length;
   return { sitting, minutes: Math.floor(roomMinutes.get(room) ?? 0), goal: MEDITATE_GOAL_MIN, bonus: sitting >= GROUP_MEDITATE_MIN };
 }
 
@@ -472,10 +481,12 @@ async function endMeditationSession(s: Session, now = Date.now()): Promise<void>
 }
 
 function setSessionAnim(s: Session, anim: Anim, now = Date.now()): void {
-  const wasSitting = s.state.anim === 'sit';
+  // Ghế thường (K1) dùng dáng ngồi nhưng KHÔNG mở đồng hồ thiền: chỉ bồ đoàn mới tính.
+  const wasSitting = isMeditating(s);
   s.state.anim = anim;
-  if (anim === 'sit' && !wasSitting) void updateMeditationClock(s, now, true);
-  else if (wasSitting && anim !== 'sit') void endMeditationSession(s, now);
+  const nowSitting = isMeditating(s);
+  if (nowSitting && !wasSitting) void updateMeditationClock(s, now, true);
+  else if (wasSitting && !nowSitting) void endMeditationSession(s, now);
 }
 
 /**
@@ -500,7 +511,21 @@ async function rankings(): Promise<{ weekly: RankRow[]; all: RankRow[] }> {
   return { weekly: (await db.topWeekly()).map(f), all: (await db.topAllTime()).map(f) };
 }
 
+/**
+ * K1: một ghế thật chỉ có một người ngồi trong mỗi phòng. Khoá của ghế hành lang
+ * trùng với khoá NPC (`bench:x,z`) trong NpcRoom.seats nên NPC không bao giờ
+ * chiếm lại ghế đang có người chơi và ngược lại.
+ */
+function releasePlayerSeat(s: Session): void {
+  const id = s.state.seat;
+  if (!id) return;
+  const seat = seatById(id);
+  if (seat && npcRoom(s.room).seats.get(seat.holderKey) === s.state.id) npcRoom(s.room).seats.delete(seat.holderKey);
+  s.state.seat = null;
+}
+
 function leaveRoom(s: Session) {
+  releasePlayerSeat(s);
   if (s.boat) {
     // An empty skiff finishes its trip, so its reserved path never snaps back into another hull.
     s.boat.rider = undefined;
@@ -617,6 +642,7 @@ io.on('connection', (socket) => {
     // (mất vài giây cuối) khi người chơi join lại cùng socket.
     if (old) {
       old.state.anim = 'idle';
+      releasePlayerSeat(old);
       await endMeditationSession(old);
     }
     const daily = await db.getMeditationDaily(pid);
@@ -735,15 +761,60 @@ io.on('connection', (socket) => {
     reply({ ok: true, boat: { id: next.id, elapsed: now - next.start, rider: socket.id } });
   });
 
+  // ---- K1: ngồi ghế thật (gỗ/đá). Độc quyền theo phòng, chia sẻ khoá với NPC. ----
+  socket.on('seat:sit', (payload: { id?: string }, cb?: (r: { ok: boolean; error?: string; seat?: string }) => void) => {
+    const reply = (r: { ok: boolean; error?: string; seat?: string }) => { if (typeof cb === 'function') cb(r); };
+    const s = me();
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    if (s.boat) return reply({ ok: false, error: 'Đang ở trên thuyền' });
+    const seat = seatById(typeof payload?.id === 'string' ? payload.id : undefined);
+    if (!seat) return reply({ ok: false, error: 'Không tìm thấy ghế này' });
+    if (Math.hypot(seat.x - s.state.x, seat.z - s.state.z) > SEAT_REACH_M + 0.6) {
+      return reply({ ok: false, error: 'Hãy đứng gần ghế hơn' });
+    }
+    const holder = npcRoom(s.room).seats.get(seat.holderKey);
+    if (holder && holder !== s.state.id) return reply({ ok: false, error: 'Ghế này đã có người ngồi' });
+    releasePlayerSeat(s);
+    npcRoom(s.room).seats.set(seat.holderKey, s.state.id);
+    s.state.seat = seat.id;
+    s.state.x = seat.x;
+    s.state.z = seat.z;
+    s.state.ry = seat.ry;
+    setSessionAnim(s, 'sit');
+    reply({ ok: true, seat: seat.id });
+  });
+
+  socket.on('seat:release', () => {
+    const s = me();
+    if (!s) return;
+    releasePlayerSeat(s);
+    if (s.state.anim === 'sit') setSessionAnim(s, 'idle');
+  });
+
   socket.on('move', async (m: { x: number; z: number; ry: number; anim: Anim }) => {
     const s = me();
     if (!s || s.boat || !Number.isFinite(m?.x) || !Number.isFinite(m?.z)) return;
+    // Người chơi rời ghế bằng cách đi lại: nhả ghế trước khi nhận vị trí mới.
+    if (s.state.seat && m.anim !== 'sit') releasePlayerSeat(s);
     const next = { x: Math.max(-MAP_HALF, Math.min(MAP_HALF, m.x)), z: Math.max(MAP_Z_MIN, Math.min(MAP_Z_MAX, m.z)) };
     clampCampus(next);
     if (expansionWaterBlocked(next.x, next.z)) return;
-    s.state.x = next.x;
-    s.state.z = next.z;
-    s.state.ry = Number.isFinite(m.ry) ? m.ry : 0;
+    if (s.state.seat && m.anim === 'sit') {
+      // Đang ngồi ghế: giữ nguyên toạ độ ghế do máy chủ quyết định. Khai báo 'sit' mà
+      // toạ độ lệch xa ghế là dấu hiệu đứng dậy — nhả ghế thay vì kéo người về chỗ cũ.
+      const seat = seatById(s.state.seat);
+      if (seat && Math.hypot(next.x - seat.x, next.z - seat.z) <= SEAT_REACH_M) {
+        s.state.x = seat.x; s.state.z = seat.z; s.state.ry = seat.ry;
+      } else {
+        releasePlayerSeat(s);
+        s.state.x = next.x; s.state.z = next.z;
+        s.state.ry = Number.isFinite(m.ry) ? m.ry : 0;
+      }
+    } else {
+      s.state.x = next.x;
+      s.state.z = next.z;
+      s.state.ry = Number.isFinite(m.ry) ? m.ry : 0;
+    }
     const now = Date.now();
     if (ANIMS.includes(m.anim)) setSessionAnim(s, m.anim, now);
     if (now - (lastVisitCheck.get(s) ?? 0) >= 1000) {
@@ -1669,6 +1740,7 @@ io.on('connection', (socket) => {
     if (!s) return;
     saveTombstone(s);
     if (s.boat) s.boat.rider = undefined;
+    releasePlayerSeat(s);
     sessions.delete(socket.id);
     io.to(s.room).emit('player:leave', socket.id);
     const departure = endMeditationSession(s);
@@ -1712,7 +1784,7 @@ setInterval(() => {
     }
     io.to(r.id).volatile.emit('state', {
       online: list.length,
-      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, y: p.y, ry: p.ry, anim: p.anim, act: p.npc ? (p.act ?? null) : (p.anim === 'chant' ? 'chant' : p.anim === 'sit' ? 'meditate' : null) })),
+      players: [...list.map(({ state: p }) => p), ...npcs].map((p) => ({ id: p.id, x: p.x, z: p.z, y: p.y, ry: p.ry, anim: p.anim, seat: p.seat ?? null, act: p.npc ? (p.act ?? null) : (p.anim === 'chant' ? 'chant' : p.anim === 'sit' && !p.seat ? 'meditate' : null) })),
       boats: riverFleetState(r.id, now),
       animals: getAnimalStates(r.id),
     });
@@ -1732,13 +1804,14 @@ setInterval(async () => {
   try {
     for (const r of ROOMS) {
       const players = roomSessions(r.id);
-      const sitting = players.filter((s) => s.state.anim === 'sit');
+      // Ghế thường (K1) không tính là thiền: cùng dáng ngồi nhưng không giây, không hào quang.
+      const sitting = players.filter(isMeditating);
       for (const s of players) {
-        void updateMeditationClock(s, Date.now(), s.state.anim === 'sit');
+        void updateMeditationClock(s, Date.now(), isMeditating(s));
       }
       for (const s of players) {
         if (!db.dbBackgroundAllowed()) break;
-        if (s.state.anim !== 'sit' && !s.med!.pendingSec) continue;
+        if (!isMeditating(s) && !s.med!.pendingSec) continue;
         await persistMeditation(s, s.med!, r.id);
         s.socket.emit('meditation:daily', meditationDailyInfo(s));
       }
@@ -1748,7 +1821,7 @@ setInterval(async () => {
       for (const s of sitting) {
         // Breaker: all players share one DB, so if it is down, skip the rest of this room.
         if (!db.dbBackgroundAllowed()) break;
-        if (sessions.get(s.socket.id) !== s || s.room !== r.id || s.state.anim !== 'sit') continue;
+        if (sessions.get(s.socket.id) !== s || s.room !== r.id || !isMeditating(s)) continue;
         try {
           await grantRewards(s, bonus ? 2 : 1, bonus ? 1 : 0);
           await questEvent(s, 'meditate');

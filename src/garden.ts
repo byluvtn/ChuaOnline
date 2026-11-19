@@ -26,7 +26,6 @@ export const GARDEN_PLACEMENTS: GardenPlacement[] = [
   p('birch_nt', -40, -22, 0.5, 9.7, null, 0.4),
   p('birch_nt', -42, -34, 3.0, 9.7, null, 0.4),
   p('bamboo_cluster', -41, -36.5, 1.1, 4.4, null, 0.4),
-  p('bamboo_cluster', 54.5, -20, 2.4, 4.4, null, 0.4),
   p('stone_lantern', -37.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', -30.5, -26, 0, 2.15, null, 0.3),
   p('stone_lantern', 45, -66, 0, 2.15, null, 0.3),

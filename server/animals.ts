@@ -3,7 +3,7 @@ import { routeFrom, nearestNode, ROAD_NODES, HOUSE_DOORS } from '../shared/roads
 import {
   HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT,
   NHA_TO_PLAT, TANG_XA_PLAT, NHA_KHACH_PLAT, AM_CO_PLAT, VUON_THAP_PLAT,
-  PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, BRIDGE, DUOC_SU, NGOC_HALL, expansionWaterBlocked,
+  PHONG_CD_PLAT, BAO_THAP, DECK, LAKE, inLake, DUOC_SU, NGOC_HALL, expansionWaterBlocked,
   ZAFU_RADIUS, ZAFU_SCALE,
 } from '../src/layout.js';
 
@@ -143,10 +143,9 @@ function keepOut(x: number, z: number): boolean {
   return false;
 }
 
-/** Walkable destination near p: re-roll jitter (max 10), fallback road node, then PLAZA. */
+/** L1: no red koi bridge remains; every point inside the lake (or any expansion water) is forbidden. */
 function inLakeOffBridge(x: number, z: number): boolean {
-  const onBridge = Math.abs(x - BRIDGE.x) < BRIDGE.hw && z >= BRIDGE.z0 && z <= BRIDGE.z1;
-  return expansionWaterBlocked(x, z) || (inLake(x, z) && !onBridge);
+  return expansionWaterBlocked(x, z) || inLake(x, z);
 }
 
 function segClipsLake(a: P, b: P): boolean {
@@ -155,37 +154,36 @@ function segClipsLake(a: P, b: P): boolean {
   for (let i = 1; i < n; i++) {
     const t = i / n;
     const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
-    // pad 0.3: trigger the detour before the leg actually touches the water;
-    // points on the bridge strip are allowed.
-    const onBridge = Math.abs(x - BRIDGE.x) < BRIDGE.hw && z >= BRIDGE.z0 && z <= BRIDGE.z1;
-    if (expansionWaterBlocked(x, z) || (!onBridge && inLake(x, z, 0.3))) return true;
+    // pad 0.3 so the detour starts before the leg touches the water.
+    if (expansionWaterBlocked(x, z) || inLake(x, z, 0.3)) return true;
   }
   return false;
 }
 
+/**
+ * L1: animals walk around the koi lake on the two paved bank lanes at x = ±(LAKE.a + 2.4),
+ * joined by a north link past the south end of the lake. No straight crossing at x = 0.
+ */
+const BANK_X = LAKE.a + 2.4;
+const BANK_Z0 = LAKE.z - LAKE.b - 1.4;
+const BANK_Z1 = LAKE.z + LAKE.b + 1.4;
+
 function lakeDetour(cur: P, tgt: P): P[] {
-  const north = (p: P) => p.z < LAKE.z;
-  const onBridgePt = (p: P) => Math.abs(p.x - BRIDGE.x) < BRIDGE.hw && p.z >= BRIDGE.z0 && p.z <= BRIDGE.z1;
-  // Beside the lake (mid-latitude, off the bridge): retreat straight north/south
-  // at fixed x to the bridge-end latitude — moving away from the lake centre at
-  // fixed x never enters the ellipse.
-  const beside = cur.z > LAKE.z - LAKE.b && cur.z < LAKE.z + LAKE.b && !onBridgePt(cur);
-  if (beside) {
-    const retreat: P = { x: cur.x, z: north(cur) ? BRIDGE.z0 : BRIDGE.z1 };
-    return [retreat, ...lakeDetour(retreat, tgt)];
+  const side = Math.sign(tgt.x - LAKE.x) || (Math.sign(cur.x - LAKE.x) || 1);
+  const sx = LAKE.x + side * BANK_X;
+  const north = (p: P) => p.z <= LAKE.z - LAKE.b;
+  const south = (p: P) => p.z >= LAKE.z + LAKE.b;
+  const onBank = (p: P) => Math.abs(Math.abs(p.x - LAKE.x) - BANK_X) < 1.2 && p.z >= BANK_Z0 && p.z <= BANK_Z1;
+  const out: P[] = [];
+  if (!onBank(cur)) {
+    // Leave the shore at the nearer end of the lake, then follow the bank lane.
+    if (cur.z > LAKE.z - LAKE.b && cur.z < LAKE.z + LAKE.b) out.push({ x: cur.x, z: north(cur) ? BANK_Z0 : BANK_Z1 });
+    out.push({ x: sx, z: north(cur) ? BANK_Z0 : BANK_Z1 });
   }
-  // Either endpoint near the bridge axis: cross on the bridge.
-  if (Math.abs(cur.x - BRIDGE.x) < 2 || Math.abs(tgt.x - BRIDGE.x) < 2) {
-    const enter: P = { x: BRIDGE.x, z: north(cur) ? BRIDGE.z0 : BRIDGE.z1 };
-    if (north(cur) === north(tgt)) return [enter];
-    const exit: P = { x: BRIDGE.x, z: north(tgt) ? BRIDGE.z0 : BRIDGE.z1 };
-    return [enter, exit];
-  }
-  // Off-axis on both ends: around the tip on tgt's side, at both latitudes.
-  const sideX = tgt.x < BRIDGE.x ? -(LAKE.a + 0.5) : LAKE.a + 0.5;
-  const corner: P = { x: sideX, z: north(cur) ? BRIDGE.z0 : BRIDGE.z1 };
-  if (north(cur) === north(tgt)) return [corner];
-  return [corner, { x: sideX, z: north(tgt) ? BRIDGE.z0 : BRIDGE.z1 }];
+  if (north(cur) !== north(tgt)) out.push({ x: sx, z: north(tgt) ? BANK_Z0 : BANK_Z1 });
+  if (!south(tgt) && !north(tgt)) out.push({ x: sx, z: tgt.z });
+  out.push({ x: tgt.x < LAKE.x + LAKE.a + 0.6 && tgt.x > LAKE.x - LAKE.a - 0.6 ? sx : tgt.x, z: tgt.z });
+  return out;
 }
 
 function walkerJitter(p: P, r: number): P {
@@ -336,7 +334,7 @@ function sanitizePath(from: P, path: P[]): P[] {
         const via = freeVia(hit.c, nx, nz, sgn);
         out.push(via); cur = via; continue;
       }
-      // 4) lake: cross only on the bridge, or around a tip — never through the water.
+      // 4) lake: L1 removed the bridge — go round on the paved bank lanes, never through the water.
       if (segClipsLake(cur, tgt)) {
         const vias = lakeDetour(cur, tgt);
         for (const v of vias) out.push(v);

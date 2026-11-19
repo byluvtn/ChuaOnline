@@ -46,7 +46,7 @@ function render(ctx: PanelCtx, headerBox: HTMLElement, titlesBox: HTMLElement) {
 
   titlesBox.append(h('div', { style: 'color:#8a5a1c;font-size:20px;font-weight:700;margin:16px 0 8px' }, cur ? titleName(cur) : 'Chưa có danh hiệu'));
   titlesBox.append(h('p', { style: 'font-size:12px;opacity:.8;line-height:1.5;margin:0 0 6px' }, 'Làm đủ điều kiện trên thẻ là nhận được. Ai làm đủ cũng nhận được, không giới hạn suất. Danh hiệu không bán. Có nhiều danh hiệu thì chọn mang một cái, đổi lúc nào cũng được.'));
-  titlesBox.append(h('div', { style: 'font-size:12px;opacity:.7;margin-bottom:8px' }, `Danh hiệu tu tập · Đã nhận ${earned.size}/24 danh hiệu · không giới hạn suất`));
+  titlesBox.append(h('div', { style: 'font-size:12px;opacity:.7;margin-bottom:8px' }, `Danh hiệu tu tập · Đã nhận ${earned.size}/${TITLES.length} danh hiệu · không giới hạn suất`));
 
   for (const r of TITLES) {
     const v = titleProgress(r, input);

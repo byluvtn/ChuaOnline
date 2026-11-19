@@ -9,10 +9,12 @@ export const duocSuStyle = {
   tile: material(0x784335, 0.9), gold: material(0xbe974b, 0.48, 0.35),
 };
 
-export function duocSuRoof(w: number, d: number, base: number, rise: number) {
+export function duocSuRoof(w: number, d: number, base: number, rise: number, finish?: { tile: THREE.Material; single?: boolean; bright?: boolean }) {
   const group = new THREE.Group();
   group.name = 'duoc-su-style-roof';
-  const { timber, darkwood, tile, gold } = duocSuStyle;
+  const { timber, darkwood } = duocSuStyle;
+  const tile = finish?.tile ?? duocSuStyle.tile;
+  const gold = finish?.bright ? gateGold : duocSuStyle.gold;
   const batches = new Map<THREE.Material, THREE.BufferGeometry[]>();
   const add = (m: THREE.Material, g: THREE.BufferGeometry) => {
     g.deleteAttribute('uv');
@@ -57,6 +59,12 @@ export function duocSuRoof(w: number, d: number, base: number, rise: number) {
         }
         tube(darkwood, p(0, side, u, -0.05), p(0, side, v, -0.05), 0.069 * size, 6);
       }
+      if (finish?.bright) {
+        const corner = p(0, side, 0, 0.025);
+        const kink = corner.clone().add(new THREE.Vector3(Math.sign(corner.x) * 0.19, 0.18, Math.sign(corner.z) * 0.15));
+        tube(gold, corner, kink, 0.095 * size, 8, 0.065 * size);
+        tube(gold, kink, kink.clone().add(new THREE.Vector3(Math.sign(corner.x) * 0.08, 0.22, Math.sign(corner.z) * 0.06)), 0.065 * size, 8, 0.012);
+      }
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); g.computeVertexNormals();
@@ -64,13 +72,15 @@ export function duocSuRoof(w: number, d: number, base: number, rise: number) {
     tube(gold, new THREE.Vector3(-width * 0.21, y + h + 0.064, 0), new THREE.Vector3(width * 0.21, y + h + 0.064, 0), 0.09 * size, 8);
   };
   hip(w, d, base, rise, 0.62 * size);
-  const upper = base + rise;
-  box(timber, w * 0.43, rise * 0.44, d * 0.40, 0, upper - rise * 0.04, 0);
-  for (const s of [-1, 1]) for (const i of [-2, -1, 0, 1, 2])
-    box(darkwood, w * 0.041, rise * 0.135, 0.055, i * w * 0.08, upper + rise * 0.09, s * (d * 0.2 + 0.02));
-  hip(w * 0.51, d * 0.51, upper + rise * 0.08, rise * 0.61, 0.5 * size);
-  const peak = upper + rise * 0.69;
-  tube(gold, new THREE.Vector3(0, peak, 0), new THREE.Vector3(0, peak + 0.85 * size, 0), 0.15 * size, 8, 0.025 * size);
+  if (!finish?.single) {
+    const upper = base + rise;
+    box(timber, w * 0.43, rise * 0.44, d * 0.40, 0, upper - rise * 0.04, 0);
+    for (const s of [-1, 1]) for (const i of [-2, -1, 0, 1, 2])
+      box(darkwood, w * 0.041, rise * 0.135, 0.055, i * w * 0.08, upper + rise * 0.09, s * (d * 0.2 + 0.02));
+    hip(w * 0.51, d * 0.51, upper + rise * 0.08, rise * 0.61, 0.5 * size);
+    const peak = upper + rise * 0.69;
+    tube(gold, new THREE.Vector3(0, peak, 0), new THREE.Vector3(0, peak + 0.85 * size, 0), 0.15 * size, 8, 0.025 * size);
+  }
   for (const [m, parts] of batches) {
     const mesh = new THREE.Mesh(mergeGeometries(parts)!, m);
     parts.forEach(g => g.dispose());
@@ -78,3 +88,6 @@ export function duocSuRoof(w: number, d: number, base: number, rise: number) {
   }
   return group;
 }
+
+const gateGold = new THREE.MeshStandardMaterial({ color: 0xffbe40, emissive: 0x6c3307, emissiveIntensity: 0.34, roughness: 0.48, metalness: 0.30 });
+export const gateTiles = new THREE.MeshStandardMaterial({ color: new THREE.Color(0.40, 0.11, 0.06), roughness: 0.9 });

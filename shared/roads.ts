@@ -60,7 +60,7 @@
 //     the koi lake.
 
 import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
-import { BAMBOO, DUOC_SU_DOOR, duocSuWorld, FLOWER_HILL, NGOC, NGOC_EAST_LANE, NORTH_WALK_Z, PHONG_CD_DOOR, RIVER_BRIDGES, RIVER_EAST_WALK_X, TINH_THAT, TINH_THAT_LANE_Z, WALL } from './campus';
+import { BAMBOO, DUOC_SU_DOOR, duocSuWorld, FLOWER_HILL, LOTUS_PAVILION, NGOC, NGOC_EAST_LANE, NORTH_WALK_Z, PHONG_CD_DOOR, RIVER_BRIDGES, RIVER_EAST_WALK_X, TINH_THAT, TINH_THAT_LANE_Z, WALL } from './campus';
 
 export type Pt = { x: number; z: number }
 
@@ -75,8 +75,14 @@ const [northRiverBridge, southRiverBridge] = RIVER_BRIDGES;
 export const ROAD_NODES: RoadNode[] = [
   // â”€â”€ Axis (koi bridge deck z 2â€¦26 is the only crossing on the axis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'gate', x: 0, z: 43.5 },
-  { id: 'bridgeS', x: 0, z: 26.5 }, // was (0, 30.2); lake now reaches z = 24
-  { id: 'bridgeN', x: 0, z: 1.5 }, // was (0, 13.8); lake now starts at z = 4
+  { id: 'bridgeS', x: 0, z: 26.5 }, // south landing of the gate approach on the bank ring
+  { id: 'bridgeN', x: 0, z: 1.5 }, // north bank of the koi lake on the cross path
+  { id: 'bridgeE', x: 15.9, z: 14 }, // east dry-bank lane round the koi lake (L1: no deck)
+  { id: 'bridgeW', x: -15.9, z: 14 }, // west dry-bank lane round the koi lake (L1: no deck)
+  { id: 'lakeNE', x: 15.9, z: 25.7 }, // bank-ring corners: north link joins the gate approach
+  { id: 'lakeSE', x: 15.9, z: 2.9 }, // bank-ring corners at the cross path
+  { id: 'lakeNW', x: -15.9, z: 25.7 },
+  { id: 'lakeSW', x: -15.9, z: 2.9 },
   { id: 'plaza', x: 0, z: 2 }, // was (0, 6) â€” axis / cross-path crossroads
   { id: 'axisMid', x: 4.4, z: -18 }, // east of the centered courtyard incense urn
   { id: 'axisTurn', x: 3, z: -16 },
@@ -148,12 +154,13 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'dienMauW', x: 33, z: 11 }, // paved lane x 27â€¦36 to the Äiá»‡n Máº«u forecourt
   { id: 'dienMauTurn', x: 35.5, z: 13.5 },
   { id: 'bodhiTree', x: 35.1, z: 18.9 },
-  // Báº£o ThÃ¡p (âˆ’34, âˆ’15): stop south of the steps, two cipher lanes east / west.
-  { id: 'baoThap', x: -34, z: -7.6 },
-  { id: 'baoE', x: -25, z: -11 },
-  { id: 'baoW', x: -41, z: -11 },
-  { id: 'baoSouthTurn', x: -38, z: -6.5 },
-  { id: 'baoEastTurn', x: -32, z: -9 },
+  // A3: Bảo Tháp (−46,−102) now stands north-west of Động Thiền. The spur leaves the north
+  // bypass at bypassW, runs down the paved lane x = −46 and stops at the south stair landing.
+  { id: 'baoThap', x: -46, z: -94 }, // stair landing in front of the tower (tower z −102 + 8)
+  { id: 'baoW', x: -46, z: -88 }, // approach lane from the bypass
+  { id: 'baoSouthTurn', x: -46, z: -99.4 }, // around the east flank of the octagonal plinth
+  { id: 'baoEastTurn', x: -37.6, z: -99.4 },
+  { id: 'baoE', x: -34.4, z: -95.5 }, // east bypass, links the cave path and the tower lane
   { id: 'zenGateTurn', x: -28, z: -17 },
   { id: 'zenSouthTurn', x: -28.1, z: -15.25 },
   { id: 'phongCDDoor', ...PHONG_CD_DOOR },
@@ -224,15 +231,17 @@ export const ROAD_NODES: RoadNode[] = [
   { id: 'marketS9', x: 47, z: 58 },
   { id: 'marketS10', x: 52, z: 58 },
   // â”€â”€ WEST BRANCH: lotus lake â†’ vÆ°á»n rau â†’ TÄƒng XÃ¡ + tá»‹nh tháº¥t â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  { id: 'lotusBridgeW', x: -88, z: 2 },
-  { id: 'lotusBridgeS', x: -78, z: 2 },
-  { id: 'lotusBridgeE', x: -66, z: 2 },
-  { id: 'lotusPavE', x: -66, z: 8 }, // dry bank east of the lake, clear of the bridge rail
-  { id: 'lotusPavS', x: -70, z: 9.2 }, // south of the pavilion (its east rail ends at z 7.3)
-  { id: 'lotusPavilion', x: -70, z: 5.5 }, // inside the pavilion, between its four columns
-  { id: 'lotusNE', x: -66, z: -13 }, // dry east bank, north of the lake (lake ends z âˆ’9)
+  // A4: the lotus lake moved to (-78,-24); the old z=2 boardwalk is now ordinary paving.
+  // Node ids stay stable for the NPC routes; the "bridge" nodes are now dry bank stops.
+  { id: 'lotusBridgeW', x: -88, z: 2 }, // west-gate path, dry ground
+  { id: 'lotusBridgeS', x: -78, z: -14.5 }, // south shore of the relocated lake
+  { id: 'lotusBridgeE', x: -66, z: 2 }, // east end of the old boardwalk, still dry
+  { id: 'lotusPavE', x: -66, z: -12.8 }, // east bank, level with the pavilion
+  { id: 'lotusPavS', x: -70, z: -16.6 }, // pavilion south approach
+  { id: 'lotusPavilion', x: LOTUS_PAVILION.x, z: LOTUS_PAVILION.z }, // inside the pavilion
+  { id: 'lotusNE', x: -65, z: -24 }, // A4: dry east bank of the moved lake
   { id: 'westRingN', x: -59, z: -20 }, // garden ring, north end
-  { id: 'farmGate', x: -64, z: -42 }, // the fence's only gap (east side, z âˆ’44â€¦âˆ’40)
+  { id: 'farmGate', x: -64, z: -42 }, // the fence's only gap (east side, z -44..-40)
   { id: 'farm', x: -76, z: -44.2 }, // inside the vÆ°á»n rau, clear of the vegetable beds
   { id: 'tangXaJct', x: -64, z: -69.5 }, // south lane node in front of TÄƒng XÃ¡ (clear of its SE corner post at -59,-71.5 r1.14)
   { id: 'tangxaMid', x: -59, z: -59.5 }, // west of the Viá»‡n KhÃ¡ch TÄƒng fence (x âˆ’58)
@@ -298,22 +307,29 @@ export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
 
 export const ROAD_EDGES: [string, string][] = [
   // â”€â”€ Axis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['gate', 'bridgeS'], ['bridgeS', 'bridgeN'], ['bridgeN', 'plaza'],
+  ['gate', 'bridgeS'],
+  // L1: no red bridge. The axis crosses the lake on two dry bank lanes joined by a north link.
+  ['bridgeS', 'lakeNE'], ['lakeNE', 'lakeNW'], ['lakeNW', 'lakeSW'], ['lakeSW', 'bridgeN'],
+  ['lakeNE', 'lakeSE'], ['lakeSE', 'bridgeN'],
+  ['lakeSE', 'bridgeE'], ['bridgeE', 'lakeNE'],
+  ['lakeSW', 'bridgeW'], ['bridgeW', 'lakeNW'], ['bridgeN', 'plaza'],
   ['plaza', 'axisTurn'], ['axisTurn', 'axisMid'], ['axisMid', 'hallFront'], ['hallFront', 'hallIn'],
   ['plaza', 'courtEastEntry'], ['courtEastEntry', 'courtEastFront'], ['courtEastFront', 'hallFront'],
   ['plaza', 'pillars'],
   // â”€â”€ Cross path z = 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['plaza', 'pathW1'], ['pathW1', 'pathW2'], ['pathW2', 'pathW3'], ['pathW3', 'pathW4'], ['pathW4', 'lotusBridgeE'],
   ['plaza', 'pathE1'], ['pathE1', 'pathE2'], ['pathE2', 'pathE3'], ['pathE3', 'pathE4'], ['pathE4', 'riverBankW'],
-  ['sideGateW', 'lotusBridgeW'], ['lotusBridgeW', 'lotusBridgeS'], ['lotusBridgeS', 'lotusBridgeE'],
+  ['sideGateW', 'lotusBridgeW'], ['lotusBridgeW', 'plaza'], // A4: west-gate walk, no lake crossing
+  ['lotusBridgeS', 'lotusBridgeW'], ['lotusBridgeS', 'lotusBridgeE'], // both banks of the moved lake
+  ['lotusBridgeS', 'lotusPavS'],
   // â”€â”€ Hall / corridors / stair â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'], ['corrW', 'corrWMid'], ['corrWMid', 'westMid'], ['corrW2', 'zenSouthTurn'], ['zenSouthTurn', 'zenGateTurn'],
+  ['hallFront', 'hallWestWp'], ['hallWestWp', 'corrW'],   ['corrW', 'corrWMid'], ['corrWMid', 'westMid'], ['corrW2', 'zenSouthTurn'], ['zenSouthTurn', 'zenGateTurn'], ['zenGateTurn', 'zenIn'],
   ['hallFront', 'hallSE'], ['hallSE', 'eastMid'],
   ['pathE2', 'hallEastWp'],
   ['hallIn', 'hallAisleE'], ['hallAisleE', 'hallAisleN'], ['hallAisleN', 'stairApp'], ['stairApp', 'stairTop'], ['stairTop', 'tamThe'],
   // â”€â”€ Towers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['pathE2', 'bellW'], ['bellW', 'bellTower'], ['hallEastWp', 'bellW'],
-  ['drumTower', 'drumTowerW'], ['drumTower', 'zenOut'], ['zenOut', 'pathW2'],
+  ['drumTower', 'drumTowerW'], ['drumNorthTurn', 'drumTowerW'], ['drumTower', 'zenOut'], ['zenOut', 'pathW2'],
   // â”€â”€ Rear road z = âˆ’46 and bypasses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['westMid', 'westNorth'], ['westNorth', 'rearKT'], ['rearKT', 'rearW'], ['rearW', 'westRingN'],
   ['eastMid', 'eastNorth'], ['eastNorth', 'rearTO'], ['rearTO', 'rearE'], ['rearE', 'riverNorthW'],
@@ -336,8 +352,10 @@ export const ROAD_EDGES: [string, string][] = [
   ['gate', 'denApproach'], ['denApproach', 'denTrinh'], ['denTrinh', 'denWestTurn'], ['denWestTurn', 'denN'], ['denN', 'denE'], ['denE', 'denEastTurn'], ['denEastTurn', 'denE2'],
   ['denE2', 'laneSE1'], ['laneSE1', 'gateEastTurn'], ['gateEastTurn', 'gate'],
   // â”€â”€ Báº£o ThÃ¡p (circled, never crossed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  ['baoThap', 'baoEastTurn'], ['baoEastTurn', 'baoE'], ['baoE', 'zenGateTurn'], ['zenGateTurn', 'zenIn'],
-  ['baoThap', 'baoSouthTurn'], ['baoSouthTurn', 'baoW'], ['baoW', 'drumNorthTurn'], ['drumNorthTurn', 'drumTowerW'],
+  // A3: Bảo Tháp north-west of Động Thiền; no lane through the drum tower or Thiền Đường.
+  ['bypassW', 'baoW'], ['baoW', 'baoThap'],
+  ['baoThap', 'baoSouthTurn'], ['baoSouthTurn', 'baoEastTurn'],
+  ['baoEastTurn', 'baoE'], ['baoE', 'caveBypass'],
   // â”€â”€ Zen garden â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['zenIn', 'zenGarden'], ['zenGarden', 'thienDuong'], ['zenIn', 'zenW'], ['zenW', 'zenE2'],
   ['zenE2', 'zenE1'], ['zenE1', 'hallFront'],
@@ -358,7 +376,7 @@ export const ROAD_EDGES: [string, string][] = [
   // â”€â”€ WEST BRANCH: lotus lake, pavilion, farm, TÄƒng XÃ¡ + tá»‹nh tháº¥t â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Boardwalk spur: east end of the deck â†’ dry bank â†’ south of the pavilion â†’ inside.
   ['lotusBridgeE', 'lotusPavE'], ['lotusPavE', 'lotusPavS'], ['lotusPavS', 'lotusPavilion'],
-  ['lotusBridgeE', 'lotusNE'], ['lotusNE', 'westRingN'],
+  ['lotusPavE', 'lotusNE'], ['lotusNE', 'westRingN'], // east bank lane round the moved lake
   ['westRingN', 'rearW'],
   ['rearW', 'farmGate'], ['farmGate', 'farm'], // fence gate only, never over the farm fence
   ['rearW', 'tangxaMid'], ['tangxaMid', 'tangXaApproach'],
