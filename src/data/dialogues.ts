@@ -50,11 +50,6 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
         reminder: 'Chùa Ngọc ở trên đồi phía Bắc, sau Điện Tam Thế. Con đi thong thả thôi.',
         done: 'Con đã tới đỉnh đồi rồi. Ngồi nghỉ một chút, giữ tâm an nhé.',
       },
-      nq_duocsu_prayer: {
-        offer: 'Con sang Điện Dược Sư phía Đông, dâng một ngọn đèn cầu bình an rồi về gặp thầy.',
-        reminder: 'Đến Điện Dược Sư, con bấm Dâng đèn cầu an trước bàn thờ nhé.',
-        done: 'Ngọn đèn đã được dâng lên. Thầy chúc con và gia đình bình an.',
-      },
       nq_bow_tamthe: {
         offer: 'Con đảnh lễ Tam Thế ba lạy giúp thầy nhé, lòng có thành thì Phật mới chứng.',
         reminder: 'Ba lạy trước điện Tam Thế con đã lạy xong chưa? Xong rồi quay lại gặp thầy nhé.',
@@ -951,6 +946,136 @@ export const DIALOGUES: Record<string, NpcDialogue> = {
     ],
     farewell: [
       'Thí chủ chăm cây vui nhé, nhớ tưới mỗi ngày.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc39 — Sư Cô Trông Điện Dược Sư. Trông Điện Dược Sư. Giao nq_duocsu_sweep, nq_duocsu_prayer.
+  npc39: {
+    name: 'Sư Cô Trông Điện Dược Sư',
+    role: 'Người trông Điện Dược Sư',
+    greetings: [
+      { time: 'morning', text: 'Mô Phật. Sáng nay thí chủ lễ Phật Dược Sư cầu bình an à?' },
+      { time: 'noon', text: 'Mô Phật. Trưa rồi, thí chủ vào điện ngồi một lát cho mát nhé.' },
+      { time: 'afternoon', text: 'Mô Phật. Chiều mát, thí chủ dâng đèn cầu an rồi hẵng về.' },
+      { time: 'evening', text: 'Mô Phật. Tối rồi, thí chủ lễ Phật xong thì về cẩn thận nhé.' },
+    ],
+    questOffer: 'Điện Dược Sư cần người trông nom mỗi ngày. Thí chủ giúp sư cô quét điện với dâng đèn cầu an nhé.',
+    questReminder: 'Thí chủ làm xong việc trong điện chưa? Quét điện với dâng đèn xong rồi quay lại gặp sư cô nhé.',
+    questDone: 'Điện đã sạch sẽ, đèn đã sáng. Sư cô cảm ơn thí chủ nhé.',
+    questLines: {
+      nq_duocsu_sweep: {
+        offer: 'Thí chủ quét giúp sư cô trong điện nhé, quét 3 chỗ: giữa điện với hai bên bàn thờ.',
+        reminder: 'Thí chủ quét đủ 3 chỗ trong điện chưa? Quét xong rồi quay lại gặp sư cô nhé.',
+        done: 'Điện sạch sẽ rồi, thí chủ quét cẩn thận lắm.',
+      },
+      nq_duocsu_prayer: {
+        offer: 'Thí chủ dâng một ngọn đèn cầu bình an ở Điện Dược Sư giúp sư cô nhé.',
+        reminder: 'Thí chủ dâng đèn chưa? Đến Điện Dược Sư, bấm Dâng đèn cầu an trước bàn thờ nhé.',
+        done: 'Ngọn đèn đã được dâng lên. Sư cô chúc thí chủ và gia đình bình an.',
+      },
+    },
+    smallTalk: [
+      'Điện Dược Sư thờ Phật Dược Sư, cầu cho người bệnh mau khỏe, người nhà bình an.',
+      'Mỗi sáng sư cô lau bàn thờ với thắp hương trước, rồi mới mở cửa điện đón khách.',
+      'Thí chủ ngồi thiền trong điện một lát cũng tốt, lòng tĩnh thì bệnh cũng nhẹ đi.',
+    ],
+    farewell: [
+      'Mô Phật, chúc thí chủ thân tâm an lạc.',
+      'Thí chủ đi thong thả nhé.',
+    ],
+  },
+
+  // npc40 — Tiểu Trồng Rau. Trồng rau vườn chùa. Giao nq_farm_water, nq_farm_harvest.
+  npc40: {
+    name: 'Tiểu Trồng Rau',
+    role: 'Người trồng rau vườn chùa',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng nay tiểu vừa tưới hết luống rau rồi, rau đang lớn tốt lắm.' },
+      { time: 'noon', text: 'Trưa nắng rồi, thí chủ nhớ tưới rau hôm nay chưa? Rau khát là héo đấy.' },
+      { time: 'afternoon', text: 'Chiều mát, thí chủ ra vườn rau phụ tiểu một tay đi, rau lớn nhanh lắm.' },
+      { time: 'evening', text: 'Chào thí chủ, tối rồi, tiểu tưới lần cuối cho rau rồi mới nghỉ, thí chủ cũng nhớ tưới rau mình trồng nhé.' },
+    ],
+    questOffer: 'Vườn rau chùa có 4 luống mới, thí chủ giúp tiểu tưới rau với thu hoạch nhé.',
+    questReminder: 'Thí chủ làm xong việc vườn rau chưa? Tưới rau với thu hoạch xong rồi quay lại gặp tiểu nhé.',
+    questDone: 'Rau được chăm tốt lắm, tiểu cảm ơn thí chủ nhé.',
+    questLines: {
+      nq_farm_water: {
+        offer: 'Thí chủ tưới giúp tiểu 3 luống rau nhé, luống nào chưa tưới hôm nay thì tưới luôn.',
+        reminder: 'Hôm nay thí chủ tưới đủ 3 luống rau chưa? Rau khát nước là dừng lớn đấy.',
+        done: 'Rau được tưới no nước rồi, mai lại tưới tiếp nhé.',
+      },
+      nq_farm_harvest: {
+        offer: 'Luống rau nào lớn hẳn thì thí chủ thu hoạch giúp tiểu nhé, đứng gần luống rau lớn rồi thu hoạch.',
+        reminder: 'Thí chủ thu hoạch rau chưa? Luống rau lớn hẳn đứng gần là thu hoạch được.',
+        done: 'Thu hoạch tốt lắm, vừa có công đức vừa có rau mới để gieo tiếp.',
+      },
+    },
+    smallTalk: [
+      'Rau vườn chùa trồng để nấu cơm chay cho chùa, thí chủ ăn cơm chùa là ăn rau tiểu trồng đấy.',
+      'Mỗi luống rau tưới đủ 3 lần là lớn hẳn, giống như cây ở Vườn Tây vậy.',
+      'Thu hoạch rau lớn được công đức với thêm hạt giống để gieo tiếp.',
+    ],
+    farewell: [
+      'Thí chủ chăm rau vui nhé, nhớ tưới mỗi ngày.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc41 — Tiểu Quét Thang Ngọc. Quét thang lên Chùa Ngọc. Giao nq_ngoc_sweep.
+  npc41: {
+    name: 'Tiểu Quét Thang Ngọc',
+    role: 'Người quét thang Chùa Ngọc',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng nay tiểu vừa quét hết thang rồi, 299 bậc sạch bong.' },
+      { time: 'noon', text: 'Trưa nắng rồi, thí chủ leo thang nhớ đi thong thả, bậc cao thì nghỉ một lát.' },
+      { time: 'afternoon', text: 'Chiều mát, thí chủ leo lên Chùa Ngọc ngắm cảnh đi, đẹp lắm.' },
+      { time: 'evening', text: 'Chào thí chủ, tối rồi, tiểu quét lần cuối rồi mới xuống núi, thí chủ leo thang nhớ cẩn thận nhé.' },
+    ],
+    questOffer: 'Thí chủ quét giúp tiểu 3 đoạn thang lên Chùa Ngọc nhé: chân thang, giữa thang với gần đỉnh.',
+    questReminder: 'Thí chủ quét đủ 3 đoạn thang chưa? Quét xong rồi quay lại gặp tiểu nhé.',
+    questDone: 'Thang sạch rồi, thí chủ quét cẩn thận lắm, mai lại giúp tiểu nhé.',
+    smallTalk: [
+      'Thang lên Chùa Ngọc có 299 bậc, leo hết là tới đỉnh đồi, đứng trên đó nhìn xuống thấy cả chùa.',
+      'Tiểu quét thang mỗi ngày hai lần, sáng một lần chiều một lần, lá rụng là quét ngay.',
+    ],
+    farewell: [
+      'Thí chủ leo thang vui nhé, đi thong thả thôi.',
+      'Mô Phật, chúc thí chủ an lành.',
+    ],
+  },
+
+  // npc42 — Cô Trông Đình Sen. Trông đình ngắm sen. Giao nq_lotus_lantern, nq_lotus_sweep.
+  npc42: {
+    name: 'Cô Trông Đình Sen',
+    role: 'Người trông đình ngắm sen',
+    greetings: [
+      { time: 'morning', text: 'Chào thí chủ, sáng nay sen nở đẹp lắm, thí chủ ra đình ngắm sen đi.' },
+      { time: 'noon', text: 'Trưa nắng rồi, thí chủ vào đình ngồi nghỉ một lát cho mát nhé.' },
+      { time: 'afternoon', text: 'Chiều mát, sen thơm lắm, thí chủ thả đèn ở cầu sen rồi hẵng về.' },
+      { time: 'evening', text: 'Chào thí chủ, tối rồi, sen khép cánh rồi, thí chủ ngắm sen xong thì về cẩn thận nhé.' },
+    ],
+    questOffer: 'Đình sen với cầu sen cần người trông nom mỗi ngày. Thí chủ giúp cô thả đèn với quét đình nhé.',
+    questReminder: 'Thí chủ làm xong việc ở đình sen chưa? Thả đèn với quét đình xong rồi quay lại gặp cô nhé.',
+    questDone: 'Đình đã sạch, đèn đã thả. Cô cảm ơn thí chủ nhé.',
+    questLines: {
+      nq_lotus_lantern: {
+        offer: 'Thí chủ thả một đèn hoa đăng ở cầu sen giúp cô nhé, đứng trên cầu ván rồi thả đèn.',
+        reminder: 'Thí chủ thả đèn chưa? Ra cầu sen thả một đèn hoa đăng giúp cô nhé.',
+        done: 'Đèn đã thả xuống hồ sen rồi, cô chúc thí chủ an lành.',
+      },
+      nq_lotus_sweep: {
+        offer: 'Thí chủ quét giúp cô đình sen với cầu sen nhé, quét 2 chỗ là xong.',
+        reminder: 'Thí chủ quét đủ đình với cầu chưa? Quét xong rồi quay lại gặp cô nhé.',
+        done: 'Đình với cầu sạch sẽ rồi, thí chủ quét cẩn thận lắm.',
+      },
+    },
+    smallTalk: [
+      'Hồ sen Tây trồng sen ta, sáng nở thơm cả một góc chùa, chiều khép cánh lại.',
+      'Đình ngắm sen là chỗ nghỉ chân của khách đi dạo quanh hồ, thí chủ ngồi nghỉ rồi hẵng đi tiếp.',
+    ],
+    farewell: [
+      'Thí chủ ngắm sen vui nhé, nhớ ghé lại.',
       'Mô Phật, chúc thí chủ an lành.',
     ],
   },

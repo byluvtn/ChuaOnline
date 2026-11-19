@@ -5,9 +5,19 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 139;
+export const LATEST_NEWS_ID = 140;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Bốn người phụ trách khu mới: Điện Dược Sư, vườn rau, thang Ngọc, đình sen',
+    date: '2026-11-18',
+    items: [
+      'Điện Dược Sư có Sư Cô trông điện, vườn rau có Tiểu Trồng Rau, thang Chùa Ngọc có Tiểu Quét Thang, đình sen có Cô Trông Đình — bốn vị đều đứng thường trực tại khu của mình.',
+      'Mỗi vị giao việc hằng ngày tại chỗ: quét điện, tưới rau, thu hoạch rau, quét thang Ngọc, thả đèn cầu sen, quét đình sen.',
+      'Làm đủ việc mới mỗi ngày được thêm 115 xu và 70 công đức.',
+      'NPC trong chùa nay phân tán hơn: khách ít dồn ở trục giữa, khu mới lúc nào cũng có người qua lại.',
+    ],
+  },
   {
     title: 'Hào quang thiền định: thiền 10 phút có hào quang, 20 phút có hào quang lớn',
     date: '2026-11-18',

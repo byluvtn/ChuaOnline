@@ -333,7 +333,16 @@ export const NPC_QUESTS: QuestDef[] = [
   { id: 'nq_ngoc_pilgrimage', label: 'Hành hương lên Chùa Ngọc', event: 'visit', target: 1, coins: 30, merit: 20, giver: 'npc1', zone: { x: NGOC.x, z: NGOC.z, r: 2 } },
   { id: 'nq_bamboo_walk', label: 'Thiền hành trong rừng trúc', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 80, z: -8, r: 3 } },
   { id: 'nq_river_walk', label: 'Thiền hành bên sông Đông', event: 'visit', target: 1, coins: 15, merit: 10, giver: 'npc7', zone: { x: 69, z: -20, r: 2 } },
-  { id: 'nq_duocsu_prayer', label: 'Dâng đèn cầu an tại Điện Dược Sư', event: 'lantern', target: 1, coins: 20, merit: 15, giver: 'npc1', zone: { x: 77, z: -38, r: 6 } },
+  { id: 'nq_duocsu_prayer', label: 'Dâng đèn cầu an tại Điện Dược Sư', event: 'lantern', target: 1, coins: 20, merit: 15, giver: 'npc39', zone: { x: 77, z: -38, r: 6 } },
+  { id: 'nq_duocsu_sweep', label: 'Quét điện Dược Sư', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc39',
+    points: [{ x: 75, z: -35.5 }, { x: 77, z: -36.5 }, { x: 79, z: -35.5 }] },
+  { id: 'nq_farm_water', label: 'Tưới rau vườn chùa', event: 'water', target: 3, coins: 15, merit: 8, giver: 'npc40' },
+  { id: 'nq_farm_harvest', label: 'Thu hoạch rau vườn chùa', event: 'harvest', target: 1, coins: 25, merit: 12, giver: 'npc40' },
+  { id: 'nq_ngoc_sweep', label: 'Quét thang lên Chùa Ngọc', event: 'sweep', target: 3, coins: 20, merit: 15, giver: 'npc41',
+    points: [{ x: 0, z: -92 }, { x: 0, z: -103 }, { x: 0, z: -114 }] },
+  { id: 'nq_lotus_lantern', label: 'Thả đèn ở cầu sen', event: 'lantern', target: 1, coins: 20, merit: 10, giver: 'npc42', zone: { x: -78, z: 2, r: 3 } },
+  { id: 'nq_lotus_sweep', label: 'Quét đình ngắm sen', event: 'sweep', target: 2, coins: 15, merit: 10, giver: 'npc42',
+    points: [{ x: -70, z: 5.5 }, { x: -78, z: 2 }] },
 ];
 
 /** Kho việc Sư Ông (10 việc): mỗi ngày VN hiện đúng 3 việc liên tiếp, cửa sổ trượt
@@ -376,12 +385,14 @@ export function gardenSeedOf(item: string): { species: GardenSpecies; quality: G
   return null;
 }
 
-/** 8 luống Vườn Tây: hàng A z 16.1 (id 1–4), hàng B z 20.1 (id 5–8). */
+/** 8 luống Vườn Tây: hàng A z 16.1 (id 1–4), hàng B z 20.1 (id 5–8); thêm 4 luống vườn rau (id 9–12). */
 export const GARDEN_PLOTS: { id: number; x: number; z: number }[] = [
   { id: 1, x: -53.6, z: 16.1 }, { id: 2, x: -50.6, z: 16.1 },
   { id: 3, x: -47.6, z: 16.1 }, { id: 4, x: -44.6, z: 16.1 },
   { id: 5, x: -53.6, z: 20.1 }, { id: 6, x: -50.6, z: 20.1 },
   { id: 7, x: -47.6, z: 20.1 }, { id: 8, x: -44.6, z: 20.1 },
+  { id: 9, x: -72, z: -45 }, { id: 10, x: -72, z: -41 },
+  { id: 11, x: -68, z: -45 }, { id: 12, x: -68, z: -41 },
 ];
 
 /** Một giai đoạn lớn mất 15 phút (hạt tốt 10 phút) và cần 1 lần tưới để sang giai đoạn tiếp; quá 24 h không tưới → héo; quá 48 h → cây biến mất. */
