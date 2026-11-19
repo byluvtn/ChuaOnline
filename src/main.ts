@@ -266,7 +266,7 @@ const resize = () => {
 addEventListener('resize', resize);
 resize();
 
-interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; act?: NpcAct | null; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number }
+interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; act?: NpcAct | null; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number; labelNear?: boolean }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
 let emitBellRing: (() => void) | undefined;
@@ -538,7 +538,7 @@ onSettings((st, key) => {
     }
     resize();
   }
-  if (key === null || key === 'showNames') remotes.forEach((r) => (r.char.label.visible = st.showNames));
+  if (key === null || key === 'showNames') remotes.forEach((r) => { if (!r.data.npc) r.char.label.visible = st.showNames; });
   if (key === null || key === 'showNpcs') remotes.forEach((r) => { if (r.data.npc) r.char.root.visible = st.showNpcs; });
   if (key === null || key === 'showCouplets') { if (!st.showCouplets) hideCouplet(); else curZone = null; }
   if (key === 'showTips' || key === null) $('marquee').style.display = st.showTips ? '' : 'none';
@@ -2775,6 +2775,14 @@ function loop(now: number = performance.now()) {
       r.char.root.position.y = r.target.y;
       if (!r.data.npc && now > r.actionUntil && /^(bow|incense|chant|lantern|palms|beads)$/.test(r.anim)) r.anim = 'idle';
       if (r.data.npc) {
+        // Tên NPC chỉ hiện khi người chơi đến gần (hiện ≤12 m, ẩn ≥15 m — hysteresis chống nhấp nháy khi NPC đi lại)
+        if (me) {
+          const d2 = r.char.root.position.distanceToSquared(me.char.root.position);
+          if (r.labelNear === undefined) r.labelNear = d2 <= NPC_LABEL_SHOW * NPC_LABEL_SHOW;
+          else if (!r.labelNear && d2 <= NPC_LABEL_SHOW * NPC_LABEL_SHOW) r.labelNear = true;
+          else if (r.labelNear && d2 >= NPC_LABEL_HIDE * NPC_LABEL_HIDE) r.labelNear = false;
+          r.char.label.visible = settings.showNames && r.labelNear;
+        }
         // NPC đi bộ nhưng vị trí đứng yên quá 0.5 giây thì ép về idle để không trượt chân
         if (Math.hypot(r.char.root.position.x - px, r.char.root.position.z - pz) > 0.004 || r.lastMoveAt === undefined) r.lastMoveAt = now;
         if (r.anim === 'walk' && now - r.lastMoveAt > 500) r.anim = 'idle';
@@ -2832,6 +2840,8 @@ function loop(now: number = performance.now()) {
 }
 let lastDrum = 42;
 const LOD_DIST = 30;
+// Tên NPC chỉ hiện khi đến gần: hiện trong 12 m, ẩn ngoài 15 m.
+const NPC_LABEL_SHOW = 12, NPC_LABEL_HIDE = 15;
 const focusIdle = new THREE.Vector3(0, 0, 28);
 let loadedHidden = false;
 requestAnimationFrame(loop);
