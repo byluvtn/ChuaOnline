@@ -62,6 +62,7 @@ function mapGarmentPivots(name: string, g: THREE.Group): Omit<GarmentState, 'gro
 export interface Character {
   root: THREE.Group;
   body: THREE.Group;
+  robeGroup: THREE.Group;
   armL: THREE.Group;
   armR: THREE.Group;
   legL: THREE.Mesh;
@@ -733,7 +734,7 @@ export function buildCharacter(outfit: Outfit, color: string, name: string, opts
   root.add(B.sprite);
 
   const c: Character = {
-    root, body, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, holdBucket, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, shinL, shinR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
+    root, body, robeGroup, armL, armR, foreL: aL.fore, foreR: aR.fore, hold, holdInc, holdLotus, holdBroom, holdBucket, role: opts?.role, poseW: 0, poseKind: 'abbot', prayW: 0, lastT: 0, face, faceOpen, faceShut, blinkNext: 0, blinkUntil: 0, fade: null, animCalls: 0, legL, legR, shinL, shinR, lap, curAnim: 'idle', t0: 0, gait: -1, label: L.sprite, bubble: B.sprite, bubbleUntil: 0,
     setLabel, setAccessory, setHalo,
     garment: garmentState,
     say(text: string) {
@@ -855,11 +856,13 @@ const BEARD_WORLD_TILT = 0.36;
 
 /** Procedural animation. t = seconds. */
 export function animateCharacter(c: Character, anim: Anim | string, t: number) {
+  const aboard = anim === 'boatSeat';
   c.animCalls++;
   if (c.bubble.visible && performance.now() > c.bubbleUntil) c.bubble.visible = false;
   if (anim !== c.curAnim) {
     // the objects still hold last frame's final pose: snapshot it as the pose to fade out of
-    c.fade = {
+    // The root already moved to the cushion; don't carry the standing pose into the skiff.
+    c.fade = aboard ? null : {
       t0: t,
       arms: [c.armL.quaternion.clone(), c.armR.quaternion.clone()],
       fores: [c.foreL.quaternion.clone(), c.foreR.quaternion.clone()],
@@ -869,6 +872,9 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
       bodyPos: c.body.position.clone(),
       bodyRot: c.body.quaternion.clone(),
     };
+    c.robeGroup.scale.y = aboard ? .84 : 1;
+    c.robeGroup.position.y = aboard ? .165 : 0;
+    c.lap.position.y = aboard ? .35 : .3;
     c.curAnim = anim; c.t0 = t;
   }
   const dt = Math.max(0, Math.min(0.1, t - c.lastT)); c.lastT = t;
@@ -889,7 +895,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     if (faceMat.map !== c.faceShut) { faceMat.map = c.faceShut; }
   }
   const walk = anim === 'walk' || anim === 'run' || anim === 'carry';
-  const clip = CLIPS[anim === 'carry' ? 'walk' : anim];
+  const clip = CLIPS[anim === 'carry' ? 'walk' : aboard ? 'sit' : anim];
   const amp = walk ? clip.amp : 0;
   const gaitPh = walk && c.gait >= 0 ? c.gait % 1 : clip ? phaseOf(clip, t - c.t0) : 0;
   const cycle = Math.sin(TAU * gaitPh); // -1..1 over one gait cycle
@@ -917,7 +923,7 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
   c.body.rotation.set(0, 0, walk ? cycle * 0.04 : 0);
   let lift = 0; // 0 = palms at chest, 1 = palms in the lowered bow pose
 
-  if (anim === 'sit') {
+  if (anim === 'sit' || aboard) {
     // lotus position (káº¿t giÃ ): body lowered onto a flared lap, hands in dhyana mudra, slow breathing
     const br = cycle * 0.012;
     c.body.position.y = -0.3 + br;
@@ -935,6 +941,14 @@ export function animateCharacter(c: Character, anim: Anim | string, t: number) {
     c.armR.rotation.set(-0.75, 0, -0.62);
     c.foreL.rotation.set(-0.95, 0, 0);
     c.foreR.rotation.set(-0.95, 0, 0);
+    if (aboard) {
+      // Low cross-legged seat, with hands resting apart rather than in a meditation mudra.
+      c.body.position.y -= .015;
+      c.armL.rotation.set(-1.05, 0, .06);
+      c.armR.rotation.set(-1.05, 0, -.06);
+      c.foreL.rotation.set(.3, 0, 0);
+      c.foreR.rotation.set(.3, 0, 0);
+    }
   } else if (anim === 'lie') {
     // sleeping on the tang-xa bed: flat on the back, head toward local -Z (west once the server sets ry = +PI/2), slow breathing
     const br = cycle * 0.012;

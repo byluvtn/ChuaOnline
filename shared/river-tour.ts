@@ -7,7 +7,8 @@ export function riverDockY(x: number, z: number) {
   if (x < RIVER_DOCK.edge - 1.705 || x > RIVER_DOCK.edge + 0.745 || Math.abs(z - RIVER_DOCK.z) > 2.305) return 0;
   return RIVER_DOCK.y;
 }
-export const RIVER_BOAT_SEAT_Y = 0.39;
+export const RIVER_BOAT_SEAT_Y = 0.225;
+export const RIVER_BOAT_SEAT_Z = 0.55;
 export const RIVER_BOAT_HEIGHT = 1.8;
 
 type Point = { x: number; z: number };

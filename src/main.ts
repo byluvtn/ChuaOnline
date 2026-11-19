@@ -1,7 +1,7 @@
 import './polyfill';
 import * as THREE from 'three';
 import { NGOC_HALL, NGOC_TERRACE } from '../shared/campus';
-import { RIVER_BOAT_SEAT_Y, RIVER_DOCK } from '../shared/river-tour';
+import { RIVER_DOCK } from '../shared/river-tour';
 import { buildRiverBoat } from './river-boat';
 import { io, type Socket } from 'socket.io-client';
 import { api, clearToken, getToken, setToken } from './api';
@@ -2653,9 +2653,9 @@ function loop(now: number = performance.now()) {
   if (me && socket) {
     const root = me.char.root;
     if (boatRider === myId) {
-      root.position.set(boatPose.x, boatPose.y + RIVER_BOAT_SEAT_Y - .619, boatPose.z);
-      me.ry = boatPose.ry;
-      me.anim = 'bench';
+      root.position.copy(boatPose.seat);
+      me.ry = boatPose.rotation.y;
+      me.anim = 'idle';
       me.char.gait = -1;
       curSpeed = 0;
       if (me.act) { me.act = null; refreshLabel(me); }
@@ -2913,14 +2913,16 @@ function loop(now: number = performance.now()) {
         r.prevAnim = r.anim;
       }
     }
-    if (id === boatRider && id !== myId) {
-      r.char.root.position.set(boatPose.x, boatPose.y + RIVER_BOAT_SEAT_Y - .619, boatPose.z);
-      r.ry = boatPose.ry;
-      r.anim = 'bench';
-    }
+    const aboard = id === boatRider;
+    if (aboard) r.ry = boatPose.rotation.y;
     let d = r.ry - r.char.root.rotation.y;
     d = Math.atan2(Math.sin(d), Math.cos(d));
-    r.char.root.rotation.y += d * Math.min(1, dt * 12);
+    if (aboard) {
+      r.char.root.position.copy(boatPose.seat);
+      r.char.root.rotation.copy(boatPose.rotation);
+    } else {
+      r.char.root.rotation.set(0, r.char.root.rotation.y + d * Math.min(1, dt * 12), 0);
+    }
     if (r.data.npc && id !== myId) {
       // LOD: NPCs farther than 30 m only refresh their pose twice a second (position / rotation still lerp every frame);
       // a still, far NPC also stops recomputing its world matrix. An anim change or coming back within range updates at once.
@@ -2932,8 +2934,8 @@ function loop(now: number = performance.now()) {
       r.lodAt = t; r.lodAnim = r.anim;
     }
     if (!r.data.npc) r.char.setHalo(r.anim === 'sit' && hasGroupAura(id) ? 2 : id === myId ? myHalo : r.data.halo ?? 0);
-    animateCharacter(r.char, r.anim, t);
-    if (r.anim === 'sit') {
+    animateCharacter(r.char, aboard ? 'boatSeat' : r.anim, t);
+    if (!aboard && r.anim === 'sit') {
       const { x, z } = r.char.root.position;
       const seat = world.seats.find(s => s.sitY !== undefined && Math.abs(s.x - x) < 0.18 && Math.abs(s.z - z) < 0.18);
       if (seat?.sitY !== undefined) r.char.body.position.y += Math.max(0, seat.sitY - r.char.root.position.y);

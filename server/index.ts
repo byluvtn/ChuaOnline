@@ -24,7 +24,7 @@ import {
 } from '../shared/game.js';
 import type { BellHeard, FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
 import { clampCampus, expansionWaterBlocked, resolveExpansionWater } from '../shared/campus.js';
-import { RIVER_BOAT_SEAT_Y, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour.js';
+import { RIVER_BOAT_SEAT_Y, RIVER_BOAT_SEAT_Z, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour.js';
 import { bindRitualSocket, ritualOnJoin, startRitualLoops, type RitualEnv, type RtSession } from './rituals.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
@@ -553,7 +553,9 @@ function updateRiverPassenger(s: Session, now: number): void {
     s.socket.emit('river:arrive', { x, z });
     return;
   }
-  Object.assign(s.state, riverBoatAt(elapsed), { y: RIVER_BOAT_SEAT_Y, boatMs: elapsed });
+  const { x, z, ry } = riverBoatAt(elapsed);
+  Object.assign(s.state, { x: x + Math.sin(ry) * RIVER_BOAT_SEAT_Z, z: z + Math.cos(ry) * RIVER_BOAT_SEAT_Z,
+    ry, y: RIVER_BOAT_SEAT_Y, boatMs: elapsed });
 }
 
 async function requireAdmin(s: Session | undefined): Promise<boolean> {

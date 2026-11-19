@@ -8,7 +8,7 @@ import { NPC_QUESTS } from '../shared/game';
 import { createAnimals } from '../server/animals';
 import { createNpcRoom, tickNpcs } from '../server/npcs';
 import { buildPondLotus } from '../src/pond-lotus';
-import { RIVER_BOAT_HEIGHT, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour';
+import { RIVER_BOAT_HEIGHT, RIVER_BOAT_SEAT_Z, RIVER_DOCK, RIVER_TOUR_MS, riverBoatAt } from '../shared/river-tour';
 
 const lotus = buildPondLotus(LAKE.a, LAKE.b, 0.14, 32, 8113, (x, _z, radius) => Math.abs(x) > BRIDGE.hw + radius);
 assert.equal(lotus.children.length, 3);
@@ -153,14 +153,24 @@ assert(Math.hypot(initialBoat.x - finalBoat.x, initialBoat.z - finalBoat.z) < 0.
 assert(Math.cos(initialBoat.ry - finalBoat.ry) > 0.99, 'The skiff should dock without snapping its heading');
 for (let ms = 0; ms <= RIVER_TOUR_MS; ms += 25) {
   const p = riverBoatAt(ms);
+  const sin = Math.sin(p.ry), cos = Math.cos(p.ry);
   if (ms > 500 && ms < RIVER_TOUR_MS - 500) assert(expansionWaterBlocked(p.x, p.z) || RIVER_BRIDGES.some(b => Math.abs(p.z - b.z) <= RIVER.bridgeHalf));
   for (const s of [-2.25, 0, 2.25]) for (const w of [-0.86, 0.86]) {
-    const x = p.x + s * Math.sin(p.ry) + w * Math.cos(p.ry);
-    const z = p.z + s * Math.cos(p.ry) - w * Math.sin(p.ry);
+    const x = p.x + s * sin + w * cos;
+    const z = p.z + s * cos - w * sin;
     const at = riverAt(z);
     assert(at.hw - Math.abs(x - at.x) > 0.1, `The skiff must stay inside the channel (${ms} ms)`);
     if (RIVER_BRIDGES.some(b => Math.abs(z - b.z) <= RIVER.bridgeHalf)) {
       assert(groundY(x, z) - RIVER.bridgeDepth - RIVER_BOAT_HEIGHT - 0.10 > 0.35, `The canopy must fit below the arch (${ms} ms)`);
+    }
+  }
+  // Sweep the seated avatar envelope (including hat and the skiff's bob/tilt) under each arch.
+  if (!RIVER_BRIDGES.some(b => Math.abs(p.z - b.z) <= RIVER.bridgeHalf + 1.5)) continue;
+  for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) {
+    const s = RIVER_BOAT_SEAT_Z + i * .12, w = j * .12;
+    const x = p.x + s * sin + w * cos, z = p.z + s * cos - w * sin;
+    if (RIVER_BRIDGES.some(b => Math.abs(z - b.z) <= RIVER.bridgeHalf)) {
+      assert(groundY(x, z) - RIVER.bridgeDepth > 2.46, `The seated passenger must fit below the arch (${ms} ms)`);
     }
   }
 }
