@@ -29,7 +29,7 @@ import { createPathfinder } from '../shared/pathfind';
 import { nearestNode, routeFrom, ROAD_NODES, ROAD_EDGES, type Pt } from '../shared/roads';
 import {
   MAP_HALF, MAP_Z_MIN, MAP_Z_MAX, OUTFIT_COLOR, levelOf, meritForLevel,
-  type ActionKind, type Anim, type AnimalState, type ChatMessage, type FireworkShow, type Lantern, type NpcAct, type Outfit, type PlayerState, type Profile, type SkyLantern,
+  type ActionKind, type Anim, type AnimalState, type BellHeard, type ChatMessage, type FireworkShow, type Lantern, type NpcAct, type Outfit, type PlayerState, type Profile, type SkyLantern,
 } from '../shared/types';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -269,6 +269,7 @@ resize();
 interface Remote { char: Character; target: THREE.Vector3; ry: number; anim: Anim; actionUntil: number; data: PlayerState; act?: NpcAct | null; prevAnim?: Anim; lastX?: number; lastZ?: number; lastMoveAt?: number; lodAt?: number; lodAnim?: string; lodStill?: number; lastRingAt?: number }
 const remotes = new Map<string, Remote>();
 let socket: Socket | null = null;
+let emitBellRing: (() => void) | undefined;
 let myId = '';
 let me: Remote | null = null;
 let meditation: MeditationInfo = { sitting: 0, minutes: 0, goal: 500, bonus: false };
@@ -721,6 +722,21 @@ function connect() {
     addLanternFeed({ id: l.id, pid: l.pid, name: l.name + ' · đèn trời', wish: l.wish, t: l.t }, true, true);
   });
   s.on('firework:show', (f: FireworkShow) => world.spawnFirework(f.x, f.z, f.size));
+  s.on('bell:heard', (heard: BellHeard) => {
+    if (heard.sid === myId) return;
+    strikeTower('bell');
+    const r = remotes.get(heard.sid);
+    if (!r) return;
+    r.anim = 'ring';
+    r.lastRingAt = performance.now();
+    r.actionUntil = r.lastRingAt + 2_000;
+    r.prevAnim = 'ring';
+  });
+  emitBellRing = () => {
+    s.emit('bell:ring', ({ ok, error }: { ok: boolean; error?: string }) => {
+      if (!ok && error) toast(error);
+    });
+  };
   s.on('donation', (d: { name: string; amount: number; text: string }) => {
     enqueueDonate(d.text || `🙏 Cảm ơn phật tử ${d.name} đã đóng góp ${d.amount.toLocaleString('vi-VN')} xu giúp xây dựng chùa`);
     loadHonorThrottled();
@@ -2223,7 +2239,7 @@ function strikeTower(kind: 'bell' | 'drum', direct = false) {
   audio.strike(kind, direct ? 1 : 0.7 / (1 + (dist / 28) ** 2));
 }
 const ZONE_ACTIONS: Record<string, { label: string; run: () => void }> = {
-  chuong: { label: 'Đánh chuông', run: () => strikeTower('bell', true) },
+  chuong: { label: 'Đánh chuông', run: () => { strikeTower('bell', true); emitBellRing?.(); } },
   trong: { label: 'Đánh trống', run: () => strikeTower('drum', true) },
   thuyDinh: { label: 'Thả đèn', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },
   lotus: { label: 'Thả đèn hồ sen', run: () => { $('wishModal').hidden = false; $<HTMLTextAreaElement>('wishText').focus(); } },

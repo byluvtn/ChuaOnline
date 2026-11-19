@@ -5,9 +5,19 @@ export interface NewsItem {
 }
 
 // Từ 2026-11-17: đã xóa 3 mục tin quản trị (tin 106/107/117 cũ); mọi số tin trong HANDOFF/tài liệu trước ngày này = số hiện tại + 3.
-export const LATEST_NEWS_ID = 142;
+export const LATEST_NEWS_ID = 143;
 
 export const NEWS: NewsItem[] = [
+  {
+    title: 'Tin hệ thống: vào chùa, thỉnh chuông, lên cấp, thiền đủ giờ đều có tin vàng',
+    date: '2026-11-19',
+    items: [
+      'Ai vào chùa, thỉnh chuông, lên cấp hay thiền đủ 20 phút: cả phòng đều thấy một dòng tin vàng trong khung "Cộng đồng sân chùa".',
+      'Thỉnh chuông: đứng gần tháp chuông, bấm "Đánh chuông" — cả phòng nghe tiếng chuông và thấy tin hệ thống. Mỗi người thỉnh lại sau 30 giây.',
+      'Lên cấp: cả phòng thấy tin mừng, người lên cấp vẫn nhận thưởng như trước (+10 xu, +5 công đức mỗi cấp).',
+      'Thiền đủ 20 phút có hào quang lớn: cả phòng thấy tin chúc mừng; thiền 10 phút chỉ báo riêng cho người thiền.',
+    ],
+  },
   {
     title: 'Chuông, trống chùa có tiếng thật',
     date: '2026-11-18',

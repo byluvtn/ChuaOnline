@@ -15,13 +15,13 @@ import { dayKeyICT, meritBoost } from '../shared/time.js';
 import * as db from './db.js';
 import { gardenSeedGiftSent, harvestGardenRow, listGardenRows, plantGardenRow, waterGardenRow } from './garden.js';
 import { createNpcRoom, presentNpcStates, resumeNpcs, tickNpcs, type NpcRoom } from './npcs.js';
-import { PHONG_CD } from '../src/layout.js';
+import { BELL, PHONG_CD } from '../src/layout.js';
 import { FORTUNES, type FortuneAck } from '../src/data/fortunes.js';
 import { tickAnimals, getAnimalStates, setAnimalEating, triggerLost, resolveLost, flockCenter, feedFlock, isIndoors } from './animals.js';
 import {
   FIREWORKS, SKY_LANTERN_COST, SKY_LANTERN_MERIT, SKY_LANTERN_COOLDOWN_MS, SKY_LANTERN_WISH_MAX,
 } from '../shared/game.js';
-import type { FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
+import type { BellHeard, FireworkShow, FireworkSize, SkyLantern } from '../shared/types.js';
 import { clampCampus, expansionWaterBlocked, resolveExpansionWater } from '../shared/campus.js';
 
 // Lưới cuối, KHÔNG thay cho việc bắt lỗi ở từng handler (safeHandler bên dưới).
@@ -121,7 +121,7 @@ interface Session {
   state: PlayerState;
   room: string;
   socket: Socket;
-  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin' | 'sky' | 'fw:small' | 'fw:large' | 'fw:dragon' | 'release', number>>;
+  last: Partial<Record<ActionKind | 'chat' | 'buy' | 'feedback' | 'sutra' | 'mg:moh' | 'mg:memory' | 'donate' | 'animal:feed' | 'fortune' | 'admin' | 'sky' | 'fw:small' | 'fw:large' | 'fw:dragon' | 'release' | 'bell', number>>;
   /** phòng gần nhất để đếm nhiệm vụ 'room' */
   lastRoom?: string;
   /** resume token cua tab (sessionStorage) de khoi phuc vi tri khi vao lai */
@@ -142,6 +142,7 @@ const roomLanterns = new Map<string, Lantern[]>();
 const roomMinutes = new Map<string, number>();
 /** phòng -> mốc hết màn pháo hoa đang chiếu (khoá 1 màn/phòng) */
 const roomFireworkUntil = new Map<string, number>();
+const lastJoinAnnounce = new Map<number, number>(); // pid -> timestamp ms cua lan thong bao vao chua gan nhat
 let seq = 1;
 
 const DONATE_TEMPLATES: ((name: string, amt: string) => string)[] = [
@@ -310,6 +311,15 @@ async function questEvent(s: Session, ev: QuestEvent, by = 1) {
   for (const q of [...NPC_QUESTS, ...CHAIN_QUESTS]) await advanceNpcQuest(s, q as AnyQuestDef, ev, by, rows);
   await pushQuests(s);
 }
+function pushSys(room: string, text: string) {
+  const sysMsg: ChatMessage = { id: seq++, name: '', text, t: Date.now(), sys: true };
+  const arr = roomChat.get(room) ?? [];
+  arr.push(sysMsg);
+  if (arr.length > 100) arr.shift();
+  roomChat.set(room, arr);
+  io.to(room).emit('chat', sysMsg);
+}
+
 /** Cộng thưởng + đếm quest 'merit' (nhiệm vụ tuần tích công đức). */
 async function grantRewards(s: Session, merit: number, coins: number, opts?: { skipAdd?: boolean; beforeMerit?: number }) {
   const before = opts?.beforeMerit ?? (await db.getWallet(s.pid))?.merit ?? 0;
@@ -321,6 +331,7 @@ async function grantRewards(s: Session, merit: number, coins: number, opts?: { s
   if (lvAfter > lvBefore && (await db.claimLevelReward(s.pid, lvAfter))) {
     await db.addRewards(s.pid, LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore), LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore));
     s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
+    pushSys(s.room, `🎉 Phật tử ${s.state.name} vừa lên cấp ${lvAfter}!`);
   }
   await pushProfile(s);
   if (lvAfter > lvBefore) await maybeAwardTitles(s);
@@ -497,6 +508,11 @@ io.on('connection', (socket) => {
       meditation: meditationInfo(room),
     });
     socket.to(room).emit('player:join', state);
+    const now = Date.now();
+    if (now - (lastJoinAnnounce.get(pid) ?? 0) >= 300_000) {
+      lastJoinAnnounce.set(pid, now);
+      pushSys(room, `🙏 Phật tử ${state.name} vừa vào chùa.`);
+    }
     await pushProfile(s);
     await maybeAwardTitles(s, false);
     await pushQuests(s);
@@ -918,6 +934,20 @@ io.on('connection', (socket) => {
     await pushProfile(s);
   });
 
+  socket.on('bell:ring', (cb?: (r: { ok: boolean; error?: string }) => void) => {
+    const s = me();
+    const reply = (r: { ok: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
+    if (!s) return reply({ ok: false, error: 'Chưa vào chùa' });
+    const now = Date.now();
+    if (now - (s.last.bell ?? 0) < 30_000) return reply({ ok: false, error: 'Từ từ thôi, thử lại sau nhé' });
+    if (distTo(s, BELL.x, BELL.z) > 7) return reply({ ok: false, error: 'Bạn đứng quá xa tháp chuông' });
+    s.last.bell = now;
+    pushSys(s.room, `🔔 Phật tử ${s.state.name} vừa thỉnh chuông!`);
+    const heard: BellHeard = { id: seq++, sid: s.state.id };
+    io.to(s.room).emit('bell:heard', heard);
+    reply({ ok: true });
+  });
+
   socket.on('donate', async (amount: unknown, cb?: (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string }) => void) => {
     const s = me();
     const reply = (r: { ok: boolean; coins?: number; merit?: number; broadcast?: boolean; error?: string }) => { if (typeof cb === 'function') cb(r); };
@@ -939,6 +969,7 @@ io.on('connection', (socket) => {
     if (lvAfter > lvBefore && (await db.claimLevelReward(s.pid, lvAfter))) {
       await db.addRewards(s.pid, LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore), LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore));
       s.socket.emit('level:bonus', { level: lvAfter, coins: LEVEL_BONUS.coinsPerLevel * (lvAfter - lvBefore), merit: LEVEL_BONUS.meritPerLevel * (lvAfter - lvBefore) });
+      pushSys(s.room, `🎉 Phật tử ${s.state.name} vừa lên cấp ${lvAfter}!`);
     }
     await pushProfile(s);
     await maybeAwardTitles(s);
@@ -1495,6 +1526,7 @@ setInterval(async () => {
             await db.setHaloLevel(s.pid, s.haloLevel);
             s.socket.emit('halo', { level: target, reason: 'grant' });
             s.socket.to(r.id).emit('player:halo', { id: s.state.id, level: target });
+            if (target === 2) pushSys(s.room, `🧘 Phật tử ${s.state.name} vừa thiền đủ 20 phút, hào quang lớn đã hiện!`);
           }
         } catch (e) {
           db.dbBackgroundResult(e);

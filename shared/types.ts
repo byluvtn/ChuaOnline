@@ -42,6 +42,7 @@ export interface SkyLantern { id: number; pid: number; name: string; wish: strin
 /** Cỡ pháo hoa — dùng chung server + client. */
 export type FireworkSize = 'small' | 'large' | 'dragon';
 export interface FireworkShow { id: number; name: string; size: FireworkSize; x: number; z: number; t: number }
+export interface BellHeard { id: number; sid: string }
 
 export interface Profile {
   name: string;
