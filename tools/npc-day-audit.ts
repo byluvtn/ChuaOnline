@@ -113,7 +113,8 @@ async function main() {
   }
   const bounds = (p: Pt) => !Number.isFinite(p.x) || !Number.isFinite(p.z) || Math.abs(p.x) > types.MAP_HALF
     || p.z < types.MAP_Z_MIN || p.z > types.MAP_Z_MAX;
-  const water = (p: Pt) => layout.inLake(p.x, p.z) || campus.expansionWaterBlocked(p.x, p.z);
+  const water = (p: Pt) => (layout.inLake(p.x, p.z) && !layout.onKoiBridge(p.x, p.z, layout.KOI_BRIDGE_WALK_HALF)) ||
+    campus.expansionWaterBlocked(p.x, p.z);
   function blocked(p: Pt): Hit | undefined {
     const q = { ...p };
     layout.clampToCompound(q);

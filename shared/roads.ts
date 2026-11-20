@@ -60,7 +60,7 @@
 //     the koi lake.
 
 import { dijkstra, reconstructPath, type DijkstraEdge } from './dijkstra';
-import { BAMBOO, DUOC_SU_DOOR, duocSuWorld, FLOWER_HILL, LOTUS_PAVILION, NGOC, NGOC_EAST_LANE, NORTH_WALK_Z, PHONG_CD_DOOR, RIVER_BRIDGES, RIVER_EAST_WALK_X, TINH_THAT, TINH_THAT_LANE_Z, WALL } from './campus';
+import { BAMBOO, BRIDGE, DUOC_SU_DOOR, duocSuWorld, FLOWER_HILL, LOTUS_PAVILION, NGOC, NGOC_EAST_LANE, NORTH_WALK_Z, PHONG_CD_DOOR, RIVER_BRIDGES, RIVER_EAST_WALK_X, TINH_THAT, TINH_THAT_LANE_Z, WALL } from './campus';
 
 export type Pt = { x: number; z: number }
 
@@ -75,10 +75,10 @@ const [northRiverBridge, southRiverBridge] = RIVER_BRIDGES;
 export const ROAD_NODES: RoadNode[] = [
   // â”€â”€ Axis (koi bridge deck z 2â€¦26 is the only crossing on the axis) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   { id: 'gate', x: 0, z: 43.5 },
-  { id: 'bridgeS', x: 0, z: 26.5 }, // south landing of the gate approach on the bank ring
-  { id: 'bridgeN', x: 0, z: 1.5 }, // north bank of the koi lake on the cross path
-  { id: 'bridgeE', x: 15.9, z: 14 }, // east dry-bank lane round the koi lake (L1: no deck)
-  { id: 'bridgeW', x: -15.9, z: 14 }, // west dry-bank lane round the koi lake (L1: no deck)
+  { id: 'bridgeS', x: BRIDGE.x, z: BRIDGE.z1 + 0.5 }, // south landing of the gate approach
+  { id: 'bridgeN', x: BRIDGE.x, z: BRIDGE.z0 - 0.5 }, // north landing by the cross path
+  { id: 'bridgeE', x: 15.9, z: 14 }, // east dry-bank lane round the koi lake
+  { id: 'bridgeW', x: -15.9, z: 14 }, // west dry-bank lane round the koi lake
   { id: 'lakeNE', x: 15.9, z: 25.7 }, // bank-ring corners: north link joins the gate approach
   { id: 'lakeSE', x: 15.9, z: 2.9 }, // bank-ring corners at the cross path
   { id: 'lakeNW', x: -15.9, z: 25.7 },
@@ -305,10 +305,12 @@ export const HOUSE_DOORS: { id: string; x: number; z: number }[] = [
   { id: 'duocSu', ...DUOC_SU_DOOR },
 ]
 
+export const KOI_BRIDGE_EDGE = ['bridgeS', 'bridgeN'] as const;
+
 export const ROAD_EDGES: [string, string][] = [
   // â”€â”€ Axis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ['gate', 'bridgeS'],
-  // L1: no red bridge. The axis crosses the lake on two dry bank lanes joined by a north link.
+  // Keep the bank lanes for walkers that do not use the koi bridge.
   ['bridgeS', 'lakeNE'], ['lakeNE', 'lakeNW'], ['lakeNW', 'lakeSW'], ['lakeSW', 'bridgeN'],
   ['lakeNE', 'lakeSE'], ['lakeSE', 'bridgeN'],
   ['lakeSE', 'bridgeE'], ['bridgeE', 'lakeNE'],
@@ -415,25 +417,30 @@ const NODE_BY_ID = new Map<string, RoadNode>(ROAD_NODES.map((n) => [n.id, n]))
 
 // Index adjacency for the shared Dijkstra (Fable #56). Node ids in ROAD_NODES order.
 const IDX = new Map<string, number>(ROAD_NODES.map((n, i) => [n.id, i]))
-const ADJ_IDX: DijkstraEdge[][] = ROAD_NODES.map(() => [])
-for (const [a, b] of ROAD_EDGES) {
-  const ia = IDX.get(a)
-  const ib = IDX.get(b)
-  if (ia === undefined || ib === undefined) continue
-  const w = Math.hypot(ROAD_NODES[ia].x - ROAD_NODES[ib].x, ROAD_NODES[ia].z - ROAD_NODES[ib].z)
-  ADJ_IDX[ia].push({ to: ib, w })
-  ADJ_IDX[ib].push({ to: ia, w })
+function roadAdjacency(edges: ReadonlyArray<readonly [string, string]>): DijkstraEdge[][] {
+  const adj: DijkstraEdge[][] = ROAD_NODES.map(() => [])
+  for (const [a, b] of edges) {
+    const ia = IDX.get(a)
+    const ib = IDX.get(b)
+    if (ia === undefined || ib === undefined) continue
+    const w = Math.hypot(ROAD_NODES[ia].x - ROAD_NODES[ib].x, ROAD_NODES[ia].z - ROAD_NODES[ib].z)
+    adj[ia].push({ to: ib, w })
+    adj[ib].push({ to: ia, w })
+  }
+  return adj
 }
+const ADJ_IDX = roadAdjacency(ROAD_EDGES)
+const ADJ_WITH_KOI_BRIDGE = roadAdjacency([...ROAD_EDGES, KOI_BRIDGE_EDGE])
 
 /** Dijkstra over the edge list; node ids from -> to inclusive, [] if unreachable/unknown.
  *  Uses the shared Dijkstra (shared/dijkstra.ts) with the roads tie-break (smaller id wins). */
-export function roadPath(fromId: string, toId: string): string[] {
+export function roadPath(fromId: string, toId: string, useKoiBridge = false): string[] {
   const from = IDX.get(fromId)
   const to = IDX.get(toId)
   if (from === undefined || to === undefined) return []
   if (from === to) return [fromId]
   const ids = ROAD_NODES.map((n) => n.id)
-  const { prev } = dijkstra(ADJ_IDX, from, to, (a, b) => ids[a] < ids[b])
+  const { prev } = dijkstra(useKoiBridge ? ADJ_WITH_KOI_BRIDGE : ADJ_IDX, from, to, (a, b) => ids[a] < ids[b])
   return reconstructPath(prev, from, to).map((i) => ids[i])
 }
 

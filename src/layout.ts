@@ -146,6 +146,12 @@ export function onKoiBridge(x: number, z: number, half = BRIDGE.hw) {
   return Math.abs(x - BRIDGE.x) <= half && z >= BRIDGE.z0 && z <= BRIDGE.z1;
 }
 
+export const KOI_BRIDGE_WALK_HALF = BRIDGE.hw - 0.15;
+
+export function onKoiBridgeRail(x: number, z: number) {
+  return z > BRIDGE.z0 + 0.35 && z < BRIDGE.z1 - 0.35 && Math.abs(Math.abs(x - BRIDGE.x) - BRIDGE.hw) < 0.15;
+}
+
 export function bridgeY(x: number, z: number) {
   if (!onKoiBridge(x, z)) return 0;
   const mid = (BRIDGE.z0 + BRIDGE.z1) / 2;
@@ -318,8 +324,8 @@ export function blocked(x: number, z: number) {
 
 /** Koi water not covered by either the arched deck or the Thuy Dinh pier. */
 export function onAxisWaterGap(x: number, z: number) {
-  if (z > BRIDGE.z0 + 0.35 && z < BRIDGE.z1 - 0.35 && Math.abs(Math.abs(x - BRIDGE.x) - BRIDGE.hw) < 0.15) return true;
-  return inLake(x, z) && !onKoiBridge(x, z, BRIDGE.hw - 0.15) &&
+  if (onKoiBridgeRail(x, z)) return true;
+  return inLake(x, z) && !onKoiBridge(x, z, KOI_BRIDGE_WALK_HALF) &&
     !(x >= PIER.x0 && x <= PIER.x1 && Math.abs(z - PIER.z) <= PIER.hw);
 }
 
@@ -336,7 +342,7 @@ export function resolveBridge(p: { x: number; z: number }, prev: { x: number; z:
   const wasOn = onKoiBridge(prev.x, prev.z) && Math.abs(dx) <= BRIDGE.hw + 1;
   const fromEnd = (prev.z < BRIDGE.z0 || prev.z > BRIDGE.z1) && Math.abs(dx) <= BRIDGE.hw;
   if (wasOn || fromEnd) {
-    const limit = BRIDGE.hw - 0.15;
+    const limit = KOI_BRIDGE_WALK_HALF;
     p.x = BRIDGE.x + Math.max(-limit, Math.min(limit, dx));
     return true;
   }

@@ -1,9 +1,9 @@
-import { BUDDHA_YARD, CORR, DEN_TRINH, DIEN_MAU, NHA_KHACH, REST, TAM_THE, TANG_XA, clampToCompound, inLake } from '../src/layout.js';
+import { BUDDHA_YARD, CORR, DEN_TRINH, DIEN_MAU, KOI_BRIDGE_WALK_HALF, NHA_KHACH, REST, TAM_THE, TANG_XA, clampToCompound, inLake, onKoiBridge, onKoiBridgeRail, resolveBridge } from '../src/layout.js';
 import { BAMBOO, DUOC_SU, LOTUS_PAVILION, TINH_THAT, expansionWaterBlocked } from '../shared/campus.js';
 import { ROAD_NODES, roadPath, type Pt } from '../shared/roads.js';
 
 // NPCs follow authored roads without the player's prop collision resolver.
-// Keep these measured clearances local to NPCs; the player graph is unchanged.
+// Keep these measured clearances local to NPCs.
 const positions = new Map<string, Pt>(ROAD_NODES.map(({ id, x, z }) => [id, { x, z }]));
 positions.set('bridgeE', { x: 16.65, z: 14 });
 positions.set('baoSouthTurn', { x: -46, z: -97.4 });
@@ -42,7 +42,7 @@ export function nodePt(id: string): Pt {
 }
 
 export function roadRoute(fromId: string, toId: string): Pt[] {
-  const ids = roadPath(fromId, toId);
+  const ids = roadPath(fromId, toId, true);
   const route: Pt[] = [];
   for (let i = 1; i < ids.length; i++) {
     const a = ids[i - 1], b = ids[i];
@@ -54,10 +54,19 @@ export function roadRoute(fromId: string, toId: string): Pt[] {
 }
 
 export function npcTravelPoint(p: Pt): boolean {
-  if (inLake(p.x, p.z) || expansionWaterBlocked(p.x, p.z)) return false;
+  if (onKoiBridgeRail(p.x, p.z) || (inLake(p.x, p.z) && !onKoiBridge(p.x, p.z, KOI_BRIDGE_WALK_HALF)) ||
+    expansionWaterBlocked(p.x, p.z)) return false;
   const q = { ...p };
   clampToCompound(q);
   return p.x === q.x && p.z === q.z;
+}
+
+export function npcTravelStep(from: Pt, to: Pt): boolean {
+  if (!npcTravelPoint(to)) return false;
+  // Use the same rail/entrance rules as the player, but reject rather than slide off the route.
+  const q = { ...to };
+  resolveBridge(q, from);
+  return q.x === to.x && q.z === to.z;
 }
 
 // Local collision proxies for measured outdoor spawn/attachment failures. The regular
@@ -88,10 +97,12 @@ export function npcOutdoorSpawn(p: Pt): boolean {
 
 export function npcTravelSegment(a: Pt, b: Pt): boolean {
   const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 0.1));
+  let prev = a;
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     const p = { x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t };
-    if (!npcTravelPoint(p) || !npcOutdoorPoint(p)) return false;
+    if (!npcTravelStep(prev, p) || !npcOutdoorPoint(p)) return false;
+    prev = p;
   }
   return true;
 }

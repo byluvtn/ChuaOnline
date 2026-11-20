@@ -1,6 +1,6 @@
-import { CORR, DIEN_MAU, HALL, PLAZA, TAM_THE, clampToCompound, inLake } from '../src/layout.js';
-import { BAMBOO, DUOC_SU, DUOC_SU_DOOR, FLOWER_HILL, LOTUS_PAVILION, PHONG_CD_YAW, WALL, duocSuWorld, phongCdWorld, expansionWaterBlocked } from '../shared/campus.js';
-import { nodePt, roadRoute, routeFrom, nearestRoadNode as nearestVisitorRoadNode, npcOutdoorSpawn, npcTravelPoint, npcTravelSegment } from './npc-roads.js';
+import { CORR, DIEN_MAU, HALL, PLAZA, TAM_THE } from '../src/layout.js';
+import { BAMBOO, BRIDGE, DUOC_SU, DUOC_SU_DOOR, FLOWER_HILL, LOTUS_PAVILION, PHONG_CD_YAW, WALL, duocSuWorld, phongCdWorld } from '../shared/campus.js';
+import { nodePt, roadRoute, routeFrom, nearestRoadNode as nearestVisitorRoadNode, npcOutdoorSpawn, npcTravelPoint, npcTravelSegment, npcTravelStep } from './npc-roads.js';
 import { GARDEN_PLOTS } from '../shared/game.js';
 import { GUEST_BEDS, GUEST_DOOR_IN } from '../src/guest-beds.js';
 import type { ActionKind, Anim, NpcAct, Outfit, PlayerState } from '../shared/types.js';
@@ -120,7 +120,8 @@ const TABLE_Z = HALL.z - HALL.hz + 5.3;
 const HALL_IN: Pt = { x: HALL.x, z: HALL.z + HALL.hz - 2 };
 const ABBOT_SEAT: Pt = { x: HALL.x + 1.8, z: TABLE_Z + 2.1 };
 const VISITOR_SPOT: Pt = { x: HALL.x - 1.8, z: TABLE_Z + 2.7 };
-const PLAZA_SPOT: Pt = { x: PLAZA.x - 2.5, z: PLAZA.z + 2 };
+// Keep the whole visitorSpot scatter north of the bridge entrance and lake rim.
+const PLAZA_SPOT: Pt = { x: PLAZA.x - 2.5, z: BRIDGE.z0 - 1.5 };
 // Điểm "ngồi chơi/chờ" (stage branch): 1 ở sân chùa + các điểm cũ + các điểm mở rộng 24/7,
 // để khách tái sinh không rủ nhau đứng chơi ở sân chùa nữa (news 96).
 // 'plaza' giờ là ngã tư (0,2) trên đường ngang; các điểm mở rộng đều là road node.
@@ -1646,10 +1647,7 @@ function step(room: NpcRoom, n: Npc, dt: number, now: number) {
   if (d < 0.12) { n.route.shift(); if (!n.route.length) arrive(room, n, now); return; }
   const k = Math.min(1, (n.speed * dt) / d);
   const q = { x: s.x + (to.x - s.x) * k, z: s.z + (to.z - s.z) * k };
-  const before = { x: q.x, z: q.z };
-  clampToCompound(q);
-  if (inLake(q.x, q.z) || expansionWaterBlocked(q.x, q.z)
-    || q.x !== before.x || q.z !== before.z) {
+  if (!npcTravelStep(s, q)) {
     n.route = []; n.phase = 'idle'; s.anim = 'idle'; n.until = now + 1500; return;
   }
   s.ry = Math.atan2(to.x - s.x, to.z - s.z);

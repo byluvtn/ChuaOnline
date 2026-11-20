@@ -1,4 +1,4 @@
-import { ROAD_NODES, ROAD_EDGES, HOUSE_DOORS, type Pt } from './roads';
+import { ROAD_NODES, ROAD_EDGES, KOI_BRIDGE_EDGE, HOUSE_DOORS, type Pt } from './roads';
 import { dijkstra, reconstructPath } from './dijkstra';
 import { MAP_Z_MIN, WALL } from './campus';
 import { MAP_HALF, MAP_Z_MAX } from './types';
@@ -136,8 +136,8 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
   const resolve = (v: any): number => idIndex.get(String(v)) ?? (typeof v === 'number' ? v : -1);
   const N = pts.length;
   const adj: { to: number; w: number }[][] = pts.map(() => []);
-  // Only the player pathfinder uses the deck shortcut. NPCs retain their bank routes.
-  const edges = opts?.deck ? [...ROAD_EDGES, ['bridgeS', 'bridgeN']] : ROAD_EDGES;
+  // Include the shortcut when this pathfinder's surface rules allow the deck.
+  const edges = opts?.deck ? [...ROAD_EDGES, KOI_BRIDGE_EDGE] : ROAD_EDGES;
   for (const e of edges as unknown as any[]) {
     const a = resolve(Array.isArray(e) ? e[0] : (e.a ?? e.from));
     const b = resolve(Array.isArray(e) ? e[1] : (e.b ?? e.to));

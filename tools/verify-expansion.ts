@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { WALL, LAKE, BRIDGE, NGOC, NGOC_HALL, NGOC_TERRACE, NORTH_WALK_Z, RIVER, RIVER_BRIDGES, RIVER_FALLS, RIVER_MOUTH_Z, riverAt, DUOC_SU, DUOC_SU_DOOR, DUOC_SU_YAW, duocSuWorld, duocSuRiverGap, PHONG_CD, PHONG_CD_DOOR, PHONG_CD_YAW, TINH_THAT, TINH_THAT_LANE_Z, phongCdWorld, expansionGroundY, expansionWaterBlocked, ngocHillGroundY, ngocStepProfile, resolveExpansionWater, clampCampus, LOTUS, LOTUS_PAVILION, BAMBOO, FLOWER_HILL, CAVE, FARM_POND, RIVER_EAST_WALK_X, inEllipse } from '../shared/campus';
 import { MAP_HALF, MAP_Z_MIN, MAP_Z_MAX } from '../shared/types';
-import { clampToCompound, bridgeY, resolveBridge, resolveWater, groundY, nearWalkway, inLake, NGOC_APPROACH, NGOC_EAST_LANE, NGOC_EAST_PAVING, WALKWAY_RECTS, TAM_THE_PLAT, VIEN_TO, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP, BAO_THAP_PLAT, NHA_KHACH } from '../src/layout';
+import { clampToCompound, bridgeY, resolveBridge, resolveWater, groundY, nearWalkway, inLake, onKoiBridge, NGOC_APPROACH, NGOC_EAST_LANE, NGOC_EAST_PAVING, WALKWAY_RECTS, TAM_THE_PLAT, VIEN_TO, BELL, DRUM, BAO_THAP, TANG_XA, VUON_THAP, BAO_THAP_PLAT, NHA_KHACH } from '../src/layout';
 import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath, routeFrom, nearestNode } from '../shared/roads';
 import { createPathfinder } from '../shared/pathfind';
 import { NPC_QUESTS } from '../shared/game';
 import { onAxisWaterGap } from '../src/layout';
 import { createAnimals } from '../server/animals';
 import { createNpcRoom, tickNpcs } from '../server/npcs';
+import { nodePt as npcNode, routeFrom as npcRouteFrom, npcTravelSegment } from '../server/npc-roads';
 import { buildPondLotus } from '../src/pond-lotus';
 import { RIVER_BOATS, RIVER_BOAT_HEIGHT, RIVER_BOAT_SEAT_Z, RIVER_DOCK, riverBoatAt, riverBoatsOverlap, riverDeparture, riverTourDuration, type RiverBoatTrip } from '../shared/river-tour';
 
@@ -59,6 +60,54 @@ for (const from of [northBank, southBank]) {
   const to = { x: BRIDGE.x, z: LAKE.z };
   assert.deepEqual(koiPath.findPath(from, to).at(-1), to);
   assert(!koiPath.lastFallback);
+}
+// Exercise both planning and server ticks. The player pathfinder already accepted the deck
+// when NPCs still planned around it and their movement rejected it as water.
+assert(npcTravelSegment(southBank, northBank), 'The NPC road must cross the deck');
+for (const side of [-1, 1]) {
+  const x = BRIDGE.x + side * (BRIDGE.hw + 0.5);
+  assert(!npcTravelSegment({ x, z: northBank.z }, { x, z: southBank.z }), 'NPCs must not cross open water');
+  assert(!npcTravelSegment({ x: BRIDGE.x, z: 3 }, { x, z: 3 }), 'NPCs must not cut sideways through a rail on dry ground');
+}
+const noonFree = Date.UTC(2026, 10, 19, 8);
+for (const [from, landing, exit, dest] of [
+  ['gate', 'bridgeS', 'bridgeN', 'plaza'], ['plaza', 'bridgeN', 'bridgeS', 'gate'],
+] as const) {
+  for (const offset of [-0.8, 0.8]) {
+    const room = createNpcRoom(noonFree);
+    const npc = room.npcs.find(n => n.def.id === 'npc1')!;
+    const start = npcNode(from), goal = npcNode(dest);
+    const entryPt = npcNode(landing), exitPt = npcNode(exit);
+    Object.assign(npc.state, { x: start.x + offset, z: start.z + 0.8, anim: 'walk' });
+    npc.phase = 'walk'; npc.speed = 1.2; npc.route = npcRouteFrom(npc.state, dest);
+    assert(npc.route.some((p, i, route) => p.x === exitPt.x && p.z === exitPt.z &&
+      route[i - 1]?.x === entryPt.x && route[i - 1]?.z === entryPt.z), `NPC must take the direct bridge edge from ${from}`);
+    let crossed = false, reached = false;
+    for (let t = noonFree + 100; t <= noonFree + 45_000 && npc.phase === 'walk'; t += 100) {
+      tickNpcs(room, t, 1);
+      const { x, z } = npc.state;
+      if (Math.hypot(x - goal.x, z - goal.z) < 0.12) { reached = true; break; }
+      if (!inLake(x, z)) continue;
+      assert(onKoiBridge(x, z, BRIDGE.hw - 0.15), 'NPC must remain inside the rails over water');
+      assert.equal(groundY(x, z), bridgeY(x, z));
+      crossed ||= Math.abs(z - LAKE.z) < 0.15;
+    }
+    assert(crossed && reached, `NPC did not reach ${dest} via the bridge`);
+  }
+}
+{
+  // The visitor-specific final waypoint used to scatter some guests off the north landing into the lake.
+  const room = createNpcRoom(noonFree), plaza = npcNode('plaza');
+  const visitors = room.npcs.filter(n => n.def.behavior === 'visitor');
+  for (const npc of visitors) {
+    Object.assign(npc.state, plaza);
+    Object.assign(npc, { phase: 'idle', mode: 'normal', stage: 'toPlaza', until: noonFree });
+  }
+  tickNpcs(room, noonFree + 100, 1);
+  for (const npc of visitors) {
+    const stop = npc.route.at(-1)!;
+    assert(stop.z < BRIDGE.z0 && npcTravelSegment(plaza, stop), `Unsafe plaza stop for ${npc.def.id}`);
+  }
 }
 const profile = ngocStepProfile();
 assert.equal(NGOC.y, 8.4);
@@ -359,7 +408,6 @@ for (const [from, to, deck] of [
   assert.deepEqual(roadPath(from, to), [from, deck, to]);
   assert.deepEqual(roadPath(to, from), [to, deck, from]);
   // Run the server movement with the same offset allowed for a visitor joining a road.
-  const noonFree = Date.UTC(2026, 10, 19, 8);
   const crossingRoom = createNpcRoom(noonFree);
   const npc = crossingRoom.npcs.find(n => n.def.id === 'npc1')!;
   const start = byId.get(from)!, landing = byId.get(to)!;
@@ -393,4 +441,4 @@ for (let t = bellTime + 200; t < bellTime + 60_000; t += 100) {
 assert(rang, 'The attendant should reach the tower and ring within the scheduled window');
 tickNpcs(npcRoom, bellTime + 60_000, 1);
 assert.notEqual(attendant.state.anim, 'ring');
-console.log(`PASS: 299 steps / 2 landings; arch profiles and skiff clearance; bell action at the tower; ${ROAD_NODES.length} connected road nodes; ${ROAD_EDGES.length} edges outside expansion water.`);
+console.log(`PASS: NPCs cross the koi bridge both ways; safe plaza stops; 299 steps / 2 landings; arch profiles and skiff clearance; bell action at the tower; ${ROAD_NODES.length} connected road nodes; ${ROAD_EDGES.length} edges outside expansion water.`);
