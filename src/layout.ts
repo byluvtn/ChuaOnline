@@ -2,12 +2,6 @@
 import { WALL, LAKE, BRIDGE, LOTUS, LOTUS_PAVILION, RIVER, RIVER_BRIDGES, RIVER_EAST_WALK_X, riverBridgeY, DUOC_SU, NGOC, NGOC_EAST_LANE, NGOC_TERRACE, NORTH_WALK_Z, TINH_THAT, TINH_THAT_LANE_Z, PHONG_CD, PHONG_CD_DOOR, FARM_POND, expansionGroundY, expansionWaterBlocked, inEllipse, resolveExpansionWater, clampCampus } from '../shared/campus';
 export * from '../shared/campus';
 import { onWestGateWalk } from '../shared/campus';
-/**
- * L1: the red koi bridge was removed. `BRIDGE` (from shared/campus) is kept only as an inert
- * shim for legacy imports; it no longer describes a walkable deck. `bridgeY` is always 0 and
- * `resolveBridge` reports "not on a deck". Walkers cross on the dry ring round the koi lake
- * (road nodes bridgeE / bridgeW, WALKWAY_RECTS bank lanes).
- */
 import { riverDockY } from '../shared/river-tour';
 export const HALL = { x: 0, z: -32, hx: 17, hz: 10, h: 1.35, ramp: 1.1 };
 export const DECK = { x0: 4.6, x1: 17.2, z0: -18.6, z1: -4, y: 0.2 };
@@ -99,8 +93,7 @@ export const WALKWAY_RECTS = [
   [SIDE_X, BELL.z - 1.2, BELL.x, BELL.z + 1.2],
   [SIDE_X - 1.2, BELL.z, SIDE_X + 1.2, PATH_Z],
   [BRIDGE.x - bridgeApproachHalf, 24.8, BRIDGE.x + bridgeApproachHalf, WALL.zS],
-  // L1: the red koi bridge is gone. The axis is now a dry paved loop around both banks of the
-  // lake: gate approach → north link (z 24.8…26.6) → east or west bank lane → cross path z = 2.
+  // Paved alternatives around both banks of the lake, in addition to the bridge.
   [-BRIDGE.x - (LAKE.a + 3.4), 24.8, BRIDGE.x + LAKE.a + 3.4, 26.6],
   [LAKE.a + 1.4, PATH_Z, LAKE.a + 3.4, 26.6],
   [-LAKE.a - 3.4, PATH_Z, -LAKE.a - 1.4, 26.6],
@@ -149,9 +142,15 @@ export function nearWalkway(x: number, z: number, clearance: number) {
     Math.hypot(Math.max(x0 - x, x - x1, 0), Math.max(z0 - z, z - z1, 0)) <= clearance);
 }
 
-/** L1: no arched deck remains; the koi lake is crossed on the dry bank lanes at x = ±(LAKE.a + 1.4…3.4). */
-export function bridgeY(_x: number, _z: number) {
-  return 0;
+export function onKoiBridge(x: number, z: number, half = BRIDGE.hw) {
+  return Math.abs(x - BRIDGE.x) <= half && z >= BRIDGE.z0 && z <= BRIDGE.z1;
+}
+
+export function bridgeY(x: number, z: number) {
+  if (!onKoiBridge(x, z)) return 0;
+  const mid = (BRIDGE.z0 + BRIDGE.z1) / 2;
+  const u = (z - mid) / ((BRIDGE.z1 - BRIDGE.z0) / 2);
+  return 0.12 + BRIDGE.peak * (1 - u * u);
 }
 
 /** Ground height under (x, z): hall platform, meditation decks, corridors and bridge are raised. */
@@ -269,7 +268,7 @@ export function blocked(x: number, z: number) {
   if (Math.hypot(x - PLAZA.x, z - PLAZA.z) < PLAZA.r + 3.5) return true;
   if (ax < HALL.hx + 5 && Math.abs(z - HALL.z) < HALL.hz + 5) return true;
   if (ax < 24.5 && z > -21 && z < 1.5) return true;
-  if (inLake(x, z, 3.5)) return true; // L1: no bridge strip to protect any more
+  if (inLake(x, z, 3.5) || (Math.abs(x - BRIDGE.x) < BRIDGE.hw + 1.7 && z > BRIDGE.z0 - 2 && z < BRIDGE.z1 + 2)) return true;
   if (Math.hypot(x - BELL.x, z - BELL.z) < 7 || Math.hypot(x - QUAN.x, z - QUAN.z) < 9) return true;
   if (Math.hypot(x - DRUM.x, z - DRUM.z) < 7) return true;
   if (Math.hypot(x - DEN_TRINH.x, z - DEN_TRINH.z) < 5.5) return true;
@@ -317,12 +316,11 @@ export function blocked(x: number, z: number) {
   return false;
 }
 
-/**
- * Walkability of the axis past the koi lake. L1: no deck, so the koi pond water is the only
- * thing that blocks it; the paving over z 2..26 is the bank ring (WALKWAY_RECTS).
- */
+/** Koi water not covered by either the arched deck or the Thuy Dinh pier. */
 export function onAxisWaterGap(x: number, z: number) {
-  return inLake(x, z) && !(x >= PIER.x0 && x <= PIER.x1 && Math.abs(z - PIER.z) <= PIER.hw);
+  if (z > BRIDGE.z0 + 0.35 && z < BRIDGE.z1 - 0.35 && Math.abs(Math.abs(x - BRIDGE.x) - BRIDGE.hw) < 0.15) return true;
+  return inLake(x, z) && !onKoiBridge(x, z, BRIDGE.hw - 0.15) &&
+    !(x >= PIER.x0 && x <= PIER.x1 && Math.abs(z - PIER.z) <= PIER.hw);
 }
 
 /** Keep walkers inside the compound walls (the south gate stays open). */
@@ -330,19 +328,24 @@ export function clampToCompound(p: { x: number; z: number }) {
   clampCampus(p);
 }
 
-/**
- * L1: the red koi bridge was removed, so no walker is ever "on the deck".
- * Kept as a no-op shim for the movement loop and the server water checks.
- */
-export function resolveBridge(_p: { x: number; z: number }, _prev: { x: number; z: number }): boolean {
+/** Keep walkers inside the rails, except where the deck meets the two banks. */
+export function resolveBridge(p: { x: number; z: number }, prev: { x: number; z: number }): boolean {
+  if (p.z < BRIDGE.z0 || p.z > BRIDGE.z1) return false;
+  if (p.z <= BRIDGE.z0 + 0.35 || p.z >= BRIDGE.z1 - 0.35) return onKoiBridge(p.x, p.z);
+  const dx = p.x - BRIDGE.x;
+  const wasOn = onKoiBridge(prev.x, prev.z) && Math.abs(dx) <= BRIDGE.hw + 1;
+  const fromEnd = (prev.z < BRIDGE.z0 || prev.z > BRIDGE.z1) && Math.abs(dx) <= BRIDGE.hw;
+  if (wasOn || fromEnd) {
+    const limit = BRIDGE.hw - 0.15;
+    p.x = BRIDGE.x + Math.max(-limit, Math.min(limit, dx));
+    return true;
+  }
+  if (Math.abs(dx) <= BRIDGE.hw) p.x = BRIDGE.x + (prev.x >= BRIDGE.x ? 1 : -1) * (BRIDGE.hw + 0.15);
   return false;
 }
 
-/**
- * Keep walkers out of the lake. L1 removed the red bridge, so there is no deck exemption any
- * more: every water point is pushed back to the dry rim on the same bearing.
- */
-export function resolveWater(p: { x: number; z: number }, _onDeck = true, prev?: { x: number; z: number }) {
+/** Keep walkers out of the lake unless they're on a walkable deck. */
+export function resolveWater(p: { x: number; z: number }, onDeck = true, prev?: { x: number; z: number }) {
   resolveExpansionWater(p, prev);
   if (inPsPond(p.x, p.z) && !(p.x >= PS_PIER.x0 - 0.2 && p.x <= PS_PIER.x1 + 0.2 && Math.abs(p.z - PS_PIER.z) <= PS_PIER.hw + 0.2)) {
     const ux = (p.x - PS_POND.x) / PS_POND.a, uz = (p.z - PS_POND.z) / PS_POND.b;
@@ -353,8 +356,11 @@ export function resolveWater(p: { x: number; z: number }, _onDeck = true, prev?:
   }
   if (!inLake(p.x, p.z)) return;
   if (p.x >= PIER.x0 - 0.2 && p.x <= PIER.x1 + 0.2 && Math.abs(p.z - PIER.z) <= PIER.hw + 0.2) return;
+  if (onDeck && onKoiBridge(p.x, p.z)) return;
+  if (prev && !inLake(prev.x, prev.z)) { p.x = prev.x; p.z = prev.z; return; }
   const ux = (p.x - LAKE.x) / LAKE.a, uz = (p.z - LAKE.z) / LAKE.b;
-  const l = Math.hypot(ux, uz) || 1;
+  const l = Math.hypot(ux, uz);
+  if (l === 0) { p.z = LAKE.z + LAKE.b * 1.02; return; }
   const k = 1.02 / l;
   p.x = LAKE.x + ux * k * LAKE.a; p.z = LAKE.z + uz * k * LAKE.b;
 }

@@ -5,6 +5,7 @@ import { clampToCompound, bridgeY, resolveBridge, resolveWater, groundY, nearWal
 import { HOUSE_DOORS, ROAD_NODES, ROAD_EDGES, roadPath, routeFrom, nearestNode } from '../shared/roads';
 import { createPathfinder } from '../shared/pathfind';
 import { NPC_QUESTS } from '../shared/game';
+import { onAxisWaterGap } from '../src/layout';
 import { createAnimals } from '../server/animals';
 import { createNpcRoom, tickNpcs } from '../server/npcs';
 import { buildPondLotus } from '../src/pond-lotus';
@@ -24,15 +25,40 @@ assert.deepEqual(TANG_XA, { x: -64, z: -74 });
 assert.deepEqual(VUON_THAP, { x: 50, z: -94 });
 assert.deepEqual([LAKE.z, LAKE.a, LAKE.b, BRIDGE.z0, BRIDGE.z1], [14, 14, 10, 2, 26]);
 assert.equal(BRIDGE.hw * 2, 4.6);
-assert.equal(bridgeY(0, LAKE.z), 0, 'L1: the red koi bridge is gone');
+assert.equal(bridgeY(BRIDGE.x, LAKE.z), 0.12 + BRIDGE.peak);
+for (const dir of [-1, 1]) for (const x of [BRIDGE.x - 2, BRIDGE.x, BRIDGE.x + 2]) {
+  const start = dir > 0 ? BRIDGE.z0 - 0.5 : BRIDGE.z1 + 0.5;
+  let prev = { x, z: start };
+  for (let i = 1; i <= 100; i++) {
+    const step = { x, z: start + dir * i * 0.25 };
+    const expected = { ...step };
+    resolveWater(step, resolveBridge(step, prev), prev);
+    assert.deepEqual(step, expected, 'Crossing in either direction stays on the deck');
+    assert(!onAxisWaterGap(step.x, step.z));
+    prev = step;
+  }
+}
 for (const side of [-1, 1]) {
   const x = side * (LAKE.a + 2.4), z = LAKE.z;
   assert(!expansionWaterBlocked(x, z), 'dry bank lane around the koi lake');
-  assert(inLake(BRIDGE.x, z), 'the old bridge axis is open water');
   assert(nearWalkway(x, z, 0) && nearWalkway(x, BRIDGE.z0 - 0.5, 0) && nearWalkway(x, BRIDGE.z1 + 0.5, 0));
-  const step = { x: BRIDGE.x + side * (BRIDGE.hw - 0.3), z: LAKE.z };
-  resolveWater(step, false);
-  assert(!inLake(step.x, step.z), 'old saved bridge points are pushed to the bank');
+  const step = { x: BRIDGE.x + side * (BRIDGE.hw + 0.3), z };
+  assert(resolveBridge(step, { x: BRIDGE.x + side * (BRIDGE.hw - 0.3), z }));
+  assert.equal(step.x, BRIDGE.x + side * (BRIDGE.hw - 0.15), 'Rails stop sideways movement');
+  const waterStep = { x: BRIDGE.x + side * (BRIDGE.hw + 0.5), z };
+  assert(onAxisWaterGap(waterStep.x, z));
+  assert.equal(groundY(waterStep.x, z), 0);
+  resolveWater(waterStep, true);
+  assert(!inLake(waterStep.x, waterStep.z), 'Only the deck exempts walkers from the lake');
+}
+const koiPath = createPathfinder([], { deck: BRIDGE, avoid: p => onAxisWaterGap(p.x, p.z) });
+const northBank = { x: BRIDGE.x, z: BRIDGE.z0 - 0.5 }, southBank = { x: BRIDGE.x, z: BRIDGE.z1 + 0.5 };
+assert(koiPath.segmentClear(southBank.x, southBank.z, northBank.x, northBank.z));
+assert(!koiPath.segmentClear(BRIDGE.hw + 1, southBank.z, BRIDGE.hw + 1, northBank.z));
+for (const from of [northBank, southBank]) {
+  const to = { x: BRIDGE.x, z: LAKE.z };
+  assert.deepEqual(koiPath.findPath(from, to).at(-1), to);
+  assert(!koiPath.lastFallback);
 }
 const profile = ngocStepProfile();
 assert.equal(NGOC.y, 8.4);
@@ -92,7 +118,7 @@ assert(roadPath('rearCenter', 'ngocCourt').includes('ngocEastTurn'), 'The rear c
 assert(roadPath('tamThe', 'ngocCourt').includes('tamTheStairFoot'), 'The route out of Tam The must use its front stairs');
 assert(roadPath('gate', 'ngocCourt').includes('ngocEastTurn'), 'The main gate must connect to the new east approach');
 assert(roadPath('westRearGate', 'ngocCourt').includes('caveBypass'), 'The west approach must remain connected');
-const transverse = { x: 8, z: 2 }; resolveBridge(transverse, { x: 0, z: 2 }); assert.equal(transverse.x, 8, 'the bridge shim must not move walkers');
+const transverse = { x: 8, z: 2 }; resolveBridge(transverse, { x: 0, z: 2 }); assert.equal(transverse.x, 8, 'Walkers can turn at the bridge landing');
 assert.equal(groundY(DUOC_SU.x, DUOC_SU.z), DUOC_SU.y);
 assert.equal(DUOC_SU_YAW, -Math.PI / 2);
 assert.deepEqual(duocSuWorld(0, DUOC_SU.hx + 0.7), DUOC_SU_DOOR);
@@ -137,7 +163,7 @@ for (const animal of createAnimals('expansion-invariant-test')) {
 // L1: an animal that must cross the koi lake uses the paved bank lanes, never the old axis.
 for (let i = 0; i <= 40; i++) {
   const x = -6 + i * 0.3;
-  assert(!nearWalkway(x, LAKE.z, 0) || !inLake(x, LAKE.z), 'no paved strip over the old bridge axis');
+  assert(!nearWalkway(x, LAKE.z, 0) || !inLake(x, LAKE.z), 'The crossing is a deck, not paving under the pond');
 }
 for (const [x, dir] of [[WALL.xW - 4, -1], [WALL.xE + 4, 1]] as const) {
   // Side gates must only admit a narrow landing, never the old 4 m pocket outside the wall.

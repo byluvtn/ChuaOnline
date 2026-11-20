@@ -893,7 +893,7 @@ export function buildTemple(c: TempleCtx) {
     }
   }
 
-  // ---- HỒ CÁ KOI — bỏ hoàn toàn cầu đỏ (L1). Chỉ giữ hồ, bờ, cá, đình và bến gỗ. ----
+  // ---- Hồ cá koi và cầu cong Bắc–Nam ----
   const pond = new THREE.Group();            // toàn bộ hồ trong một nhóm → dễ dời tâm
   pond.name = 'koi-pond';
   pond.position.set(LAKE.x, 0, LAKE.z);       // placeKoiPond() xác nhận lại vị trí tâm
@@ -906,25 +906,28 @@ export function buildTemple(c: TempleCtx) {
   water.scale.set(LAKE.a, LAKE.b, 1); water.rotation.x = -Math.PI / 2; water.position.y = 0.14; pond.add(water);
   const rimStone = lamb(0x8b7a64, { map: stoneTexture([140, 128, 110], [14, 1], 3) });
   const rimRadius = 0.42;
-  // L1: full stone curb; there is no longer a bridge landing to leave a gap at x ≈ 0.
-  {
-    const pts = Array.from({ length: 65 }, (_, i) => {
-      const a = (i / 64) * Math.PI * 2;
+  const rimEnd = Math.acos((BRIDGE.hw + rimRadius) / (LAKE.a + 0.3));
+  // Leave both bridge entrances open.
+  for (const center of [0, Math.PI]) {
+    const pts = Array.from({ length: 33 }, (_, i) => {
+      const a = center + (i / 16 - 1) * rimEnd;
       return new THREE.Vector3(Math.cos(a) * (LAKE.a + 0.3), 0, Math.sin(a) * (LAKE.b + 0.3));
     });
-    const rim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 96, rimRadius, 8), rimStone);
+    const rim = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, rimRadius, 8), rimStone);
     rim.scale.y = 0.8; rim.position.y = 0.2; rim.castShadow = true; rim.receiveShadow = true; pond.add(rim);
   }
   const rocks = lamb(0x6e675c, { flatShading: true });
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2 + 0.2, rr = 0.5 + ((i * 37) % 10) / 14;
     const rx = Math.cos(a) * (LAKE.a + 0.9), rz = Math.sin(a) * (LAKE.b + 0.9);
+    if (Math.abs(LAKE.x + rx - BRIDGE.x) < BRIDGE.hw + rr + 0.3) continue;
     if (LAKE.x + rx < PIER.x1 && Math.abs(LAKE.z + rz - PIER.z) < PIER.hw + rr + 0.6) continue;
     const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rr, 0), rocks);
     r.position.set(rx, rr * 0.3, rz); r.scale.y = 0.65; r.rotation.set(i, i * 2, 0); r.castShadow = true; pond.add(r);
   }
-  pond.add(buildPondLotus(LAKE.a, LAKE.b, water.position.y, 32, 8113, (_x, _z, _radius) =>
-    !(_x < PIER.x1 + 0.4 && Math.abs(_z - PIER.z) < PIER.hw + 0.4)));
+  pond.add(buildPondLotus(LAKE.a, LAKE.b, water.position.y, 32, 8113, (x, z, radius) =>
+    Math.abs(LAKE.x + x - BRIDGE.x) > BRIDGE.hw + radius + 0.15 &&
+    !(LAKE.x + x < PIER.x1 + radius && Math.abs(LAKE.z + z - PIER.z) < PIER.hw + radius)));
   // ---- cá koi: 4 mẫu thật (Kohaku, Yamabuki, Shiro Utsuri, Hi), đuôi vẫy ----
   const koi: Koi[] = [];
   const KOI_VARIETIES: KoiVariety[] = ['kohaku', 'yamabuki', 'shiroUtsuri', 'hi'];
@@ -942,8 +945,44 @@ export function buildTemple(c: TempleCtx) {
   // xác nhận hồ nằm đúng tâm khuôn viên
   const pondHandle = placeKoiPond(pond, LAKE);
 
-  // L1: the red arched bridge, its piers, lamps, and its three colliders are gone.
-  // Traffic now follows the dry paved loop around the lake (road nodes bridgeE / bridgeW).
+  const bridge = new THREE.Group();
+  bridge.name = 'arched-bridge';
+  const deckM = lamb(0x8a4a28), railM = c.redM, pierM = lamb(0x6b6458);
+  const nSeg = 28, bw = BRIDGE.hw, segLen = (BRIDGE.z1 - BRIDGE.z0) / nSeg;
+  for (let i = 0; i < nSeg; i++) {
+    const z = BRIDGE.z0 + (i + 0.5) * segLen;
+    const y1 = bridgeY(BRIDGE.x, BRIDGE.z0 + i * segLen);
+    const y2 = bridgeY(BRIDGE.x, BRIDGE.z0 + (i + 1) * segLen);
+    const y = (y1 + y2) / 2, slope = Math.atan2(y2 - y1, segLen);
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(bw * 2, 0.2, segLen + 0.06), deckM);
+    deck.position.set(BRIDGE.x, y - 0.1, z); deck.rotation.x = -slope;
+    deck.castShadow = deck.receiveShadow = true; bridge.add(deck);
+    for (const side of [-1, 1]) {
+      const x = BRIDGE.x + side * (bw + 0.02);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, segLen + 0.04), railM);
+      rail.position.set(x, y + 0.95, z); rail.rotation.x = -slope; bridge.add(rail);
+      if (i % 3 === 0) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.05, 8), railM);
+        post.position.set(x, y + 0.45, z); bridge.add(post);
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), c.goldM);
+        knob.position.set(x, y + 1.05, z); bridge.add(knob);
+      }
+    }
+  }
+  const apexZ = (BRIDGE.z0 + BRIDGE.z1) / 2;
+  for (const z of [apexZ - 4.6, apexZ + 4.6]) for (const side of [-1, 0, 1]) {
+    const pier = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.6, 8), pierM);
+    pier.position.set(BRIDGE.x + side * (bw - 0.2), bridgeY(BRIDGE.x, z) - 0.89, z); bridge.add(pier);
+  }
+  for (const side of [-1, 1]) {
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), c.redBase);
+    lamp.scale.y = 1.2;
+    lamp.position.set(BRIDGE.x + side * (bw + 0.02), bridgeY(BRIDGE.x, apexZ) + 1.7, apexZ);
+    bridge.add(lamp);
+    glowSpr(lamp.position.x, lamp.position.y, lamp.position.z, 2, 0xff4a28, 0.5);
+  }
+  mergeStaticByMaterial(bridge);
+  scene.add(bridge);
 
   // ---- Thủy Đình: đình nhỏ trên mặt hồ, phía Tây cầu trục, nối bờ Tây bằng cầu gỗ ----
   const thuy = new THREE.Group(); thuy.name = 'thuy-dinh'; scene.add(thuy);

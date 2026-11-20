@@ -1,7 +1,7 @@
 import { TAM_THE_PLAT, AM_CO, AM_CO_PLAT, NHA_TO, NHA_TO_PLAT, TANG_XA, TANG_XA_PLAT, NHA_KHACH, TRAI_DUONG, TRAI_DUONG_PLAT, VUON_THAP_PLAT, THIEN_DUONG, THIEN_DUONG_PLAT, PHONG_CD, PHONG_CD_PLAT, VIEN_KT, VIEN_TO, PS, PS_POND, PS_PIER, DEN_TRINH, DIEN_MAU, BAO_THAP, BELL, BUDDHA_YARD, CORR, DECK, HALL, LAKE, PAGODA, PATH_Z, QUAN, WALL } from '../layout';
 import { h, openCustomPanel, closePanel } from '../panels';
 import type { MenuCtx } from '../menu';
-import { FARM, FARM_POND, LOTUS, LOTUS_PAVILION, NGOC_HALL, NGOC_TERRACE, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_EAST_MAP_RECTS, NORTH_WALK_Z, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
+import { BRIDGE, FARM, FARM_POND, LOTUS, LOTUS_PAVILION, NGOC_HALL, NGOC_TERRACE, RIVER, RIVER_PATH, DUOC_SU, NGOC, NGOC_EAST_MAP_RECTS, NORTH_WALK_Z, BAMBOO, FLOWER_HILL, CAVE, TINH_THAT, DRUM, REST } from '../layout';
 import { RIVER_BRIDGES } from '../../shared/campus';
 import { RIVER_DOCK } from '../../shared/river-tour';
 import { PLACES, type Place } from '../data/places';
@@ -96,11 +96,12 @@ export function openMap(ctx: MenuCtx) {
       }
       // hall
       rect(HALL.x - HALL.hx, HALL.z - HALL.hz, HALL.x + HALL.hx, HALL.z + HALL.hz, '#b5542f', '#6e2a14');
-      // lake + dry bank lanes (L1: the red koi bridge is gone)
+      // Lake, bridge and dry bank lanes.
       ellipse(LAKE.x, LAKE.z, LAKE.a, LAKE.b, '#8ec6e0', '#4f8fb0');
       rect(LAKE.a + 1.4, PATH_Z, LAKE.a + 3.4, LAKE.z + LAKE.b + 2.6, '#e8d6a4');
       rect(-LAKE.a - 3.4, PATH_Z, -LAKE.a - 1.4, LAKE.z + LAKE.b + 2.6, '#e8d6a4');
       rect(-LAKE.a - 3.4, LAKE.z + LAKE.b + 1.4, LAKE.a + 3.4, LAKE.z + LAKE.b + 2.6, '#e8d6a4');
+      rect(BRIDGE.x - BRIDGE.hw, BRIDGE.z0, BRIDGE.x + BRIDGE.hw, BRIDGE.z1, '#a9553c', '#6e2a14');
       // towers
       for (const [p, c] of [[BELL, '#8a5a2b'], [DRUM, '#8a5a2b'], [QUAN, '#e6e0d0'], [PAGODA, '#b5542f'], [BAO_THAP, '#d9c27a']] as const) ellipse(p.x, p.z, 2.2, 2.2, c, '#4a2e18');
       const plat = (p: { x: number; z: number; hx: number; hz: number }, fill = '#b5542f', stroke = '#6e2a14') =>
@@ -154,7 +155,7 @@ export function openMap(ctx: MenuCtx) {
     };
     const chips = h('div', { class: 'chips' }, ...PLACES.map((p) => h('button', { class: 'chip', onclick: () => { closePanel(); ctx.goTo(p.x, p.z); ctx.toast(`Đang đi tới ${p.name}`); } }, p.name)));
     body.append(
-      h('p', { class: 'hint', style: 'margin:0 0 8px' }, 'Chấm hồng là bạn, chấm xanh là người khác. Đường màu vàng nâu bên phải Điện Tam Thế dẫn lên Chùa Ngọc. Hồ cá koi không còn cầu đỏ — đi vòng theo làn bờ Đông hoặc bờ Tây. Bấm vào địa điểm để đi tới đó.'),
+      h('p', { class: 'hint', style: 'margin:0 0 8px' }, 'Chấm hồng là bạn, chấm xanh là người khác. Đường màu vàng nâu bên phải Điện Tam Thế dẫn lên Chùa Ngọc. Qua hồ cá koi bằng cầu cong hoặc hai lối ven hồ. Bấm vào địa điểm để đi tới đó.'),
       h('div', { class: 'tmap-wrap' }, cv), chips);
     return () => clearInterval(timer);
   });

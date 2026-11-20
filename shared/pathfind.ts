@@ -136,7 +136,9 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
   const resolve = (v: any): number => idIndex.get(String(v)) ?? (typeof v === 'number' ? v : -1);
   const N = pts.length;
   const adj: { to: number; w: number }[][] = pts.map(() => []);
-  for (const e of ROAD_EDGES as unknown as any[]) {
+  // Only the player pathfinder uses the deck shortcut. NPCs retain their bank routes.
+  const edges = opts?.deck ? [...ROAD_EDGES, ['bridgeS', 'bridgeN']] : ROAD_EDGES;
+  for (const e of edges as unknown as any[]) {
     const a = resolve(Array.isArray(e) ? e[0] : (e.a ?? e.from));
     const b = resolve(Array.isArray(e) ? e[1] : (e.b ?? e.to));
     if (a < 0 || b < 0 || a >= N || b >= N || a === b) continue;
@@ -530,8 +532,8 @@ export function createPathfinder(colliders: Collider[], opts?: { deck?: { x: num
       if (onDeck(to) && !onDeck(from)) {
         const mid = (dk.z0 + dk.z1) / 2;
         const entry: Pt = from.z < mid
-          ? { x: dk.x, z: dk.z0 - 0.4 }   // bridgeN (0, 13.8)
-          : { x: dk.x, z: dk.z1 + 0.4 };  // bridgeS (0, 30.2)
+          ? { x: dk.x, z: dk.z0 - 0.4 }
+          : { x: dk.x, z: dk.z1 + 0.4 };
         lastFallback = false;
         const head = findPath(from, entry);
         lastFallback = false;

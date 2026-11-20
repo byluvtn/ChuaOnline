@@ -1,5 +1,5 @@
 import { BAO_THAP, BELL, DRUM, BUDDHA_YARD, DECK, HALL, LAKE, PAGODA, PLAZA, QUAN, TAM_THE, THIEN_DUONG, VUON_THAP, WALL, ZEN, REST, TANG_XA } from '../layout';
-import { BAMBOO, DUOC_SU_DOOR, FLOWER_HILL, NGOC, PHONG_CD_DOOR, RIVER_BRIDGES, TINH_THAT, TINH_THAT_LANE_Z, FARM, FARM_POND, LOTUS, LOTUS_PAVILION } from '../../shared/campus';
+import { BAMBOO, BRIDGE, DUOC_SU_DOOR, FLOWER_HILL, NGOC, PHONG_CD_DOOR, RIVER_BRIDGES, TINH_THAT, TINH_THAT_LANE_Z, FARM, FARM_POND, LOTUS, LOTUS_PAVILION } from '../../shared/campus';
 import { RIVER_DOCK } from '../../shared/river-tour';
 
 export interface Place { name: string; x: number; z: number; r: number; ly?: number }
@@ -35,9 +35,8 @@ export const PLACES: Place[] = [
   { name: 'Bến thả phóng sinh', x: 27.5, z: -31, r: 3 },
   { name: 'Điện Mẫu', x: 39, z: 10, r: 4 },
   { name: 'Đền Trình', x: 11, z: 39, r: 4 },
-  // C1/L1: hồ cá koi không còn cầu đỏ; điểm đứng ở bờ Nam hồ.
   { name: 'Hồ cá koi', x: LAKE.x, z: LAKE.z + LAKE.b + 3.5, r: 5 },
-  // C2: hai làn bờ hồ thay cho cầu đỏ đã bỏ.
+  { name: 'Cầu cong', x: BRIDGE.x, z: (BRIDGE.z0 + BRIDGE.z1) / 2, r: BRIDGE.hw },
   { name: 'Bờ Đông hồ koi', x: LAKE.a + 2.4, z: LAKE.z, r: 4 },
   { name: 'Bờ Tây hồ koi', x: -LAKE.a - 2.4, z: LAKE.z, r: 4 },
   { name: 'Bia công đức', x: 18.8, z: 11.4, r: 3 },

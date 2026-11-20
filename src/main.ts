@@ -12,6 +12,7 @@ import { initMenu } from './menu';
 import { onSettings, settings } from './settings';
 import { COUPLETS } from './couplets';
 import { HALL, TAM_THE_PLAT, DIEN_MAU_PLAT, THIEN_DUONG, clampToCompound, resolveBridge, LAKE, BRIDGE, inLake, inPsPond, onPsPier, expansionWaterBlocked, WALL, LOTUS, LOTUS_PAVILION, RIVER, RIVER_PATH, NGOC, NGOC_EAST_MAP_RECTS, BELL, DRUM, BAO_THAP, PHONG_CD, REST, TANG_XA, VUON_THAP, DUOC_SU, NHA_TO_PLAT, TANG_XA_PLAT, AM_CO_PLAT, THIEN_DUONG_PLAT, TRAI_DUONG_PLAT, NHA_KHACH_PLAT, VUON_THAP_PLAT, PHONG_CD_PLAT, PS_POND, FARM_POND, BAMBOO, FLOWER_HILL } from './layout';
+import { onAxisWaterGap, onKoiBridge } from './layout';
 import { hydrateIcons, iconSvg } from './icons';
 import { closePanel, h, openAdminPanel, openCustomPanel, openDonatePanel, openDonorsPanel, openPanel, panelOpen, refreshPanel } from './panels';
 import { openFortune } from './features/fortune';
@@ -237,7 +238,7 @@ function lakeRingColliders() {
     const t = (i / n) * Math.PI * 2;
     const x = LAKE.x + Math.cos(t) * a;
     const z = LAKE.z + Math.sin(t) * b;
-    // L1: the red bridge is gone, so no deck corridor to leave open.
+    if (Math.abs(x - BRIDGE.x) < BRIDGE.hw + R + 0.55) continue;
     // Keep the Thủy Đình pier approach on the west shore walkable.
     if (x >= -12 && x <= -3 && Math.abs(z - 23) <= 3) continue;
     out.push({ x, z, r: R });
@@ -253,9 +254,9 @@ function currentNavigation() {
   navigation = createPathfinder(
     [...world.colliders, ...lakeRingColliders()],
     {
-      // L1: no deck any more — the koi lake is crossed on the dry bank lanes.
+      deck: BRIDGE,
       avoid: (p) => expansionWaterBlocked(p.x, p.z) || (inPsPond(p.x, p.z) && !onPsPier(p.x, p.z)) ||
-        (inLake(p.x, p.z) && !(p.x >= -10.6 && p.x <= -4.4 && Math.abs(p.z - 23) <= 1.6)),
+        onAxisWaterGap(p.x, p.z),
     },
   );
   return navigation;
@@ -1518,8 +1519,6 @@ function rampSpeed(target: number, dt: number) {
 
 const prevPos = { x: 0, z: 0 };
 function collide(pos: THREE.Vector3) {
-  // L1: bridge deck removed; resolveBridge() is a no-op shim.
-  const onDeck = resolveBridge(pos, prevPos);
   for (const c of world.colliders) {
     const w = c as typeof c & { x2?: number; z2?: number };
     let cx = c.x, cz = c.z;
@@ -1532,6 +1531,7 @@ function collide(pos: THREE.Vector3) {
     const d = Math.hypot(dx, dz), min = c.r + 0.4;
     if (d < min && d > 0.0001) { pos.x = cx + (dx / d) * min; pos.z = cz + (dz / d) * min; }
   }
+  const onDeck = resolveBridge(pos, prevPos);
   world.resolveWater(pos, onDeck, prevPos);
   clampToCompound(pos);
   pos.x = Math.max(-MAP_HALF, Math.min(MAP_HALF, pos.x));
@@ -2012,11 +2012,14 @@ function drawMinimap() {
   }
   g.closePath(); g.fill(); g.stroke();
   g.lineWidth = dpr;
-  // C1/L1: no red bridge — draw the two dry paved bank lanes and the south link instead.
+  // Bank lanes and bridge deck drawn over the water.
   g.fillStyle = '#d6b994';
   g.fillRect(X(LAKE.a + 1.4), Z(LAKE.z - LAKE.b - 1.4), 2 * k, (LAKE.b * 2 + 2.8) * k);
   g.fillRect(X(-LAKE.a - 3.4), Z(LAKE.z - LAKE.b - 1.4), 2 * k, (LAKE.b * 2 + 2.8) * k);
   g.fillRect(X(-LAKE.a - 3.4), Z(LAKE.z + LAKE.b + 1.4), (LAKE.a + 3.4) * 2 * k, 1.2 * k);
+  g.fillStyle = '#a9553c';
+  g.fillRect(X(BRIDGE.x - BRIDGE.hw), Z(BRIDGE.z0), BRIDGE.hw * 2 * k, (BRIDGE.z1 - BRIDGE.z0) * k);
+  g.fillStyle = '#d6b994';
   g.fillRect(X(-NGOC.stairHalf), Z(NGOC.stairTop), NGOC.stairHalf * 2 * k, (NGOC.stairStart - NGOC.stairTop) * k);
   g.fillRect(X(NGOC.x - NGOC_TERRACE.half), Z(NGOC_TERRACE.north), NGOC_TERRACE.half * 2 * k, (NGOC.stairTop - NGOC_TERRACE.north) * k);
   g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -2249,7 +2252,7 @@ function zoneNameOf(x: number, z: number): string {
   if (near(PHONG_CD.x, PHONG_CD.z, 7)) return 'Phòng ghi công đức';
   if (near(REST.x, REST.z, 7)) return 'Khu nghỉ';
   if (near(30, -31, 5)) return 'Bến Phóng Sinh';
-  // L1: no red bridge — standing on either dry bank lane still counts as the koi lake.
+  if (onKoiBridge(x, z)) return 'Cầu hồ koi';
   if (near(LAKE.x, LAKE.z, 17) && ((x - LAKE.x) ** 2 / LAKE.a ** 2 + (z - LAKE.z) ** 2 / LAKE.b ** 2 > 1)) return 'Hồ cá koi';
   if (near(LOTUS.x, LOTUS.z, 14)) return 'Hồ sen Tây';
   if (inRect(5, 55, 47, 60)) return 'Chợ';
