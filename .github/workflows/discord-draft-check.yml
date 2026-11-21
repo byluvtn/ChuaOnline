@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [main]
 
+# PR push thêm commit thì hủy run cũ, chỉ chạy run mới nhất.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
