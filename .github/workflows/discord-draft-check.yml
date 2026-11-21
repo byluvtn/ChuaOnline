@@ -1,0 +1,41 @@
+# CI cho bản nháp từ Discord: trienkhai: chỉ merge PR khi job này xanh.
+# Chạy trên mọi PR vào main. Tối giản, nhanh, không cần secret nào:
+# server boot không có biến Turso nên dùng SQLite local (data/chuaonline.db).
+name: Discord draft check
+
+on:
+  pull_request:
+    branches: [main]
+
+# PR push thêm commit thì hủy run cũ, chỉ chạy run mới nhất.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Boot server check
+        run: |
+          npm start > /tmp/chuaonline-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/ > /dev/null; then
+              echo "Server boot OK"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Server did not respond in 60s"
+          cat /tmp/chuaonline-server.log
+          exit 1
